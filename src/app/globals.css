@@ -1,45 +1,39 @@
-:root {
-  color-scheme: light;
-  --background: #f8fafc;
-  --surface: #ffffff;
-  --text: #17243d;
-  --muted: #64748b;
-  --line: #e7edf6;
-}
-
+:root { color-scheme: light; --background: #f2f6fc; --surface: #fff; --text: #17243d; --muted: #58677e; --line: #e0e7f1; --accent: #285cde; }
 * { box-sizing: border-box; }
-
-body {
-  margin: 0;
-  background: var(--background);
-  color: var(--text);
-  font-family: Arial, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
-  line-height: 1.6;
-}
-
-.welcome {
-  width: min(760px, calc(100% - 48px));
-  margin: 96px auto;
-  padding: clamp(24px, 5vw, 48px);
-  border: 1px solid var(--line);
-  border-radius: 20px;
-  background: var(--surface);
-}
-
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-size: 24px;
-  font-weight: 700;
-}
-
-h1 {
-  margin: 32px 0 12px;
-  font-size: clamp(26px, 4vw, 38px);
-  line-height: 1.3;
-  letter-spacing: -0.04em;
-  overflow-wrap: anywhere;
-}
-
+body { margin: 0; background: var(--background); color: var(--text); font-family: Arial, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; line-height: 1.6; }
+a { color: inherit; text-decoration: none; }
+a:focus-visible { outline: 3px solid var(--accent); outline-offset: 5px; border-radius: 4px; }
+.skip-link { position: fixed; left: 12px; top: -100px; z-index: 10; padding: 12px; background: var(--surface); }
+.skip-link:focus { top: 12px; }
+.site-header { background: var(--surface); border-bottom: 1px solid var(--line); }
+.header-inner { max-width: 1080px; margin: auto; padding: 20px 28px; display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+.brand { display: inline-flex; align-items: center; gap: 10px; font-size: 24px; font-weight: 750; letter-spacing: -0.04em; }
+.header-label { color: var(--muted); font-size: 14px; }
+.page-shell { max-width: 960px; margin: auto; padding: 0 28px; min-height: 65vh; }
+.intro { padding: 64px 0 44px; }
+.eyebrow { color: var(--accent); font-size: 14px; font-weight: 700; }
+h1 { font-size: clamp(28px, 5vw, 40px); letter-spacing: -0.05em; line-height: 1.3; margin: 12px 0 16px; }
 p { margin: 0; color: var(--muted); }
+h1, h2, h3, p, .post-meta, .tag-list { overflow-wrap: anywhere; }
+.list-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; padding: 0 0 16px; }
+.list-heading h2 { font-size: 18px; margin: 0; }
+.list-heading span { font-size: 13px; color: var(--muted); }
+.post-list, .tag-list { list-style: none; padding: 0; margin: 0; }
+.post-list { border: 1px solid var(--line); border-radius: 16px; overflow: hidden; background: var(--surface); }
+.post-list > li + li { border-top: 1px solid var(--line); }
+.post-card { padding: 28px 32px; }
+.post-meta { display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; color: var(--muted); font-size: 13px; }
+.post-card h3 { font-size: 22px; line-height: 1.45; letter-spacing: -0.03em; margin: 12px 0 10px; }
+.post-summary { white-space: pre-line; }
+.tag-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
+.tag-list li { padding: 3px 10px; background: #edf3ff; color: #315baf; border-radius: 6px; font-size: 12px; max-width: 100%; }
+.pagination { display: flex; align-items: center; justify-content: center; gap: 24px; padding: 28px 0; font-size: 14px; }
+.page-link { min-height: 44px; padding: 10px 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
+.page-link:not(.disabled):hover, .button:hover { border-color: var(--accent); color: var(--accent); }
+.disabled { color: #718096; background: transparent; }
+.list-state { padding: 56px 24px; text-align: center; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; }
+.list-state h2 { margin: 0 0 12px; font-size: 22px; }
+.button { display: inline-block; margin-top: 24px; border: 1px solid var(--line); border-radius: 8px; padding: 10px 20px; min-height: 44px; font-weight: 600; }
+.loading-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); margin-right: 12px; }
+.site-footer { padding: 32px 24px; text-align: center; color: var(--muted); font-size: 12px; }
+@media (max-width: 600px) { .header-inner { padding: 16px 20px; } .page-shell { padding: 0 16px; } .intro { padding: 40px 4px 32px; } .post-card { padding: 24px 20px; } .post-card h3 { font-size: 20px; } .pagination { gap: 12px; font-size: 13px; } .list-heading { padding-left: 4px; padding-right: 4px; } }
