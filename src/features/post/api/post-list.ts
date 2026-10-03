@@ -102,8 +102,8 @@ export type TableColumn = {
   description?: string | null;
 };
 export type TableSpec = { schemaVersion: 1; tableName: string; description?: string | null; columns: TableColumn[] };
-export type ArchitectureGroup = { id: string; type: "ORACLE_CLOUD" | "AWS" | "CLOUDFLARE" | "DOCKER"; label: string; parentId?: string | null };
-export type ArchitectureNode = { id: string; type: "CLIENT" | "APP" | "DATABASE" | "CACHE" | "STORAGE" | "PROXY"; label: string; groupId?: string | null };
+export type ArchitectureGroup = { id: string; type: "ORACLE_CLOUD" | "AWS" | "CLOUDFLARE" | "DOCKER" | "CUSTOM"; label: string; parentId?: string | null };
+export type ArchitectureNode = { id: string; type: "CLIENT" | "APP" | "DATABASE" | "CACHE" | "STORAGE" | "PROXY" | "CUSTOM"; label: string; groupId?: string | null; icon?: string | null; position?: { x: number; y: number } | null };
 export type ArchitectureEdge = { id: string; source: string; target: string; label?: string | null };
 export type ArchitectureSpec = { schemaVersion: 1; groups: ArchitectureGroup[]; nodes: ArchitectureNode[]; edges: ArchitectureEdge[] };
 export type PostBlock = { type: "TEXT" | "CODE" | "TABLE" | "ARCHITECTURE"; content: string; language: string | null; title: string | null; displayOrder: number };
@@ -152,8 +152,9 @@ const javaBlank = (value: string) => Array.from(value).length === 0 || Array.fro
 });
 const architectureLabel = (value: unknown) => typeof value === "string" && safeString(value) && pointLength(value) >= 1 && pointLength(value) <= 100 && !javaBlank(value);
 export function parseArchitectureSpec(value: unknown): ArchitectureSpec {
-  const groupTypes = ["ORACLE_CLOUD", "AWS", "CLOUDFLARE", "DOCKER"];
-  const nodeTypes = ["CLIENT", "APP", "DATABASE", "CACHE", "STORAGE", "PROXY"];
+  const groupTypes = ["ORACLE_CLOUD", "AWS", "CLOUDFLARE", "DOCKER", "CUSTOM"];
+  const nodeTypes = ["CLIENT", "APP", "DATABASE", "CACHE", "STORAGE", "PROXY", "CUSTOM"];
+  const architectureIcons = ["AWS", "ORACLE_CLOUD", "CLOUDFLARE", "DOCKER", "SPRING", "POSTGRESQL", "REDIS", "R2", "WORKERS", "NGINX", "NODEJS", "REACT", "SERVER", "DATABASE", "CACHE", "STORAGE", "CLIENT", "CLOUD", "CONTAINER"];
   if (!record(value) || !keysAre(value, ["schemaVersion", "groups", "nodes", "edges"]) || value.schemaVersion !== 1
     || !Array.isArray(value.groups) || value.groups.length > 10 || !Array.isArray(value.nodes) || value.nodes.length < 1 || value.nodes.length > 30
     || !Array.isArray(value.edges) || value.edges.length > 60) throw new PostListError("response");
@@ -173,8 +174,10 @@ export function parseArchitectureSpec(value: unknown): ArchitectureSpec {
   }
   const nodes = new Set<string>();
   for (const item of value.nodes) {
-    if (!record(item) || !keysAre(item, ["id", "type", "label", "groupId"]) || typeof item.type !== "string" || !nodeTypes.includes(item.type) || !architectureLabel(item.label)
-      || !(item.groupId === undefined || item.groupId === null || architectureId(item.groupId))) throw new PostListError("response");
+    if (!record(item) || !keysAre(item, ["id", "type", "label", "groupId", "icon", "position"]) || typeof item.type !== "string" || !nodeTypes.includes(item.type) || !architectureLabel(item.label)
+      || !(item.groupId === undefined || item.groupId === null || architectureId(item.groupId))
+      || !(item.icon === undefined || item.icon === null || (typeof item.icon === "string" && architectureIcons.includes(item.icon)))
+      || !(item.position === undefined || item.position === null || (record(item.position) && keysAre(item.position, ["x", "y"]) && Number.isInteger(item.position.x) && Number.isInteger(item.position.y) && (item.position.x as number) >= 0 && (item.position.x as number) <= 4000 && (item.position.y as number) >= 0 && (item.position.y as number) <= 4000))) throw new PostListError("response");
     addId(item.id); nodes.add(item.id as string);
     if (item.groupId != null && !groups.has(item.groupId as string)) throw new PostListError("response");
   }

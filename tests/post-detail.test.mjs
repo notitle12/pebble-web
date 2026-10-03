@@ -58,6 +58,14 @@ test("ARCHITECTURE 블록은 요소·경계·연결 계약을 검증하고 상�
     const post=await getPublicPost("writer-1","note-1",base);
     const spec={schemaVersion:1,groups:[{id:"oracle",type:"ORACLE_CLOUD",label:"Production"},{id:"docker",type:"DOCKER",label:"Containers",parentId:"oracle"}],nodes:[{id:"browser",type:"CLIENT",label:"Browser"},{id:"api",type:"APP",label:"Spring API",groupId:"docker"},{id:"db",type:"DATABASE",label:"PostgreSQL",groupId:"docker"}],edges:[{id:"req",source:"browser",target:"api",label:"HTTPS"},{id:"query",source:"api",target:"db"}]};
     assert.deepEqual(parseArchitectureSpec(spec),spec);
+    const extended={schemaVersion:1,groups:[{id:"custom-boundary",type:"CUSTOM",label:"RabbitMQ fleet"}],nodes:[{id:"custom-node",type:"CUSTOM",label:"Message queue",icon:"SERVER",position:{x:4000,y:0},groupId:"custom-boundary"}],edges:[]};
+    assert.deepEqual(parseArchitectureSpec(extended),extended,"custom groups/cards and bounded positions/icons are supported while schema v1 remains intact");
+    for(const invalid of [
+      {...extended,nodes:[{...extended.nodes[0],icon:"CUSTOM"}]},
+      {...extended,nodes:[{...extended.nodes[0],position:{x:4001,y:0}}]},
+      {...extended,nodes:[{...extended.nodes[0],position:{x:0,y:1.5}}]},
+      {...extended,nodes:[{...extended.nodes[0],position:{x:0,y:1,z:2}}]},
+    ]) assert.throws(()=>parseArchitectureSpec(invalid));
     const maximumNodes=Array.from({length:30},(_,i)=>({id:`node-${i}`,type:"APP",label:`Node ${i}`}));
     const maximumPairs=[]; for(let source=0;source<30 && maximumPairs.length<60;source++) for(let target=0;target<30 && maximumPairs.length<60;target++) if(source!==target) maximumPairs.push({id:`edge-${maximumPairs.length}`,source:`node-${source}`,target:`node-${target}`});
     assert.equal(parseArchitectureSpec({schemaVersion:1,groups:[],nodes:maximumNodes,edges:maximumPairs}).edges.length,60);
