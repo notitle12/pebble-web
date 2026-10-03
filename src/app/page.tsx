@@ -1,5 +1,4 @@
-import Image from "next/image";
-import Link from "next/link";
+import { SiteHeader } from "@/components/site-header";
 import { Suspense } from "react";
 import { parsePostQuery } from "@/features/post/api/post-list";
 import { InvalidPage, PostList, PostListLoading } from "@/features/post/components/post-list";
@@ -14,11 +13,7 @@ export default async function HomePage({ searchParams }: {
   const query = parsePostQuery(await searchParams);
   return <>
     <a className="skip-link" href="#main-content">본문으로 바로가기</a>
-    <header className="site-header"><div className="header-inner">
-      <Link className="brand" href="/" aria-label="Pebble 홈"><Image src="/pebble-logo.svg" alt="" width={36} height={36} priority /><span>Pebble</span></Link>
-      <nav className="header-nav" aria-label="공개 탐색"><Link href="/" aria-current="page">글</Link></nav>
-      <span className="header-label">공개 탐색</span>
-    </div></header>
+    <SiteHeader home />
     <main id="main-content" className="page-shell">
       <section className="intro">
         {process.env.NODE_ENV === "development" && process.env.PEBBLE_PREVIEW_MODE === "mock" && <p className="preview-notice" role="status">목 데이터 미리보기 · 실제 게시글이 아닙니다</p>}

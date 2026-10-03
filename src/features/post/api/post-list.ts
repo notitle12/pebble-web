@@ -3,9 +3,10 @@ const MAX_PAGE = Math.floor(2147483647 / PAGE_SIZE);
 
 export type PostSummary = {
   id: string;
+  urlKey: string;
   title: string;
   summary: string | null;
-  author: { id: string; nickname: string; blogName: string | null };
+  author: { id: string; handle: string; nickname: string; blogName: string | null };
   tags: { id: string; name: string }[];
   publishedAt: string | null;
   createdAt: string;
@@ -20,8 +21,8 @@ export type PostPage = {
   hasPrevious: boolean;
 };
 export class PostListError extends Error {
-  readonly kind: "configuration" | "network" | "response";
-  constructor(kind: "configuration" | "network" | "response") {
+  readonly kind: "configuration" | "network" | "response" | "not-found";
+  constructor(kind: "configuration" | "network" | "response" | "not-found") {
     super(kind);
     this.kind = kind;
     this.name = "PostListError";
@@ -65,9 +66,10 @@ const nullableText = (value: unknown): value is string | null => value === null 
 const timestamp = (value: unknown): value is string =>
   typeof value === "string" && Number.isFinite(Date.parse(value));
 const count = (value: unknown): value is number => typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
-function isPost(value: unknown): value is PostSummary {
+function isPost(value: unknown): value is PostSummary & Record<string, unknown> {
   if (!record(value) || !record(value.author)) return false;
-  return id(value.id) && typeof value.title === "string" && nullableText(value.summary)
+  return id(value.id) && typeof value.urlKey === "string" && validPostKey(value.urlKey)
+    && typeof value.author.handle === "string" && validHandle(value.author.handle) && typeof value.title === "string" && nullableText(value.summary)
     && id(value.author.id) && typeof value.author.nickname === "string" && nullableText(value.author.blogName)
     && Array.isArray(value.tags) && value.tags.every(tag => record(tag) && id(tag.id) && typeof tag.name === "string")
     && (value.publishedAt === null || timestamp(value.publishedAt)) && timestamp(value.createdAt);
@@ -105,6 +107,7 @@ async function guestJson(path: string, params: URLSearchParams, baseUrl: string 
       signal: AbortSignal.timeout(8000),
     });
   } catch { throw new PostListError("network"); }
+  if (response.status === 404) throw new PostListError("not-found");
   if (!response.ok) throw new PostListError("response");
   try { return await response.json(); } catch { throw new PostListError("response"); }
 }
@@ -129,4 +132,30 @@ export async function getPublicTags(baseUrl = process.env.NEXT_PUBLIC_API_BASE_U
   const tags: PublicTag[] = value.data.map(tag => ({ id: tag.id, name: tag.name }));
   if (new Set(tags.map(tag => tag.id)).size !== tags.length) throw new PostListError("response");
   return tags;
+}
+
+const validHandle = (value: string) => /^[a-z][a-z0-9-]{1,28}[a-z0-9]$/.test(value);
+const validPostKey = (value: string) => validTagId(value) || (value.length <= 200
+  && /^[a-z0-9]+(-[a-z0-9]+)*$/.test(value) && !/^\d+$/.test(value) && value !== "search");
+export function postHref(handle: string, key: string): string | null {
+  return validHandle(handle) && validPostKey(key) ? `/blogs/${encodeURIComponent(handle)}/posts/${encodeURIComponent(key)}` : null;
+}
+export type PostBlock = { type: "TEXT" | "CODE"; content: string; language: string | null; title: string | null; displayOrder: number };
+export type PostDetail = PostSummary & { blocks: PostBlock[] };
+const languages = ["JAVA", "JAVASCRIPT", "TYPESCRIPT", "PYTHON", "HTML", "CSS", "SQL", "JSON", "YAML", "MARKDOWN", "BASH", "SHELL"];
+export function parsePostDetail(value: unknown): PostDetail {
+  if (!record(value) || !isPost(value.data) || !record(value.data)) throw new PostListError("response");
+  const data = value.data;
+  if (!Array.isArray(data.blocks) || !data.blocks.every(block => record(block)
+    && ["TEXT", "CODE"].includes(String(block.type)) && typeof block.content === "string"
+    && nullableText(block.title) && count(block.displayOrder)
+    && (block.type === "TEXT" ? block.language === null : typeof block.language === "string" && languages.includes(block.language)))) throw new PostListError("response");
+  return { ...data, blocks: data.blocks } as PostDetail;
+}
+export async function getPublicPost(handle: string, key: string, baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL, request: typeof fetch = fetch): Promise<PostDetail> {
+  const href = postHref(handle, key);
+  if (!href) throw new PostListError("not-found");
+  const post = parsePostDetail(await guestJson(href.slice(1), new URLSearchParams(), baseUrl, request));
+  if (post.author.handle !== handle || post.urlKey !== key) throw new PostListError("response");
+  return post;
 }
