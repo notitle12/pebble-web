@@ -290,3 +290,47 @@ input:focus-visible, select:focus-visible, button:focus-visible { outline: 3px s
 .arch-edge-waypoint, .arch-edge-endpoint-handle { touch-action: none; }
 
 .architecture-edge-disclosure summary { margin-top: 12px; cursor: pointer; font-size: 12px; color: #65748a; }
+
+.post-editor { display: grid; gap: 24px; color: #17243d; }
+.post-editor-fields { display: grid; gap: 16px; }
+.post-editor-fields label, .post-editor-block-fields > label, .post-editor-code-meta label { display: grid; gap: 7px; color: #34435d; font-size: 14px; font-weight: 650; }
+.post-editor-fields label > span { justify-self: end; margin-bottom: -25px; color: #748198; font-size: 12px; font-weight: 400; }
+.post-editor input, .post-editor textarea, .post-editor select { width: 100%; min-width: 0; border: 1px solid #dce4ef; border-radius: 9px; padding: 11px 12px; background: #fff; color: #17243d; font: inherit; font-weight: 400; }
+.post-editor textarea { resize: vertical; line-height: 1.65; }
+.post-editor input:focus-visible, .post-editor textarea:focus-visible, .post-editor select:focus-visible, .post-editor button:focus-visible { outline: 3px solid #9bb6ff; outline-offset: 2px; }
+.post-editor [aria-invalid="true"] { border-color: #bc4b52; }
+.post-editor-block-heading, .post-editor-block-row, .post-editor-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.post-editor-block-heading h2 { margin: 0; font-size: 19px; }
+.post-editor-block-heading p { margin: 5px 0 0; color: #748198; font-size: 13px; }
+.post-editor-add { display: flex; flex-wrap: wrap; gap: 7px; }
+.post-editor button { min-height: 36px; border: 1px solid #dce4ef; border-radius: 8px; padding: 6px 10px; background: #fff; color: #344c70; font: inherit; font-size: 13px; cursor: pointer; }
+.post-editor button:hover:not(:disabled) { border-color: #8ba8ed; background: #f4f7ff; }
+.post-editor button:disabled { cursor: not-allowed; opacity: .48; }
+.post-editor-block-list { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
+.post-editor-block-list > li { min-width: 0; overflow: hidden; border: 1px solid #e1e8f1; border-radius: 12px; background: #fff; }
+.post-editor-block-row { padding: 10px 12px; background: #f7f9fc; border-bottom: 1px solid #e7edf6; }
+.post-editor-block-row > button:first-child { border-color: transparent; background: transparent; font-weight: 700; }
+.post-editor-block-row > div { display: flex; gap: 5px; }
+.post-editor-invalid-mark { color: #a83e44; font-weight: 500; }
+.post-editor-block-fields { display: grid; gap: 14px; padding: 14px; }
+.post-editor-block-fields[hidden] { display: none; }
+.post-editor-code-meta { display: grid; grid-template-columns: minmax(140px, .45fr) minmax(180px, 1fr); gap: 12px; }
+.post-editor-preview { min-width: 0; overflow: auto; border-top: 1px solid #edf1f7; padding-top: 12px; }
+.post-editor-preview > h3 { margin: 0 0 9px; color: #748198; font-size: 12px; }
+.post-editor-text-preview { min-height: 48px; color: #34435d; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.75; }
+.post-editor-errors { border: 1px solid #edc9c9; border-radius: 9px; padding: 12px 16px; background: #fff7f6; color: #8d3036; font-size: 13px; }
+.post-editor-errors p { margin: 0 0 6px; font-weight: 700; }
+.post-editor-errors ul { margin: 0; padding-left: 19px; }
+.post-editor-footer { position: sticky; bottom: 0; padding: 12px; border: 1px solid #e4eaf3; border-radius: 10px; background: #fffffff2; color: #748198; font-size: 13px; }
+.post-editor-footer button { min-width: 132px; border-color: #356dff; background: #356dff; color: white; font-weight: 700; }
+.post-editor-footer button:hover:not(:disabled) { background: #285bdc; color: white; }
+@media(max-width:680px) { .post-editor-block-heading, .post-editor-footer { align-items: stretch; flex-direction: column; } .post-editor-code-meta { grid-template-columns: 1fr; } .post-editor-add { display: grid; grid-template-columns: 1fr 1fr; } .post-editor-add button { width: 100%; } }
+
+.writer-shell { max-width: 1440px; padding-bottom: 40px; }
+.writer-status { display:flex; flex-wrap:wrap; gap:16px; justify-content:space-between; margin-bottom:24px; }
+.naver-login { background:#03c75a; color:white; border:0; }
+fieldset { min-width:0; }
+@media(max-width:600px){ .header-inner {flex-wrap:wrap;} .header-nav { gap:8px; } .header-label {margin-left:auto;} }
+
+.post-editor .table-editor-layout {display:block;}
+.post-editor .table-live-preview {display:none;}
