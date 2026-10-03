@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Form from "next/form";
-import { TagPicker } from "./tag-picker";
+import { TagPicker } from "../../tag/components/tag-picker";
 import { getPublicTags, pageHref, type PostQuery, type PublicTag } from "../api/post-list";
 
 export async function PostSearch({ query }: { query: PostQuery }) {
