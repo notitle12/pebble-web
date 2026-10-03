@@ -244,3 +244,22 @@ input:focus-visible, select:focus-visible, button:focus-visible { outline: 3px s
 .architecture-edge-list .architecture-edge-select { flex: 1; min-width: 0; width: auto; height: auto; text-align: left; font-size: 12px; overflow-wrap: anywhere; }
 
 .architecture-canvas-fit .architecture-svg { width: 100%; height: auto; min-width: 580px; }
+
+.arch-group-wrap.is-interactive .arch-group { cursor: grab; pointer-events: all; }
+.arch-group-wrap.is-interactive .arch-group:active { cursor: grabbing; }
+.arch-group-wrap.is-interactive.is-selected .arch-group, .arch-group-wrap.is-interactive:hover .arch-group { stroke: #446fe0; stroke-width: 2.5; }
+.arch-group-wrap .arch-group-label { user-select: none; }
+.arch-group-wrap.is-interactive .arch-group-label { cursor: grab; outline: none; }
+.arch-group-wrap.is-interactive .arch-group-label:focus-visible { fill: #244d9c; text-decoration: underline; }
+.arch-connect-handle { cursor: crosshair; opacity: .7; outline: none; }
+.arch-connect-handle:hover, .arch-connect-handle:focus-visible, .arch-node-wrap.is-selected ~ .arch-connect-handle, .arch-group-wrap.is-selected .arch-connect-handle, .arch-group-wrap:hover .arch-connect-handle, .arch-connect-handle.is-connecting { opacity: 1; }
+.arch-connect-hit { fill: transparent; pointer-events: all; }
+.arch-connect-dot { fill: #fff; stroke: #4770d6; stroke-width: 2.5; pointer-events: none; }
+.arch-connect-handle:focus-visible .arch-connect-dot, .arch-connect-handle.is-connecting .arch-connect-dot { fill: #4770d6; stroke: #fff; }
+.arch-group-resize { cursor: nwse-resize; opacity: .65; outline: none; }
+.arch-group-wrap:hover .arch-group-resize, .arch-group-wrap.is-selected .arch-group-resize, .arch-group-resize:focus-visible { opacity: 1; }
+.arch-group-resize-hit { fill: #fff; stroke: #6686dc; stroke-width: 1.5; }
+.arch-group-resize-mark { fill: none; stroke: #4669c4; stroke-width: 1.5; pointer-events: none; }
+.arch-group-resize:focus-visible .arch-group-resize-hit { fill: #eaf0ff; stroke-width: 2.5; }
+
+.arch-group-wrap.is-interactive, .arch-group-resize, .arch-connect-handle { touch-action: none; }

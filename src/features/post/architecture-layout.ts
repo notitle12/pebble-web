@@ -29,6 +29,7 @@ export function architectureLayout(spec: ArchitectureSpec): { positions: Map<str
   spec.nodes.forEach((node) => { if (node.position) positions.set(node.id, node.position); });
   const groups = new Map<string, ArchBox>();
   [...spec.groups].sort((a, b) => Number(a.type !== "DOCKER") - Number(b.type !== "DOCKER")).forEach((group) => {
+    if (group.bounds) { groups.set(group.id, group.bounds); return; }
     const memberIds = new Set(spec.nodes.filter((node) => node.groupId === group.id || (group.type !== "DOCKER" && spec.groups.some((child) => child.id === node.groupId && child.parentId === group.id))).map((node) => node.id));
     const points = Array.from(memberIds, (nodeId) => positions.get(nodeId)!);
     const nested = spec.groups.filter((child) => child.type === "DOCKER" && child.parentId === group.id).map((child) => groups.get(child.id)).filter((box): box is ArchBox => Boolean(box));

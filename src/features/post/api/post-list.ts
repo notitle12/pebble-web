@@ -102,7 +102,7 @@ export type TableColumn = {
   description?: string | null;
 };
 export type TableSpec = { schemaVersion: 1; tableName: string; description?: string | null; columns: TableColumn[] };
-export type ArchitectureGroup = { id: string; type: "ORACLE_CLOUD" | "AWS" | "CLOUDFLARE" | "DOCKER" | "CUSTOM"; label: string; parentId?: string | null };
+export type ArchitectureGroup = { id: string; type: "ORACLE_CLOUD" | "AWS" | "CLOUDFLARE" | "DOCKER" | "CUSTOM"; label: string; parentId?: string | null; bounds?: { x: number; y: number; width: number; height: number } | null };
 export type ArchitectureNode = { id: string; type: "CLIENT" | "APP" | "DATABASE" | "CACHE" | "STORAGE" | "PROXY" | "CUSTOM"; label: string; groupId?: string | null; icon?: string | null; position?: { x: number; y: number } | null };
 export type ArchitectureEdge = { id: string; source: string; target: string; label?: string | null };
 export type ArchitectureSpec = { schemaVersion: 1; groups: ArchitectureGroup[]; nodes: ArchitectureNode[]; edges: ArchitectureEdge[] };
@@ -162,8 +162,14 @@ export function parseArchitectureSpec(value: unknown): ArchitectureSpec {
   const addId = (id: unknown) => { if (!architectureId(id) || ids.has(id)) throw new PostListError("response"); ids.add(id); };
   const groups = new Map<string, ArchitectureGroup>();
   for (const item of value.groups) {
-    if (!record(item) || !keysAre(item, ["id", "type", "label", "parentId"]) || typeof item.type !== "string" || !groupTypes.includes(item.type) || !architectureLabel(item.label)
+    if (!record(item) || !keysAre(item, ["id", "type", "label", "parentId", "bounds"]) || typeof item.type !== "string" || !groupTypes.includes(item.type) || !architectureLabel(item.label)
       || !(item.parentId === undefined || item.parentId === null || architectureId(item.parentId))) throw new PostListError("response");
+    if (item.bounds != null) {
+      const b = item.bounds;
+      if (!record(b) || !keysAre(b, ["x", "y", "width", "height"]) || ![b.x,b.y,b.width,b.height].every(Number.isInteger)
+        || (b.x as number) < 0 || (b.x as number) > 4000 || (b.y as number) < 0 || (b.y as number) > 4000
+        || (b.width as number) < 200 || (b.height as number) < 120 || (b.x as number)+(b.width as number)>4200 || (b.y as number)+(b.height as number)>4200) throw new PostListError("response");
+    }
     addId(item.id); groups.set(item.id as string, item as ArchitectureGroup);
   }
   for (const group of groups.values()) {
@@ -187,7 +193,7 @@ export function parseArchitectureSpec(value: unknown): ArchitectureSpec {
       || item.source === item.target || !(item.label === undefined || item.label === null || textField(item.label, 200))) throw new PostListError("response");
     addId(item.id);
     const pair = `${item.source}\u0000${item.target}`;
-    if (!nodes.has(item.source) || !nodes.has(item.target) || pairs.has(pair)) throw new PostListError("response");
+    if (!(nodes.has(item.source) || groups.has(item.source)) || !(nodes.has(item.target) || groups.has(item.target)) || pairs.has(pair)) throw new PostListError("response");
     pairs.add(pair);
   }
   return value as ArchitectureSpec;
