@@ -3,9 +3,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { SiteHeader } from "@/components/site-header";
-import { getPublicPost, parseTableSpec, PostListError, postHref } from "@/features/post/api/post-list";
+import { getPublicPost, parseArchitectureSpec, parseTableSpec, PostListError, postHref } from "@/features/post/api/post-list";
 import { CodeBlock } from "@/features/post/components/code-block";
 import { TableBlock } from "@/features/post/components/table-block";
+import { ArchitectureBlock } from "@/features/post/components/architecture-block";
 const readPost = cache(getPublicPost);
 type Props = { params: Promise<{ handle: string; postKey: string }> };
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -36,6 +37,7 @@ export default async function PostPage({ params }: Props) {
       </header><div className="post-body">{post.blocks.map((block,index)=>block.type === "CODE"
         ? <CodeBlock key={index} content={block.content} title={block.title} language={block.language} />
         : block.type === "TABLE" ? <TableBlock key={index} spec={parseTableSpec(JSON.parse(block.content))} title={block.title} />
+        : block.type === "ARCHITECTURE" ? <ArchitectureBlock key={index} spec={parseArchitectureSpec(JSON.parse(block.content))} title={block.title} />
         : <section className="text-block" key={index}>{block.title && <h2>{block.title}</h2>}<p>{block.content}</p></section>)}</div></article>
     </main><footer className="site-footer">Pebble · 함께 쌓아가는 개발 기록</footer></>;
 }

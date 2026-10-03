@@ -148,3 +148,43 @@ input:focus-visible, select:focus-visible, button:focus-visible { outline: 3px s
 .table-spec-json p { font-size: 13px; }
 .table-spec-json pre { max-width: 100%; margin: 0; overflow: auto; padding: 16px; border-radius: 8px; background: #f7f9fc; font-size: 12px; overflow-wrap: anywhere; white-space: pre-wrap; }
 @media(max-width:760px) { .table-editor-layout { grid-template-columns: minmax(0, 1fr); } }
+
+.architecture-block { min-width: 0; margin: 28px 0; overflow: hidden; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
+.architecture-heading { padding: 16px 20px; background: #edf3ff; }
+.architecture-heading h2 { margin: 0; font-size: 18px; }
+.architecture-heading p { margin: 4px 0 0; color: #526075; font-size: 13px; }
+.architecture-scroll { max-width: 100%; overflow: auto; overscroll-behavior-x: contain; background: radial-gradient(#e8edf5 1px, transparent 1px); background-size: 18px 18px; }
+.architecture-scroll:focus-visible { outline: 3px solid var(--accent); outline-offset: -3px; }
+.architecture-svg { display: block; max-width: none; min-width: 100%; }
+.arch-group { fill: rgba(235, 242, 255, .6); stroke: #95a9c5; stroke-width: 1.5; stroke-dasharray: 7 5; }
+.arch-group-docker { fill: rgba(222, 239, 228, .76); stroke: #5c9d73; }
+.arch-group-label { fill: #334258; font-size: 12px; font-weight: 700; }
+.arch-edge { fill: none; stroke: #78869a; stroke-width: 2; }
+.arch-edge-label { fill: #536177; font-size: 11px; text-anchor: middle; }
+.arch-node { stroke: #8294ac; stroke-width: 1.5; }
+.arch-node-type { fill: #59687c; font-size: 10px; text-anchor: middle; }
+.arch-node-label { fill: #1f2b3b; font-size: 12px; font-weight: 700; text-anchor: middle; }
+.architecture-description { display: grid; grid-template-columns: minmax(110px, 1fr) 3fr; gap: 8px 18px; padding: 16px 20px; border-top: 1px solid var(--line); font-size: 13px; }
+.architecture-description h3 { margin: 0; font-size: 13px; }
+.architecture-description ul, .architecture-description ol { margin: 0; padding-left: 20px; }
+.architecture-description li { margin-bottom: 4px; overflow-wrap: anywhere; }
+.architecture-description p { margin: 0; }
+.architecture-editor-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; gap: 24px; }
+.architecture-editor, .architecture-live-preview { min-width: 0; padding: 20px; border: 1px solid var(--line); border-radius: 12px; background: white; }
+.architecture-editor-section { margin-bottom: 24px; }
+.architecture-editor-heading { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 12px; }
+.architecture-editor-heading h2, .architecture-live-preview > h2 { margin: 0; font-size: 18px; }
+.architecture-editor-heading button, .architecture-editor fieldset button { min-height: 38px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 7px; background: white; color: var(--text); font: inherit; cursor: pointer; }
+.architecture-editor button:disabled { opacity: .55; cursor: default; }
+.architecture-editor fieldset { display: grid; gap: 9px; min-width: 0; margin: 0 0 12px; padding: 12px; border: 1px solid var(--line); border-radius: 8px; }
+.architecture-editor legend { padding: 0 5px; font-weight: 700; }
+.architecture-editor fieldset label { display: grid; gap: 4px; font-size: 12px; font-weight: 700; }
+.architecture-editor input, .architecture-editor select { width: 100%; min-width: 0; min-height: 40px; padding: 7px 9px; border: 1px solid var(--line); border-radius: 6px; background: white; color: var(--text); font: inherit; }
+.architecture-editor-error { padding: 10px; border-radius: 7px; background: #fff0ef; color: #8c3030; font-size: 13px; }
+.architecture-editor-note { font-size: 12px; }
+.architecture-live-preview { overflow: hidden; }
+.architecture-live-preview .architecture-block { margin-top: 14px; }
+.architecture-json-panel { margin-top: 20px; padding: 18px; border: 1px solid var(--line); border-radius: 12px; background: white; }
+.architecture-json-panel h2 { margin: 0 0 10px; font-size: 18px; }
+.architecture-json-panel pre { max-width: 100%; overflow: auto; overflow-wrap: anywhere; white-space: pre-wrap; font-size: 12px; }
+@media(max-width:760px) { .architecture-editor-layout { grid-template-columns: minmax(0, 1fr); } }
