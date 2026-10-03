@@ -334,3 +334,8 @@ fieldset { min-width:0; }
 
 .post-editor .table-editor-layout {display:block;}
 .post-editor .table-live-preview {display:none;}
+
+.post-editor > div:first-child {display:grid;gap:24px;min-width:0;}
+.post-editor-fields label {grid-template-columns:minmax(0,1fr) auto;align-items:center;}
+.post-editor-fields label > span {margin:0;}
+.post-editor-fields input, .post-editor-fields textarea {grid-column:1 / -1;}
