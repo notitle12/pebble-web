@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Form from "next/form";
+import { TagPicker } from "./tag-picker";
 import { getPublicTags, pageHref, type PostQuery, type PublicTag } from "../api/post-list";
 
 export async function PostSearch({ query }: { query: PostQuery }) {
@@ -7,19 +8,13 @@ export async function PostSearch({ query }: { query: PostQuery }) {
   let failed = false;
   try { tags = await getPublicTags(); } catch { failed = true; }
   const { q, tagId } = query;
-  const missingTag = tagId && !tags.some(tag => tag.id === tagId);
   return <section className="search-panel" aria-label="게시글 검색">
     <Form action="/" className="search-form" prefetch={false} key={`${q ?? ""}-${tagId ?? ""}`} autoComplete="off">
       <div className="search-field"><label htmlFor="post-q">검색어</label>
         <input id="post-q" name="q" type="search" defaultValue={q ?? ""} placeholder="제목, 본문, 기술 태그 검색" aria-describedby="search-help" />
       </div>
       <div className="search-field"><label htmlFor="post-tag">기술 태그</label>
-        <select id="post-tag" name={failed ? undefined : "tagId"} defaultValue={tagId ?? ""} disabled={failed}>
-          <option value="">전체 태그</option>
-          {missingTag && <option value={tagId}>선택한 태그 ({tagId})</option>}
-          {tags.map(tag => <option key={tag.id} value={tag.id}>{tag.name}</option>)}
-        </select>
-        {failed && tagId && <input type="hidden" name="tagId" value={tagId} />}
+        <TagPicker key={tagId ?? ""} tags={tags} selected={tagId} disabled={failed} />
       </div>
       <button className="search-submit" type="submit">검색</button>
       {(q || tagId) && <Link className="search-reset" href="/">초기화</Link>}
