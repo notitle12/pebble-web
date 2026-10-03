@@ -95,3 +95,17 @@ input:focus-visible, select:focus-visible, button:focus-visible { outline: 3px s
 .project-links li { max-width: 100%; }
 .project-links a { display: block; padding: 10px 16px; min-height: 44px; background: #edf3ff; color: var(--accent); border-radius: 8px; overflow-wrap: anywhere; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+.explore-tags { display: flex; flex-wrap: wrap; gap: 12px; padding: 24px; margin: 0; list-style: none; border: 1px solid var(--line); border-radius: 16px; background: white; }
+.explore-tags li { max-width: 100%; }
+.explore-tags a { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 16px; min-height: 44px; border-radius: 8px; background: #edf3ff; color: var(--accent); overflow-wrap: anywhere; }
+.classification-note { font-size: 12px; color: var(--muted); }
+.category-groups { padding: 0; margin: 0; list-style: none; background: white; border: 1px solid var(--line); border-radius: 16px; }
+.category-groups > li { padding: 24px 28px; }
+.category-groups > li + li { border-top: 1px solid var(--line); }
+.category-groups h2 { margin: 0; font-size: 20px; }
+.category-groups h2 a { display: inline-block; padding: 6px 0; }
+.category-groups ul { display: flex; gap: 12px; flex-wrap: wrap; list-style: none; padding: 0; margin: 12px 0 0; }
+.category-groups ul li { max-width: 100%; }
+.category-groups ul a { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 12px; min-height: 44px; border-radius: 8px; background: #edf3ff; color: var(--accent); overflow-wrap: anywhere; }
+@media(max-width:600px) { .header-nav { flex-basis: 100%; margin-left: 0; justify-content: space-between; } .category-groups > li { padding: 20px; } }

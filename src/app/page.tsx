@@ -20,7 +20,7 @@ export default async function HomePage({ searchParams }: {
         <h1>개발자의 기록과 프로젝트를 만나보세요</h1><p>다양한 개발자의 경험과 기술 기록을 둘러보세요.</p>
       </section>
       {query === null ? <InvalidPage /> : <>
-        <Suspense key={`search-${query.q ?? ""}-${query.tagId ?? ""}`} fallback={<p role="status">검색 조건을 불러오고 있어요.</p>}><PostSearch query={query} /></Suspense>
+        <Suspense key={`search-${JSON.stringify(query)}`} fallback={<p role="status">검색 조건을 불러오고 있어요.</p>}><PostSearch query={query} /></Suspense>
         <Suspense key={JSON.stringify(query)} fallback={<PostListLoading />}><PostList query={query} /></Suspense>
       </>}
     </main>
