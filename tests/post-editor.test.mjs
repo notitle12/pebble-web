@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildPostBody, createEditorBlock, editorValueFromPost, validateEditorValue } from "../src/features/post/post-editor-model.ts";
+import { buildPostBody, buildPostSaveBody, createEditorBlock, editorValueFromPost, validateEditorValue } from "../src/features/post/post-editor-model.ts";
 
 const author = { id: "1", handle: "pebble-user", nickname: "Pebble", blogName: null };
 const basePost = { id: "10", urlKey: "first-post", title: "첫 글", summary: null, author, tags: [], publishedAt: null, createdAt: "2026-10-03T00:00:00Z" };
@@ -33,4 +33,24 @@ test("body omits editor-only keys while preserving optional block metadata", () 
   assert.deepEqual(body, { title: "글", summary: "  요약  ", blocks: [{ type: "CODE", content: "const name = 'Pebble';", language: "TYPESCRIPT", title: "예제" }] });
   assert.equal("key" in body.blocks[0], false);
   assert.equal("valid" in body.blocks[0], false);
+});
+
+
+test("normal saves preserve existing visibility and publication must be explicit",()=>{
+  const value={title:"게시할 글",summary:"요약",blocks:[createEditorBlock("TEXT")]};
+  assert.equal(buildPostSaveBody(value).visibilityStatus,"HIDDEN");
+  assert.equal("visibilityStatus" in buildPostSaveBody(value,{visibilityStatus:"PUBLIC",isBlocked:false}),false);
+  assert.equal(buildPostSaveBody(value,{visibilityStatus:"HIDDEN",isBlocked:false},"PUBLIC").visibilityStatus,"PUBLIC");
+  assert.equal(buildPostSaveBody(value,{visibilityStatus:"PUBLIC",isBlocked:false},"HIDDEN").visibilityStatus,"HIDDEN");
+  const body=buildPostSaveBody(value,undefined,"PUBLIC");assert.equal(body.visibilityStatus,"PUBLIC");
+  for(const field of ["isBlocked","categoryId","boardId","projectId","tagIds","slug"])assert.equal(field in body,false);
+});
+test("blocked publication and invalid content cannot be submitted",()=>{
+  const value={title:"차단된 글",summary:"",blocks:[createEditorBlock("TEXT")]};
+  const blocked={visibilityStatus:"PUBLIC",isBlocked:true};
+  assert.throws(()=>buildPostSaveBody(value,blocked,"PUBLIC"),/차단/);
+  assert.equal("visibilityStatus" in buildPostSaveBody(value,blocked),false);
+  assert.equal(buildPostSaveBody(value,blocked,"HIDDEN").visibilityStatus,"HIDDEN");
+  assert.throws(()=>buildPostSaveBody({...value,title:""},undefined,"PUBLIC"),/제목/);
+  assert.throws(()=>buildPostSaveBody(value,undefined,"DELETED"),/공개/);
 });

@@ -32,3 +32,14 @@ Access Token은 모듈 메모리에만 보관한다. Refresh Cookie는 기존 �
 로컬 검증 API는 기존 사용자 API8080과 분리되어 8081에 실행한다. API base는 `http://127.0.0.1:8081/api/v1`, web Origin은 `http://127.0.0.1:3100`이다. Secure 쿠키 정책을 약화하지 않았으며 브라우저의 루프백 예외에서 확인했다. 운영은 동일 사이트 HTTPS와 정확한 CORS Origin을 사용해야 한다.
 
 최종 확인: 전체 프론트 테스트 40개와 타입 검사를 포함한 프로덕션 빌드가 통과했다. 운영 빌드에서도 실제 회원 PATCH 저장에 성공했고 `/posts/new`·수정·내 글 최초 HTML에 개인 제목/본문이 없으며 noindex를 제공한다. `/dev/architecture`는 운영에서 404다. 모바일 390px 환경에서 document 폭 375px과 scrollWidth 375px로 페이지 넘침 없음 확인 후 viewport를 복원했다. 새 이슈 게시가 자동 승인 검토에서 별도 승인을 요구하여 현재는 로컬 `feature/post-editor` 브랜치에 분리했다.
+
+
+## 공개 게시 후속 (2026-10-04)
+
+로컬 `feature/post-publish`는 작성 브랜치를 기반으로 전체 글 미리보기와 공개 설정을 추가한다. 일반 저장은 기존 visibilityStatus를 생략하여 그대로 유지하며, 신규 글의 일반 저장 기본값은 HIDDEN이다. `미리보기·게시 설정`에서 공개/비공개를 선택하고 `공개로 게시` 또는 `비공개로 전환`을 누르면 현재 제목·요약·본문과 상태를 한 번의 POST/PATCH로 함께 저장한다. 공개 전환 전까지 라디오 선택 자체는 서버를 변경하지 않는다. 계속 편집 시 기존 입력을 그대로 유지한다.
+
+전체 미리보기와 공개 SSR 상세는 같은 PostBody 컴포넌트를 사용하여 TEXT/CODE/TABLE/ARCHITECTURE의 순서와 표시를 맞춘다. 게시 성공 뒤 공개 상세 확인 링크를 제공하며 prefetch는 끈다. 차단 글은 공개 선택·제출을 제한한다. 서버의 차단·회원 상태·소유권 검증이 최종 기준이며 isBlocked·기존 분류/태그/Board/Project/slug는 전송하지 않는다. 오류에서는 입력·선택 범위·게시 미리보기를 유지하고 쓰기를 자동 재전송하지 않는다.
+
+검증: 프론트 전체 테스트 42개와 타입 검사 통과. 로컬 실제 API의 HIDDEN → PUBLIC 전환 뒤 Guest GET으로 공개 상태·publishedAt·네 종류 블록 순서 및 waypoint {x:241,y:135} 유지 확인. 실제 브라우저에서 전체 미리보기와 공개 상세 표시 확인. PUBLIC → HIDDEN 전환 뒤 숫자 ID와 블로그 공개 주소 모두 Guest 404를 확인했다. 명시적 전환과 일반 저장의 상태 보존, 차단 제한, 유효하지 않은 입력 거부를 모델 테스트로 검증했다. 운영 HTTPS·실 Naver·Workers 및 미디어/분류 선택은 아직 후속이다.
+
+최종 확인: 모바일 CSS 수정 후 프로덕션 빌드와 타입 검사 통과. 운영 빌드에서 실제 PATCH 공개 게시 성공 및 비인증 공개 상세 SSR HTML에 제목·TABLE·CODE·ARCHITECTURE 표시, 편집 제어 없음 확인. 390px 모바일 환경에서 document clientWidth와 scrollWidth 모두 375px로 페이지 넘침이 없으며 넓은 표·다이어그램은 내부에서 스크롤한다. 검증 후 로컬 개발 서버 3100과 테스트 API8081을 유지했다.

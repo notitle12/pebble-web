@@ -60,3 +60,12 @@ export function buildPostBody(value: PostEditorValue) {
     blocks: value.blocks.map(({ type, content, language, title }) => ({ type, content, language: type === "CODE" ? language : null, title })),
   };
 }
+
+export type PostVisibility = "PUBLIC" | "HIDDEN";
+export function buildPostSaveBody(value:PostEditorValue,existing?:{visibilityStatus:PostVisibility;isBlocked:boolean},visibility?:PostVisibility){
+  const errors=validateEditorValue(value);
+  if(errors.length)throw new Error(errors[0]);
+  if(visibility!==undefined && visibility!=="PUBLIC" && visibility!=="HIDDEN")throw new Error("공개 또는 비공개를 선택해 주세요.");
+  if(visibility==="PUBLIC" && existing?.isBlocked)throw new Error("차단된 글은 공개로 게시할 수 없습니다.");
+  return {...buildPostBody(value),...(!existing?{visibilityStatus:visibility??"HIDDEN"}:visibility!==undefined?{visibilityStatus:visibility}:{})};
+}
