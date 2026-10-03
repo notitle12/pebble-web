@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" fill="none">
+  <defs>
+    <linearGradient id="stone" x1="36" y1="30" x2="115" y2="136" gradientUnits="userSpaceOnUse"><stop stop-color="#8EC7FF"/><stop offset=".43" stop-color="#5C94FF"/><stop offset="1" stop-color="#3260ED"/></linearGradient>
+    <linearGradient id="shine" x1="70" y1="20" x2="122" y2="100" gradientUnits="userSpaceOnUse"><stop stop-color="#BBE0FF" stop-opacity=".7"/><stop offset="1" stop-color="#7AAEFF" stop-opacity="0"/></linearGradient>
+  </defs>
+  <path d="M81 18C107 19 130 49 137 78C146 115 123 137 85 141C52 144 24 136 22 110C19 83 42 48 59 32C67 24 74 18 81 18Z" fill="url(#stone)"/>
+  <path d="M94 30C116 42 132 64 132 97" stroke="url(#shine)" stroke-width="7" stroke-linecap="round"/>
+  <ellipse cx="60" cy="55" rx="21" ry="14" transform="rotate(-43 60 55)" fill="#F7FBFF"/>
+</svg>
