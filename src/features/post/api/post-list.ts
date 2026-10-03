@@ -35,8 +35,28 @@ export function parsePage(value: string | string[] | undefined): number | null {
   const page = Number(value);
   return Number.isSafeInteger(page) && page <= MAX_PAGE ? page : null;
 }
-export function pageHref(page: number): string {
-  return page === 0 ? "/" : `/?page=${page}`;
+export type PostFilters = { q?: string; tagId?: string };
+export type PostQuery = PostFilters & { page: number };
+const validTagId = (value: string) => /^[1-9]\d{0,18}$/.test(value) && BigInt(value) <= 9223372036854775807n;
+const validQuery = (value: string) => Array.from(value).length <= 200 && !Array.from(value).some(c => {
+  const code = c.codePointAt(0)!;
+  return code === 0 || (code >= 0xd800 && code <= 0xdfff);
+});
+export function parsePostQuery(params: Record<string, string | string[] | undefined>): PostQuery | null {
+  if (Object.keys(params).some(key => !["page", "q", "tagId"].includes(key))) return null;
+  const page = parsePage(params.page);
+  if (page === null || Array.isArray(params.q) || Array.isArray(params.tagId)) return null;
+  const q = params.q?.trim() || undefined;
+  const tagId = params.tagId || undefined;
+  if ((q && !validQuery(q)) || (tagId && !validTagId(tagId))) return null;
+  return { page, q, tagId };
+}
+export function pageHref(page: number, filters: PostFilters = {}): string {
+  const params = new URLSearchParams();
+  if (filters.q) params.set("q", filters.q);
+  if (filters.tagId) params.set("tagId", filters.tagId);
+  if (page > 0) params.set("page", String(page));
+  return params.size ? `/?${params}` : "/";
 }
 const record = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
@@ -69,20 +89,14 @@ export function parsePostPage(value: unknown, requestedPage: number): PostPage {
     hasNext: data.hasNext, hasPrevious: data.hasPrevious,
   };
 }
-export async function getPublicPosts(
-  page: number,
-  baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL,
-  request: typeof fetch = fetch,
-): Promise<PostPage> {
-  if (parsePage(String(page)) === null) throw new PostListError("response");
+async function guestJson(path: string, params: URLSearchParams, baseUrl: string | undefined, request: typeof fetch): Promise<unknown> {
   let url: URL;
   try {
     if (!baseUrl) throw new Error();
     url = new URL(baseUrl);
     if (!["http:", "https:"].includes(url.protocol) || url.username || url.password || url.search || url.hash) throw new Error();
-    url.pathname = `${url.pathname.replace(/\/$/, "")}/posts`;
-    url.searchParams.set("page", String(page));
-    url.searchParams.set("size", String(PAGE_SIZE));
+    url.pathname = `${url.pathname.replace(/\/$/, "")}/${path}`;
+    url.search = params.toString();
   } catch { throw new PostListError("configuration"); }
   let response: Response;
   try {
@@ -92,6 +106,27 @@ export async function getPublicPosts(
     });
   } catch { throw new PostListError("network"); }
   if (!response.ok) throw new PostListError("response");
-  try { return parsePostPage(await response.json(), page); }
-  catch { throw new PostListError("response"); }
+  try { return await response.json(); } catch { throw new PostListError("response"); }
+}
+export async function getPublicPosts(
+  page: number,
+  baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL,
+  request: typeof fetch = fetch,
+  filters: PostFilters = {},
+): Promise<PostPage> {
+  const query = parsePostQuery({ page: String(page), q: filters.q, tagId: filters.tagId });
+  if (!query) throw new PostListError("response");
+  const params = new URLSearchParams({ page: String(page), size: String(PAGE_SIZE) });
+  if (query.q) params.set("q", query.q);
+  if (query.tagId) params.set("tagId", query.tagId);
+  return parsePostPage(await guestJson(query.q ? "posts/search" : "posts", params, baseUrl, request), page);
+}
+export type PublicTag = { id: string; name: string };
+export async function getPublicTags(baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL, request: typeof fetch = fetch): Promise<PublicTag[]> {
+  const value = await guestJson("tags", new URLSearchParams(), baseUrl, request);
+  if (!record(value) || !Array.isArray(value.data) || !value.data.every(tag => record(tag)
+    && typeof tag.id === "string" && validTagId(tag.id) && typeof tag.name === "string")) throw new PostListError("response");
+  const tags: PublicTag[] = value.data.map(tag => ({ id: tag.id, name: tag.name }));
+  if (new Set(tags.map(tag => tag.id)).size !== tags.length) throw new PostListError("response");
+  return tags;
 }
