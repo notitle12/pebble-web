@@ -104,7 +104,8 @@ export type TableColumn = {
 export type TableSpec = { schemaVersion: 1; tableName: string; description?: string | null; columns: TableColumn[] };
 export type ArchitectureGroup = { id: string; type: "ORACLE_CLOUD" | "AWS" | "CLOUDFLARE" | "DOCKER" | "CUSTOM"; label: string; parentId?: string | null; bounds?: { x: number; y: number; width: number; height: number } | null };
 export type ArchitectureNode = { id: string; type: "CLIENT" | "APP" | "DATABASE" | "CACHE" | "STORAGE" | "PROXY" | "CUSTOM"; label: string; groupId?: string | null; icon?: string | null; position?: { x: number; y: number } | null };
-export type ArchitectureEdge = { id: string; source: string; target: string; label?: string | null };
+export type ArchitectureSide = "TOP" | "RIGHT" | "BOTTOM" | "LEFT";
+export type ArchitectureEdge = { id: string; source: string; target: string; label?: string | null; sourceSide?: ArchitectureSide | null; targetSide?: ArchitectureSide | null; waypoint?: {x:number;y:number} | null };
 export type ArchitectureSpec = { schemaVersion: 1; groups: ArchitectureGroup[]; nodes: ArchitectureNode[]; edges: ArchitectureEdge[] };
 export type PostBlock = { type: "TEXT" | "CODE" | "TABLE" | "ARCHITECTURE"; content: string; language: string | null; title: string | null; displayOrder: number };
 export type PostDetail = PostSummary & { blocks: PostBlock[] };
@@ -189,8 +190,13 @@ export function parseArchitectureSpec(value: unknown): ArchitectureSpec {
   }
   const pairs = new Set<string>();
   for (const item of value.edges) {
-    if (!record(item) || !keysAre(item, ["id", "source", "target", "label"]) || !architectureId(item.source) || !architectureId(item.target)
+    if (!record(item) || !keysAre(item, ["id", "source", "target", "label", "sourceSide", "targetSide", "waypoint"]) || !architectureId(item.source) || !architectureId(item.target)
       || item.source === item.target || !(item.label === undefined || item.label === null || textField(item.label, 200))) throw new PostListError("response");
+    for (const side of [item.sourceSide,item.targetSide]) if (side != null && (typeof side !== "string" || !["TOP","RIGHT","BOTTOM","LEFT"].includes(side))) throw new PostListError("response");
+    if (item.waypoint != null) {
+      const point = item.waypoint;
+      if (!record(point) || !keysAre(point,["x","y"]) || !Number.isInteger(point.x) || !Number.isInteger(point.y) || (point.x as number)<0 || (point.y as number)<0 || (point.x as number)>4200 || (point.y as number)>4200) throw new PostListError("response");
+    }
     addId(item.id);
     const pair = `${item.source}\u0000${item.target}`;
     if (!(nodes.has(item.source) || groups.has(item.source)) || !(nodes.has(item.target) || groups.has(item.target)) || pairs.has(pair)) throw new PostListError("response");

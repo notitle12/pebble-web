@@ -45,7 +45,7 @@ export function architectureLayout(spec: ArchitectureSpec): { positions: Map<str
     const y = Math.max(0, Math.min(...allTop) - paddingTop);
     groups.set(group.id, { x, y, width: Math.max(...allRight) - x + paddingLeft, height: Math.max(...allBottom) - y + paddingBottom });
   });
-  const width = Math.max(620, ...Array.from(positions.values(), (point) => point.x + ARCH_NODE_WIDTH + 64), ...Array.from(groups.values(), (box) => box.x + box.width + 32));
-  const height = Math.max(420, ...Array.from(positions.values(), (point) => point.y + ARCH_NODE_HEIGHT + 64), ...Array.from(groups.values(), (box) => box.y + box.height + 32));
+  const width = Math.max(620, ...spec.edges.flatMap(edge=>edge.waypoint?[edge.waypoint.x+64]:[]), ...Array.from(positions.values(), (point) => point.x + ARCH_NODE_WIDTH + 64), ...Array.from(groups.values(), (box) => box.x + box.width + 32));
+  const height = Math.max(420, ...spec.edges.flatMap(edge=>edge.waypoint?[edge.waypoint.y+64]:[]), ...Array.from(positions.values(), (point) => point.y + ARCH_NODE_HEIGHT + 64), ...Array.from(groups.values(), (box) => box.y + box.height + 32));
   return { positions, groups, width, height };
 }

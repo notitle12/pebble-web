@@ -27,6 +27,8 @@ export function moveArchitectureGroup(spec: ArchitectureSpec, id: string, point:
   const ids = new Set([id, ...current.groups.filter(group => group.parentId === id).map(group => group.id)]);
   const movingGroups = current.groups.filter(group => ids.has(group.id));
   const movingNodes = current.nodes.filter(node => ids.has(node.groupId ?? ''));
+  const movingEndpoints = new Set([...ids,...movingNodes.map(node=>node.id)]);
+  const movingEdges = current.edges.filter(edge=>movingEndpoints.has(edge.source)&&movingEndpoints.has(edge.target)&&edge.waypoint);
   const parent = current.groups.find(group => group.id === target.parentId)?.bounds;
   let minX = -Math.min(...movingGroups.map(g=>g.bounds!.x), ...movingNodes.map(n=>n.position!.x));
   let minY = -Math.min(...movingGroups.map(g=>g.bounds!.y), ...movingNodes.map(n=>n.position!.y));
@@ -36,8 +38,12 @@ export function moveArchitectureGroup(spec: ArchitectureSpec, id: string, point:
     minX = Math.max(minX,parent.x-target.bounds.x); minY = Math.max(minY,parent.y+32-target.bounds.y);
     maxX = Math.min(maxX,parent.x+parent.width-target.bounds.x-target.bounds.width); maxY = Math.min(maxY,parent.y+parent.height-target.bounds.y-target.bounds.height);
   }
+  if (movingEdges.length) {
+    minX=Math.max(minX,-Math.min(...movingEdges.map(edge=>edge.waypoint!.x))); minY=Math.max(minY,-Math.min(...movingEdges.map(edge=>edge.waypoint!.y)));
+    maxX=Math.min(maxX,4200-Math.max(...movingEdges.map(edge=>edge.waypoint!.x))); maxY=Math.min(maxY,4200-Math.max(...movingEdges.map(edge=>edge.waypoint!.y)));
+  }
   const dx = clamp(point.x-target.bounds.x,minX,maxX), dy = clamp(point.y-target.bounds.y,minY,maxY);
-  return { ...current, groups: current.groups.map(group=>ids.has(group.id) ? { ...group, bounds: { ...group.bounds!, x:group.bounds!.x+dx,y:group.bounds!.y+dy } } : group), nodes: current.nodes.map(node=>ids.has(node.groupId ?? '') ? { ...node, position:{x:node.position!.x+dx,y:node.position!.y+dy} } : node) };
+  return { ...current, edges:current.edges.map(edge=>movingEdges.includes(edge)?{...edge,waypoint:{x:edge.waypoint!.x+dx,y:edge.waypoint!.y+dy}}:edge), groups: current.groups.map(group=>ids.has(group.id) ? { ...group, bounds: { ...group.bounds!, x:group.bounds!.x+dx,y:group.bounds!.y+dy } } : group), nodes: current.nodes.map(node=>ids.has(node.groupId ?? '') ? { ...node, position:{x:node.position!.x+dx,y:node.position!.y+dy} } : node) };
 }
 export function resizeArchitectureGroup(spec: ArchitectureSpec,id:string,size:{width:number;height:number}): ArchitectureSpec {
   const current = materializeArchitecture(spec);

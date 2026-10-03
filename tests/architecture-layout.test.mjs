@@ -40,3 +40,21 @@ test('경계 확대는 새 카드를 포함하며 이동 범위를 카드와 함
  for(const bounds of [{x:0,y:0,width:199,height:120},{x:4000,y:0,width:201,height:120},{x:0,y:0,width:200,height:119},{x:0,y:0,width:200,height:120.5},{x:0,y:0,width:200,height:120,extra:1}]) assert.throws(()=>parseArchitectureSpec({...spec,groups:[{...spec.groups[0],bounds}]}));
  assert.throws(()=>parseArchitectureSpec({...spec,edges:[{id:'e',source:'g',target:'g'}]}));
 });
+
+import { architectureEdgeRoute } from '../src/features/post/architecture-edge.ts';
+test('선택한 연결 변과 경로 지점을 보존하고 카드 이동 시 끝점만 따라간다',()=>{
+ const from={x:100,y:100,width:160,height:76},to={x:500,y:300,width:200,height:160};
+ const edge={id:'e',source:'a',target:'b',sourceSide:'BOTTOM',targetSide:'RIGHT',waypoint:{x:320,y:240}};
+ const route=architectureEdgeRoute(edge,from,to);
+ assert.deepEqual(route.start,{x:180,y:176}); assert.deepEqual(route.end,{x:700,y:380}); assert.deepEqual(route.bend,edge.waypoint);
+ const moved=architectureEdgeRoute(edge,{...from,x:120},to); assert.equal(moved.start.x,200); assert.deepEqual(moved.bend,route.bend);
+ const automatic=architectureEdgeRoute({...edge,sourceSide:null,targetSide:null,waypoint:null},from,to); assert.ok(!automatic.path.includes('NaN'));
+ const spec={schemaVersion:1,groups:[],nodes:[{id:'a',type:'APP',label:'A'},{id:'b',type:'APP',label:'B'}],edges:[edge]}; parseArchitectureSpec(spec);
+ for(const patch of [{sourceSide:'auto'},{targetSide:1},{sourceSide:['TOP']},{waypoint:{x:4201,y:0}},{waypoint:{x:1.5,y:0}},{waypoint:{x:0,y:0,z:0}}]) assert.throws(()=>parseArchitectureSpec({...spec,edges:[{...edge,...patch}]}));
+});
+
+test('그룹 내부의 두 끝점이 함께 이동할 때 수동 화살표 경로도 함께 이동한다',()=>{
+ const spec={schemaVersion:1,groups:[{id:'g',type:'AWS',label:'Cloud',bounds:{x:100,y:100,width:600,height:500}}],nodes:[{id:'a',type:'APP',label:'A',groupId:'g',position:{x:150,y:180}},{id:'b',type:'APP',label:'B',groupId:'g',position:{x:400,y:350}}],edges:[{id:'e',source:'a',target:'b',sourceSide:'BOTTOM',targetSide:'LEFT',waypoint:{x:350,y:300}}]};
+ const moved=moveArchitectureGroup(spec,'g',{x:130,y:140});
+ assert.deepEqual(moved.edges[0].waypoint,{x:380,y:340}); assert.equal(moved.edges[0].sourceSide,'BOTTOM'); parseArchitectureSpec(moved);
+});
