@@ -9,7 +9,7 @@ const projectId="721389012345680000";
 const project={
   id:projectId,name:"Pebble",summary:"A project",owner:{id:"721389012345680001",nickname:"Owner"},tags:[],
   lifecycleStatus:"IN_PROGRESS",publishedAt:null,createdAt:"2026-01-01T00:00:00Z",
-  description:null,architectureDescription:null,executionInstructions:null,startedOn:null,completedOn:null,features:[],links:[],
+  description:null,architectureDescription:null,executionInstructions:null,startedOn:null,completedOn:null,media:[],features:[],links:[],
 };
 
 test("연결 프로젝트 ID가 없거나 BIGINT 형식이 아니면 요청하지 않는다",async()=>{

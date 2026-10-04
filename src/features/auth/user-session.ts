@@ -81,6 +81,34 @@ export function createUserSession(request: typeof fetch = fetch, exclusive: Excl
       }).catch(e=>{if(epoch===generation)publish({phase:"error",member:null,message:e instanceof Error?e.message:"로그인을 완료하지 못했습니다."});throw e;});
       return completion;
     },
+    async withdraw(){
+      const epoch=generation,bearer=await token();
+      if(epoch!==generation)throw new MemberApiError(401,"SESSION_CHANGED","로그인 상태가 변경되었습니다.");
+      try {
+        const data=responseData(await exclusive(()=>raw("/members/me",{method:"DELETE",token:bearer,cookies:true})));
+        if(typeof data.withdrawalScheduledAt!=="string"||!Number.isFinite(Date.parse(data.withdrawalScheduledAt)))throw new MemberApiError(0,"INVALID_RESPONSE","탈퇴 예약 결과를 확인하지 못했습니다.");
+        if(epoch!==generation)throw new MemberApiError(401,"SESSION_CHANGED","로그인 상태가 변경되었습니다.");
+        clear();publish({phase:"guest",member:null,message:"탈퇴 예약이 완료되었습니다."});announce();
+        return data.withdrawalScheduledAt;
+      }catch(error){
+        if(epoch===generation && error instanceof MemberApiError && (error.status===0||error.status===401||error.code==="ACCOUNT_WITHDRAWAL_PENDING")){
+          clear();publish({phase:"error",member:null,message:"탈퇴 예약 결과를 확인하지 못했습니다. 재요청하지 말고 네이버로 로그인하여 계정 상태를 확인해 주세요."});announce();
+        }
+        throw error;
+      }
+    },
+    cancelWithdrawal(authorizationCode:string,stateValue:string){
+      listenSessionChanges();
+      if(completion)return completion;
+      clear();const epoch=generation;publish({...initialSession});
+      completion=exclusive(async()=>{
+        const data=responseData(await raw("/auth/naver/withdrawal/cancel",{method:"POST",cookies:true,body:{authorizationCode,state:stateValue}}));
+        if(data.status!=="ACTIVE")throw new MemberApiError(0,"INVALID_RESPONSE","탈퇴 취소 결과를 확인하지 못했습니다.");
+        if(epoch!==generation)return;
+        clear();publish({phase:"guest",member:null,message:"탈퇴 예약을 취소했습니다. 다시 로그인해 주세요."});announce();
+      }).catch(error=>{if(epoch===generation)publish({phase:"error",member:null,message:error instanceof Error?error.message:"탈퇴 예약을 취소하지 못했습니다."});throw error;});
+      return completion;
+    },
     async reloadMember(){const epoch=generation;const member=parseMember(await this.request("/members/me"));if(epoch===generation)publish({phase:"ready",member,message:""});},
     async logout(){clear();publish({phase:"loading",member:null,message:""});announce();const epoch=generation;
       try{await exclusive(()=>raw("/auth/logout",{method:"POST",cookies:true}));if(epoch===generation)publish({phase:"guest",member:null,message:"로그아웃했습니다."});}

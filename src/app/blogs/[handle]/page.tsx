@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { SiteHeader } from "@/components/site-header";
 import { GuestApiError } from "@/lib/public-api";
 import { parsePage,validTagId } from "@/lib/list-query";
-import { blogHref, getPublicBlogPosts } from "@/features/post/api/public-blog";
+import { blogHref, getPublicBlogPosts, getPublicBlogProfile } from "@/features/post/api/public-blog";
 import { PostCards } from "@/features/post/components/post-cards";
 
 export const dynamic = "force-dynamic";
@@ -30,13 +30,11 @@ export default async function PublicBlogPage({ params, searchParams }: {
 
   let result;let author;let boards:Board[]=[];let boardError=false;
   try {
-    result = await getPublicBlogPosts(handle, selected?0:page);
-    author=result.content[0]?.author;
-    if(!author&&page>0)author=(await getPublicBlogPosts(handle,0)).content[0]?.author;
-    if(author){
-      try{boards=await getPublicBoards(author.id);}catch(e){if(selected)throw e;boardError=true;}
-      if(selected){if(!flattenBoards(boards).some(board=>board.id===selected))throw new GuestApiError("not-found");result=await getBoardPosts(author.id,selected,page);}
-    }else if(selected)throw new GuestApiError("not-found");
+    author = await getPublicBlogProfile(handle);
+    try { boards = await getPublicBoards(author.id); }
+    catch (error) { if (selected) throw error; boardError = true; }
+    if (selected && !flattenBoards(boards).some(board => board.id === selected)) throw new GuestApiError("not-found");
+    result = selected ? await getBoardPosts(author.id, selected, page) : await getPublicBlogPosts(handle, page);
   } catch (error) {
     if (error instanceof GuestApiError && error.kind === "not-found") notFound();
     const message = error instanceof GuestApiError && error.kind === "configuration"
@@ -54,21 +52,16 @@ export default async function PublicBlogPage({ params, searchParams }: {
     <SiteHeader />
     <main id="main-content" className="page-shell personal-blog-layout">
       <aside className="personal-blog-profile" aria-label="블로그 정보">
-        {author ? <>
-          <h1>{author.blogName || `${author.nickname}의 블로그`}</h1>
-          <p>{author.nickname}</p>
-          <p className="personal-blog-handle">@{author.handle}</p>
-        </> : <>
-          <h1>블로그</h1>
-          <p className="personal-blog-handle">@{handle}</p>
-        </>}
+        <h1>{author.blogName}</h1>
+        <p>{author.nickname}</p>
+        <p className="personal-blog-handle">@{author.handle}</p>
         <BlogOwnerActions handle={handle}/>
         <nav className="blog-board-nav" aria-label="글 폴더"><Link href={blogHref(handle,0)} aria-current={!selected?"page":undefined}>전체 글</Link>{flattenBoards(boards).map(board=><Link key={board.id} href={blogHref(handle,0,board.id)} aria-current={selected===board.id?"page":undefined} style={{paddingInlineStart:`${board.depth+1}rem`}}>{board.name}</Link>)}</nav>
         {boardError&&<p role="status">폴더를 불러오지 못했어요. 페이지를 새로고침해 주세요.</p>}
       </aside>
       <section className="personal-blog-content" aria-label="공개 게시글">
         <div className="personal-blog-heading"><div><p className="eyebrow">PERSONAL BLOG</p><h2>{selected?flattenBoards(boards).find(board=>board.id===selected)?.name:"기록"}</h2></div>
-          <span>{author ? `@${author.handle}` : `@${handle}`}</span></div>
+          <span>{`@${author.handle}`}</span></div>
         {!result.content.length ? <section className="list-state"><h2>{page === 0 ? "아직 공개된 글이 없어요" : "이 페이지에는 게시글이 없어요"}</h2>
           <p>{page === 0 ? (selected?"이 폴더에 공개 글이 올라오면 이곳에서 만나볼 수 있어요.":"새로운 글이 올라오면 이곳에서 만나볼 수 있어요.") : "글이 삭제되거나 목록이 변경되었을 수 있습니다."}</p>
           {page > 0 && <Link className="button" href={blogHref(handle, 0,selected)}>첫 페이지로</Link>}

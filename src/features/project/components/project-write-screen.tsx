@@ -1,5 +1,6 @@
 "use client";
 import {useEffect,useRef,useState} from "react";
+import {ContentMedia} from "@/features/media/components/content-media";
 import Link from "next/link";
 import {MemberGate} from "@/features/auth/components/member-gate";
 import {userSession,type Member} from "@/features/auth/user-session";
@@ -31,6 +32,6 @@ function Writer({member,id}:{member:Member;id?:string}) {
     }catch(e){if(mounted.current)setError(projectWriteFailure(e));throw e;}
     finally {saving.current=false;if(mounted.current)setBusy(false);}
   }
-  return <><h1>{project||id?"프로젝트 수정":"새 프로젝트 작성"}</h1><div className="writer-status"><Link href="/me/projects">← 내 프로젝트</Link><p>{project?.visibilityStatus==="PUBLIC"?"저장하면 공개 프로젝트에 반영됩니다.":"비공개 프로젝트는 나만 볼 수 있어요."}</p></div>{project?.isBlocked&&<p role="alert">관리자에 의해 차단된 프로젝트입니다. 차단은 작성자가 해제할 수 없습니다.</p>}{error&&<p role="alert">{error}</p>}{saved&&<p role="status">{saved}</p>}{project?.visibilityStatus==="PUBLIC"&&!project.isBlocked&&<Link className="button writer-public-link" href={`/projects/${project.id}`} prefetch={false}>공개 프로젝트 확인</Link>}<ProjectEditor value={value} onChange={setValue} busy={busy} visibility={project?.visibilityStatus??"HIDDEN"} blocked={project?.isBlocked??false} existingTags={project?.tags} onSave={save}/></>;
+  return <><h1>{project||id?"프로젝트 수정":"새 프로젝트 작성"}</h1><div className="writer-status"><Link href="/me/projects">← 내 프로젝트</Link><p>{project?.visibilityStatus==="PUBLIC"?"저장하면 공개 프로젝트에 반영됩니다.":"비공개 프로젝트는 나만 볼 수 있어요."}</p></div>{project?.isBlocked&&<p role="alert">관리자에 의해 차단된 프로젝트입니다. 차단은 작성자가 해제할 수 없습니다.</p>}{error&&<p role="alert">{error}</p>}{saved&&<p role="status">{saved}</p>}{project?.visibilityStatus==="PUBLIC"&&!project.isBlocked&&<Link className="button writer-public-link" href={`/projects/${project.id}`} prefetch={false}>공개 프로젝트 확인</Link>}<ProjectEditor value={value} onChange={setValue} busy={busy} visibility={project?.visibilityStatus??"HIDDEN"} blocked={project?.isBlocked??false} existingTags={project?.tags} onSave={save}/>{project&&<ContentMedia key={project.id} kind="projects" id={project.id} memberId={member.id} disabled={busy}/>}</>;
 }
 export function ProjectWriteScreen({id}:{id?:string}) {return <MemberGate profile preserveOnExpiry>{member=><Writer key={`${member.id}:${id??"new"}`} member={member} id={id}/>}</MemberGate>;}

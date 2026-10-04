@@ -28,3 +28,32 @@ export async function getPublicBlogPosts(
   return parsed;
 }
 
+
+export type PublicBlogProfile = {
+  id: string;
+  handle: string;
+  nickname: string;
+  blogName: string;
+  profileImageUrl: string | null;
+};
+
+export function parsePublicBlogProfile(value: unknown, handle: string): PublicBlogProfile {
+  if (!validHandle(handle) || typeof value !== "object" || value === null || Array.isArray(value)) throw new GuestApiError("response");
+  const data = (value as Record<string, unknown>).data;
+  if (typeof data !== "object" || data === null || Array.isArray(data)) throw new GuestApiError("response");
+  const profile = data as Record<string, unknown>;
+  if (typeof profile.id !== "string" || !validTagId(profile.id) || profile.handle !== handle
+    || typeof profile.nickname !== "string" || !profile.nickname.trim()
+    || typeof profile.blogName !== "string" || !profile.blogName.trim()
+    || !(profile.profileImageUrl === null || typeof profile.profileImageUrl === "string")) throw new GuestApiError("response");
+  return { id: profile.id, handle, nickname: profile.nickname, blogName: profile.blogName, profileImageUrl: profile.profileImageUrl };
+}
+
+export async function getPublicBlogProfile(
+  handle: string,
+  baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL,
+  request: typeof fetch = fetch,
+): Promise<PublicBlogProfile> {
+  if (!validHandle(handle)) throw new GuestApiError("response");
+  return parsePublicBlogProfile(await guestJson(`blogs/${encodeURIComponent(handle)}`, new URLSearchParams(), baseUrl, request), handle);
+}

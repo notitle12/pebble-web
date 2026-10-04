@@ -54,3 +54,15 @@ test('expired-token restoration keeps editor identity while waiting and on respo
  const started=deferred(),gate=deferred();let refreshes=0;const session=createUserSession(async url=>{if(url.pathname.endsWith('/refresh')){refreshes++;if(refreshes===1)return json({accessToken:'short-lived',tokenType:'Bearer',accessTokenExpiresIn:1});started.resolve();await gate.promise;throw new Error('response lost');}return json(member);},direct,base);
  await session.ensure();const save=session.request('/posts',{method:'POST',body:{title:'edited'}});const rejected=assert.rejects(save);await started.promise;assert.equal(session.snapshot().phase,'loading');assert.equal(session.snapshot().member.id,'1');gate.resolve();await rejected;assert.equal(session.snapshot().phase,'error');assert.equal(session.snapshot().member.id,'1');
 });
+
+test('multipart media uses Bearer and lets the browser create its boundary without replay',async()=>{
+ const file=new Blob(['test'],{type:'image/png'}),body=new FormData();body.set('file',file,'test.png');let writes=0;
+ const session=createUserSession(async(url,options)=>{
+   if(url.pathname.endsWith('/refresh'))return grant();
+   if(url.pathname.endsWith('/members/me'))return json(member);
+   writes++;assert.equal(options.body,body);assert.equal(options.headers['Content-Type'],undefined);
+   assert.equal(options.headers.Authorization,'Bearer test-memory-only');assert.equal(options.credentials,'omit');
+   throw new Error('lost upload response');
+ },direct,base);
+ await session.ensure();await assert.rejects(session.request('/posts/1/thumbnail',{method:'PUT',body}));assert.equal(writes,1);
+});

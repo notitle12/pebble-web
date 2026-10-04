@@ -1,3 +1,4 @@
+import {PublicProjectMedia} from "@/features/media/components/public-project-media";
 import {LikePanel} from "@/features/like/components/like-panel";
 import {ProjectOwnerActions} from "@/features/project/components/project-owner-actions";
 import {CommentsPanel} from "@/features/comment/components/comments-panel";
@@ -30,6 +31,7 @@ export default async function ProjectDetail({params,searchParams}:Props) {
     <article className="post-detail"><header><div className="post-meta"><span>{project.owner.nickname}</span><time dateTime={date}>{new Intl.DateTimeFormat("ko-KR",{dateStyle:"long",timeZone:"Asia/Seoul"}).format(new Date(date))}</time><span className={`project-status ${project.lifecycleStatus==="COMPLETED"?"completed":""}`}>{project.lifecycleStatus==="COMPLETED"?"완료":"진행 중"}</span></div><h1>{project.name}</h1>{project.summary && <p>{project.summary}</p>}<ul className="tag-list" aria-label="기술 태그">{project.tags.map(tag=><li key={tag.id}>{tag.name}</li>)}</ul>
       {(project.startedOn || project.completedOn) && <p className="project-period">진행 기간: {project.startedOn??"시작일 미등록"} ~ {project.completedOn??"완료일 미등록"}</p>}
     <ProjectOwnerActions ownerId={project.owner.id} projectId={project.id}/></header><div className="post-body">
+      <PublicProjectMedia key={project.id} id={project.id} initial={project.media}/>
       {project.description && <section className="text-block"><h2>프로젝트 소개</h2><p>{project.description}</p></section>}
       {project.features.length>0 && <section className="text-block"><h2>주요 기능</h2><ul className="feature-list">{[...project.features].sort((a,b)=>a.displayOrder-b.displayOrder).map(feature=><li key={feature.id}><h3>{feature.title}</h3>{feature.description && <p>{feature.description}</p>}</li>)}</ul></section>}
       {project.architectureDescription && <section className="text-block"><h2>기술 구성</h2><p>{project.architectureDescription}</p></section>}

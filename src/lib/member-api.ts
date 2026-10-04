@@ -17,10 +17,11 @@ export function apiUrl(path: string, base = process.env.NEXT_PUBLIC_API_BASE_URL
 export async function memberJson(path: string, options: { method?: string; body?: unknown; token?: string; cookies?: boolean } = {}, request: typeof fetch = fetch, base?: string): Promise<unknown> {
   const headers: Record<string, string> = { Accept: "application/json" };
   if (options.token) headers.Authorization = `Bearer ${options.token}`;
-  if (options.body !== undefined) headers["Content-Type"] = "application/json";
+  const multipart = typeof FormData !== "undefined" && options.body instanceof FormData;
+  if (options.body !== undefined && !multipart) headers["Content-Type"] = "application/json";
   let response: Response;
   const url = apiUrl(path, base);
-  try { response = await request(url, { method: options.method ?? "GET", headers, body: options.body === undefined ? undefined : JSON.stringify(options.body), credentials: options.cookies ? "include" : "omit", cache: "no-store", signal: AbortSignal.timeout(15000) }); }
+  try { response = await request(url, { method: options.method ?? "GET", headers, body: multipart ? options.body as FormData : options.body === undefined ? undefined : JSON.stringify(options.body), credentials: options.cookies ? "include" : "omit", cache: "no-store", signal: AbortSignal.timeout(15000) }); }
   catch { throw new MemberApiError(0, "NETWORK", "서버 응답을 확인하지 못했습니다. 저장 요청이었다면 내 글에서 저장 여부를 확인해 주세요."); }
   if (response.status === 204) return null;
   let value: unknown;

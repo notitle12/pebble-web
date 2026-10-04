@@ -1,5 +1,6 @@
 "use client";
 import {useEffect,useRef,useState} from "react";
+import {ContentMedia} from "@/features/media/components/content-media";
 import Link from "next/link";
 import {MemberGate} from "@/features/auth/components/member-gate";
 import {userSession,type Member} from "@/features/auth/user-session";
@@ -15,6 +16,6 @@ function Writer({member,id}:{member:Member;id?:string}){
     if(saving.current)throw new Error("이미 저장 중입니다.");saving.current=true;setBusy(true);setError("");setSaved("");
     try{const body=buildPostSaveBody(value,post??undefined,visibility);const target=post?.id??id;const result=parseOwnPost(await userSession.request(target?`/posts/${postId(target)}`:"/posts",{method:target?"PATCH":"POST",body}));if(result.author.id!==member.id)throw new Error("저장 결과의 작성자를 확인하지 못했습니다.");setPost(result);setSaved(result.visibilityStatus==="PUBLIC"?"공개로 저장했습니다.":"비공개로 저장했습니다.");if(!target){window.history.replaceState(null,"",`/posts/${result.id}/edit`);} }
     catch(e){setError(e instanceof Error?e.message:"저장하지 못했습니다.");throw e;}finally{saving.current=false;setBusy(false);}
-  }}/></>;
+  }}/>{post&&<ContentMedia key={post.id} kind="posts" id={post.id} memberId={member.id} disabled={busy}/>}</>;
 }
 export function PostWriteScreen({id}:{id?:string}){return <MemberGate profile preserveOnExpiry>{member=><Writer key={`${member.id}:${id??"new"}`} member={member} id={id}/>}</MemberGate>;}

@@ -4,6 +4,7 @@ export const PAGE_SIZE = 20;
 
 export type PostSummary = {
   id: string;
+  thumbnailUrl?:string|null;
   likeCount?:number;
   likedByMe?:boolean;
   urlKey: string;
@@ -50,7 +51,7 @@ const timestamp = (value: unknown): value is string =>
 const count = (value: unknown): value is number => typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
 function isPost(value: unknown): value is PostSummary & Record<string, unknown> {
   if (!record(value) || !record(value.author)) return false;
-  return id(value.id) && typeof value.urlKey === "string" && validPostKey(value.urlKey)
+  return (value.thumbnailUrl===undefined||nullableText(value.thumbnailUrl)) && id(value.id) && typeof value.urlKey === "string" && validPostKey(value.urlKey)
     && typeof value.author.handle === "string" && validHandle(value.author.handle) && typeof value.title === "string" && nullableText(value.summary)
     && id(value.author.id) && typeof value.author.nickname === "string" && nullableText(value.author.blogName)
     && Array.isArray(value.tags) && value.tags.every(tag => record(tag) && id(tag.id) && typeof tag.name === "string")

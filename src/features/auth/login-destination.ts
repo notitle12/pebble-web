@@ -1,4 +1,4 @@
-const destinations = new Set(["/me/blog", "/me/posts", "/posts/new", "/me/projects","/me/boards", "/projects/new"]);
+const destinations = new Set(["/me/blog", "/me/posts", "/posts/new", "/me/projects","/me/boards", "/settings/profile", "/projects/new"]);
 const positiveId=(value:string)=>/^[1-9]\d{0,18}$/.test(value)&&BigInt(value)<=9223372036854775807n;
 export function loginDestination(value: string | null): string {
   if(!value)return "/me/posts";
