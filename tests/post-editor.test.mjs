@@ -80,7 +80,7 @@ test("classification restores saved ids and rejects duplicate or malformed selec
 });
 
 test("own post classification parser preserves inactive links and refuses incomplete metadata",()=>{
- const data={...basePost,projectId:null,visibilityStatus:"HIDDEN",isBlocked:false,category:{id:"100",name:"기존 분류",status:"INACTIVE"},tags:[{id:"200",name:"기존 태그",status:"INACTIVE"}],blocks:[{type:"TEXT",content:"본문",language:null,title:null,displayOrder:0}]};
+ const data={...basePost,boardId:null,projectId:null,visibilityStatus:"HIDDEN",isBlocked:false,category:{id:"100",name:"기존 분류",status:"INACTIVE"},tags:[{id:"200",name:"기존 태그",status:"INACTIVE"}],blocks:[{type:"TEXT",content:"본문",language:null,title:null,displayOrder:0}]};
  const post=parseOwnPost({data});assert.equal(post.category.status,"INACTIVE");assert.equal(post.tags[0].status,"INACTIVE");
  assert.throws(()=>parseOwnPost({data:{...data,category:undefined}}));
  assert.throws(()=>parseOwnPost({data:{...data,tags:[{id:"200",name:"태그"}]}}));
@@ -107,7 +107,7 @@ test("project link saves on create and only sends changed PATCH values",()=>{
  assert.equal("projectId" in buildPostSaveBody({...value,projectId:undefined},existing),false);
 });
 test("own post parser requires a nullable valid project id",()=>{
- const data={...basePost,projectId:null,visibilityStatus:"HIDDEN",isBlocked:false,category:null,tags:[],blocks:[{type:"TEXT",content:"본문",language:null,title:null,displayOrder:0}]};
+ const data={...basePost,boardId:null,projectId:null,visibilityStatus:"HIDDEN",isBlocked:false,category:null,tags:[],blocks:[{type:"TEXT",content:"본문",language:null,title:null,displayOrder:0}]};
  assert.equal(parseOwnPost({data}).projectId,null);
  assert.equal(parseOwnPost({data:{...data,projectId:"9223372036854775807"}}).projectId,"9223372036854775807");
  for(const projectId of [undefined, "", "0", "01", "9223372036854775808", 123, {}]) {

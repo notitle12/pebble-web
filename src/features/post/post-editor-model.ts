@@ -6,6 +6,7 @@ export type PostEditorValue = {
   summary: string;
   categoryId?: string | null;
   projectId?: string | null;
+  boardId?: string | null;
   tagIds?: string[];
   blocks: Array<{ key: string; type: "TEXT" | "CODE" | "TABLE" | "ARCHITECTURE"; content: string; language: string | null; title: string | null; valid: boolean }>;
 };
@@ -18,12 +19,13 @@ export function createEditorBlock(type: PostEditorValue["blocks"][number]["type"
   return { key: globalThis.crypto?.randomUUID?.() ?? `block-${Date.now()}-${Math.random().toString(36).slice(2)}`, type, content, language: type === "CODE" ? "TYPESCRIPT" : null, title: null, valid: true };
 }
 
-export function editorValueFromPost(post: PostDetail & {category?: {id:string} | null;projectId?:string|null}): PostEditorValue {
+export function editorValueFromPost(post: PostDetail & {category?: {id:string} | null;projectId?:string|null;boardId?:string|null}): PostEditorValue {
   return {
     title: post.title,
     summary: post.summary ?? "",
     categoryId: post.category?.id ?? null,
     projectId: post.projectId ?? null,
+    boardId: post.boardId ?? null,
     tagIds: post.tags.map(tag => tag.id),
     blocks: post.blocks.map((block, index) => ({
       key: `saved-${index}-${block.displayOrder}`,
@@ -43,6 +45,7 @@ export function validateEditorValue(value: PostEditorValue): string[] {
   if (!value.title.trim()) errors.push("제목을 입력해 주세요.");
   if (!safe(value.title) || length(value.title) > 200) errors.push("제목은 올바른 Unicode로 된 200자 이하여야 합니다.");
   if (!safe(value.summary) || length(value.summary) > 500) errors.push("요약은 올바른 Unicode로 된 500자 이하여야 합니다.");
+  if (value.boardId != null && !validTagId(value.boardId)) errors.push("글 폴더를 다시 선택해 주세요.");
   if (value.projectId != null && !validTagId(value.projectId)) errors.push("프로젝트를 다시 선택해 주세요.");
   if (value.categoryId != null && !validTagId(value.categoryId)) errors.push("카테고리를 다시 선택해 주세요.");
   if (value.tagIds && (value.tagIds.some(id => !validTagId(id)) || new Set(value.tagIds).size !== value.tagIds.length)) errors.push("태그를 중복 없이 다시 선택해 주세요.");
@@ -72,12 +75,13 @@ export function buildPostBody(value: PostEditorValue) {
 }
 
 export type PostVisibility = "PUBLIC" | "HIDDEN";
-export function buildPostSaveBody(value:PostEditorValue,existing?:{visibilityStatus:PostVisibility;isBlocked:boolean;projectId?:string|null;category?:{id:string}|null;tags?:{id:string}[]},visibility?:PostVisibility){
+export function buildPostSaveBody(value:PostEditorValue,existing?:{visibilityStatus:PostVisibility;isBlocked:boolean;boardId?:string|null;projectId?:string|null;category?:{id:string}|null;tags?:{id:string}[]},visibility?:PostVisibility){
   const errors=validateEditorValue(value);
   if(errors.length)throw new Error(errors[0]);
   if(visibility!==undefined && visibility!=="PUBLIC" && visibility!=="HIDDEN")throw new Error("공개 또는 비공개를 선택해 주세요.");
   if(visibility==="PUBLIC" && existing?.isBlocked)throw new Error("차단된 글은 공개로 게시할 수 없습니다.");
-  const classification: {projectId?:string|null;categoryId?:string|null;tagIds?:string[]} = {};
+  const classification: {boardId?:string|null;projectId?:string|null;categoryId?:string|null;tagIds?:string[]} = {};
+  if(value.boardId !== undefined && (!existing || value.boardId !== (existing.boardId ?? null))) classification.boardId=value.boardId;
   if(value.projectId !== undefined && (!existing || value.projectId !== (existing.projectId ?? null))) classification.projectId=value.projectId;
   if(value.categoryId !== undefined && (!existing || value.categoryId !== (existing.category?.id ?? null))) classification.categoryId=value.categoryId;
   if(value.tagIds !== undefined && (!existing || JSON.stringify(value.tagIds) !== JSON.stringify(existing.tags?.map(tag=>tag.id) ?? []))) classification.tagIds=[...value.tagIds];

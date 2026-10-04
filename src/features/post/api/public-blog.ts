@@ -1,14 +1,16 @@
 import { GuestApiError, guestJson } from "../../../lib/public-api.ts";
 import { PAGE_SIZE, parsePostPage, type PostPage } from "./post-list.ts";
-import { parsePage } from "../../../lib/list-query.ts";
+import { parsePage, validTagId } from "../../../lib/list-query.ts";
 
 const validHandle = (handle: string) => /^[a-z][a-z0-9-]{1,28}[a-z0-9]$/.test(handle);
 
-export function blogHref(handle: string, page: number): string {
+export function blogHref(handle: string, page: number, boardId?:string): string {
   if (!validHandle(handle) || !Number.isSafeInteger(page) || page < 0 || parsePage(String(page)) !== page) {
     throw new GuestApiError("response");
   }
-  return page === 0 ? `/blogs/${encodeURIComponent(handle)}` : `/blogs/${encodeURIComponent(handle)}?page=${page}`;
+  if(boardId!==undefined&&!validTagId(boardId))throw new GuestApiError("response");
+  const params=new URLSearchParams();if(boardId)params.set("boardId",boardId);if(page>0)params.set("page",String(page));
+  return `/blogs/${encodeURIComponent(handle)}${params.size?`?${params}`:""}`;
 }
 
 export async function getPublicBlogPosts(
