@@ -370,3 +370,45 @@ fieldset { min-width:0; }
 .post-classification-tag.is-existing { border-style:dashed; }
 .post-classification-tag input:disabled { cursor:not-allowed; }
 @media(max-width:680px) { .post-classification { gap:16px; } .post-classification-tags { max-height:180px; } .post-classification-tag { min-height:40px; } }
+
+.personal-blog-layout { display:grid; grid-template-columns:minmax(220px, 280px) minmax(0, 1fr); gap:28px; align-items:start; }
+.personal-blog-profile { position:sticky; top:24px; border:1px solid var(--line); border-radius:16px; padding:24px; background:#fff; box-shadow:0 8px 28px #24395d0a; overflow-wrap:anywhere; }
+.personal-blog-profile h1 { margin:0 0 12px; color:#17243d; font-size:24px; line-height:1.35; }
+.personal-blog-profile p { margin:6px 0; color:#52627b; }
+.personal-blog-profile .personal-blog-handle, .personal-blog-heading > span { color:#748198; font-size:13px; }
+.personal-blog-content { min-width:0; }
+.personal-blog-heading { display:flex; justify-content:space-between; align-items:end; gap:16px; margin:0 0 18px; border-bottom:1px solid var(--line); padding:0 0 18px; }
+.personal-blog-heading .eyebrow { margin:0 0 5px; color:#748198; font-size:11px; font-weight:750; letter-spacing:.12em; }
+.personal-blog-heading h2 { margin:0; color:#17243d; font-size:26px; }
+@media(max-width:760px) { .personal-blog-layout { grid-template-columns:minmax(0,1fr); gap:18px; } .personal-blog-profile { position:static; padding:18px; } .personal-blog-profile h1 { font-size:21px; } .personal-blog-heading { align-items:start; } .personal-blog-heading h2 { font-size:22px; } }
+
+.session-links {display:flex;align-items:center;justify-content:flex-end;gap:16px;font-size:13px;flex-shrink:0;}
+.session-links a:hover {color:var(--accent);}
+.login-action {display:inline-flex;flex-direction:column;align-items:center;gap:12px;max-width:100%;}
+.login-error {display:block;color:#973a42;font-size:13px;line-height:1.65;max-width:440px;overflow-wrap:anywhere;}
+.header-login {border:1px solid var(--line);border-radius:7px;background:white;padding:8px 12px;color:var(--text);font:inherit;cursor:pointer;}
+.session-links .login-action {position:relative;}
+.session-links .login-error {position:absolute;top:100%;right:0;width:min(360px,85vw);padding:16px;background:white;border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 24px #17243d18;z-index:8;}
+.login-panel {max-width:540px;margin:40px auto;display:grid;justify-items:center;gap:20px;}
+.login-panel .button {margin-top:8px;}
+.login-eyebrow,.home-eyebrow {font-size:11px;letter-spacing:.16em;font-weight:700;color:var(--accent);}
+.home-intro {padding:62px 0 38px;position:relative;border-bottom:1px solid var(--line);margin-bottom:28px;}
+.home-intro h1 {font-size:clamp(32px,5vw,48px);line-height:1.28;margin:18px 0 20px;}
+.home-intro > p:not(.home-eyebrow) {max-width:520px;font-size:15px;}
+.home-blog-link {display:inline-block;margin-top:24px;font-size:14px;font-weight:700;color:var(--accent);}
+.home-shell .search-panel {padding:16px 0;border:0;border-radius:0;background:transparent;}
+.home-shell .post-list {border:0;background:transparent;border-radius:0;}
+.home-shell .post-card {padding:32px 0;}
+.home-shell .post-card h3 {font-size:25px;max-width:700px;}
+.home-shell .post-summary {max-width:680px;}
+.home-shell .tag-list li {background:transparent;border:1px solid var(--line);border-radius:20px;}
+.post-author-link:hover {color:var(--accent);text-decoration:underline;}
+@media(max-width:680px){.session-links {margin-left:auto;gap:12px;}.home-intro {padding:36px 0 28px;}.home-shell .post-card {padding:24px 4px;}.home-shell .post-card h3 {font-size:22px;}.header-nav {order:3;margin-left:0;flex-basis:100%;justify-content:space-between;}.login-panel {margin:12px auto;}}
+
+.blog-owner-actions {display:flex;flex-wrap:wrap;gap:10px;margin-top:24px;}
+.blog-owner-actions a {padding:8px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;color:var(--accent);background:white;}
+
+.personal-blog-layout {padding-top:36px;}
+.personal-blog-content .post-list {border:0;background:transparent;border-radius:0;}
+.personal-blog-content .post-card {padding:28px 0;}
+@media(max-width:760px){.personal-blog-layout {padding-top:24px;}.personal-blog-content .post-card {padding:24px 4px;}}

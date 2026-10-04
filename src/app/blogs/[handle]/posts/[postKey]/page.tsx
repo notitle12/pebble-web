@@ -27,7 +27,7 @@ export default async function PostPage({ params }: Props) {
   const date = post.publishedAt ?? post.createdAt;
   return <><a className="skip-link" href="#main-content">본문으로 바로가기</a><SiteHeader />
     <main id="main-content" className="page-shell detail-shell">
-      <Link className="detail-back" href="/">← 공개 글 목록</Link>
+      <Link className="detail-back" href={`/blogs/${post.author.handle}`}>← {post.author.blogName??"블로그"}</Link>
       {process.env.NODE_ENV === "development" && process.env.PEBBLE_PREVIEW_MODE === "mock" && <p className="preview-notice">목 데이터 미리보기 · 실제 게시글이 아닙니다</p>}
       <article className="post-detail"><header><div className="post-meta"><span>{post.author.nickname}</span><time dateTime={date}>{new Intl.DateTimeFormat("ko-KR",{dateStyle:"long",timeZone:"Asia/Seoul"}).format(new Date(date))}</time></div>
         <h1>{post.title}</h1>{post.summary && <p>{post.summary}</p>}
