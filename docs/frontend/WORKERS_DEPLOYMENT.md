@@ -29,3 +29,11 @@ Wrangler 인증은 사용자가 승인한 공식 OAuth 로그인을 사용한다
 - 실제 OAuth는 Naver에 `https://www.pebble-log.com/auth/naver/callback` 등록 후 별도 확인한다.
 
 OpenNext는 Node middleware 지원이 experimental이라고 경고한다. 현재 proxy는 개발 전용 경로 차단에만 사용하고 로컬/원격 404를 실제 확인했다. 어댑터 업데이트 때 같은 차단 검증을 유지한다. 롤백은 Workers 배포 이력에서 이전 정상 버전을 선택한다. 이번 배포가 최초 버전이므로 이전 정상 버전은 아직 없다.
+
+## 공개 API 연결 갱신 (2026-10-04, 23시대 KST)
+
+OCI TCP 80/443 수신 규칙 추가 뒤 공개 API HTTPS 200을 확인했다. 사용자 SSH 22번은 본인 공인 IP /32로 제한됐으며 새 SSH 접속도 성공했다. 실제 www 홈·프로젝트·분류·로그인은 200이고 API 연결 실패 표시가 사라졌다. 운영 /dev/architecture는 404다. API OAuth authorization CORS preflight는 www Origin만 credentials=true로 허용하고 외부 Origin은 403이다. 위의 API 타임아웃 기록은 규칙 추가 전 이력이며 해결됐다. 실제 Naver 로그인·회원 쓰기·이미지 업로드/조회는 별도 운영 검증이 남아 있다.
+
+## 로그인 안내 수정 (2026-10-04)
+
+프로필과 탈퇴 영역이 각각 MemberGate를 렌더링해 비로그인 안내가 두 번 표시되는 문제를 수정했다. 프로필 화면에서는 탈퇴 영역의 별도 비로그인 안내를 생략하고 기본 권한 검사는 유지한다. Workers 빌드·타입 검사를 통과해 버전 73491337-2a71-4b25-a2ed-9186c2d11447로 배포했다. 실제 쿠키 없는 refresh는 401 INVALID_REFRESH_TOKEN이며 새로운 브라우저 화면은 복구 오류 대신 guest 안내를 표시했다. 기존 오류 원인이 과거 API 연결 실패였는지는 당시 네트워크 기록이 없어 확정하지 않는다. 자동 refresh 재시도 정책은 변경하지 않았다.
