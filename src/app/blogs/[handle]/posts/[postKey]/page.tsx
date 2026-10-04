@@ -1,3 +1,4 @@
+import {CommentsPanel} from "@/features/comment/components/comments-panel";
 import { cache } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -33,5 +34,5 @@ export default async function PostPage({ params }: Props) {
         <h1>{post.title}</h1>{post.summary && <p>{post.summary}</p>}
         <ul className="tag-list" aria-label="기술 태그">{post.tags.map(tag=><li key={tag.id}>{tag.name}</li>)}</ul>
       </header><PostBody blocks={post.blocks} /></article>
-    </main><footer className="site-footer">Pebble · 함께 쌓아가는 개발 기록</footer></>;
+    <CommentsPanel target="posts" contentId={post.id}/></main><footer className="site-footer">Pebble · 함께 쌓아가는 개발 기록</footer></>;
 }
