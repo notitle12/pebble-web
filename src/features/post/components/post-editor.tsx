@@ -9,6 +9,7 @@ import { TableBlock } from "./table-block";
 import { TableSpecEditor } from "./table-spec-editor";
 import { createEditorBlock, validateEditorValue, type PostVisibility, type PostEditorValue } from "../post-editor-model";
 
+import {PostProjectPicker} from "./post-project-picker";
 import {PostClassification} from "./post-classification";
 import type {Classification} from "../api/member-posts";
 import {PostBody} from "./post-body";
@@ -17,9 +18,9 @@ export type { PostEditorValue } from "../post-editor-model";
 
 const languages = ["JAVA", "JAVASCRIPT", "TYPESCRIPT", "PYTHON", "HTML", "CSS", "SQL", "JSON", "YAML", "MARKDOWN", "BASH", "SHELL"] as const;
 const typeNames = { TEXT: "본문", CODE: "코드", TABLE: "테이블", ARCHITECTURE: "아키텍처" } as const;
-const initial = (): PostEditorValue => ({ title: "", summary: "", categoryId:null,tagIds:[],blocks: [createEditorBlock("TEXT")] });
+const initial = (): PostEditorValue => ({ title: "", summary: "", categoryId:null,projectId:null,tagIds:[],blocks: [createEditorBlock("TEXT")] });
 
-export function PostEditor({ initialValue, onSave, busy = false, saveLabel = "비공개로 저장", visibility = "HIDDEN", blocked = false, existingCategory, existingTags }: { initialValue?: PostEditorValue; onSave: (value: PostEditorValue, visibility?:PostVisibility) => Promise<void>; busy?: boolean; saveLabel?: string; visibility?:PostVisibility; blocked?:boolean;existingCategory?:Classification|null;existingTags?:Classification[] }) {
+export function PostEditor({ memberId, initialValue, onSave, busy = false, saveLabel = "비공개로 저장", visibility = "HIDDEN", blocked = false, existingCategory, existingTags }: { memberId:string; initialValue?: PostEditorValue; onSave: (value: PostEditorValue, visibility?:PostVisibility) => Promise<void>; busy?: boolean; saveLabel?: string; visibility?:PostVisibility; blocked?:boolean;existingCategory?:Classification|null;existingTags?:Classification[] }) {
   const startingValue = useRef<PostEditorValue>(initialValue ?? initial());
   const [value, setValue] = useState<PostEditorValue>(() => startingValue.current);
   const [activeKey, setActiveKey] = useState(() => startingValue.current.blocks[0]?.key ?? "");
@@ -70,6 +71,7 @@ export function PostEditor({ initialValue, onSave, busy = false, saveLabel = "�
       <label>요약 <span>{Array.from(value.summary).length}/500</span><textarea value={value.summary} maxLength={1000} rows={3} aria-invalid={Array.from(value.summary).length > 500} onChange={event => setValue(current => ({ ...current, summary: event.target.value }))} /></label>
     </div>
 
+    <PostProjectPicker memberId={memberId} projectId={value.projectId??null} onChange={projectId=>setValue(current=>({...current,projectId}))}/>
     <PostClassification categoryId={value.categoryId??null} tagIds={value.tagIds??[]} existingCategory={existingCategory??undefined} existingTags={existingTags} onChange={patch=>setValue(current=>({...current,...patch}))}/>
 
     <div className="post-editor-block-heading"><div><h2>본문 블록</h2><p>글, 코드, 테이블 명세, 시스템 구성도를 순서대로 구성하세요.</p></div>

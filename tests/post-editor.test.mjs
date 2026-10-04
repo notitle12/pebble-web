@@ -80,9 +80,39 @@ test("classification restores saved ids and rejects duplicate or malformed selec
 });
 
 test("own post classification parser preserves inactive links and refuses incomplete metadata",()=>{
- const data={...basePost,visibilityStatus:"HIDDEN",isBlocked:false,category:{id:"100",name:"기존 분류",status:"INACTIVE"},tags:[{id:"200",name:"기존 태그",status:"INACTIVE"}],blocks:[{type:"TEXT",content:"본문",language:null,title:null,displayOrder:0}]};
+ const data={...basePost,projectId:null,visibilityStatus:"HIDDEN",isBlocked:false,category:{id:"100",name:"기존 분류",status:"INACTIVE"},tags:[{id:"200",name:"기존 태그",status:"INACTIVE"}],blocks:[{type:"TEXT",content:"본문",language:null,title:null,displayOrder:0}]};
  const post=parseOwnPost({data});assert.equal(post.category.status,"INACTIVE");assert.equal(post.tags[0].status,"INACTIVE");
  assert.throws(()=>parseOwnPost({data:{...data,category:undefined}}));
  assert.throws(()=>parseOwnPost({data:{...data,tags:[{id:"200",name:"태그"}]}}));
  assert.throws(()=>parseOwnPost({data:{...data,tags:[...data.tags,...data.tags]}}));
+});
+
+
+test("project link restores from own post and defaults missing editor input to null",()=>{
+ const blocks=[{...createEditorBlock("TEXT"),displayOrder:0}];
+ assert.equal(editorValueFromPost({...basePost,projectId:"9223372036854775807",blocks}).projectId,"9223372036854775807");
+ assert.equal(editorValueFromPost({...basePost,projectId:null,blocks}).projectId,null);
+ assert.equal(editorValueFromPost({...basePost,blocks}).projectId,null);
+});
+test("project link saves on create and only sends changed PATCH values",()=>{
+ const value={title:"프로젝트 글",summary:"",blocks:[createEditorBlock("TEXT")]};
+ assert.equal(buildPostSaveBody({...value,projectId:"9223372036854775807"}).projectId,"9223372036854775807");
+ assert.equal(buildPostSaveBody({...value,projectId:null}).projectId,null);
+ assert.equal("projectId" in buildPostSaveBody(value),false);
+ for(const projectId of ["0","01","9223372036854775808"]) assert.throws(()=>buildPostSaveBody({...value,projectId}),/프로젝트/);
+ const existing={visibilityStatus:"HIDDEN",isBlocked:false,projectId:"9007199254740993"};
+ assert.equal("projectId" in buildPostSaveBody({...value,projectId:"9007199254740993"},existing),false);
+ assert.equal(buildPostSaveBody({...value,projectId:"9223372036854775807"},existing).projectId,"9223372036854775807");
+ assert.equal(buildPostSaveBody({...value,projectId:null},existing).projectId,null);
+ assert.equal("projectId" in buildPostSaveBody({...value,projectId:undefined},existing),false);
+});
+test("own post parser requires a nullable valid project id",()=>{
+ const data={...basePost,projectId:null,visibilityStatus:"HIDDEN",isBlocked:false,category:null,tags:[],blocks:[{type:"TEXT",content:"본문",language:null,title:null,displayOrder:0}]};
+ assert.equal(parseOwnPost({data}).projectId,null);
+ assert.equal(parseOwnPost({data:{...data,projectId:"9223372036854775807"}}).projectId,"9223372036854775807");
+ for(const projectId of [undefined, "", "0", "01", "9223372036854775808", 123, {}]) {
+   const invalid={...data}; delete invalid.projectId;
+   if(projectId !== undefined) invalid.projectId=projectId;
+   assert.throws(()=>parseOwnPost({data:invalid}));
+ }
 });
