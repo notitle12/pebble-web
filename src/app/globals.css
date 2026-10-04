@@ -433,3 +433,5 @@ fieldset { min-width:0; }
 .like-actions .button, .like-login .button { margin-top: 0; }
 .like-button[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); }
 .like-panel > p, .like-login { margin-top: .75rem; }
+
+.list-like-count { display: inline-flex; align-items: center; gap: .2rem; white-space: nowrap; }

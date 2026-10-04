@@ -4,6 +4,8 @@ export const PAGE_SIZE = 20;
 
 export type PostSummary = {
   id: string;
+  likeCount?:number;
+  likedByMe?:boolean;
   urlKey: string;
   title: string;
   summary: string | null;
@@ -52,6 +54,7 @@ function isPost(value: unknown): value is PostSummary & Record<string, unknown> 
     && typeof value.author.handle === "string" && validHandle(value.author.handle) && typeof value.title === "string" && nullableText(value.summary)
     && id(value.author.id) && typeof value.author.nickname === "string" && nullableText(value.author.blogName)
     && Array.isArray(value.tags) && value.tags.every(tag => record(tag) && id(tag.id) && typeof tag.name === "string")
+    && (value.likeCount===undefined || count(value.likeCount)) && (value.likedByMe===undefined || typeof value.likedByMe==="boolean")
     && (value.publishedAt === null || timestamp(value.publishedAt)) && timestamp(value.createdAt);
 }
 export function parsePostPage(value: unknown, requestedPage: number): PostPage {
@@ -108,7 +111,7 @@ export type ArchitectureSide = "TOP" | "RIGHT" | "BOTTOM" | "LEFT";
 export type ArchitectureEdge = { id: string; source: string; target: string; label?: string | null; sourceSide?: ArchitectureSide | null; targetSide?: ArchitectureSide | null; waypoint?: {x:number;y:number} | null };
 export type ArchitectureSpec = { schemaVersion: 1; groups: ArchitectureGroup[]; nodes: ArchitectureNode[]; edges: ArchitectureEdge[] };
 export type PostBlock = { type: "TEXT" | "CODE" | "TABLE" | "ARCHITECTURE"; content: string; language: string | null; title: string | null; displayOrder: number };
-export type PostDetail = PostSummary & { likeCount?:number;likedByMe?:boolean; projectId?: string | null; blocks: PostBlock[] };
+export type PostDetail = PostSummary & { projectId?: string | null; blocks: PostBlock[] };
 const languages = ["JAVA", "JAVASCRIPT", "TYPESCRIPT", "PYTHON", "HTML", "CSS", "SQL", "JSON", "YAML", "MARKDOWN", "BASH", "SHELL"];
 const keysAre = (value: Record<string, unknown>, allowed: string[]) => Object.keys(value).every(key => allowed.includes(key));
 function safeString(value: string): boolean {

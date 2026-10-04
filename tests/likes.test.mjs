@@ -4,8 +4,8 @@ import { once } from "node:events";
 import { MemberApiError } from "../src/lib/member-api.ts";
 import { createMockApi } from "../scripts/mock-post-api.mjs";
 import { likePath, parseLikeState, readLikes, writeLike } from "../src/features/like/api/likes.ts";
-import { getPublicProject, parseProjectDetail } from "../src/features/project/api/project-list.ts";
-import { getPublicPost, parsePostDetail } from "../src/features/post/api/post-list.ts";
+import { getPublicProject, parseProjectDetail, parseProjectPage } from "../src/features/project/api/project-list.ts";
+import { getPublicPost, parsePostDetail, parsePostPage } from "../src/features/post/api/post-list.ts";
 
 test("좋아요 경로는 숫자 BIGINT ID만 허용하고 경로·query 주입을 거부한다", () => {
   assert.equal(likePath("posts", "42"), "/posts/42");
@@ -82,4 +82,18 @@ test("Post 상세의 선택적 좋아요 필드는 유효값을 보존하고 잘
     for (const value of [-1, 1.5, Number.MAX_SAFE_INTEGER + 1, "1"]) assert.throws(() => parsePostDetail({ data: { ...post, likeCount: value } }));
     for (const value of ["true", 1, null]) assert.throws(() => parsePostDetail({ data: { ...post, likedByMe: value } }));
   } finally { await new Promise(resolve => server.close(resolve)); }
+});
+
+
+test("공개 글·프로젝트 목록은 집계를 보존하고 잘못된 값은 거부한다",()=>{
+ const post={id:"10",urlKey:"note-1",title:"글",summary:null,author:{id:"20",handle:"writer-1",nickname:"작성자",blogName:null},tags:[],publishedAt:null,createdAt:"2026-10-04T00:00:00Z",likeCount:1234,likedByMe:false};
+ const project={id:"30",name:"프로젝트",summary:null,owner:{id:"20",nickname:"작성자"},tags:[],lifecycleStatus:"IN_PROGRESS",publishedAt:null,createdAt:"2026-10-04T00:00:00Z",likeCount:0,likedByMe:false};
+ const envelope=item=>({data:{content:[item],page:0,size:20,totalElements:1,totalPages:1,hasNext:false,hasPrevious:false}});
+ for(const [parser,item] of [[parsePostPage,post],[parseProjectPage,project]]){
+   assert.equal(parser(envelope(item),0).content[0].likeCount,item.likeCount);
+   for(const likeCount of [-1,1.5,"1",null,Number.MAX_SAFE_INTEGER+1])assert.throws(()=>parser(envelope({...item,likeCount}),0));
+   for(const likedByMe of [1,"false",null])assert.throws(()=>parser(envelope({...item,likedByMe}),0));
+   const legacy={...item};delete legacy.likeCount;delete legacy.likedByMe;
+   assert.equal(parser(envelope(legacy),0).content[0].likeCount,undefined);
+ }
 });

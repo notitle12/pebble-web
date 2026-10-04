@@ -1,7 +1,7 @@
 import { guestJson, GuestApiError } from "../../../lib/public-api.ts";
 import { parseListQuery, validTagId } from "../../../lib/list-query.ts";
 export type ProjectQuery = { page: number; q?: string; tagId?: string; lifecycleStatus?: "IN_PROGRESS" | "COMPLETED" };
-export type ProjectSummary = { id: string; name: string; summary: string | null; owner: { id: string; nickname: string }; tags: {id: string; name: string}[]; lifecycleStatus: "IN_PROGRESS" | "COMPLETED"; publishedAt: string | null; createdAt: string };
+export type ProjectSummary = { likeCount?:number;likedByMe?:boolean; id: string; name: string; summary: string | null; owner: { id: string; nickname: string }; tags: {id: string; name: string}[]; lifecycleStatus: "IN_PROGRESS" | "COMPLETED"; publishedAt: string | null; createdAt: string };
 export type ProjectPage = { content: ProjectSummary[]; page: number; size: number; totalElements: number; totalPages: number; hasNext: boolean; hasPrevious: boolean };
 export function parseProjectQuery(params: Record<string,string|string[]|undefined>): ProjectQuery | null {
   const { lifecycleStatus, ...rest } = params;
@@ -26,6 +26,7 @@ function isProject(value: unknown): value is ProjectSummary & Record<string,unkn
     && typeof value.owner.id === "string" && validTagId(value.owner.id) && typeof value.owner.nickname === "string"
     && ["IN_PROGRESS","COMPLETED"].includes(String(value.lifecycleStatus))
     && Array.isArray(value.tags) && value.tags.every(tag=>record(tag) && typeof tag.id === "string" && validTagId(tag.id) && typeof tag.name === "string")
+    && (value.likeCount===undefined || count(value.likeCount)) && (value.likedByMe===undefined || typeof value.likedByMe==="boolean")
     && (value.publishedAt === null || timestamp(value.publishedAt)) && timestamp(value.createdAt);
 }
 export function parseProjectPage(value: unknown, page: number): ProjectPage {
@@ -48,7 +49,7 @@ export async function getPublicProjects(query: ProjectQuery, baseUrl = process.e
 
 export type ProjectFeature = {id:string;title:string;description:string|null;displayOrder:number};
 export type ProjectLink = {id:string;linkType:string;label:string|null;url:string;displayOrder:number};
-export type ProjectDetail = ProjectSummary & {likeCount?:number;likedByMe?:boolean;description:string|null;architectureDescription:string|null;executionInstructions:string|null;startedOn:string|null;completedOn:string|null;features:ProjectFeature[];links:ProjectLink[]};
+export type ProjectDetail = ProjectSummary & {description:string|null;architectureDescription:string|null;executionInstructions:string|null;startedOn:string|null;completedOn:string|null;features:ProjectFeature[];links:ProjectLink[]};
 const nullableText = (value:unknown) => value===null || value===undefined || typeof value==="string";
 const dateOnly = (value:unknown) => value===null || (typeof value==="string" && /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0,10)===value);
 export function projectHref(id:string,page=0):string|null {
