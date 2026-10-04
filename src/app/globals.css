@@ -354,3 +354,19 @@ fieldset { min-width:0; }
 .post-editor-footer button.secondary {background:white;color:var(--accent);border-color:var(--line);}
 .writer-public-link {margin:0 0 24px;}
 @media(max-width:680px){.publish-options {grid-template-columns:1fr;}.publish-review .post-detail {padding:20px;}.post-editor-actions {display:grid;grid-template-columns:1fr 1fr;}.post-editor-actions button {min-width:0;}}
+
+.post-classification { display:grid; gap:20px; min-width:0; color:#17243d; }
+.post-classification-field { display:grid; gap:8px; min-width:0; }
+.post-classification-field > label { color:#34435d; font-size:14px; font-weight:650; }
+.post-classification-field > input, .post-classification-field > select { width:100%; min-width:0; border:1px solid #dce4ef; border-radius:9px; padding:11px 12px; background:#fff; color:#17243d; font:inherit; }
+.post-classification-field > input:focus-visible, .post-classification-field > select:focus-visible, .post-classification-tags input:focus-visible, .post-classification-help button:focus-visible { outline:3px solid #9bb6ff; outline-offset:2px; }
+.post-classification-help, .post-classification-selected { margin:0; color:#748198; font-size:13px; line-height:1.5; overflow-wrap:anywhere; }
+.post-classification-help button { border:0; padding:0; background:transparent; color:#285bdc; font:inherit; text-decoration:underline; cursor:pointer; }
+.post-classification-tags { display:flex; flex-wrap:wrap; gap:8px; max-height:220px; overflow:auto; padding:2px; }
+.post-classification-tag { display:inline-flex; align-items:center; gap:7px; min-height:36px; max-width:100%; border:1px solid #dce4ef; border-radius:18px; padding:6px 10px; background:#fff; color:#34435d; font-size:13px; cursor:pointer; }
+.post-classification-tag span { overflow-wrap:anywhere; }
+.post-classification-tag:has(input:checked) { border-color:#8ba8ed; background:#f4f7ff; color:#234da8; }
+.post-editor .post-classification-tag input[type="checkbox"] { flex:0 0 16px; width:16px; height:16px; padding:0; margin:0; accent-color:#356dff; }
+.post-classification-tag.is-existing { border-style:dashed; }
+.post-classification-tag input:disabled { cursor:not-allowed; }
+@media(max-width:680px) { .post-classification { gap:16px; } .post-classification-tags { max-height:180px; } .post-classification-tag { min-height:40px; } }

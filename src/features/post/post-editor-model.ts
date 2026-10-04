@@ -1,8 +1,11 @@
+import { validTagId } from "../../lib/list-query.ts";
 import { parseArchitectureSpec, parseTableSpec, type ArchitectureSpec, type PostDetail, type TableSpec } from "./api/post-list.ts";
 
 export type PostEditorValue = {
   title: string;
   summary: string;
+  categoryId?: string | null;
+  tagIds?: string[];
   blocks: Array<{ key: string; type: "TEXT" | "CODE" | "TABLE" | "ARCHITECTURE"; content: string; language: string | null; title: string | null; valid: boolean }>;
 };
 
@@ -14,10 +17,12 @@ export function createEditorBlock(type: PostEditorValue["blocks"][number]["type"
   return { key: globalThis.crypto?.randomUUID?.() ?? `block-${Date.now()}-${Math.random().toString(36).slice(2)}`, type, content, language: type === "CODE" ? "TYPESCRIPT" : null, title: null, valid: true };
 }
 
-export function editorValueFromPost(post: PostDetail): PostEditorValue {
+export function editorValueFromPost(post: PostDetail & {category?: {id:string} | null}): PostEditorValue {
   return {
     title: post.title,
     summary: post.summary ?? "",
+    categoryId: post.category?.id ?? null,
+    tagIds: post.tags.map(tag => tag.id),
     blocks: post.blocks.map((block, index) => ({
       key: `saved-${index}-${block.displayOrder}`,
       type: block.type,
@@ -36,6 +41,8 @@ export function validateEditorValue(value: PostEditorValue): string[] {
   if (!value.title.trim()) errors.push("제목을 입력해 주세요.");
   if (!safe(value.title) || length(value.title) > 200) errors.push("제목은 올바른 Unicode로 된 200자 이하여야 합니다.");
   if (!safe(value.summary) || length(value.summary) > 500) errors.push("요약은 올바른 Unicode로 된 500자 이하여야 합니다.");
+  if (value.categoryId != null && !validTagId(value.categoryId)) errors.push("카테고리를 다시 선택해 주세요.");
+  if (value.tagIds && (value.tagIds.some(id => !validTagId(id)) || new Set(value.tagIds).size !== value.tagIds.length)) errors.push("태그를 중복 없이 다시 선택해 주세요.");
   if (!value.blocks.length) errors.push("본문 블록을 하나 이상 추가해 주세요.");
   for (const [index, block] of value.blocks.entries()) {
     if (!block.valid) errors.push(`${index + 1}번째 블록의 입력을 확인해 주세요.`);
@@ -62,10 +69,13 @@ export function buildPostBody(value: PostEditorValue) {
 }
 
 export type PostVisibility = "PUBLIC" | "HIDDEN";
-export function buildPostSaveBody(value:PostEditorValue,existing?:{visibilityStatus:PostVisibility;isBlocked:boolean},visibility?:PostVisibility){
+export function buildPostSaveBody(value:PostEditorValue,existing?:{visibilityStatus:PostVisibility;isBlocked:boolean;category?:{id:string}|null;tags?:{id:string}[]},visibility?:PostVisibility){
   const errors=validateEditorValue(value);
   if(errors.length)throw new Error(errors[0]);
   if(visibility!==undefined && visibility!=="PUBLIC" && visibility!=="HIDDEN")throw new Error("공개 또는 비공개를 선택해 주세요.");
   if(visibility==="PUBLIC" && existing?.isBlocked)throw new Error("차단된 글은 공개로 게시할 수 없습니다.");
-  return {...buildPostBody(value),...(!existing?{visibilityStatus:visibility??"HIDDEN"}:visibility!==undefined?{visibilityStatus:visibility}:{})};
+  const classification: {categoryId?:string|null;tagIds?:string[]} = {};
+  if(value.categoryId !== undefined && (!existing || value.categoryId !== (existing.category?.id ?? null))) classification.categoryId=value.categoryId;
+  if(value.tagIds !== undefined && (!existing || JSON.stringify(value.tagIds) !== JSON.stringify(existing.tags?.map(tag=>tag.id) ?? []))) classification.tagIds=[...value.tagIds];
+  return {...buildPostBody(value),...classification,...(!existing?{visibilityStatus:visibility??"HIDDEN"}:visibility!==undefined?{visibilityStatus:visibility}:{})};
 }

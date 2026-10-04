@@ -2,6 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { buildPostBody, buildPostSaveBody, createEditorBlock, editorValueFromPost, validateEditorValue } from "../src/features/post/post-editor-model.ts";
 
+import {parseOwnPost} from "../src/features/post/api/member-posts.ts";
+
 const author = { id: "1", handle: "pebble-user", nickname: "Pebble", blogName: null };
 const basePost = { id: "10", urlKey: "first-post", title: "첫 글", summary: null, author, tags: [], publishedAt: null, createdAt: "2026-10-03T00:00:00Z" };
 
@@ -53,4 +55,34 @@ test("blocked publication and invalid content cannot be submitted",()=>{
   assert.equal(buildPostSaveBody(value,blocked,"HIDDEN").visibilityStatus,"HIDDEN");
   assert.throws(()=>buildPostSaveBody({...value,title:""},undefined,"PUBLIC"),/제목/);
   assert.throws(()=>buildPostSaveBody(value,undefined,"DELETED"),/공개/);
+});
+
+
+test("classification PATCH omits unchanged links, removes explicitly, and preserves tag order",()=>{
+ const base={title:"분류 글",summary:"",blocks:[createEditorBlock("TEXT")]};
+ const existing={visibilityStatus:"PUBLIC",isBlocked:false,category:{id:"100"},tags:[{id:"200"},{id:"300"}]};
+ const unchanged={...base,categoryId:"100",tagIds:["200","300"]};
+ const body=buildPostSaveBody(unchanged,existing);
+ assert.equal("categoryId" in body,false);assert.equal("tagIds" in body,false);
+ const removed=buildPostSaveBody({...base,categoryId:null,tagIds:[]},existing);
+ assert.equal(removed.categoryId,null);assert.deepEqual(removed.tagIds,[]);
+ const reordered=buildPostSaveBody({...unchanged,tagIds:["300","200"]},existing);
+ assert.deepEqual(reordered.tagIds,["300","200"]);assert.equal("categoryId" in reordered,false);
+ const created=buildPostSaveBody(unchanged);assert.equal(created.categoryId,"100");assert.deepEqual(created.tagIds,["200","300"]);
+ assert.equal("boardId" in created,false);assert.equal("slug" in created,false);
+});
+test("classification restores saved ids and rejects duplicate or malformed selection",()=>{
+ const post={...basePost,category:{id:"100"},tags:[{id:"300",name:"태그"}],blocks:[{...createEditorBlock("TEXT"),displayOrder:0}]};
+ const value=editorValueFromPost(post);assert.equal(value.categoryId,"100");assert.deepEqual(value.tagIds,["300"]);
+ assert.throws(()=>buildPostSaveBody({...value,tagIds:["300","300"]}),/태그/);
+ assert.throws(()=>buildPostSaveBody({...value,categoryId:"0"}),/카테고리/);
+ assert.throws(()=>buildPostSaveBody({...value,tagIds:["9223372036854775808"]}),/태그/);
+});
+
+test("own post classification parser preserves inactive links and refuses incomplete metadata",()=>{
+ const data={...basePost,visibilityStatus:"HIDDEN",isBlocked:false,category:{id:"100",name:"기존 분류",status:"INACTIVE"},tags:[{id:"200",name:"기존 태그",status:"INACTIVE"}],blocks:[{type:"TEXT",content:"본문",language:null,title:null,displayOrder:0}]};
+ const post=parseOwnPost({data});assert.equal(post.category.status,"INACTIVE");assert.equal(post.tags[0].status,"INACTIVE");
+ assert.throws(()=>parseOwnPost({data:{...data,category:undefined}}));
+ assert.throws(()=>parseOwnPost({data:{...data,tags:[{id:"200",name:"태그"}]}}));
+ assert.throws(()=>parseOwnPost({data:{...data,tags:[...data.tags,...data.tags]}}));
 });
