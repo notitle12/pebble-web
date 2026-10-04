@@ -10,3 +10,8 @@ test("댓글 로그인은 유효한 공개 상세로만 돌아간다",()=>{
  for(const path of ["/projects/910000000000003001","/blogs/local-preview/posts/27","/blogs/local-preview/posts/test-record"])assert.equal(loginDestination(path),path);
  for(const path of ["/projects/9223372036854775808","/projects/01","/blogs/local-preview/posts/search","/blogs/local-preview/posts/../admin","/blogs/local-preview/posts/27?next=//evil.example","/blogs/local-preview/posts/%2f%2fevil.example","/projects/1#bad"])assert.equal(loginDestination(path),"/me/posts");
 });
+
+test("프로젝트 작성과 관리의 로그인 복귀 경로를 제한한다",()=>{
+ for(const path of ["/me/projects","/projects/new","/projects/123/edit"])assert.equal(loginDestination(path),path);
+ for(const path of ["/projects/01/edit","/projects/123/edit?next=//evil.example","/projects/123/../../admin"])assert.equal(loginDestination(path),"/me/posts");
+});
