@@ -108,7 +108,7 @@ export type ArchitectureSide = "TOP" | "RIGHT" | "BOTTOM" | "LEFT";
 export type ArchitectureEdge = { id: string; source: string; target: string; label?: string | null; sourceSide?: ArchitectureSide | null; targetSide?: ArchitectureSide | null; waypoint?: {x:number;y:number} | null };
 export type ArchitectureSpec = { schemaVersion: 1; groups: ArchitectureGroup[]; nodes: ArchitectureNode[]; edges: ArchitectureEdge[] };
 export type PostBlock = { type: "TEXT" | "CODE" | "TABLE" | "ARCHITECTURE"; content: string; language: string | null; title: string | null; displayOrder: number };
-export type PostDetail = PostSummary & { projectId?: string | null; blocks: PostBlock[] };
+export type PostDetail = PostSummary & { likeCount?:number;likedByMe?:boolean; projectId?: string | null; blocks: PostBlock[] };
 const languages = ["JAVA", "JAVASCRIPT", "TYPESCRIPT", "PYTHON", "HTML", "CSS", "SQL", "JSON", "YAML", "MARKDOWN", "BASH", "SHELL"];
 const keysAre = (value: Record<string, unknown>, allowed: string[]) => Object.keys(value).every(key => allowed.includes(key));
 function safeString(value: string): boolean {
@@ -207,6 +207,7 @@ export function parseArchitectureSpec(value: unknown): ArchitectureSpec {
 export function parsePostDetail(value: unknown): PostDetail {
   if (!record(value) || !isPost(value.data) || !record(value.data)) throw new PostListError("response");
   const data = value.data;
+  if(data.likeCount!==undefined && (typeof data.likeCount!=="number" || !Number.isSafeInteger(data.likeCount) || data.likeCount<0) || data.likedByMe!==undefined && typeof data.likedByMe!=="boolean") throw new PostListError("response");
   if (data.projectId !== undefined && data.projectId !== null && (typeof data.projectId !== "string" || !validTagId(data.projectId))) throw new PostListError("response");
   if (!Array.isArray(data.blocks) || !data.blocks.every(block => record(block)
     && ["TEXT", "CODE", "TABLE", "ARCHITECTURE"].includes(String(block.type)) && typeof block.content === "string"

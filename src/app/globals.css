@@ -427,3 +427,9 @@ fieldset { min-width:0; }
 .linked-project > span { font-size: .8rem; color: var(--muted); }
 .linked-project > a { font-size: 1.1rem; font-weight: 600; }
 .linked-project > p { margin: 0; font-size: .9rem; line-height: 1.6; }
+
+.like-panel { margin-block: 2rem; padding-block: 1rem; border-block: 1px solid var(--line); }
+.like-actions, .like-login { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; }
+.like-actions .button, .like-login .button { margin-top: 0; }
+.like-button[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); }
+.like-panel > p, .like-login { margin-top: .75rem; }

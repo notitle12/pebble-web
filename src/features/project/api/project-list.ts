@@ -48,7 +48,7 @@ export async function getPublicProjects(query: ProjectQuery, baseUrl = process.e
 
 export type ProjectFeature = {id:string;title:string;description:string|null;displayOrder:number};
 export type ProjectLink = {id:string;linkType:string;label:string|null;url:string;displayOrder:number};
-export type ProjectDetail = ProjectSummary & {description:string|null;architectureDescription:string|null;executionInstructions:string|null;startedOn:string|null;completedOn:string|null;features:ProjectFeature[];links:ProjectLink[]};
+export type ProjectDetail = ProjectSummary & {likeCount?:number;likedByMe?:boolean;description:string|null;architectureDescription:string|null;executionInstructions:string|null;startedOn:string|null;completedOn:string|null;features:ProjectFeature[];links:ProjectLink[]};
 const nullableText = (value:unknown) => value===null || value===undefined || typeof value==="string";
 const dateOnly = (value:unknown) => value===null || (typeof value==="string" && /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0,10)===value);
 export function projectHref(id:string,page=0):string|null {
@@ -60,6 +60,7 @@ export function safeExternalUrl(value:string):string|null {
 export function parseProjectDetail(value:unknown):ProjectDetail {
   if(!record(value) || !isProject(value.data)) throw new GuestApiError("response");
   const data=value.data;
+  if(data.likeCount!==undefined && (typeof data.likeCount!=="number" || !Number.isSafeInteger(data.likeCount) || data.likeCount<0) || data.likedByMe!==undefined && typeof data.likedByMe!=="boolean") throw new GuestApiError("response");
   if(![data.description,data.architectureDescription,data.executionInstructions].every(nullableText) || !dateOnly(data.startedOn) || !dateOnly(data.completedOn)
     || !Array.isArray(data.features) || !data.features.every(feature=>record(feature) && typeof feature.id==="string" && validTagId(feature.id) && typeof feature.title==="string" && nullableText(feature.description) && count(feature.displayOrder))
     || !Array.isArray(data.links) || !data.links.every(link=>record(link) && typeof link.id==="string" && validTagId(link.id) && ["GITHUB","DEPLOYMENT","DOWNLOAD","OTHER"].includes(String(link.linkType)) && nullableText(link.label) && typeof link.url==="string" && count(link.displayOrder))) throw new GuestApiError("response");

@@ -1,3 +1,4 @@
+import {LikePanel} from "@/features/like/components/like-panel";
 import {CommentsPanel} from "@/features/comment/components/comments-panel";
 import { cache, Suspense } from "react";
 import {LinkedProject} from "@/features/post/components/linked-project";
@@ -35,6 +36,7 @@ export default async function PostPage({ params }: Props) {
         <h1>{post.title}</h1>{post.summary && <p>{post.summary}</p>}
         <ul className="tag-list" aria-label="기술 태그">{post.tags.map(tag=><li key={tag.id}>{tag.name}</li>)}</ul>
       </header><PostBody blocks={post.blocks} /></article>
+    <LikePanel target="posts" contentId={post.id} initialCount={post.likeCount}/>
     {post.projectId&&<Suspense fallback={<section className="linked-project" role="status">연결 프로젝트를 불러오는 중…</section>}><LinkedProject id={post.projectId}/></Suspense>}
     <CommentsPanel target="posts" contentId={post.id}/></main><footer className="site-footer">Pebble · 함께 쌓아가는 개발 기록</footer></>;
 }
