@@ -21,13 +21,21 @@ export type PostPage = {
   hasNext: boolean;
   hasPrevious: boolean;
 };
-export { parsePage, parseListQuery as parsePostQuery } from "../../../lib/list-query.ts";
-export type { ListFilters as PostFilters, ListQuery as PostQuery } from "../../../lib/list-query.ts";
-import { parsePage, parseListQuery as parsePostQuery, validTagId, type ListFilters as PostFilters } from "../../../lib/list-query.ts";
+export { parsePage } from "../../../lib/list-query.ts";
+export type PostFilters = ListFilters & { categoryId?: string };
+export type PostQuery = PostFilters & { page: number };
+import { parsePage, parseListQuery, validTagId, type ListFilters } from "../../../lib/list-query.ts";
+export function parsePostQuery(params: Record<string,string|string[]|undefined>): PostQuery | null {
+  const {categoryId,...rest}=params;
+  const query=parseListQuery(rest);
+  if(!query || Array.isArray(categoryId) || (categoryId && !validTagId(categoryId)))return null;
+  return {...query,...(categoryId ? {categoryId} : {})};
+}
 export function pageHref(page: number, filters: PostFilters = {}): string {
   const params = new URLSearchParams();
   if (filters.q) params.set("q", filters.q);
   if (filters.tagId) params.set("tagId", filters.tagId);
+  if (filters.categoryId) params.set("categoryId", filters.categoryId);
   if (page > 0) params.set("page", String(page));
   return params.size ? `/?${params}` : "/";
 }
@@ -69,11 +77,12 @@ export async function getPublicPosts(
   request: typeof fetch = fetch,
   filters: PostFilters = {},
 ): Promise<PostPage> {
-  const query = parsePostQuery({ page: String(page), q: filters.q, tagId: filters.tagId });
+  const query = parsePostQuery({ page: String(page), q: filters.q, tagId: filters.tagId, categoryId: filters.categoryId });
   if (!query) throw new PostListError("response");
   const params = new URLSearchParams({ page: String(page), size: String(PAGE_SIZE) });
   if (query.q) params.set("q", query.q);
   if (query.tagId) params.set("tagId", query.tagId);
+  if (query.categoryId) params.set("categoryId", query.categoryId);
   return parsePostPage(await guestJson(query.q ? "posts/search" : "posts", params, baseUrl, request), page);
 }
 export { getPublicTags, type PublicTag } from "../../tag/api/public-tags.ts";

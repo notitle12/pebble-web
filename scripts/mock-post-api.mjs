@@ -10,11 +10,17 @@ const samples = [
 ];
 const tagNames = [...new Set(samples.flatMap(sample => sample[3]))];
 export const mockTags = tagNames.map((name, index) => ({ id: String(index + 1), name, slug: `tag-${index + 1}`, displayOrder: index, status: "ACTIVE" }));
+export const mockCategories=[
+  {id:"101",parentId:null,name:"Backend",slug:"backend",displayOrder:0,status:"ACTIVE",children:[{id:"102",parentId:"101",name:"Spring",slug:"spring",displayOrder:0,status:"ACTIVE",children:[]}]},
+  {id:"201",parentId:null,name:"Frontend",slug:"frontend",displayOrder:1,status:"ACTIVE",children:[{id:"202",parentId:"201",name:"React와 아주긴이름의반응형화면분류",slug:"react",displayOrder:0,status:"ACTIVE",children:[]}]},
+  {id:"301",parentId:null,name:"운영 기록",slug:"operations",displayOrder:2,status:"INACTIVE",children:[{id:"302",parentId:"301",name:"Cloudflare",slug:"cloudflare",displayOrder:0,status:"ACTIVE",children:[]}]}
+];
 export const mockPosts = Array.from({ length: 21 }, (_, index) => {
   const [title, summary, nickname, names] = samples[index % samples.length];
   return {
     id: String(721389012345678901n + BigInt(index)), urlKey: `note-${index + 1}`, title: index < 6 ? title : `${title} (${index + 1})`, summary,
     author: { id: String(721389012345679000n + BigInt(index % samples.length)), handle: `writer-${index % samples.length + 1}`, nickname, blogName: null },
+    category:{id:["102","202","302"][index%3],name:["Spring","React","Cloudflare"][index%3]},
     tags: names.map(name => ({ id: mockTags.find(tag => tag.name === name).id, name })),
     publishedAt: index === 5 ? null : new Date(Date.UTC(2026, 9, 3 - index, 3)).toISOString(),
     createdAt: new Date(Date.UTC(2026, 9, 3 - index, 3)).toISOString(),
@@ -36,7 +42,7 @@ export function createMockApi(state = "normal") {
     response.setHeader("Content-Type", "application/json; charset=utf-8");
     const detail = url.pathname.match(/^\/api\/v1\/blogs\/([^/]+)\/posts\/([^/]+)$/);
     const projectDetail=url.pathname.match(/^\/api\/v1\/projects\/([1-9]\d*)(\/posts)?$/);
-    if (request.method !== "GET" || (!projectDetail && !detail && !["/api/v1/posts", "/api/v1/posts/search", "/api/v1/tags", "/api/v1/projects", "/api/v1/projects/search"].includes(url.pathname))) {
+    if (request.method !== "GET" || (!projectDetail && !detail && !["/api/v1/posts", "/api/v1/posts/search", "/api/v1/tags", "/api/v1/categories", "/api/v1/projects", "/api/v1/projects/search"].includes(url.pathname))) {
       response.writeHead(404); response.end(JSON.stringify({ error: { code: "NOT_FOUND" } })); return;
     }
     if (state === "slow") await new Promise(resolve => setTimeout(resolve, 2500));
@@ -65,7 +71,8 @@ export function createMockApi(state = "normal") {
         {type:"TEXT",content:"검증 결과를 기록하고 다음 개선점을 정리합니다.",language:null,title:null,displayOrder:2}
       ]}})); return;
     }
-    if (url.pathname === "/api/v1/tags") { response.end(JSON.stringify({ data: mockTags })); return; }
+    if (url.pathname === "/api/v1/tags") { response.end(JSON.stringify({ data: state === "empty" ? [] : mockTags })); return; }
+    if (url.pathname === "/api/v1/categories") { response.end(JSON.stringify({data: state === "empty" ? [] : mockCategories})); return; }
     const page = Number(url.searchParams.get("page") ?? "0");
     const size = Number(url.searchParams.get("size") ?? "20");
     if (!Number.isSafeInteger(page) || page < 0 || size !== 20) {
@@ -83,10 +90,12 @@ export function createMockApi(state = "normal") {
       const content=projects.slice(page*size,(page+1)*size).map(({description,...project})=>project);
       response.end(JSON.stringify({data:{content,page,size,totalElements:projects.length,totalPages,hasNext:page+1<totalPages,hasPrevious:page>0}}));return;
     }
-    // 목 글은 본문·분류를 갖지 않는다. title과 Tag만 실제 검색 계약처럼 부분 일치시킨다.
+    const categoryId=url.searchParams.get("categoryId");
+    const categoryIds=categoryId ? [categoryId,...(mockCategories.find(category=>category.id===categoryId)?.children.map(child=>child.id)??[])] : [];
+    // 목 글은 본문을 갖지 않는다. 제목·태그·연결 분류와 상위 분류를 검색한다.
     const posts = (state === "empty" ? [] : mockPosts).filter(post =>
-      (!q || [post.title, ...post.tags.map(tag => tag.name)].some(text => text.toLocaleLowerCase().includes(q)))
-      && (!tagId || post.tags.some(tag => tag.id === tagId)));
+      (!q || [post.title, ...post.tags.map(tag => tag.name), ...mockCategories.filter(category=>category.id===post.category.id || category.children.some(child=>child.id===post.category.id)).flatMap(category=>[category.name,...category.children.filter(child=>child.id===post.category.id).map(child=>child.name)])].some(text => text.toLocaleLowerCase().includes(q)))
+      && (!tagId || post.tags.some(tag => tag.id === tagId)) && (!categoryId || categoryIds.includes(post.category.id)));
 
     const totalPages = Math.ceil(posts.length / size);
     response.end(JSON.stringify({ data: {
