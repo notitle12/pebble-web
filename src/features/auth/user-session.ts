@@ -1,4 +1,5 @@
 import { memberJson, MemberApiError, responseData } from "../../lib/member-api.ts";
+import {isIsoInstant} from "../../lib/date-time.ts";
 export type Member = { id: string; nickname: string; handle: string | null; blogName: string | null; profileImageUrl: string | null; profileCompleted: boolean; status: "ACTIVE" };
 export type SessionState = { phase: "loading" | "ready" | "guest" | "error"; member: Member | null; message: string };
 export const initialSession: SessionState = { phase: "loading", member: null, message: "" };
@@ -86,7 +87,7 @@ export function createUserSession(request: typeof fetch = fetch, exclusive: Excl
       if(epoch!==generation)throw new MemberApiError(401,"SESSION_CHANGED","로그인 상태가 변경되었습니다.");
       try {
         const data=responseData(await exclusive(()=>raw("/members/me",{method:"DELETE",token:bearer,cookies:true})));
-        if(typeof data.withdrawalScheduledAt!=="string"||!Number.isFinite(Date.parse(data.withdrawalScheduledAt)))throw new MemberApiError(0,"INVALID_RESPONSE","탈퇴 예약 결과를 확인하지 못했습니다.");
+        if(!isIsoInstant(data.withdrawalScheduledAt))throw new MemberApiError(0,"INVALID_RESPONSE","탈퇴 예약 결과를 확인하지 못했습니다.");
         if(epoch!==generation)throw new MemberApiError(401,"SESSION_CHANGED","로그인 상태가 변경되었습니다.");
         clear();publish({phase:"guest",member:null,message:"탈퇴 예약이 완료되었습니다."});announce();
         return data.withdrawalScheduledAt;

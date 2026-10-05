@@ -453,3 +453,4 @@ fieldset { min-width:0; }
 @media(max-width:600px){.profile-form{padding:17px}.profile-photo-field{align-items:flex-start}.profile-avatar-frame{flex-basis:72px;width:72px;height:72px}.profile-input-row{align-items:stretch}.profile-check{align-self:end;padding-inline:10px}.withdrawal-screen{padding:22px 18px}}
 
 .header-logout{padding:8px 2px;border:0;background:transparent;color:var(--muted);font:inherit;white-space:nowrap;cursor:pointer}.header-logout:hover{color:var(--accent)}
+.withdrawal-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}.withdrawal-actions .button{margin:0}.withdrawal-actions .withdrawal-danger{margin-right:0}
