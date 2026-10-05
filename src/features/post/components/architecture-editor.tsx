@@ -20,7 +20,7 @@ const groupTitle: Record<string, string> = { AWS: "AWS 클라우드", ORACLE_CLO
 const kindTitle: Record<string, string> = { APP: "앱 서버", CLIENT: "클라이언트", DATABASE: "데이터베이스", CACHE: "캐시", STORAGE: "스토리지", PROXY: "프록시", CUSTOM: "사용자 정의" };
 const fresh = (prefix: string, existing: string[]) => { let n = existing.length + 1; while (existing.includes(`${prefix}-${n}`)) n++; return `${prefix}-${n}`; };
 const allIds = (spec: ArchitectureSpec) => [...spec.groups.map((item) => item.id), ...spec.nodes.map((item) => item.id), ...spec.edges.map((item) => item.id)];
-export function ArchitectureEditor({ onChange, initialValue }: { onChange?: (value: ArchitectureSpec | null) => void; initialValue?: ArchitectureSpec }) {
+export function ArchitectureEditor({ onChange, initialValue, embedded = false }: { onChange?: (value: ArchitectureSpec | null) => void; initialValue?: ArchitectureSpec; embedded?: boolean }) {
   const [spec, setSpec] = useState<ArchitectureSpec>(() => initialValue ?? sample);
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
@@ -117,6 +117,6 @@ export function ArchitectureEditor({ onChange, initialValue }: { onChange?: (val
       {edge && <><label>연결 설명<input value={edge.label ?? ""} maxLength={200} onChange={(event) => update((current) => ({ ...current, edges: current.edges.map((item) => item.id === edge.id ? { ...item, label: event.target.value || null } : item) }))} /></label><label>시작 요소<select value={edge.source} onChange={(event) => updateEdge(edge.id, { source: event.target.value })}>{endpoints.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label><label>도착 요소<select value={edge.target} onChange={(event) => updateEdge(edge.id, { target: event.target.value })}>{endpoints.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label><div className="architecture-coordinate-fields">{(["sourceSide","targetSide"] as const).map(key=><label key={key}>{key==="sourceSide"?"시작 변":"도착 변"}<select value={edge[key]??""} onChange={event=>updateEdge(edge.id,{[key]:event.target.value||null})}><option value="">자동</option><option value="TOP">위쪽</option><option value="RIGHT">오른쪽</option><option value="BOTTOM">아래쪽</option><option value="LEFT">왼쪽</option></select></label>)}</div><button className="architecture-auto-layout" type="button" onClick={()=>updateEdge(edge.id,{source:edge.target,target:edge.source,sourceSide:edge.targetSide,targetSide:edge.sourceSide})}>방향 뒤집기</button><button className="architecture-auto-layout" type="button" onClick={()=>updateEdge(edge.id,{sourceSide:null,targetSide:null,waypoint:null})}>자동 경로로 복원</button><p>가운데 점을 드래그하면 경로를 바꿀 수 있습니다. 시작·도착점을 다른 변으로 끌어 연결을 옮기세요.</p><button className="architecture-delete" type="button" onClick={() => deleteEdge(edge.id)}>연결 삭제</button></>}{!selected && !group && !edge && <p className="architecture-empty-inspector">요소나 그룹을 선택하면 이름, 아이콘, 그룹, 좌표를 편집할 수 있습니다.</p>}
     </aside>
     {invalid && <div className="architecture-editor-error" role="alert">{issues.join(" ")}</div>}
-    <p className="architecture-editor-note">개발용 미리보기입니다. 게시글 편집기 연결과 저장 기능은 아직 제공하지 않습니다.</p>
+    {!embedded && <p className="architecture-editor-note">개발용 미리보기입니다. 게시글 편집기 연결과 저장 기능은 아직 제공하지 않습니다.</p>}
   </div>;
 }

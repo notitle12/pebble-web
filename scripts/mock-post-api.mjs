@@ -22,6 +22,7 @@ export const mockPosts = Array.from({ length: 21 }, (_, index) => {
     author: { id: String(721389012345679000n + BigInt(index % samples.length)), handle: `writer-${index % samples.length + 1}`, nickname, blogName: null },
     category:{id:["102","202","302"][index%3],name:["Spring","React","Cloudflare"][index%3]},
     tags: names.map(name => ({ id: mockTags.find(tag => tag.name === name).id, name })),
+    likeCount: 0, likedByMe: false,
     publishedAt: index === 5 ? null : new Date(Date.UTC(2026, 9, 3 - index, 3)).toISOString(),
     createdAt: new Date(Date.UTC(2026, 9, 3 - index, 3)).toISOString(),
   };
@@ -31,7 +32,7 @@ export const mockProjects = Array.from({length:21},(_,i)=>({
   id:String(721389012345680000n+BigInt(i)),owner:{id:"721389012345679000",nickname:["수민","지우","민준"][i%3]},
   name:["Pebble 개발 기록 플랫폼","작은 팀을 위한 일정 관리","R2 이미지 아카이브"][i%3]+(i>2 ? ` (${i+1})` : ""),
   summary:["개발자의 글과 프로젝트를 한곳에 모아 공유하는 서비스입니다.","함께 작업할 때 필요한 일정과 기록을 간결하게 정리했습니다.","이미지를 저장하고 만료되는 URL을 안전하게 관리합니다."][i%3],
-  description:"목 프로젝트 상세 소개",lifecycleStatus:i%2 ? "COMPLETED" : "IN_PROGRESS",
+  likeCount:0,likedByMe:false,description:"목 프로젝트 상세 소개",lifecycleStatus:i%2 ? "COMPLETED" : "IN_PROGRESS",
   tags:[mockTags[i%mockTags.length]],publishedAt:new Date(Date.UTC(2026,9,3-i,3)).toISOString(),createdAt:new Date(Date.UTC(2026,9,3-i,3)).toISOString()
 }));
 
@@ -41,8 +42,9 @@ export function createMockApi(state = "normal") {
     const url = new URL(request.url, "http://localhost");
     response.setHeader("Content-Type", "application/json; charset=utf-8");
     const detail = url.pathname.match(/^\/api\/v1\/blogs\/([^/]+)\/posts\/([^/]+)$/);
+    const numericPost = url.pathname.match(/^\/api\/v1\/posts\/([1-9]\d*)$/);
     const projectDetail=url.pathname.match(/^\/api\/v1\/projects\/([1-9]\d*)(\/posts)?$/);
-    if (request.method !== "GET" || (!projectDetail && !detail && !["/api/v1/posts", "/api/v1/posts/search", "/api/v1/tags", "/api/v1/categories", "/api/v1/projects", "/api/v1/projects/search"].includes(url.pathname))) {
+    if (request.method !== "GET" || (!projectDetail && !detail && !numericPost && !["/api/v1/posts", "/api/v1/posts/search", "/api/v1/tags", "/api/v1/categories", "/api/v1/projects", "/api/v1/projects/search"].includes(url.pathname))) {
       response.writeHead(404); response.end(JSON.stringify({ error: { code: "NOT_FOUND" } })); return;
     }
     if (state === "slow") await new Promise(resolve => setTimeout(resolve, 2500));
@@ -62,8 +64,8 @@ export function createMockApi(state = "normal") {
         links:[{id:"1",linkType:"OTHER",label:"예시 링크",url:"https://example.com",displayOrder:0}]
       }}));return;
     }
-    if (detail) {
-      const post = state === "empty" ? undefined : mockPosts.find(post => post.author.handle === detail[1] && post.urlKey === detail[2]);
+    if (detail || numericPost) {
+      const post = state === "empty" ? undefined : mockPosts.find(post => numericPost ? post.id === numericPost[1] : post.author.handle === detail[1] && post.urlKey === detail[2]);
       if (!post) { response.writeHead(404); response.end(JSON.stringify({error:{code:"POST_NOT_FOUND"}})); return; }
       response.end(JSON.stringify({data:{...post, blocks:[
         {type:"TEXT",content:"작은 문제부터 나누어 살펴보고, 각 단계의 책임을 정리했습니다.\n\n이 본문은 화면 검증을 위한 목 데이터입니다. <script>alert('example')</script>도 텍스트로 표시합니다.",language:null,title:null,displayOrder:0},
