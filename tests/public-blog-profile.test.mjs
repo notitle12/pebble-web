@@ -17,3 +17,12 @@ test("공개 프로필은 인증 정보 없이 정확한 Guest 경로를 호출�
   assert.equal(profile.id,data.id);
   await assert.rejects(()=>getPublicBlogProfile(data.handle,"https://api.example/api/v1",async()=>new Response(null,{status:404})),error=>error.kind==="not-found");
 });
+test("공개 프로필 경로는 영구 handle의 밑줄 문자를 허용한다",async()=>{
+  const handle="pebble_log_";
+  const profile={...data,handle};
+  const result=await getPublicBlogProfile(handle,"https://api.example/api/v1",async(url)=>{
+    assert.equal(String(url),"https://api.example/api/v1/blogs/pebble_log_");
+    return Response.json({data:profile});
+  });
+  assert.equal(result.handle,handle);
+});

@@ -5,6 +5,7 @@ import { createMockApi } from "../scripts/mock-post-api.mjs";
 import { getPublicPost, parseArchitectureSpec, parsePostDetail, postHref } from "../src/features/post/api/post-list.ts";
 test("공개 주소는 handle+slug 또는 BIGINT 글 번호이며 경로 주입을 거부",()=>{
   assert.equal(postHref("writer-1","note-1"),"/blogs/writer-1/posts/note-1");
+  assert.equal(postHref("writer_name_","note-1"),"/blogs/writer_name_/posts/note-1");
   assert.ok(postHref("writer-1","9223372036854775807"));
   for(const key of ["../oops","a/b","search","01","9223372036854775808"]) assert.equal(postHref("writer-1",key),null);
   assert.equal(postHref("x/other","note-1"),null);

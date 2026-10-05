@@ -9,7 +9,7 @@ import { blogHref, getPublicBlogPosts, getPublicBlogProfile } from "@/features/p
 import { PostCards } from "@/features/post/components/post-cards";
 
 export const dynamic = "force-dynamic";
-const validHandle = (handle: string) => /^[a-z][a-z0-9-]{1,28}[a-z0-9]$/.test(handle);
+const validHandle = (handle: string) => /^[a-z][a-z0-9_-]{1,28}[a-z0-9_]$/.test(handle);
 
 function InvalidPage() {
   return <section className="list-state"><h1>페이지 주소를 확인해 주세요</h1><p>페이지 번호는 0 이상의 숫자여야 합니다.</p></section>;
@@ -75,4 +75,3 @@ export default async function PublicBlogPage({ params, searchParams }: {
     </main>
   </>;
 }
-
