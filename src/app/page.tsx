@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { SiteHeader } from "@/components/site-header";
 import { Suspense } from "react";
 import { parsePostQuery } from "@/features/post/api/post-list";
@@ -14,16 +15,17 @@ export default async function HomePage({ searchParams }: {
   return <>
     <a className="skip-link" href="#main-content">본문으로 바로가기</a>
     <SiteHeader home />
-    <main id="main-content" className="page-shell">
-      <section className="intro">
+    <main id="main-content" className="page-shell home-shell">
+      <section className="intro home-intro">
         {process.env.NODE_ENV === "development" && process.env.PEBBLE_PREVIEW_MODE === "mock" && <p className="preview-notice" role="status">목 데이터 미리보기 · 실제 게시글이 아닙니다</p>}
-        <h1>개발자의 기록과 프로젝트를 만나보세요</h1><p>다양한 개발자의 경험과 기술 기록을 둘러보세요.</p>
+        <p className="home-eyebrow">생각을 쓰고, 경험을 나누고.</p><h1>만드는 사람들의<br/><span>오래 남는 기록.</span></h1><p>한 줄의 코드부터 하나의 프로젝트까지.<br/>개발자의 작업과 그 뒤에 있는 이야기를 읽어보세요.</p><Link className="home-blog-link" href="/me/blog" prefetch={false}>내 블로그로 가기 <span aria-hidden="true">↗</span></Link>
+        <aside className="hero-note"><span className="hero-note-index">PEBBLE / JOURNAL</span><p>좋은 기록은<br/>다음 작업의 시작이 됩니다.</p><Link href="/projects">만들어진 프로젝트 둘러보기 <span aria-hidden="true">↗</span></Link></aside>
       </section>
       {query === null ? <InvalidPage /> : <>
         <Suspense key={`search-${JSON.stringify(query)}`} fallback={<p role="status">검색 조건을 불러오고 있어요.</p>}><PostSearch query={query} /></Suspense>
         <Suspense key={JSON.stringify(query)} fallback={<PostListLoading />}><PostList query={query} /></Suspense>
       </>}
     </main>
-    <footer className="site-footer">Pebble · 함께 쌓아가는 개발 기록</footer>
+    <footer className="site-footer">Pebble · 개발자의 생각을 담는 블로그</footer>
   </>;
 }
