@@ -14,7 +14,8 @@ export function InvalidPage() {
 }
 
 
-export async function PostList({ query }: { query: PostQuery }) {
+export async function PostList({ query, listPath = "/" }: { query: PostQuery; listPath?: "/" | "/posts" }) {
+  const href = (page:number,filters:PostQuery=query) => pageHref(page,filters).replace(/^\//,listPath === "/" ? "/" : "/posts");
   const { page, q, tagId, categoryId } = query;
   const filtered = Boolean(q || tagId || categoryId);
   let result;
@@ -23,23 +24,23 @@ export async function PostList({ query }: { query: PostQuery }) {
     const network = error instanceof PostListError && error.kind === "network";
     return <section className="list-state" role="alert"><h2>게시글을 불러오지 못했어요</h2>
       <p>{network ? "연결이 원활하지 않습니다. 잠시 후 다시 시도해 주세요." : "일시적으로 목록을 표시할 수 없습니다. 잠시 후 다시 시도해 주세요."}</p>
-      <a className="button" href={pageHref(page, query)}>다시 시도</a>
+      <a className="button" href={href(page)}>다시 시도</a>
     </section>;
   }
   if (result.content.length === 0) {
     return <section className="list-state"><h2>{page === 0 ? (filtered ? "조건에 맞는 글이 없어요" : "아직 공개된 글이 없어요") : "이 페이지에는 게시글이 없어요"}</h2>
       <p>{page === 0 ? (filtered ? "검색어나 기술 태그를 바꿔서 다시 찾아보세요." : "새로운 개발 기록이 올라오면 이곳에서 만나볼 수 있어요.") : "글이 삭제되거나 목록이 변경되었을 수 있습니다."}</p>
-      {page > 0 && <Link className="button" href={pageHref(0, query)}>첫 페이지로</Link>}
-      {filtered && <Link className="button" href="/">조건 초기화</Link>}
+      {page > 0 && <Link className="button" href={href(0)}>첫 페이지로</Link>}
+      {filtered && <Link className="button" href={listPath}>조건 초기화</Link>}
     </section>;
   }
   return <section aria-label="공개 게시글 목록">
     <div className="list-heading"><h2>{filtered ? "검색 결과" : "새로운 기록"}</h2><span>총 {result.totalElements.toLocaleString("ko-KR")}개의 글</span></div>
     <PostCards posts={result.content} />
     <nav className="pagination" aria-label="게시글 페이지 이동">
-      {result.hasPrevious ? <Link className="page-link" href={pageHref(page - 1, query)} prefetch={false} aria-label="이전 페이지">← 이전</Link> : <span className="page-link disabled" aria-disabled="true">← 이전</span>}
+      {result.hasPrevious ? <Link className="page-link" href={href(page - 1)} prefetch={false} aria-label="이전 페이지">← 이전</Link> : <span className="page-link disabled" aria-disabled="true">← 이전</span>}
       <span aria-current="page">{page + 1} / {result.totalPages} 페이지</span>
-      {result.hasNext ? <Link className="page-link" href={pageHref(page + 1, query)} prefetch={false} aria-label="다음 페이지">다음 →</Link> : <span className="page-link disabled" aria-disabled="true">다음 →</span>}
+      {result.hasNext ? <Link className="page-link" href={href(page + 1)} prefetch={false} aria-label="다음 페이지">다음 →</Link> : <span className="page-link disabled" aria-disabled="true">다음 →</span>}
     </nav>
   </section>;
 }
