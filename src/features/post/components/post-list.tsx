@@ -9,14 +9,14 @@ export function PostListLoading() {
 }
 export function InvalidPage() {
   return <section className="list-state"><h2>검색 조건을 확인해 주세요</h2>
-    <p>검색어는 200자 이내, 태그와 페이지 번호는 올바른 값이어야 합니다.</p><Link className="button" href="/">첫 페이지로</Link>
+    <p>검색어는 200자 이내, 태그·분류와 페이지 번호는 올바른 값이어야 합니다.</p><Link className="button" href="/">첫 페이지로</Link>
   </section>;
 }
 
 
 export async function PostList({ query }: { query: PostQuery }) {
-  const { page, q, tagId } = query;
-  const filtered = Boolean(q || tagId);
+  const { page, q, tagId, categoryId } = query;
+  const filtered = Boolean(q || tagId || categoryId);
   let result;
   try { result = await getPublicPosts(page, undefined, undefined, query); }
   catch (error) {
