@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { getPublicPosts, parsePage, parsePostPage, pageHref, PostListError } from "../src/features/post/api/post-list.ts";
-const post = { id: "721389012345678901", title: "Spring 기록", summary: null, author: { id: "721389012345678902", nickname: "작성자", blogName: null }, tags: [], publishedAt: "2026-10-03T00:00:00Z", createdAt: "2026-10-03T00:00:00Z" };
+const post = { id: "721389012345678901", urlKey: "spring-note", title: "Spring 기록", summary: null, author: { id: "721389012345678902", handle: "pebble-dev", nickname: "작성자", blogName: null }, tags: [], publishedAt: "2026-10-03T00:00:00Z", createdAt: "2026-10-03T00:00:00Z" };
 const body = (page = 0, content = [post], total = 21) => ({ data: { content, page, size: 20, totalElements: total, totalPages: Math.ceil(total / 20), hasPrevious: page > 0, hasNext: page + 1 < Math.ceil(total / 20) } });
 test("페이지 기본값·중복·음수·소수·offset 한도", () => {
   assert.equal(parsePage(undefined), 0); assert.equal(parsePage("1"), 1);

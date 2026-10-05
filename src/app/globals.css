@@ -60,3 +60,19 @@ input:focus-visible, select:focus-visible, button:focus-visible { outline: 3px s
 .tag-options { position: absolute; top: calc(100% + 6px); left: 0; width: 100%; max-height: 280px; overflow-y: auto; z-index: 5; background: white; border: 1px solid var(--line); border-radius: 10px; padding: 6px; box-shadow: 0 8px 24px #17243d18; }
 .tag-options button { display: flex; justify-content: space-between; gap: 8px; width: 100%; min-height: 44px; padding: 10px; border: 0; border-radius: 6px; color: var(--text); background: white; font: inherit; font-size: 14px; text-align: left; overflow-wrap: anywhere; cursor: pointer; }
 .tag-options button[aria-pressed="true"], .tag-options button:hover { background: #edf3ff; color: #285cde; }
+
+.post-card h3 a:hover { color: var(--accent); }
+.detail-shell { padding-top: 28px; }
+.detail-back { display: block; margin-bottom: 20px; color: var(--muted); font-size: 14px; }
+.post-detail { background: white; border: 1px solid var(--line); border-radius: 16px; padding: 40px; }
+.post-detail > header { padding-bottom: 28px; border-bottom: 1px solid var(--line); }
+.post-body { padding-top: 28px; }
+.text-block { margin: 24px 0; }
+.text-block p { white-space: pre-wrap; color: var(--text); }
+.code-block { min-width: 0; margin: 28px 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.code-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; background: #edf3ff; font-size: 14px; overflow-wrap: anywhere; }
+.code-heading button { flex-shrink: 0; min-height: 36px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 6px; background: white; color: var(--text); cursor: pointer; }
+.code-block pre { margin: 0; padding: 20px; overflow-x: auto; font-size: 14px; line-height: 1.8; background: #f7f9fc; }
+.code-block pre:focus-visible { outline: 3px solid var(--accent); outline-offset: -3px; }
+.copy-status:not(:empty) { padding: 8px 16px; font-size: 12px; }
+@media (max-width: 600px) { .post-detail { padding: 24px 20px; } }
