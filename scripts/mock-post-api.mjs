@@ -21,13 +21,21 @@ export const mockPosts = Array.from({ length: 21 }, (_, index) => {
   };
 });
 
+export const mockProjects = Array.from({length:21},(_,i)=>({
+  id:String(721389012345680000n+BigInt(i)),owner:{id:"721389012345679000",nickname:["수민","지우","민준"][i%3]},
+  name:["Pebble 개발 기록 플랫폼","작은 팀을 위한 일정 관리","R2 이미지 아카이브"][i%3]+(i>2 ? ` (${i+1})` : ""),
+  summary:["개발자의 글과 프로젝트를 한곳에 모아 공유하는 서비스입니다.","함께 작업할 때 필요한 일정과 기록을 간결하게 정리했습니다.","이미지를 저장하고 만료되는 URL을 안전하게 관리합니다."][i%3],
+  description:"목 프로젝트 상세 소개",lifecycleStatus:i%2 ? "COMPLETED" : "IN_PROGRESS",
+  tags:[mockTags[i%mockTags.length]],publishedAt:new Date(Date.UTC(2026,9,3-i,3)).toISOString(),createdAt:new Date(Date.UTC(2026,9,3-i,3)).toISOString()
+}));
+
 export function createMockApi(state = "normal") {
   if (!["normal", "empty", "error", "slow"].includes(state)) throw new Error("지원 상태: normal, empty, error, slow");
   return http.createServer(async (request, response) => {
     const url = new URL(request.url, "http://localhost");
     response.setHeader("Content-Type", "application/json; charset=utf-8");
     const detail = url.pathname.match(/^\/api\/v1\/blogs\/([^/]+)\/posts\/([^/]+)$/);
-    if (request.method !== "GET" || (!detail && !["/api/v1/posts", "/api/v1/posts/search", "/api/v1/tags"].includes(url.pathname))) {
+    if (request.method !== "GET" || (!detail && !["/api/v1/posts", "/api/v1/posts/search", "/api/v1/tags", "/api/v1/projects", "/api/v1/projects/search"].includes(url.pathname))) {
       response.writeHead(404); response.end(JSON.stringify({ error: { code: "NOT_FOUND" } })); return;
     }
     if (state === "slow") await new Promise(resolve => setTimeout(resolve, 2500));
@@ -52,6 +60,15 @@ export function createMockApi(state = "normal") {
     const q = url.searchParams.get("q")?.trim().toLocaleLowerCase() ?? "";
     if (url.pathname.endsWith("/search") && !q) { response.writeHead(400); response.end(JSON.stringify({ error: { code: "VALIDATION_ERROR" } })); return; }
     const tagId = url.searchParams.get("tagId");
+    if (url.pathname.startsWith("/api/v1/projects")) {
+      const lifecycleStatus=url.searchParams.get("lifecycleStatus");
+      const projects=(state === "empty" ? [] : mockProjects).filter(project=>
+        (!q || [project.name,project.summary,project.description,...project.tags.map(tag=>tag.name)].some(text=>text.toLowerCase().includes(q)))
+        && (!tagId || project.tags.some(tag=>tag.id===tagId)) && (!lifecycleStatus || project.lifecycleStatus===lifecycleStatus));
+      const totalPages=Math.ceil(projects.length/size);
+      const content=projects.slice(page*size,(page+1)*size).map(({description,...project})=>project);
+      response.end(JSON.stringify({data:{content,page,size,totalElements:projects.length,totalPages,hasNext:page+1<totalPages,hasPrevious:page>0}}));return;
+    }
     // 목 글은 본문·분류를 갖지 않는다. title과 Tag만 실제 검색 계약처럼 부분 일치시킨다.
     const posts = (state === "empty" ? [] : mockPosts).filter(post =>
       (!q || [post.title, ...post.tags.map(tag => tag.name)].some(text => text.toLocaleLowerCase().includes(q)))

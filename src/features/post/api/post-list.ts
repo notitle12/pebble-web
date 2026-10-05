@@ -1,5 +1,6 @@
+import { GuestApiError as PostListError, guestJson } from "../../../lib/public-api.ts";
+export { GuestApiError as PostListError } from "../../../lib/public-api.ts";
 export const PAGE_SIZE = 20;
-const MAX_PAGE = Math.floor(2147483647 / PAGE_SIZE);
 
 export type PostSummary = {
   id: string;
@@ -20,38 +21,9 @@ export type PostPage = {
   hasNext: boolean;
   hasPrevious: boolean;
 };
-export class PostListError extends Error {
-  readonly kind: "configuration" | "network" | "response" | "not-found";
-  constructor(kind: "configuration" | "network" | "response" | "not-found") {
-    super(kind);
-    this.kind = kind;
-    this.name = "PostListError";
-  }
-}
-
-// URL에서도 API와 같은 0부터 시작하는 페이지 번호를 사용한다.
-export function parsePage(value: string | string[] | undefined): number | null {
-  if (value === undefined) return 0;
-  if (typeof value !== "string" || !/^(0|[1-9]\d*)$/.test(value)) return null;
-  const page = Number(value);
-  return Number.isSafeInteger(page) && page <= MAX_PAGE ? page : null;
-}
-export type PostFilters = { q?: string; tagId?: string };
-export type PostQuery = PostFilters & { page: number };
-const validTagId = (value: string) => /^[1-9]\d{0,18}$/.test(value) && BigInt(value) <= 9223372036854775807n;
-const validQuery = (value: string) => Array.from(value).length <= 200 && !Array.from(value).some(c => {
-  const code = c.codePointAt(0)!;
-  return code === 0 || (code >= 0xd800 && code <= 0xdfff);
-});
-export function parsePostQuery(params: Record<string, string | string[] | undefined>): PostQuery | null {
-  if (Object.keys(params).some(key => !["page", "q", "tagId"].includes(key))) return null;
-  const page = parsePage(params.page);
-  if (page === null || Array.isArray(params.q) || Array.isArray(params.tagId)) return null;
-  const q = params.q?.trim() || undefined;
-  const tagId = params.tagId || undefined;
-  if ((q && !validQuery(q)) || (tagId && !validTagId(tagId))) return null;
-  return { page, q, tagId };
-}
+export { parsePage, parseListQuery as parsePostQuery } from "../../../lib/list-query.ts";
+export type { ListFilters as PostFilters, ListQuery as PostQuery } from "../../../lib/list-query.ts";
+import { parsePage, parseListQuery as parsePostQuery, validTagId, type ListFilters as PostFilters } from "../../../lib/list-query.ts";
 export function pageHref(page: number, filters: PostFilters = {}): string {
   const params = new URLSearchParams();
   if (filters.q) params.set("q", filters.q);
@@ -91,26 +63,6 @@ export function parsePostPage(value: unknown, requestedPage: number): PostPage {
     hasNext: data.hasNext, hasPrevious: data.hasPrevious,
   };
 }
-async function guestJson(path: string, params: URLSearchParams, baseUrl: string | undefined, request: typeof fetch): Promise<unknown> {
-  let url: URL;
-  try {
-    if (!baseUrl) throw new Error();
-    url = new URL(baseUrl);
-    if (!["http:", "https:"].includes(url.protocol) || url.username || url.password || url.search || url.hash) throw new Error();
-    url.pathname = `${url.pathname.replace(/\/$/, "")}/${path}`;
-    url.search = params.toString();
-  } catch { throw new PostListError("configuration"); }
-  let response: Response;
-  try {
-    response = await request(url, {
-      cache: "no-store", credentials: "omit", headers: { Accept: "application/json" },
-      signal: AbortSignal.timeout(8000),
-    });
-  } catch { throw new PostListError("network"); }
-  if (response.status === 404) throw new PostListError("not-found");
-  if (!response.ok) throw new PostListError("response");
-  try { return await response.json(); } catch { throw new PostListError("response"); }
-}
 export async function getPublicPosts(
   page: number,
   baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL,
@@ -124,15 +76,7 @@ export async function getPublicPosts(
   if (query.tagId) params.set("tagId", query.tagId);
   return parsePostPage(await guestJson(query.q ? "posts/search" : "posts", params, baseUrl, request), page);
 }
-export type PublicTag = { id: string; name: string };
-export async function getPublicTags(baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL, request: typeof fetch = fetch): Promise<PublicTag[]> {
-  const value = await guestJson("tags", new URLSearchParams(), baseUrl, request);
-  if (!record(value) || !Array.isArray(value.data) || !value.data.every(tag => record(tag)
-    && typeof tag.id === "string" && validTagId(tag.id) && typeof tag.name === "string")) throw new PostListError("response");
-  const tags: PublicTag[] = value.data.map(tag => ({ id: tag.id, name: tag.name }));
-  if (new Set(tags.map(tag => tag.id)).size !== tags.length) throw new PostListError("response");
-  return tags;
-}
+export { getPublicTags, type PublicTag } from "../../tag/api/public-tags.ts";
 
 const validHandle = (value: string) => /^[a-z][a-z0-9-]{1,28}[a-z0-9]$/.test(value);
 const validPostKey = (value: string) => validTagId(value) || (value.length <= 200
