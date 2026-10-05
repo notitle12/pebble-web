@@ -2,8 +2,20 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {callbackMode} from "../src/features/auth/withdrawal-intent.ts";
 import {createUserSession} from "../src/features/auth/user-session.ts";
+import {memberJson,MemberApiError} from "../src/lib/member-api.ts";
+import {formatSeoulDateTime} from "../src/lib/date-time.ts";
 const base="http://localhost:8081/api/v1",member={id:"1",nickname:"회원",handle:"writer",blogName:"기록",profileCompleted:true,status:"ACTIVE"};
 const json=data=>Response.json({data}),grant=()=>json({accessToken:"temporary",tokenType:"Bearer",accessTokenExpiresIn:900});
+test("WITHDRAWAL_PENDING retains only one valid ISO deletion time and formats it in Seoul time",async()=>{
+ const response=details=>Response.json({error:{code:"WITHDRAWAL_PENDING",message:"탈퇴 예약이 진행 중입니다.",details}},{status:409});
+ await assert.rejects(memberJson("/auth/naver/login",{},async()=>response([{field:"withdrawalScheduledAt",reason:"2026-10-10T15:00:00Z"}]),base),error=>error instanceof MemberApiError&&error.withdrawalScheduledAt==="2026-10-10T15:00:00Z");
+ assert.equal(formatSeoulDateTime("2026-10-10T15:00:00Z"),"2026-10-11 00:00:00 (한국 시간)");
+ for(const details of [[],[{field:"withdrawalScheduledAt",reason:"tomorrow"}],[{field:"withdrawalScheduledAt",reason:"2026-10-10T15:00:00Z"},{field:"traceId",reason:"x"}]]){
+  await assert.rejects(memberJson("/auth/naver/login",{},async()=>response(details),base),error=>error instanceof MemberApiError&&error.withdrawalScheduledAt===undefined);
+ }
+ await assert.rejects(memberJson("/auth/naver/login",{},async()=>Response.json({error:{code:"OTHER",message:"x",details:[{field:"withdrawalScheduledAt",reason:"2026-10-10T15:00:00Z"}]}},{status:409}),base),error=>error instanceof MemberApiError&&error.withdrawalScheduledAt===undefined);
+ assert.equal(formatSeoulDateTime("2026-02-30T15:00:00Z"),null);
+});
 test("탈퇴 취소 의도는 같은 OAuth state에만 적용한다",()=>{
  assert.equal(callbackMode(null,"state"),"login");assert.equal(callbackMode(JSON.stringify({mode:"withdrawal-cancel",state:"state"}),"state"),"withdrawal-cancel");
  for(const input of ["invalid",JSON.stringify({mode:"login",state:"state"}),JSON.stringify({mode:"withdrawal-cancel",state:"other"})])assert.throws(()=>callbackMode(input,"state"));

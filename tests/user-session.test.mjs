@@ -1,15 +1,22 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createUserSession} from '../src/features/auth/user-session.ts';
+import {createUserSession,parseMember} from '../src/features/auth/user-session.ts';
 import {apiUrl,memberJson,MemberApiError} from '../src/lib/member-api.ts';
 const base='http://localhost:8081/api/v1';
-const member={id:'1',nickname:'회원',handle:'member',blogName:'기록',profileCompleted:true,status:'ACTIVE'};
+const member={id:'1',nickname:'회원',handle:'member',blogName:'기록',profileImageUrl:null,profileCompleted:true,status:'ACTIVE'};
 const json=data=>new Response(JSON.stringify({data}),{status:200,headers:{'Content-Type':'application/json'}});
 const grant=()=>json({accessToken:'test-memory-only',tokenType:'Bearer',accessTokenExpiresIn:900});
 const denial=status=>new Response(JSON.stringify({error:{code:'INVALID_TOKEN',message:'인증을 확인해 주세요.'}}),{status});
 const direct=action=>action();
 const deferred=()=>{let resolve;const promise=new Promise(r=>resolve=r);return {promise,resolve};};
 const serial=()=>{let tail=Promise.resolve();return action=>{const next=tail.then(action);tail=next.catch(()=>{});return next;};};
+
+test('member parser accepts older responses without profile image and preserves nullable image URLs',()=>{
+ const older={...member};delete older.profileImageUrl;
+ assert.equal(parseMember({data:older}).profileImageUrl,null);
+ assert.equal(parseMember({data:{...member,profileImageUrl:'https://cdn.example/avatar.webp'}}).profileImageUrl,'https://cdn.example/avatar.webp');
+ assert.throws(()=>parseMember({data:{...member,profileImageUrl:42}}),MemberApiError);
+});
 
 test('member URL preserves queries and rejects external paths',()=>{
  assert.equal(apiUrl('/members/me/posts?page=2&size=20',base).href,base+'/members/me/posts?page=2&size=20');

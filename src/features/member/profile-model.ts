@@ -1,10 +1,12 @@
 import { MemberApiError, responseData } from "../../lib/member-api.ts";
+import { loginDestination } from "../auth/login-destination.ts";
 
 export type EditableMemberProfile = {
   id: string;
   nickname: string;
   blogName: string;
   handle: string;
+  profileImageUrl: string | null;
   nicknameChangeAvailableAt: string | null;
   blogNameChangeAvailableAt: string | null;
 };
@@ -26,7 +28,7 @@ function safeTimestamp(value: unknown): string | null {
 
 export function parseEditableMemberProfile(value: unknown, expectedId: string): EditableMemberProfile {
   const data = responseData(value);
-  if (data.id !== expectedId || data.profileCompleted !== true || typeof data.nickname !== "string" || typeof data.blogName !== "string" || typeof data.handle !== "string" || data.status !== "ACTIVE") invalid();
+  if (data.id !== expectedId || data.profileCompleted !== true || typeof data.nickname !== "string" || typeof data.blogName !== "string" || typeof data.handle !== "string" || data.status !== "ACTIVE" || !(data.profileImageUrl === undefined || data.profileImageUrl === null || typeof data.profileImageUrl === "string")) invalid();
   const nicknameChangeAvailableAt = safeTimestamp(data.nicknameChangeAvailableAt);
   const blogNameChangeAvailableAt = safeTimestamp(data.blogNameChangeAvailableAt);
   if (!nicknameChangeAvailableAt || !blogNameChangeAvailableAt) invalid();
@@ -35,9 +37,28 @@ export function parseEditableMemberProfile(value: unknown, expectedId: string): 
     nickname: data.nickname,
     blogName: data.blogName,
     handle: data.handle,
+    profileImageUrl: typeof data.profileImageUrl === "string" ? data.profileImageUrl : null,
     nicknameChangeAvailableAt,
     blogNameChangeAvailableAt,
   };
+}
+
+export function normalizeHandle(value: string): string {
+  const normalized = value.trim().toLowerCase();
+  const reserved = new Set(["admin", "api", "auth", "me", "posts", "search", "settings", "www"]);
+  if (!/^[a-z][a-z0-9_-]{1,28}[a-z0-9_]$/.test(normalized) || reserved.has(normalized)) throw new Error("식별자는 예약어가 아닌 영문 소문자로 시작하는 3~30자 영문·숫자·하이픈·밑줄을 사용하고, 하이픈으로 끝날 수 없습니다.");
+  return normalized;
+}
+
+export function safeProfileReturnTo(value: string | null): string | null {
+  if (!value || !value.startsWith("/") || value.startsWith("//") || value.includes("\\")) return null;
+  try {
+    const parsed = new URL(value, "https://pebble.invalid");
+    const sensitiveParams = new Set(["code", "state", "token", "access_token", "refresh_token", "authorizationcode", "id_token", "client_secret"]);
+    const hasSensitiveParams = Array.from(parsed.searchParams.keys()).some(key => sensitiveParams.has(key.toLowerCase()));
+    if (parsed.origin !== "https://pebble.invalid" || loginDestination(parsed.pathname) !== parsed.pathname || parsed.pathname === "/settings/profile" || parsed.pathname === "/settings/account" || parsed.pathname.startsWith("/auth/") || parsed.pathname.startsWith("/oauth/") || hasSensitiveParams || /%2f|%5c/i.test(parsed.pathname) || /[\u0000-\u001f\u007f-\u009f]/.test(value)) return null;
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+  } catch { return null; }
 }
 
 export function normalizeProfileName(value: string, field: "nickname" | "blogName"): string {
@@ -46,7 +67,7 @@ export function normalizeProfileName(value: string, field: "nickname" | "blogNam
   const length = Array.from(normalized).length;
   if (!length) throw new Error(field === "nickname" ? "닉네임을 입력해 주세요." : "블로그명을 입력해 주세요.");
   if (length > max) throw new Error(field === "nickname" ? "닉네임은 30자 이내로 입력해 주세요." : "블로그명은 100자 이내로 입력해 주세요.");
-  if (/[\u0000-\u001f\u007f]/.test(normalized) || /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/.test(normalized)) {
+  if (/[\u0000-\u001f\u007f-\u009f]/.test(normalized) || /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/.test(normalized)) {
     throw new Error("정상적인 유니코드 문자를 입력해 주세요.");
   }
   return normalized;
