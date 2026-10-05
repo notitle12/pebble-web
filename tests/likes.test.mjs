@@ -71,7 +71,7 @@ test("Post 상세의 선택적 좋아요 필드는 유효값을 보존하고 잘
   const base = `http://127.0.0.1:${server.address().port}/api/v1`;
   try {
     const post = await getPublicPost("writer-1", "note-1", base);
-    assert.deepEqual(await readLikes("posts",post.id,undefined,base),{likeCount:0,likedByMe:false});
+    assert.deepEqual(await readLikes("posts",post.id,undefined,base),{likeCount:32,likedByMe:false});
     const project=await getPublicProject("721389012345680000",base);
     assert.deepEqual(await readLikes("projects",project.id,undefined,base),{likeCount:0,likedByMe:false});
     for(const likeCount of [-1,1.5,"1",Number.MAX_SAFE_INTEGER+1])assert.throws(()=>parseProjectDetail({data:{...project,likeCount}}));

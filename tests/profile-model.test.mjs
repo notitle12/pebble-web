@@ -23,6 +23,8 @@ test("handle identifiers support underscores with safe edge rules",()=>{
 
 test("profile return paths stay on safe internal pages",()=>{
   assert.equal(safeProfileReturnTo("/blogs/local_preview_?q=one"),"/blogs/local_preview_?q=one");
+  assert.equal(safeProfileReturnTo("/search?q=Spring&type=projects"),"/search?q=Spring&type=projects");
+  assert.equal(safeProfileReturnTo("/posts?page=1"),"/posts?page=1");
   for(const value of ["https://evil.example/path","//evil.example/path","/auth/naver/callback?code=secret","/oauth/callback/naver?state=x","/page?access_token=secret","/blogs/%2f%2fevil.example","/settings/profile","/\\evil.example"])assert.equal(safeProfileReturnTo(value),null);
 });
 
