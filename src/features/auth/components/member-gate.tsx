@@ -10,7 +10,7 @@ export function useUserSession(){
 }
 export function MemberGate({children,profile=false,preserveOnExpiry=false,fallback}:{children:(member:Member)=>ReactNode;profile?:boolean;preserveOnExpiry?:boolean;fallback?:ReactNode}){
   const session=useUserSession();
-  if(session.phase==="loading" && !(preserveOnExpiry && session.member))return <div className="list-state" role="status">로그인 상태를 확인하고 있어요.</div>;
+  if(session.phase==="loading" && !(preserveOnExpiry && session.member))return fallback !== undefined ? <>{fallback}</> : <div className="list-state" role="status">로그인 상태를 확인하고 있어요.</div>;
   const expired=preserveOnExpiry && session.phase!=="ready" && session.member!==null;
   if((session.phase==="ready" || expired) && session.member){
     if(profile && !session.member.profileCompleted)return <div className="list-state"><h2>블로그를 먼저 설정해 주세요</h2><p>블로그명과 공개 아이디를 설정하면 글을 저장할 수 있어요.</p><Link className="button" href="/settings/profile">블로그 설정</Link></div>;
