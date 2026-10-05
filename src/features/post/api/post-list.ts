@@ -91,7 +91,7 @@ export async function getPublicPosts(
 }
 export { getPublicTags, type PublicTag } from "../../tag/api/public-tags.ts";
 
-const validHandle = (value: string) => /^[a-z][a-z0-9-]{1,28}[a-z0-9]$/.test(value);
+const validHandle = (value: string) => /^[a-z][a-z0-9_-]{1,28}[a-z0-9_]$/.test(value);
 const validPostKey = (value: string) => validTagId(value) || (value.length <= 200
   && /^[a-z0-9]+(-[a-z0-9]+)*$/.test(value) && !/^\d+$/.test(value) && value !== "search");
 export function postHref(handle: string, key: string): string | null {
