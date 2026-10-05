@@ -102,7 +102,12 @@ export type TableColumn = {
   description?: string | null;
 };
 export type TableSpec = { schemaVersion: 1; tableName: string; description?: string | null; columns: TableColumn[] };
-export type PostBlock = { type: "TEXT" | "CODE" | "TABLE"; content: string; language: string | null; title: string | null; displayOrder: number };
+export type ArchitectureGroup = { id: string; type: "ORACLE_CLOUD" | "AWS" | "CLOUDFLARE" | "DOCKER" | "CUSTOM"; label: string; parentId?: string | null; bounds?: { x: number; y: number; width: number; height: number } | null };
+export type ArchitectureNode = { id: string; type: "CLIENT" | "APP" | "DATABASE" | "CACHE" | "STORAGE" | "PROXY" | "CUSTOM"; label: string; groupId?: string | null; icon?: string | null; position?: { x: number; y: number } | null };
+export type ArchitectureSide = "TOP" | "RIGHT" | "BOTTOM" | "LEFT";
+export type ArchitectureEdge = { id: string; source: string; target: string; label?: string | null; sourceSide?: ArchitectureSide | null; targetSide?: ArchitectureSide | null; waypoint?: {x:number;y:number} | null };
+export type ArchitectureSpec = { schemaVersion: 1; groups: ArchitectureGroup[]; nodes: ArchitectureNode[]; edges: ArchitectureEdge[] };
+export type PostBlock = { type: "TEXT" | "CODE" | "TABLE" | "ARCHITECTURE"; content: string; language: string | null; title: string | null; displayOrder: number };
 export type PostDetail = PostSummary & { blocks: PostBlock[] };
 const languages = ["JAVA", "JAVASCRIPT", "TYPESCRIPT", "PYTHON", "HTML", "CSS", "SQL", "JSON", "YAML", "MARKDOWN", "BASH", "SHELL"];
 const keysAre = (value: Record<string, unknown>, allowed: string[]) => Object.keys(value).every(key => allowed.includes(key));
@@ -140,15 +145,74 @@ export function parseTableSpec(value: unknown): TableSpec {
   }
   return value as TableSpec;
 }
+const architectureId = (value: unknown): value is string => typeof value === "string" && /^[a-z][a-z0-9-]{0,39}$/.test(value);
+const javaBlank = (value: string) => Array.from(value).length === 0 || Array.from(value).every(char => {
+  const code = char.codePointAt(0)!;
+  return (code >= 0x0009 && code <= 0x000d) || (code >= 0x001c && code <= 0x0020) || code === 0x1680
+    || (code >= 0x2000 && code <= 0x2006) || (code >= 0x2008 && code <= 0x200a) || code === 0x2028 || code === 0x2029 || code === 0x205f || code === 0x3000;
+});
+const architectureLabel = (value: unknown) => typeof value === "string" && safeString(value) && pointLength(value) >= 1 && pointLength(value) <= 100 && !javaBlank(value);
+export function parseArchitectureSpec(value: unknown): ArchitectureSpec {
+  const groupTypes = ["ORACLE_CLOUD", "AWS", "CLOUDFLARE", "DOCKER", "CUSTOM"];
+  const nodeTypes = ["CLIENT", "APP", "DATABASE", "CACHE", "STORAGE", "PROXY", "CUSTOM"];
+  const architectureIcons = ["AWS", "ORACLE_CLOUD", "CLOUDFLARE", "DOCKER", "SPRING", "POSTGRESQL", "REDIS", "R2", "WORKERS", "NGINX", "NODEJS", "REACT", "SERVER", "DATABASE", "CACHE", "STORAGE", "CLIENT", "CLOUD", "CONTAINER"];
+  if (!record(value) || !keysAre(value, ["schemaVersion", "groups", "nodes", "edges"]) || value.schemaVersion !== 1
+    || !Array.isArray(value.groups) || value.groups.length > 10 || !Array.isArray(value.nodes) || value.nodes.length < 1 || value.nodes.length > 30
+    || !Array.isArray(value.edges) || value.edges.length > 60) throw new PostListError("response");
+  const ids = new Set<string>();
+  const addId = (id: unknown) => { if (!architectureId(id) || ids.has(id)) throw new PostListError("response"); ids.add(id); };
+  const groups = new Map<string, ArchitectureGroup>();
+  for (const item of value.groups) {
+    if (!record(item) || !keysAre(item, ["id", "type", "label", "parentId", "bounds"]) || typeof item.type !== "string" || !groupTypes.includes(item.type) || !architectureLabel(item.label)
+      || !(item.parentId === undefined || item.parentId === null || architectureId(item.parentId))) throw new PostListError("response");
+    if (item.bounds != null) {
+      const b = item.bounds;
+      if (!record(b) || !keysAre(b, ["x", "y", "width", "height"]) || ![b.x,b.y,b.width,b.height].every(Number.isInteger)
+        || (b.x as number) < 0 || (b.x as number) > 4000 || (b.y as number) < 0 || (b.y as number) > 4000
+        || (b.width as number) < 200 || (b.height as number) < 120 || (b.x as number)+(b.width as number)>4200 || (b.y as number)+(b.height as number)>4200) throw new PostListError("response");
+    }
+    addId(item.id); groups.set(item.id as string, item as ArchitectureGroup);
+  }
+  for (const group of groups.values()) {
+    if (group.parentId != null) {
+      const parent = groups.get(group.parentId);
+      if (group.type !== "DOCKER" || !parent || parent.type === "DOCKER" || parent.parentId != null) throw new PostListError("response");
+    }
+  }
+  const nodes = new Set<string>();
+  for (const item of value.nodes) {
+    if (!record(item) || !keysAre(item, ["id", "type", "label", "groupId", "icon", "position"]) || typeof item.type !== "string" || !nodeTypes.includes(item.type) || !architectureLabel(item.label)
+      || !(item.groupId === undefined || item.groupId === null || architectureId(item.groupId))
+      || !(item.icon === undefined || item.icon === null || (typeof item.icon === "string" && architectureIcons.includes(item.icon)))
+      || !(item.position === undefined || item.position === null || (record(item.position) && keysAre(item.position, ["x", "y"]) && Number.isInteger(item.position.x) && Number.isInteger(item.position.y) && (item.position.x as number) >= 0 && (item.position.x as number) <= 4000 && (item.position.y as number) >= 0 && (item.position.y as number) <= 4000))) throw new PostListError("response");
+    addId(item.id); nodes.add(item.id as string);
+    if (item.groupId != null && !groups.has(item.groupId as string)) throw new PostListError("response");
+  }
+  const pairs = new Set<string>();
+  for (const item of value.edges) {
+    if (!record(item) || !keysAre(item, ["id", "source", "target", "label", "sourceSide", "targetSide", "waypoint"]) || !architectureId(item.source) || !architectureId(item.target)
+      || item.source === item.target || !(item.label === undefined || item.label === null || textField(item.label, 200))) throw new PostListError("response");
+    for (const side of [item.sourceSide,item.targetSide]) if (side != null && (typeof side !== "string" || !["TOP","RIGHT","BOTTOM","LEFT"].includes(side))) throw new PostListError("response");
+    if (item.waypoint != null) {
+      const point = item.waypoint;
+      if (!record(point) || !keysAre(point,["x","y"]) || !Number.isInteger(point.x) || !Number.isInteger(point.y) || (point.x as number)<0 || (point.y as number)<0 || (point.x as number)>4200 || (point.y as number)>4200) throw new PostListError("response");
+    }
+    addId(item.id);
+    const pair = `${item.source}\u0000${item.target}`;
+    if (!(nodes.has(item.source) || groups.has(item.source)) || !(nodes.has(item.target) || groups.has(item.target)) || pairs.has(pair)) throw new PostListError("response");
+    pairs.add(pair);
+  }
+  return value as ArchitectureSpec;
+}
 export function parsePostDetail(value: unknown): PostDetail {
   if (!record(value) || !isPost(value.data) || !record(value.data)) throw new PostListError("response");
   const data = value.data;
   if (!Array.isArray(data.blocks) || !data.blocks.every(block => record(block)
-    && ["TEXT", "CODE", "TABLE"].includes(String(block.type)) && typeof block.content === "string"
+    && ["TEXT", "CODE", "TABLE", "ARCHITECTURE"].includes(String(block.type)) && typeof block.content === "string"
     && nullableText(block.title) && count(block.displayOrder)
     && (block.type === "TEXT" ? block.language === null : block.type === "CODE" ? typeof block.language === "string" && languages.includes(block.language)
       : block.language === null && textField(block.title ?? "", 100) && pointLength(block.content) <= 50000 && (() => {
-        try { parseTableSpec(JSON.parse(block.content)); return true; } catch { return false; }
+        try { const parsed = JSON.parse(block.content); block.type === "TABLE" ? parseTableSpec(parsed) : parseArchitectureSpec(parsed); return true; } catch { return false; }
       })()))) throw new PostListError("response");
   return { ...data, blocks: data.blocks } as PostDetail;
 }

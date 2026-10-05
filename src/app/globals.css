@@ -148,3 +148,145 @@ input:focus-visible, select:focus-visible, button:focus-visible { outline: 3px s
 .table-spec-json p { font-size: 13px; }
 .table-spec-json pre { max-width: 100%; margin: 0; overflow: auto; padding: 16px; border-radius: 8px; background: #f7f9fc; font-size: 12px; overflow-wrap: anywhere; white-space: pre-wrap; }
 @media(max-width:760px) { .table-editor-layout { grid-template-columns: minmax(0, 1fr); } }
+
+.architecture-block { min-width: 0; margin: 0; overflow: hidden; border: 1px solid #d9e0e9; border-radius: 14px; background: #fbfcfe; }
+.architecture-heading { padding: 16px 20px; background: #edf3ff; }
+.architecture-heading h2 { margin: 0; font-size: 18px; }
+.architecture-heading p { margin: 4px 0 0; color: #526075; font-size: 13px; }
+.architecture-scroll { width: 100%; max-width: 100%; overflow: auto; overscroll-behavior: contain; background-color: #f9fbfd; background-image: radial-gradient(#dce3ec 1px, transparent 1px); background-size: 20px 20px; }
+.architecture-scroll:focus-visible { outline: 3px solid var(--accent); outline-offset: -3px; }
+.architecture-svg { display: block; max-width: none; min-width: 100%; touch-action: pan-x pan-y; }
+.arch-group { fill: rgba(235, 242, 255, .65); stroke: #9eb1cb; stroke-width: 1.5; stroke-dasharray: 7 5; }
+.arch-group-docker { fill: rgba(231, 244, 235, .82); stroke: #7aaa87; stroke-dasharray: 4 4; }
+.arch-group-custom { fill: rgba(244, 238, 255, .7); stroke: #a892ce; }
+.arch-group-label { fill: #334258; font-size: 13px; font-weight: 750; }
+.arch-edge { fill: none; stroke: #77859a; stroke-width: 2; }
+.arch-edge-label { fill: #536177; font-size: 11px; text-anchor: middle; paint-order: stroke; stroke: #f9fbfd; stroke-width: 5px; stroke-linejoin: round; }
+.arch-node { stroke: #bac6d5; stroke-width: 1.4; filter: drop-shadow(0 2px 3px rgba(31,48,73,.10)); }
+.arch-node-type { fill: #617187; font-size: 10px; text-anchor: middle; }
+.arch-node-label { fill: #1e2b3d; font-size: 12px; font-weight: 750; text-anchor: middle; }
+.arch-tech-icon { pointer-events: none; }
+.arch-node-wrap { outline: none; }
+.arch-node-wrap.arch-node-draggable { cursor: grab; }
+.arch-node-wrap.arch-node-draggable:active { cursor: grabbing; }
+.arch-node-wrap:focus-visible .arch-node, .arch-node-wrap.is-selected .arch-node { stroke: #446fe0; stroke-width: 3; }
+.architecture-description { display: grid; grid-template-columns: minmax(110px, 1fr) 3fr; gap: 8px 18px; padding: 16px 20px; border-top: 1px solid var(--line); font-size: 13px; }
+.architecture-description h3 { margin: 0; font-size: 13px; }
+.architecture-description ul, .architecture-description ol { margin: 0; padding-left: 20px; }
+.architecture-description li { margin-bottom: 4px; overflow-wrap: anywhere; }
+.architecture-description p { margin: 0; }
+.architecture-editor-layout { display: grid; grid-template-columns: minmax(210px, 248px) minmax(0, 1fr) minmax(224px, 260px); align-items: start; gap: 14px; }
+.architecture-palette, .architecture-inspector, .architecture-canvas-panel { min-width: 0; border: 1px solid #dce2eb; border-radius: 14px; background: #fff; box-shadow: 0 5px 20px rgba(28,45,72,.045); }
+.architecture-palette, .architecture-inspector { padding: 16px; }
+.architecture-panel-title, .architecture-canvas-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.architecture-panel-title h2, .architecture-canvas-toolbar h2 { margin: 2px 0 0; font-size: 17px; letter-spacing: -.02em; }
+.architecture-eyebrow { color: #8090a5; font-size: 9px; font-weight: 800; letter-spacing: .12em; }
+.architecture-count { padding: 4px 7px; border-radius: 6px; background: #f0f3f8; color: #65748a; font-size: 10px; font-weight: 750; }
+.architecture-palette > p { margin: 12px 0 14px; color: #77869a; font-size: 11px; }
+.architecture-tech-grid { display: grid; gap: 6px; }
+.architecture-tech-grid button { display: grid; grid-template-columns: 30px 1fr 14px; align-items: center; gap: 9px; min-height: 39px; padding: 5px 8px; border: 1px solid transparent; border-radius: 8px; background: #f7f9fc; color: #26364a; text-align: left; font: inherit; font-size: 11px; font-weight: 650; cursor: pointer; }
+.architecture-tech-grid button:hover, .architecture-group-list button:hover { border-color: #c9d5e6; background: #f0f4fa; }
+.architecture-tech-mark { display: grid; width: 28px; height: 28px; place-items: center; border-radius: 7px; background: #fff; color: #3e5e9a; font-size: 10px; font-weight: 850; box-shadow: 0 1px 3px #182b4412; }
+.tech-spring { color: #438b48; }.tech-postgresql { color: #39658e; }.tech-redis { color: #c95151; }.tech-docker { color: #168ab6; }.tech-oracle_cloud { color: #bb3838; }.tech-aws { color: #cc8800; }.tech-cloudflare { color: #d8792c; }.tech-workers { color: #d8792c; }.tech-r2 { color: #b47e1e; }.tech-react { color: #1494b8; }.tech-nodejs { color: #498543; }.tech-nginx { color: #3a8b62; }
+.architecture-custom-add, .architecture-connect-button, .architecture-group-buttons button { width: 100%; min-height: 36px; border: 1px solid #dce2eb; border-radius: 8px; background: #fff; color: #475a73; font: inherit; font-size: 11px; font-weight: 700; cursor: pointer; }
+.architecture-custom-add { margin-top: 7px; border-style: dashed; }
+.architecture-palette-section { margin-top: 20px; padding-top: 16px; border-top: 1px solid #edf0f4; }
+.architecture-group-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-top: 11px; }
+.architecture-group-buttons button { min-height: 31px; padding: 4px; font-size: 10px; }
+.architecture-group-list { display: grid; gap: 3px; margin-top: 8px; }
+.architecture-group-list button { display: flex; align-items: center; gap: 8px; padding: 7px; border: 1px solid transparent; border-radius: 7px; background: transparent; text-align: left; color: #526177; font: inherit; font-size: 11px; cursor: pointer; }
+.architecture-group-list button.active { border-color: #c8d7f8; background: #f2f6ff; color: #274d9a; }
+.group-dot { width: 8px; height: 8px; border-radius: 3px; background: #81a1d0; }.group-docker { background: #67a880; }.group-custom { background: #a78bca; }
+.architecture-connect-button { margin: 12px 0 8px; }.architecture-connect-button.active { border-color: #6686dc; background: #eff4ff; color: #3256a7; }
+.architecture-edge-list { display: grid; gap: 5px; max-height: 230px; overflow: auto; margin: 0; padding: 0; list-style: none; }
+.architecture-edge-list li { display: flex; align-items: center; justify-content: space-between; gap: 4px; padding: 6px; border-radius: 6px; background: #f7f9fc; color: #64738a; font-size: 9px; }
+.architecture-edge-list li span { overflow-wrap: anywhere; }.architecture-edge-list b { color: #8996a8; }
+.architecture-edge-list button { flex: 0 0 22px; width: 22px; height: 22px; border: 0; border-radius: 5px; background: transparent; color: #8692a3; font-size: 17px; cursor: pointer; }
+.architecture-canvas-panel { overflow: hidden; }
+.architecture-canvas-toolbar { min-height: 58px; padding: 9px 14px; border-bottom: 1px solid #e8edf3; }
+.architecture-canvas-help { color: #8290a2; font-size: 9px; text-align: right; }
+.architecture-canvas-panel .architecture-block { border: 0; border-radius: 0; box-shadow: none; }
+.architecture-canvas-panel .architecture-scroll { min-height: 420px; max-height: min(66vh, 680px); }
+.architecture-canvas-panel .architecture-svg { min-width: unset; }
+.architecture-canvas-status { min-height: 31px; padding: 8px 13px; border-top: 1px solid #e8edf3; color: #77869a; font-size: 10px; }
+.architecture-inspector label { display: grid; gap: 5px; margin-top: 15px; color: #65748a; font-size: 10px; font-weight: 750; }
+.architecture-inspector input, .architecture-inspector select { width: 100%; min-width: 0; height: 36px; padding: 6px 8px; border: 1px solid #dce2eb; border-radius: 7px; background: #fff; color: #29384d; font: inherit; font-size: 11px; }
+.architecture-inspector-icon { display: grid; width: 30px; height: 30px; place-items: center; border-radius: 8px; background: #f1f4f9; color: #73839b; }
+.architecture-coordinate-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.architecture-inspector .architecture-delete { width: 100%; min-height: 34px; margin-top: 20px; border: 1px solid #f0d6d4; border-radius: 7px; background: #fffafa; color: #a14646; font: inherit; font-size: 10px; font-weight: 750; cursor: pointer; }
+.architecture-empty-inspector { margin: 16px 0 0; color: #8491a2; font-size: 11px; line-height: 1.6; }
+.architecture-editor-error { grid-column: 1 / -1; padding: 10px; border-radius: 7px; background: #fff0ef; color: #8c3030; font-size: 13px; }
+.architecture-editor-note { grid-column: 1 / -1; margin: 0; color: #8894a3; font-size: 10px; }
+.architecture-json-panel { margin-top: 20px; padding: 18px; border: 1px solid var(--line); border-radius: 12px; background: white; }
+.architecture-json-panel h2 { margin: 0 0 10px; font-size: 18px; }
+.architecture-json-panel pre { max-width: 100%; overflow: auto; overflow-wrap: anywhere; white-space: pre-wrap; font-size: 12px; }
+@media(max-width:1050px) { .architecture-editor-layout { grid-template-columns: minmax(190px, 230px) minmax(0,1fr); } .architecture-inspector { grid-column: 1 / -1; } }
+@media(max-width:680px) { .architecture-editor-layout { grid-template-columns: minmax(0,1fr); gap: 10px; } .architecture-palette { order: 1; } .architecture-canvas-panel { order: 2; } .architecture-inspector { order: 3; grid-column: auto; } .architecture-panel-title h2, .architecture-canvas-toolbar h2 { font-size: 15px; } .architecture-palette, .architecture-inspector { padding: 13px; } .architecture-tech-grid { grid-template-columns: 1fr 1fr; } .architecture-tech-grid button { grid-template-columns: 26px 1fr; font-size: 10px; } .architecture-tech-grid button > :last-child { display: none; } .architecture-canvas-help { max-width: 115px; font-size: 8px; } .architecture-canvas-panel .architecture-scroll { min-height: 360px; max-height: 58vh; } }
+
+/* Architecture workspace readability */
+.architecture-tech-grid button { font-size: 13px; }
+.architecture-group-list button { font-size: 12px; }
+.architecture-edge-list li { font-size: 12px; }
+.architecture-canvas-help { font-size: 12px; }
+.architecture-inspector label { font-size: 12px; }
+.architecture-inspector input, .architecture-inspector select { font-size: 12px; }
+.architecture-group-buttons button, .architecture-custom-add, .architecture-connect-button, .architecture-canvas-status, .architecture-empty-inspector { font-size: 12px; }
+.architecture-dev { max-width: 1480px; }
+@media(max-width:680px) { .architecture-tech-grid button { font-size: 12px; } .architecture-canvas-help { font-size: 10px; } }
+.arch-node-draggable { touch-action: none; }
+.architecture-edge-select { min-width: 0; overflow-wrap: anywhere; border: 0; padding: 2px; background: transparent; color: #526177; text-align: left; font: inherit; font-size: inherit; cursor: pointer; }
+.architecture-edge-select:hover { color: #3159a4; }
+@media(max-width:680px) { .architecture-canvas-help { font-size: 12px; } }
+
+.architecture-auto-layout { min-height: 36px; padding: 6px 12px; border: 1px solid #dce2eb; border-radius: 8px; background: white; color: #344c70; font: inherit; font-size: 12px; cursor: pointer; }
+.architecture-canvas-toolbar { flex-wrap: wrap; }
+.architecture-json-panel summary { cursor: pointer; font-size: 13px; color: #65748a; }
+.architecture-edge-list .architecture-edge-select { flex: 1; min-width: 0; width: auto; height: auto; text-align: left; font-size: 12px; overflow-wrap: anywhere; }
+
+.architecture-canvas-fit .architecture-svg { width: 100%; height: auto; min-width: 580px; }
+
+.arch-group-wrap.is-interactive .arch-group { cursor: grab; pointer-events: all; }
+.arch-group-wrap.is-interactive .arch-group:active { cursor: grabbing; }
+.arch-group-wrap.is-interactive.is-selected .arch-group, .arch-group-wrap.is-interactive:hover .arch-group { stroke: #446fe0; stroke-width: 2.5; }
+.arch-group-wrap .arch-group-label { user-select: none; }
+.arch-group-wrap.is-interactive .arch-group-label { cursor: grab; outline: none; }
+.arch-group-wrap.is-interactive .arch-group-label:focus-visible { fill: #244d9c; text-decoration: underline; }
+.arch-connect-handle { cursor: crosshair; opacity: 0; outline: none; transition: opacity .12s ease; }
+.arch-connect-handle:hover, .arch-connect-handle:focus-visible { opacity: 1; }
+.arch-connect-hit { fill: transparent; pointer-events: all; }
+.arch-connect-dot { fill: #fff; stroke: #4770d6; stroke-width: 2.5; pointer-events: none; }
+.arch-connect-handle:focus-visible .arch-connect-dot, .arch-connect-handle.is-connecting .arch-connect-dot { fill: #4770d6; stroke: #fff; }
+.arch-group-resize { cursor: nwse-resize; opacity: .65; outline: none; }
+.arch-group-wrap:hover .arch-group-resize, .arch-group-wrap.is-selected .arch-group-resize, .arch-group-resize:focus-visible { opacity: 1; }
+.arch-group-resize-hit { fill: #fff; stroke: #6686dc; stroke-width: 1.5; }
+.arch-group-resize-mark { fill: none; stroke: #4669c4; stroke-width: 1.5; pointer-events: none; }
+.arch-group-resize:focus-visible .arch-group-resize-hit { fill: #eaf0ff; stroke-width: 2.5; }
+
+.arch-group-wrap.is-interactive, .arch-group-resize, .arch-connect-handle { touch-action: none; }
+
+.arch-edge-wrap { outline: none; }
+.arch-edge-wrap[role="button"] { cursor: pointer; }
+.arch-edge-hit { fill: none; stroke: transparent; stroke-width: 14px; vector-effect: non-scaling-stroke; pointer-events: stroke; }
+.arch-edge-wrap.is-selected .arch-edge { stroke: #416fe0; stroke-width: 3; }
+.arch-edge-wrap:focus-visible .arch-edge { stroke: #3159a4; stroke-width: 3; }
+.arch-edge-controls { pointer-events: none; }
+.arch-edge-controls > g { pointer-events: auto; }
+.arch-edge-waypoint { cursor: move; outline: none; }
+.arch-edge-waypoint-hit { fill: #fff; stroke: #5478d2; stroke-width: 1.5; }
+.arch-edge-waypoint-dot { fill: #5478d2; pointer-events: none; }
+.arch-edge-waypoint:focus-visible .arch-edge-waypoint-hit { fill: #eaf0ff; stroke-width: 2.5; }
+.arch-edge-toolbar { pointer-events: none; }
+.arch-edge-toolbar > rect { fill: #fff; stroke: #cbd5e4; stroke-width: 1; filter: drop-shadow(0 2px 4px #1b2d451e); }
+.arch-edge-toolbar > text { fill: #465773; font-size: 10px; font-weight: 700; pointer-events: none; }
+.arch-edge-delete { cursor: pointer; pointer-events: auto; outline: none; }
+.arch-edge-delete circle { fill: #fff4f3; stroke: #e6c4c1; }
+.arch-edge-delete path { fill: none; stroke: #a84c47; stroke-width: 1.5; pointer-events: none; }
+.arch-edge-delete:focus-visible circle { fill: #ffe2df; stroke-width: 2; }
+.arch-edge-endpoint-handle { cursor: crosshair; outline: none; }
+.arch-edge-endpoint-handle circle { fill: #fff; stroke: #5478d2; stroke-width: 2; }
+.arch-edge-endpoint-handle.source circle { fill: #5478d2; }
+.arch-edge-endpoint-handle:focus-visible circle { stroke: #243f87; stroke-width: 3; }
+
+.arch-edge-waypoint, .arch-edge-endpoint-handle { touch-action: none; }
+
+.architecture-edge-disclosure summary { margin-top: 12px; cursor: pointer; font-size: 12px; color: #65748a; }
