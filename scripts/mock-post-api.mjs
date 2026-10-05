@@ -22,7 +22,7 @@ export const mockPosts = Array.from({ length: 21 }, (_, index) => {
     author: { id: String(721389012345679000n + BigInt(index % samples.length)), handle: `writer-${index % samples.length + 1}`, nickname, blogName: null },
     category:{id:["102","202","302"][index%3],name:["Spring","React","Cloudflare"][index%3]},
     tags: names.map(name => ({ id: mockTags.find(tag => tag.name === name).id, name })),
-    likeCount: 0, likedByMe: false,
+    likeCount: [32,15,8,4,0,1][index % samples.length], likedByMe: false,
     publishedAt: index === 5 ? null : new Date(Date.UTC(2026, 9, 3 - index, 3)).toISOString(),
     createdAt: new Date(Date.UTC(2026, 9, 3 - index, 3)).toISOString(),
   };
