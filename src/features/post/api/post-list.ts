@@ -93,16 +93,63 @@ const validPostKey = (value: string) => validTagId(value) || (value.length <= 20
 export function postHref(handle: string, key: string): string | null {
   return validHandle(handle) && validPostKey(key) ? `/blogs/${encodeURIComponent(handle)}/posts/${encodeURIComponent(key)}` : null;
 }
-export type PostBlock = { type: "TEXT" | "CODE"; content: string; language: string | null; title: string | null; displayOrder: number };
+export type TableColumn = {
+  name: string;
+  dataType: string;
+  nullable: boolean;
+  primaryKey: boolean;
+  foreignKey?: string | null;
+  description?: string | null;
+};
+export type TableSpec = { schemaVersion: 1; tableName: string; description?: string | null; columns: TableColumn[] };
+export type PostBlock = { type: "TEXT" | "CODE" | "TABLE"; content: string; language: string | null; title: string | null; displayOrder: number };
 export type PostDetail = PostSummary & { blocks: PostBlock[] };
 const languages = ["JAVA", "JAVASCRIPT", "TYPESCRIPT", "PYTHON", "HTML", "CSS", "SQL", "JSON", "YAML", "MARKDOWN", "BASH", "SHELL"];
+const keysAre = (value: Record<string, unknown>, allowed: string[]) => Object.keys(value).every(key => allowed.includes(key));
+function safeString(value: string): boolean {
+  for (let index = 0; index < value.length; index++) {
+    const code = value.charCodeAt(index);
+    if (code === 0) return false;
+    if (code >= 0xd800 && code <= 0xdbff) {
+      const next = value.charCodeAt(index + 1);
+      if (!(next >= 0xdc00 && next <= 0xdfff)) return false;
+      index++;
+    } else if (code >= 0xdc00 && code <= 0xdfff) return false;
+  }
+  return true;
+}
+const pointLength = (value: string) => Array.from(value).length;
+const textField = (value: unknown, max: number, required = false): value is string =>
+  typeof value === "string" && safeString(value) && pointLength(value) <= max && (!required || (pointLength(value) > 0 && value.trim().length > 0));
+const optionalTextField = (value: unknown, max: number) => value === undefined || value === null || textField(value, max);
+export function parseTableSpec(value: unknown): TableSpec {
+  if (!record(value) || !keysAre(value, ["schemaVersion", "tableName", "description", "columns"])
+    || value.schemaVersion !== 1 || !textField(value.tableName, 100, true)
+    || !optionalTextField(value.description, 500) || !Array.isArray(value.columns)
+    || value.columns.length < 1 || value.columns.length > 50) throw new PostListError("response");
+  const names = new Set<string>();
+  for (const column of value.columns) {
+    if (!record(column) || !keysAre(column, ["name", "dataType", "nullable", "primaryKey", "foreignKey", "description"])
+      || !textField(column.name, 100, true) || !textField(column.dataType, 100, true)
+      || typeof column.nullable !== "boolean" || typeof column.primaryKey !== "boolean"
+      || (column.primaryKey && column.nullable)
+      || !optionalTextField(column.foreignKey, 200) || !optionalTextField(column.description, 500)) throw new PostListError("response");
+    const normalizedName = column.name.trim().toLowerCase();
+    if (names.has(normalizedName)) throw new PostListError("response");
+    names.add(normalizedName);
+  }
+  return value as TableSpec;
+}
 export function parsePostDetail(value: unknown): PostDetail {
   if (!record(value) || !isPost(value.data) || !record(value.data)) throw new PostListError("response");
   const data = value.data;
   if (!Array.isArray(data.blocks) || !data.blocks.every(block => record(block)
-    && ["TEXT", "CODE"].includes(String(block.type)) && typeof block.content === "string"
+    && ["TEXT", "CODE", "TABLE"].includes(String(block.type)) && typeof block.content === "string"
     && nullableText(block.title) && count(block.displayOrder)
-    && (block.type === "TEXT" ? block.language === null : typeof block.language === "string" && languages.includes(block.language)))) throw new PostListError("response");
+    && (block.type === "TEXT" ? block.language === null : block.type === "CODE" ? typeof block.language === "string" && languages.includes(block.language)
+      : block.language === null && textField(block.title ?? "", 100) && pointLength(block.content) <= 50000 && (() => {
+        try { parseTableSpec(JSON.parse(block.content)); return true; } catch { return false; }
+      })()))) throw new PostListError("response");
   return { ...data, blocks: data.blocks } as PostDetail;
 }
 export async function getPublicPost(handle: string, key: string, baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL, request: typeof fetch = fetch): Promise<PostDetail> {
