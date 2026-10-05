@@ -1,5 +1,6 @@
+import { PostCards } from "./post-cards";
 import Link from "next/link";
-import { getPublicPosts, pageHref, postHref, PostListError, type PostQuery } from "../api/post-list";
+import { getPublicPosts, pageHref, PostListError, type PostQuery } from "../api/post-list";
 
 export function PostListLoading() {
   return <section className="list-state" role="status" aria-live="polite">
@@ -11,7 +12,7 @@ export function InvalidPage() {
     <p>검색어는 200자 이내, 태그와 페이지 번호는 올바른 값이어야 합니다.</p><Link className="button" href="/">첫 페이지로</Link>
   </section>;
 }
-const dateFormat = new Intl.DateTimeFormat("ko-KR", { year: "numeric", month: "long", day: "numeric", timeZone: "Asia/Seoul" });
+
 
 export async function PostList({ query }: { query: PostQuery }) {
   const { page, q, tagId } = query;
@@ -34,15 +35,7 @@ export async function PostList({ query }: { query: PostQuery }) {
   }
   return <section aria-label="공개 게시글 목록">
     <div className="list-heading"><h2>{filtered ? "검색 결과" : "최근 게시글"}</h2><span>총 {result.totalElements.toLocaleString("ko-KR")}개의 글</span></div>
-    <ul className="post-list">{result.content.map(post => {
-      const date = post.publishedAt ?? post.createdAt;
-      return <li key={post.id}><article className="post-card">
-        <div className="post-meta"><span>{post.author.nickname}</span><span aria-hidden="true">·</span><time dateTime={date}>{dateFormat.format(new Date(date))}</time></div>
-        <h3><Link href={postHref(post.author.handle, post.urlKey)!} prefetch={false}>{post.title}</Link></h3>
-        {post.summary && <p className="post-summary">{post.summary}</p>}
-        {post.tags.length > 0 && <ul className="tag-list" aria-label="기술 태그">{post.tags.map(tag => <li key={tag.id}>{tag.name}</li>)}</ul>}
-      </article></li>;
-    })}</ul>
+    <PostCards posts={result.content} />
     <nav className="pagination" aria-label="게시글 페이지 이동">
       {result.hasPrevious ? <Link className="page-link" href={pageHref(page - 1, query)} prefetch={false} aria-label="이전 페이지">← 이전</Link> : <span className="page-link disabled" aria-disabled="true">← 이전</span>}
       <span aria-current="page">{page + 1} / {result.totalPages} 페이지</span>

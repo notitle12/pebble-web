@@ -35,12 +35,26 @@ export function createMockApi(state = "normal") {
     const url = new URL(request.url, "http://localhost");
     response.setHeader("Content-Type", "application/json; charset=utf-8");
     const detail = url.pathname.match(/^\/api\/v1\/blogs\/([^/]+)\/posts\/([^/]+)$/);
-    if (request.method !== "GET" || (!detail && !["/api/v1/posts", "/api/v1/posts/search", "/api/v1/tags", "/api/v1/projects", "/api/v1/projects/search"].includes(url.pathname))) {
+    const projectDetail=url.pathname.match(/^\/api\/v1\/projects\/([1-9]\d*)(\/posts)?$/);
+    if (request.method !== "GET" || (!projectDetail && !detail && !["/api/v1/posts", "/api/v1/posts/search", "/api/v1/tags", "/api/v1/projects", "/api/v1/projects/search"].includes(url.pathname))) {
       response.writeHead(404); response.end(JSON.stringify({ error: { code: "NOT_FOUND" } })); return;
     }
     if (state === "slow") await new Promise(resolve => setTimeout(resolve, 2500));
     if (state === "error") {
       response.writeHead(503); response.end(JSON.stringify({ error: { code: "INTERNAL_ERROR" } })); return;
+    }
+    if (projectDetail) {
+      const project=state === "empty" ? undefined : mockProjects.find(project=>project.id===projectDetail[1]);
+      if(!project){response.writeHead(404);response.end(JSON.stringify({error:{code:"PROJECT_NOT_FOUND"}}));return;}
+      if(projectDetail[2]){
+        const page=Number(url.searchParams.get("page")??0);const posts=project.id===mockProjects[0].id ? mockPosts : [];const totalPages=Math.ceil(posts.length/20);
+        response.end(JSON.stringify({data:{content:posts.slice(page*20,(page+1)*20),page,size:20,totalElements:posts.length,totalPages,hasNext:page+1<totalPages,hasPrevious:page>0}}));return;
+      }
+      response.end(JSON.stringify({data:{...project,description:"개발 기록을 글과 프로젝트 단위로 정리하는 서비스입니다.\n\n이 소개는 목 데이터이며 <script>alert('example')</script>도 실행하지 않고 문자로 표시합니다.",
+        architectureDescription:"사용자 web → API → 데이터베이스\n파일은 R2에 저장하고 인증은 API에서 처리합니다.",executionInstructions:"저장소를 준비한 뒤 환경변수를 설정합니다.\nNode 22에서 npm install, npm run dev를 실행합니다.",startedOn:"2026-09-01",completedOn:project.lifecycleStatus==="COMPLETED"?"2026-10-01":null,
+        features:[{id:"1",title:"개발 기록 정리",description:"태그로 글과 프로젝트를 찾아볼 수 있습니다.",displayOrder:0},{id:"2",title:"공개 프로젝트 소개",description:"진행 상태와 주요 기능을 공유합니다.",displayOrder:1}],
+        links:[{id:"1",linkType:"OTHER",label:"예시 링크",url:"https://example.com",displayOrder:0}]
+      }}));return;
     }
     if (detail) {
       const post = state === "empty" ? undefined : mockPosts.find(post => post.author.handle === detail[1] && post.urlKey === detail[2]);
