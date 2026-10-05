@@ -2,7 +2,7 @@ import { GuestApiError, guestJson } from "../../../lib/public-api.ts";
 import { PAGE_SIZE, parsePostPage, type PostPage } from "./post-list.ts";
 import { parsePage, validTagId } from "../../../lib/list-query.ts";
 
-const validHandle = (handle: string) => /^[a-z][a-z0-9-]{1,28}[a-z0-9]$/.test(handle);
+const validHandle = (handle: string) => /^[a-z][a-z0-9_-]{1,28}[a-z0-9_]$/.test(handle);
 
 export function blogHref(handle: string, page: number, boardId?:string): string {
   if (!validHandle(handle) || !Number.isSafeInteger(page) || page < 0 || parsePage(String(page)) !== page) {

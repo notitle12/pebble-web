@@ -1,11 +1,11 @@
 import { memberJson, MemberApiError, responseData } from "../../lib/member-api.ts";
-export type Member = { id: string; nickname: string; handle: string | null; blogName: string | null; profileCompleted: boolean; status: "ACTIVE" };
+export type Member = { id: string; nickname: string; handle: string | null; blogName: string | null; profileImageUrl: string | null; profileCompleted: boolean; status: "ACTIVE" };
 export type SessionState = { phase: "loading" | "ready" | "guest" | "error"; member: Member | null; message: string };
 export const initialSession: SessionState = { phase: "loading", member: null, message: "" };
 export function parseMember(value: unknown): Member {
   const d = responseData(value);
-  if (typeof d.id !== "string" || !/^[1-9]\d*$/.test(d.id) || typeof d.nickname !== "string" || d.status !== "ACTIVE" || typeof d.profileCompleted !== "boolean" || !(d.handle === null || typeof d.handle === "string") || !(d.blogName === null || typeof d.blogName === "string")) throw new MemberApiError(0, "INVALID_RESPONSE", "회원 정보를 확인하지 못했습니다.");
-  return {id:d.id,nickname:d.nickname,handle:d.handle,blogName:d.blogName,profileCompleted:d.profileCompleted,status:"ACTIVE"};
+  if (typeof d.id !== "string" || !/^[1-9]\d*$/.test(d.id) || typeof d.nickname !== "string" || d.status !== "ACTIVE" || typeof d.profileCompleted !== "boolean" || !(d.handle === null || typeof d.handle === "string") || !(d.blogName === null || typeof d.blogName === "string") || !(d.profileImageUrl === undefined || d.profileImageUrl === null || typeof d.profileImageUrl === "string")) throw new MemberApiError(0, "INVALID_RESPONSE", "회원 정보를 확인하지 못했습니다.");
+  return {id:d.id,nickname:d.nickname,handle:d.handle,blogName:d.blogName,profileImageUrl:typeof d.profileImageUrl === "string" ? d.profileImageUrl : null,profileCompleted:d.profileCompleted,status:"ACTIVE"};
 }
 type Exclusive = <T>(action:()=>Promise<T>)=>Promise<T>;
 export function createUserSession(request: typeof fetch = fetch, exclusive: Exclusive = browserLock, base?: string, announce: ()=>void = ()=>{}) {
