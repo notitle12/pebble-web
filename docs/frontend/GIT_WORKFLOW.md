@@ -22,3 +22,7 @@ main은 릴리스 기준, dev는 개발 통합 기준이다. 기능·수정·문
 초기 구성 커밋을 main·dev의 공통 기준으로 정리했다. 먼저 만들어졌던 chore/1-initialize-web 로컬 브랜치는 초기 구성을 두 기준 브랜치에 반영한 뒤 제거했다. 이슈 #1은 초기 구성과 문서 복원의 기록으로 남긴다. REPOSITORY_SETUP.md의 작업 브랜치·push 전 상태는 최초 구성 당시의 기록이며 현재 작업 기준은 dev다.
 
 기존 MD 9개와 기능 코드는 이 정리로 수정하지 않는다. 초기 코드의 타입 검사·빌드는 이미 통과했으며 브랜치·문서만 정리하는 동안 동일 검증을 반복하지 않는다.
+
+## 현재 공통 작업 기준
+
+프론트·백엔드 양쪽의 단일 원본은 [Pebble Git 작업 순서](https://github.com/notitle12/pebble-api/blob/dev/docs/system/projects/pebble/GIT_WORKFLOW.md)다. 형제 저장소가 있으면 `../pebble-api/docs/system/projects/pebble/GIT_WORKFLOW.md`를 읽는다. 위 초기 구성은 과거 이력이며 이후 작업은 이슈 → 번호 작업 브랜치 → 검증·push → dev PR → 검토·CI → 병합으로 진행한다. 배포를 PR 완료로 표현하지 않는다.
