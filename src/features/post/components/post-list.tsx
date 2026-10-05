@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getPublicPosts, pageHref, PostListError, type PostQuery } from "../api/post-list";
+import { getPublicPosts, pageHref, postHref, PostListError, type PostQuery } from "../api/post-list";
 
 export function PostListLoading() {
   return <section className="list-state" role="status" aria-live="polite">
@@ -38,7 +38,7 @@ export async function PostList({ query }: { query: PostQuery }) {
       const date = post.publishedAt ?? post.createdAt;
       return <li key={post.id}><article className="post-card">
         <div className="post-meta"><span>{post.author.nickname}</span><span aria-hidden="true">·</span><time dateTime={date}>{dateFormat.format(new Date(date))}</time></div>
-        <h3>{post.title}</h3>
+        <h3><Link href={postHref(post.author.handle, post.urlKey)!} prefetch={false}>{post.title}</Link></h3>
         {post.summary && <p className="post-summary">{post.summary}</p>}
         {post.tags.length > 0 && <ul className="tag-list" aria-label="기술 태그">{post.tags.map(tag => <li key={tag.id}>{tag.name}</li>)}</ul>}
       </article></li>;

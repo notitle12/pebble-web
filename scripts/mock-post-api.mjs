@@ -13,8 +13,8 @@ export const mockTags = tagNames.map((name, index) => ({ id: String(index + 1), 
 export const mockPosts = Array.from({ length: 21 }, (_, index) => {
   const [title, summary, nickname, names] = samples[index % samples.length];
   return {
-    id: String(721389012345678901n + BigInt(index)), title: index < 6 ? title : `${title} (${index + 1})`, summary,
-    author: { id: String(721389012345679000n + BigInt(index % samples.length)), nickname, blogName: null },
+    id: String(721389012345678901n + BigInt(index)), urlKey: `note-${index + 1}`, title: index < 6 ? title : `${title} (${index + 1})`, summary,
+    author: { id: String(721389012345679000n + BigInt(index % samples.length)), handle: `writer-${index % samples.length + 1}`, nickname, blogName: null },
     tags: names.map(name => ({ id: mockTags.find(tag => tag.name === name).id, name })),
     publishedAt: index === 5 ? null : new Date(Date.UTC(2026, 9, 3 - index, 3)).toISOString(),
     createdAt: new Date(Date.UTC(2026, 9, 3 - index, 3)).toISOString(),
@@ -26,12 +26,22 @@ export function createMockApi(state = "normal") {
   return http.createServer(async (request, response) => {
     const url = new URL(request.url, "http://localhost");
     response.setHeader("Content-Type", "application/json; charset=utf-8");
-    if (request.method !== "GET" || !["/api/v1/posts", "/api/v1/posts/search", "/api/v1/tags"].includes(url.pathname)) {
+    const detail = url.pathname.match(/^\/api\/v1\/blogs\/([^/]+)\/posts\/([^/]+)$/);
+    if (request.method !== "GET" || (!detail && !["/api/v1/posts", "/api/v1/posts/search", "/api/v1/tags"].includes(url.pathname))) {
       response.writeHead(404); response.end(JSON.stringify({ error: { code: "NOT_FOUND" } })); return;
     }
     if (state === "slow") await new Promise(resolve => setTimeout(resolve, 2500));
     if (state === "error") {
       response.writeHead(503); response.end(JSON.stringify({ error: { code: "INTERNAL_ERROR" } })); return;
+    }
+    if (detail) {
+      const post = state === "empty" ? undefined : mockPosts.find(post => post.author.handle === detail[1] && post.urlKey === detail[2]);
+      if (!post) { response.writeHead(404); response.end(JSON.stringify({error:{code:"POST_NOT_FOUND"}})); return; }
+      response.end(JSON.stringify({data:{...post, blocks:[
+        {type:"TEXT",content:"작은 문제부터 나누어 살펴보고, 각 단계의 책임을 정리했습니다.\n\n이 본문은 화면 검증을 위한 목 데이터입니다. <script>alert('example')</script>도 텍스트로 표시합니다.",language:null,title:null,displayOrder:0},
+        {type:"CODE",content:'public class Pebble {\n    public static void main(String[] args) {\n        System.out.println("긴 코드도 본문 폭을 넘지 않고 코드 영역 안에서 가로로 스크롤할 수 있습니다.");\n    }\n}',language:"JAVA",title:"실행 예제",displayOrder:1},
+        {type:"TEXT",content:"검증 결과를 기록하고 다음 개선점을 정리합니다.",language:null,title:null,displayOrder:2}
+      ]}})); return;
     }
     if (url.pathname === "/api/v1/tags") { response.end(JSON.stringify({ data: mockTags })); return; }
     const page = Number(url.searchParams.get("page") ?? "0");
