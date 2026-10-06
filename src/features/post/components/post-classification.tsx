@@ -12,9 +12,12 @@ type Props = {
   existingCategory?: ExistingCategory;
   existingTags?: ExistingTag[];
   onChange: (patch: { categoryId?: string | null; tagIds?: string[] }) => void;
+  showCategory?:boolean;
+  categoryLabel?:string;
+  showTags?:boolean;
 };
 
-export function PostClassification({ categoryId, tagIds, existingCategory, existingTags = [], onChange }: Props) {
+export function PostClassification({ categoryId, tagIds, existingCategory, existingTags = [], onChange, showCategory=true, showTags=true, categoryLabel="분류" }: Props) {
   const id = useId();
   const [categories, setCategories] = useState<PublicCategory[]>([]);
   const [tags, setTags] = useState<PublicTag[]>([]);
@@ -25,7 +28,7 @@ export function PostClassification({ categoryId, tagIds, existingCategory, exist
   async function loadLookups() {
     setCategoryState("loading");
     setTagState("loading");
-    const [categoryResult, tagResult] = await Promise.allSettled([getPublicCategories(), getPublicTags()]);
+    const [categoryResult, tagResult] = await Promise.allSettled([showCategory?getPublicCategories():Promise.resolve([]), showTags?getPublicTags():Promise.resolve([])]);
     if (categoryResult.status === "fulfilled") {
       setCategories(categoryResult.value);
       setCategoryState("ready");
@@ -36,7 +39,7 @@ export function PostClassification({ categoryId, tagIds, existingCategory, exist
     } else setTagState("error");
   }
 
-  useEffect(() => { void loadLookups(); }, []);
+  useEffect(() => { void loadLookups(); }, [showCategory,showTags]);
 
   const allTags = useMemo(() => {
     const byId = new Map<string, PublicTag>();
@@ -54,8 +57,8 @@ export function PostClassification({ categoryId, tagIds, existingCategory, exist
   );
 
   return <section className="post-classification" aria-label="게시글 분류">
-    <div className="post-classification-field">
-      <label htmlFor={`${id}-category`}>분류</label>
+    {showCategory&&<div className="post-classification-field">
+      <label htmlFor={`${id}-category`}>{categoryLabel}</label>
       <select id={`${id}-category`} value={categoryId ?? ""} disabled={categoryState !== "ready"} onChange={event => onChange({ categoryId: event.target.value || null })}>
         <option value="">분류 없음</option>
         {categories.map(category => {
@@ -79,9 +82,9 @@ export function PostClassification({ categoryId, tagIds, existingCategory, exist
       {categoryState === "loading" && <p className="post-classification-help" role="status">분류를 불러오는 중…</p>}
       {categoryState === "error" && <p className="post-classification-help" role="alert">분류를 불러오지 못했어요. 현재 선택은 유지됩니다. <button type="button" onClick={() => void loadLookups()}>다시 시도</button></p>}
       {categoryId && <p className="post-classification-help">현재 선택: {existingCategory?.id === categoryId ? existingCategory.name : categories.flatMap(item => [item, ...item.children]).find(item => item.id === categoryId)?.name ?? "기존 분류"}</p>}
-    </div>
+    </div>}
 
-    <div className="post-classification-field">
+    {showTags&&<div className="post-classification-field">
       <label htmlFor={`${id}-tag-search`}>기술 태그</label>
       <input id={`${id}-tag-search`} type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="태그 검색" autoComplete="off" />
       <div className="post-classification-selected" aria-live="polite">
@@ -110,6 +113,6 @@ export function PostClassification({ categoryId, tagIds, existingCategory, exist
           <span>기존 태그 ({selectedId})</span>
         </label> : null)}
       </div>
-    </div>
+    </div>}
   </section>;
 }
