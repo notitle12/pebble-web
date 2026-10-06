@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildPostBody, buildPostSaveBody, createEditorBlock, editorValueFromPost, validateEditorValue } from "../src/features/post/post-editor-model.ts";
+import { buildPostBody, buildPostSaveBody, createEditorBlock, editorValueFromPost, normalizePostSlug, validateEditorValue, validatePostSlug } from "../src/features/post/post-editor-model.ts";
 
 import {parseOwnPost} from "../src/features/post/api/member-posts.ts";
 
@@ -115,4 +115,28 @@ test("own post parser requires a nullable valid project id",()=>{
    if(projectId !== undefined) invalid.projectId=projectId;
    assert.throws(()=>parseOwnPost({data:invalid}));
  }
+});
+
+test("draft API field defaults old responses to finalized and accepts explicit draft",()=>{
+ const data={...basePost,boardId:null,projectId:null,visibilityStatus:"HIDDEN",isBlocked:false,category:null,tags:[],blocks:[{type:"HTML",content:"<p>body</p>",language:null,title:null,displayOrder:0}]};
+ assert.equal(parseOwnPost({data}).draft,false);
+ assert.equal(parseOwnPost({data:{...data,draft:true}}).draft,true);
+ assert.throws(()=>parseOwnPost({data:{...data,draft:"true"}}));
+ assert.equal(editorValueFromPost({...data,blocks:data.blocks}).blocks[0].type,"HTML");
+});
+
+test("HTML and Markdown blocks survive save conversion and slug rules are normalized",()=>{
+ const value={title:"글",summary:"",blocks:[createEditorBlock("HTML"),{...createEditorBlock("MARKDOWN"),content:"# 제목"}]};
+ assert.deepEqual(buildPostBody(value).blocks.map(block=>block.type),["HTML","MARKDOWN"]);
+ assert.equal(normalizePostSlug("  My Pebble Blog! "),"my-pebble-blog");
+ for(const slug of ["my-post","hello-42"])assert.equal(validatePostSlug(slug),true);
+ for(const slug of ["123","search","UPPER","hyphen-","한글"])assert.equal(validatePostSlug(slug),false);
+ const draft=buildPostSaveBody(value,undefined,{draft:true,visibility:"HIDDEN"});
+ assert.equal(draft.draft,true);assert.equal(draft.visibilityStatus,"HIDDEN");
+ assert.equal("slug" in buildPostSaveBody({...value,slug:"first-post"},undefined,{draft:true,visibility:"HIDDEN"}),false);
+ assert.equal("slug" in buildPostSaveBody({...value,slug:"search"},undefined,{draft:true,visibility:"HIDDEN"}),false);
+ const complete=buildPostSaveBody(value,{visibilityStatus:"HIDDEN",isBlocked:false,draft:true},{draft:false,finalize:true,visibility:"PUBLIC",slug:"First Post"});
+ assert.equal(complete.draft,false);assert.equal(complete.slug,"first-post");assert.equal(complete.visibilityStatus,"PUBLIC");
+ assert.throws(()=>buildPostSaveBody(value,{visibilityStatus:"PUBLIC",isBlocked:false,draft:false,urlKey:"old-post"},{draft:true}),/되돌릴/);
+ assert.throws(()=>buildPostSaveBody(value,{visibilityStatus:"PUBLIC",isBlocked:false,draft:false,urlKey:"old-post"},{slug:"new-post"}),/주소/);
 });

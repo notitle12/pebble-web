@@ -1,6 +1,8 @@
 import { validTagId } from "../../lib/list-query.ts";
 import { parseArchitectureSpec, parseTableSpec, type ArchitectureSpec, type PostDetail, type TableSpec } from "./api/post-list.ts";
 
+export type EditorBlockType = "TEXT" | "CODE" | "TABLE" | "ARCHITECTURE" | "HTML" | "MARKDOWN";
+export type EditorBlock = { key: string; type: EditorBlockType; content: string; language: string | null; title: string | null; valid: boolean; imagePreviews?: Record<string,string> };
 export type PostEditorValue = {
   title: string;
   summary: string;
@@ -8,18 +10,19 @@ export type PostEditorValue = {
   projectId?: string | null;
   boardId?: string | null;
   tagIds?: string[];
-  blocks: Array<{ key: string; type: "TEXT" | "CODE" | "TABLE" | "ARCHITECTURE"; content: string; language: string | null; title: string | null; valid: boolean }>;
+  slug?: string;
+  blocks: EditorBlock[];
 };
 
 const blankTable: TableSpec = { schemaVersion: 1, tableName: "table_name", columns: [{ name: "id", dataType: "BIGINT", nullable: false, primaryKey: true }] };
 const blankArchitecture: ArchitectureSpec = { schemaVersion: 1, groups: [], nodes: [{ id: "node-1", type: "CUSTOM", label: "서비스" }], edges: [] };
 
-export function createEditorBlock(type: PostEditorValue["blocks"][number]["type"] = "TEXT") {
+export function createEditorBlock(type: EditorBlockType = "TEXT") {
   const content = type === "TABLE" ? JSON.stringify(blankTable) : type === "ARCHITECTURE" ? JSON.stringify(blankArchitecture) : "";
   return { key: globalThis.crypto?.randomUUID?.() ?? `block-${Date.now()}-${Math.random().toString(36).slice(2)}`, type, content, language: type === "CODE" ? "TYPESCRIPT" : null, title: null, valid: true };
 }
 
-export function editorValueFromPost(post: PostDetail & {category?: {id:string} | null;projectId?:string|null;boardId?:string|null}): PostEditorValue {
+export function editorValueFromPost(post: PostDetail & {category?: {id:string} | null;projectId?:string|null;boardId?:string|null;draft?:boolean;imagePreviews?:Record<string,string>}): PostEditorValue {
   return {
     title: post.title,
     summary: post.summary ?? "",
@@ -27,6 +30,7 @@ export function editorValueFromPost(post: PostDetail & {category?: {id:string} |
     projectId: post.projectId ?? null,
     boardId: post.boardId ?? null,
     tagIds: post.tags.map(tag => tag.id),
+    slug: /^[1-9]\d*$/.test(post.urlKey) ? "" : post.urlKey,
     blocks: post.blocks.map((block, index) => ({
       key: `saved-${index}-${block.displayOrder}`,
       type: block.type,
@@ -34,8 +38,17 @@ export function editorValueFromPost(post: PostDetail & {category?: {id:string} |
       language: block.language,
       title: block.title,
       valid: true,
+      imagePreviews: post.imagePreviews,
     })),
   };
+}
+
+export function normalizePostSlug(value:string):string {
+  return value.trim().normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0,200).replace(/-+$/g, "");
+}
+export function validatePostSlug(value:string):boolean {
+  return value.length <= 200 && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value) && !/^\d+$/.test(value) && value !== "search";
 }
 
 export function validateEditorValue(value: PostEditorValue): string[] {
@@ -75,15 +88,24 @@ export function buildPostBody(value: PostEditorValue) {
 }
 
 export type PostVisibility = "PUBLIC" | "HIDDEN";
-export function buildPostSaveBody(value:PostEditorValue,existing?:{visibilityStatus:PostVisibility;isBlocked:boolean;boardId?:string|null;projectId?:string|null;category?:{id:string}|null;tags?:{id:string}[]},visibility?:PostVisibility){
+export type PostSaveOptions={draft?:boolean;visibility?:PostVisibility;finalize?:boolean;slug?:string};
+export function buildPostSaveBody(value:PostEditorValue,existing?:{visibilityStatus:PostVisibility;isBlocked:boolean;draft?:boolean;urlKey?:string;boardId?:string|null;projectId?:string|null;category?:{id:string}|null;tags?:{id:string}[]},visibilityOrOptions?:PostVisibility|PostSaveOptions){
+  const options=typeof visibilityOrOptions==="string"?{visibility:visibilityOrOptions}:visibilityOrOptions??{};
+  const visibility=options.visibility;
   const errors=validateEditorValue(value);
   if(errors.length)throw new Error(errors[0]);
   if(visibility!==undefined && visibility!=="PUBLIC" && visibility!=="HIDDEN")throw new Error("공개 또는 비공개를 선택해 주세요.");
   if(visibility==="PUBLIC" && existing?.isBlocked)throw new Error("차단된 글은 공개로 게시할 수 없습니다.");
+  const requestedSlug=options.slug ?? value.slug;
+  const slug=requestedSlug?.trim()?normalizePostSlug(requestedSlug):undefined;
+  if(options.draft!==true && requestedSlug?.trim() && (!slug || !validatePostSlug(slug)))throw new Error("주소는 영문 소문자·숫자와 하이픈으로 된 200자 이하여야 하며 숫자만 사용할 수 없습니다.");
+  if(existing && existing.draft===false && slug && slug!==existing.urlKey)throw new Error("게시가 완료된 글 주소는 변경할 수 없습니다.");
+  if(options.draft===true && existing && existing.draft===false)throw new Error("게시가 완료된 글을 임시 글로 되돌릴 수 없습니다.");
+  if(options.finalize && existing && existing.draft===false && options.draft!==false)throw new Error("게시 상태가 이미 완료된 글입니다.");
   const classification: {boardId?:string|null;projectId?:string|null;categoryId?:string|null;tagIds?:string[]} = {};
   if(value.boardId !== undefined && (!existing || value.boardId !== (existing.boardId ?? null))) classification.boardId=value.boardId;
   if(value.projectId !== undefined && (!existing || value.projectId !== (existing.projectId ?? null))) classification.projectId=value.projectId;
   if(value.categoryId !== undefined && (!existing || value.categoryId !== (existing.category?.id ?? null))) classification.categoryId=value.categoryId;
   if(value.tagIds !== undefined && (!existing || JSON.stringify(value.tagIds) !== JSON.stringify(existing.tags?.map(tag=>tag.id) ?? []))) classification.tagIds=[...value.tagIds];
-  return {...buildPostBody(value),...classification,...(!existing?{visibilityStatus:visibility??"HIDDEN"}:visibility!==undefined?{visibilityStatus:visibility}:{})};
+  return {...buildPostBody(value),...classification,...(!existing?{visibilityStatus:visibility??"HIDDEN"}:visibility!==undefined?{visibilityStatus:visibility}:{}),...(options.draft!==undefined?{draft:options.draft}:{}),...(options.finalize?{draft:false}:{}),...(slug && options.draft!==true && (!existing || existing.draft===true)?{slug}:{})};
 }
