@@ -76,3 +76,11 @@ export async function getPublicProject(id:string,baseUrl=process.env.NEXT_PUBLIC
   if(project.id!==id) throw new GuestApiError("response");
   return project;
 }
+
+/** Author-scoped public projects; never filter a global first page client-side. */
+export async function getPublicMemberProjects(memberId:string,page=0,baseUrl=process.env.NEXT_PUBLIC_API_BASE_URL,request:typeof fetch=fetch):Promise<ProjectPage> {
+  if(!validTagId(memberId)||!parseProjectQuery({page:String(page)}))throw new GuestApiError("response");
+  const result=parseProjectPage(await guestJson(`members/${memberId}/projects`,new URLSearchParams({page:String(page),size:"20"}),baseUrl,request),page);
+  if(result.content.some(project=>project.owner.id!==memberId))throw new GuestApiError("response");
+  return result;
+}
