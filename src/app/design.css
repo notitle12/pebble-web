@@ -272,16 +272,16 @@ main.personal-blog-layout{max-width:none;width:100%;margin:0;padding:0;display:g
 
 @media(max-width:640px){.blog-project-nav a:nth-of-type(n+2){display:none}.blog-profile-identity{margin-bottom:14px}.blog-profile-identity .personal-blog-handle{margin-bottom:0}.personal-blog-layout .blog-owner-actions{margin-top:16px;padding-top:14px}.blog-search-form{max-width:420px}.blog-visit-count,.blog-external-links{max-width:420px}.blog-management{margin:20px auto;padding:24px 20px;border-radius:12px}.blog-management h1{font-size:24px}.blog-site-draft{padding:12px}.blog-links-editor{padding:0}}
 
-/* 블로그 탐색은 스크롤하고 관리 진입점은 사이드바 아래에 남긴다. */
-body:has(.personal-blog-layout) .site-header{position:sticky;top:0;z-index:30}
-.personal-blog-layout .personal-blog-profile{position:sticky;top:var(--blog-header-height,84px);height:calc(100dvh - var(--blog-header-height,84px));align-self:start;display:flex;flex-direction:column;padding:24px 16px 0;overflow:hidden}
-.blog-sidebar-content{flex:1;min-height:0;overflow-y:auto;padding:0 6px 24px;scrollbar-width:thin}
+/* 블로그 설정은 일반 문서 흐름의 마지막 항목이다. */
+
+.personal-blog-layout .personal-blog-profile{position:static;align-self:stretch;padding:24px 16px}
+.blog-sidebar-content{padding:0 6px 24px}
 .blog-sidebar-content .blog-profile-identity{margin-bottom:22px}
-.blog-sidebar-content .blog-visit-count{margin:0 0 24px;padding:0 8px 20px;border-top:0;border-bottom:1px solid #e0e3e9}
+.blog-sidebar-content .blog-visit-count{margin:0 0 24px;padding:0 8px 20px;border-top:0;border-bottom:0}
 .personal-blog-layout .blog-owner-actions{flex-shrink:0;margin:0;padding:12px 6px;border-top:1px solid #dedfe7;background:#f5f5f8}
 .personal-blog-layout .blog-owner-actions a{min-height:40px}
 
-/* 게시판 관리: 계층 목록과 선택 항목의 설정을 분리한다. */
+/* 게시판 목록에서 이름과 위치를 직접 편집한다. */
 .board-manager-shell{max-width:1240px;padding-top:34px;padding-bottom:40px}
 .board-management{display:block;margin:0}
 .board-manager-heading{display:flex;align-items:center;justify-content:space-between;gap:24px;margin-bottom:28px}
@@ -289,7 +289,7 @@ body:has(.personal-blog-layout) .site-header{position:sticky;top:0;z-index:30}
 .board-manager-heading h1{font-size:28px;letter-spacing:-.04em;margin:0 0 10px}
 .board-manager-heading p{font-size:14px;color:#717989;margin:0;line-height:1.7}
 .board-add-button,.board-save-button{background:#364f8e!important;color:#fff!important;border-color:#364f8e!important}
-.board-manager-workspace{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:22px;align-items:start}
+.board-manager-workspace{display:grid;grid-template-columns:minmax(0,1fr);gap:22px;align-items:start}
 .board-tree-panel,.board-editor-panel{background:#fff;border:1px solid #e2e6ed;border-radius:14px;overflow:hidden;box-shadow:0 3px 18px #30425e04}
 .board-tree-heading{display:flex;justify-content:space-between;align-items:center;padding:18px 20px;border-bottom:1px solid #edf0f5}
 .board-tree-heading h2{font-size:15px;margin:0;font-weight:650}
@@ -312,17 +312,22 @@ body:has(.personal-blog-layout) .site-header{position:sticky;top:0;z-index:30}
 .board-row-actions button{font-size:11px;border:0;background:transparent;color:#7d8798;padding:6px;border-radius:4px;cursor:pointer}
 .board-row-actions button:hover:not(:disabled){color:#354f91;background:#e8eefb}.board-row-actions button:disabled{opacity:.38;cursor:not-allowed}
 .board-row-actions .board-delete-action:hover:not(:disabled){color:#b15c66;background:#fcf0f1}
-.board-editor-panel{padding:24px;position:sticky;top:24px}
-.board-editor-panel header p{font-size:11px;color:#7a8bac;margin:0 0 6px}.board-editor-panel h2{font-size:18px;margin:0 0 24px;letter-spacing:-.03em}
-.board-editor-panel fieldset{display:grid;gap:18px;border:0;padding:0;margin:0;min-width:0}
-.board-editor-panel label{display:grid;gap:8px;font-size:12px;color:#677185}
-.board-editor-panel input,.board-editor-panel select{width:100%;min-width:0;height:40px;padding:8px 10px;border:1px solid #dfe5ef;border-radius:6px;background:#fff;color:#364158;font:inherit;font-size:13px}
-.board-editor-help{font-size:11px;color:#8991a0;margin:-8px 0 0;line-height:1.7}
-.board-editor-actions{display:flex;gap:8px;flex-wrap:wrap}.board-editor-actions .button{font-size:12px;padding:9px 13px}
-.board-editor-placeholder{padding:24px 0;text-align:center}.board-editor-placeholder svg{width:32px;height:32px;color:#a5b2c7;margin-bottom:18px}.board-editor-placeholder h2{font-size:15px;margin:0 0 10px}.board-editor-placeholder p{font-size:12px;line-height:1.8;color:#8a94a6;margin:0}
 .board-empty{text-align:center;padding:44px 24px}.board-empty h3{font-size:16px;margin:0 0 12px}.board-empty p{font-size:13px;color:#8a94a6;line-height:1.8}
 .board-delete-confirm{margin:4px 16px 16px;padding:16px;border-radius:8px;background:#fcf4f4;font-size:12px;color:#835961}.board-delete-confirm p{margin:0 0 12px;line-height:1.7}.board-delete-confirm>div{display:flex;gap:8px}.board-delete-confirm button{background:#fff;border:1px solid #e8d4d7;border-radius:5px;padding:6px 10px;color:inherit;font:inherit;cursor:pointer}
 .board-form-error{font-size:12px;color:#ad4f5f;line-height:1.7;margin:0}
 .board-management :focus-visible{outline:2px solid #819be8;outline-offset:3px}
 @media(max-width:900px){.board-manager-workspace{grid-template-columns:minmax(0,1fr)}.board-editor-panel{position:static}.board-row-actions{gap:0}}
 @media(max-width:640px){body:has(.personal-blog-layout) .site-header{position:static}.personal-blog-layout .personal-blog-profile{position:static;height:auto;overflow:visible;padding:24px 20px 0}.blog-sidebar-content{overflow:visible;padding:0 0 24px}.personal-blog-layout .blog-owner-actions{margin:0;padding:12px 0}.board-manager-heading{align-items:flex-start;flex-direction:column;gap:18px}.board-manager-heading h1{font-size:24px}.board-tree-row{flex-wrap:wrap;row-gap:2px}.board-name-button{flex:1}.board-row-actions{width:100%;padding-left:29px;justify-content:flex-start}.board-tree-heading,.board-default-row{padding:16px}.board-editor-panel{padding:20px}}
+
+.blog-sidebar-content .blog-visit-count,.blog-sidebar-content .blog-external-links{border-top:0;border-bottom:0}
+.board-inline-name{display:flex!important;align-items:center;gap:8px;flex:1;min-width:0}
+.board-inline-name input{width:100%;min-width:0;max-width:420px;padding:9px 12px;border:1px solid #b4c4e4;border-radius:6px;font:inherit}
+.board-inline-name button{border:0;background:#edf2fa;border-radius:5px;padding:8px;white-space:nowrap;cursor:pointer}
+.board-drag-handle{border:0;background:transparent;color:#8b98ab;cursor:grab;padding:5px;touch-action:none}
+.board-drag-handle svg{width:16px;height:20px}
+.board-tree>li.is-dragging{opacity:.45}
+.board-tree>li.drop-before{box-shadow:inset 0 3px #698aca}
+.board-tree>li.drop-after{box-shadow:inset 0 -3px #698aca}
+.board-tree>li.drop-inside{background:#eaf1ff;outline:2px solid #698aca;outline-offset:-2px}
+.board-drag-help{font-size:12px;color:#788499;line-height:1.8;padding:0 20px 16px;margin:0}
+.board-tree-panel>.board-form-error{padding:16px 20px}
