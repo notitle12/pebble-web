@@ -56,7 +56,7 @@ export function InlineCodeView({ node, editor, updateAttributes, deleteNode }: N
       setCopyMessage("코드를 복사하지 못했어요. 코드를 직접 선택해 주세요.");
     }
   };
-  return <NodeViewWrapper className={`${styles.block} ${styles.code}`}>
+  return <NodeViewWrapper className={`${styles.block} ${styles.code}`} data-align={node.attrs.align ?? "left"}>
     <div className={styles.toolbar} contentEditable={false} onPointerDown={event => event.stopPropagation()} onKeyDown={event => event.stopPropagation()}>
       <select aria-label="코드 언어" value={node.attrs.language ?? "TYPESCRIPT"} disabled={!editable} onChange={event => { if (editor.isEditable) updateAttributes({ language: event.target.value }); }}>
         {languages.map(language => <option key={language} value={language}>{language}</option>)}
@@ -69,7 +69,7 @@ export function InlineCodeView({ node, editor, updateAttributes, deleteNode }: N
   </NodeViewWrapper>;
 }
 
-export function InlineTableSpecView({ node, editor, updateAttributes, deleteNode }: NodeViewProps) {
+export function InlineTableSpecView({ node, editor, updateAttributes, deleteNode, getPos }: NodeViewProps) {
   const editable = useEditable(editor);
   const id = useId();
   const spec: TableSpec = node.attrs.spec ?? defaultInlineTableSpec();
@@ -78,7 +78,7 @@ export function InlineTableSpecView({ node, editor, updateAttributes, deleteNode
     if (editor.isEditable) updateAttributes({ spec: next, valid: !tableError(next) });
   };
   const columnChange = (index: number, patch: Partial<TableColumn>) => change({ ...spec, columns: spec.columns.map((column, position) => position === index ? { ...column, ...patch } : column) });
-  return <NodeViewWrapper className={`${styles.block} ${styles.tableBlock}`} contentEditable={false} onPointerDown={(event: React.PointerEvent) => event.stopPropagation()} onKeyDown={(event: React.KeyboardEvent) => event.stopPropagation()}>
+  return <NodeViewWrapper className={`${styles.block} ${styles.tableBlock}`} data-align={node.attrs.align ?? "left"} contentEditable={false} onPointerDown={(event: React.PointerEvent) => event.stopPropagation()} onKeyDown={(event: React.KeyboardEvent) => event.stopPropagation()} onClick={(event: React.MouseEvent) => { if ((event.target as Element).closest("button,input,select,textarea")) return; const pos = getPos(); if (editor.isEditable && typeof pos === "number") editor.commands.setNodeSelection(pos); }}>
     <div className={styles.heading}><span>{node.attrs.title ?? "테이블 명세"}</span><button type="button" disabled={!editable} aria-label="테이블 명세 블록 삭제" onClick={() => { if (editor.isEditable) deleteNode(); }}>삭제</button></div>
     <div className={styles.tableMeta}>
       <label htmlFor={`${id}-name`}>테이블명<TableTextInput id={`${id}-name`} disabled={!editable} value={spec.tableName} aria-invalid={!!error} onCommit={value => change({ ...spec, tableName: value })} /></label>
@@ -104,7 +104,7 @@ export function InlineTableSpecView({ node, editor, updateAttributes, deleteNode
   </NodeViewWrapper>;
 }
 
-export function InlineArchitectureView({ node, editor, updateAttributes, deleteNode }: NodeViewProps) {
+export function InlineArchitectureView({ node, editor, updateAttributes, deleteNode, getPos }: NodeViewProps) {
   const editable = useEditable(editor);
   const headingId = useId();
   const dialog = useRef<HTMLDialogElement>(null);
@@ -129,7 +129,7 @@ export function InlineArchitectureView({ node, editor, updateAttributes, deleteN
       updateAttributes({ spec: next, valid: true }); close();
     } catch { setDraft(null); }
   };
-  return <NodeViewWrapper className={`${styles.block} ${styles.architecture}`} contentEditable={false} onPointerDown={(event: React.PointerEvent) => event.stopPropagation()} onKeyDown={(event: React.KeyboardEvent) => event.stopPropagation()}>
+  return <NodeViewWrapper className={`${styles.block} ${styles.architecture}`} data-align={node.attrs.align ?? "left"} contentEditable={false} onPointerDown={(event: React.PointerEvent) => event.stopPropagation()} onKeyDown={(event: React.KeyboardEvent) => event.stopPropagation()} onClick={(event: React.MouseEvent) => { if ((event.target as Element).closest("button,input,select,textarea")) return; const pos = getPos(); if (editor.isEditable && typeof pos === "number") editor.commands.setNodeSelection(pos); }}>
     <div className={styles.heading}><span>{node.attrs.title ?? "아키텍처"}</span><div><button ref={opener} type="button" disabled={!editable} onClick={show}>구성도 편집</button><button type="button" aria-label="아키텍처 블록 삭제" disabled={!editable || open} onClick={() => { if (editor.isEditable) deleteNode(); }}>삭제</button></div></div>
     <div onDoubleClick={show}>{validSpec ? <ArchitectureBlock spec={validSpec} title={null} /> : <p className={styles.error} role="alert">구성도를 편집해 올바른 요소와 연결을 입력해 주세요.</p>}</div>
     {open && createPortal(<dialog ref={dialog} className={styles.dialog} aria-labelledby={headingId} onCancel={event => { event.preventDefault(); close(); }} onClose={() => { setOpen(false); opener.current?.focus(); }} onPointerDown={event => event.stopPropagation()} onKeyDown={event => { if (event.key === "Escape") { event.preventDefault(); close(); } event.stopPropagation(); }}>

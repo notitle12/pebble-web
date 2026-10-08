@@ -1,9 +1,11 @@
 import { validTagId } from "../../lib/list-query.ts";
 import { parseArchitectureSpec, parseTableSpec, type ArchitectureSpec, type PostDetail, type TableSpec } from "./api/post-list.ts";
+import {bodyImageId,representativeImageSrc,postImageSources} from "./post-images.ts";
 import { derivePostExcerpt } from "./post-excerpt.ts";
 
 export type EditorBlockType = "TEXT" | "CODE" | "TABLE" | "ARCHITECTURE" | "HTML" | "MARKDOWN";
-export type EditorBlock = { key: string; type: EditorBlockType; content: string; language: string | null; title: string | null; valid: boolean; imagePreviews?: Record<string,string> };
+export type BlockAlignment = "LEFT" | "CENTER" | "RIGHT";
+export type EditorBlock = { key: string; type: EditorBlockType; content: string; language: string | null; title: string | null; valid: boolean; alignment?: BlockAlignment; imagePreviews?: Record<string,string> };
 export type PostEditorValue = {
   title: string;
   summary: string;
@@ -12,6 +14,7 @@ export type PostEditorValue = {
   boardId?: string | null;
   tagIds?: string[];
   slug?: string;
+  thumbnailImageSrc?: string | null;
   blocks: EditorBlock[];
 };
 
@@ -23,7 +26,7 @@ export function createEditorBlock(type: EditorBlockType = "TEXT") {
   return { key: globalThis.crypto?.randomUUID?.() ?? `block-${Date.now()}-${Math.random().toString(36).slice(2)}`, type, content, language: type === "CODE" ? "TYPESCRIPT" : null, title: null, valid: true };
 }
 
-export function editorValueFromPost(post: PostDetail & {category?: {id:string} | null;projectId?:string|null;boardId?:string|null;draft?:boolean;imagePreviews?:Record<string,string>}): PostEditorValue {
+export function editorValueFromPost(post: PostDetail & {category?: {id:string} | null;projectId?:string|null;boardId?:string|null;draft?:boolean;thumbnailImageId?:string|null;imagePreviews?:Record<string,string>}): PostEditorValue {
   return {
     title: post.title,
     summary: post.summary ?? "",
@@ -31,6 +34,7 @@ export function editorValueFromPost(post: PostDetail & {category?: {id:string} |
     projectId: post.projectId ?? null,
     boardId: post.boardId ?? null,
     tagIds: post.tags.map(tag => tag.id),
+    thumbnailImageSrc: post.thumbnailImageId ? postImageSources(post.blocks).find(src=>bodyImageId(src)===post.thumbnailImageId)??null : null,
     slug: /^[1-9]\d*$/.test(post.urlKey) ? "" : post.urlKey,
     blocks: post.blocks.map((block, index) => ({
       key: `saved-${index}-${block.displayOrder}`,
@@ -39,6 +43,7 @@ export function editorValueFromPost(post: PostDetail & {category?: {id:string} |
       language: block.language,
       title: block.title,
       valid: true,
+      alignment: block.alignment ?? "LEFT",
       imagePreviews: post.imagePreviews,
     })),
   };
@@ -83,10 +88,11 @@ export function validateEditorValue(value: PostEditorValue): string[] {
 export function buildPostBody(value: PostEditorValue) {
   return {
     title: value.title,
+    thumbnailImageId: bodyImageId(representativeImageSrc(value.blocks,value.thumbnailImageSrc)??""),
     // Keep summary in the editor model for older drafts, but derive the persisted
     // list excerpt from the current readable body on every save.
     summary: derivePostExcerpt(value.blocks),
-    blocks: value.blocks.map(({ type, content, language, title }) => ({ type, content, language: type === "CODE" ? language : null, title })),
+    blocks: value.blocks.map(({ type, content, language, title, alignment }) => ({ type, content, language: type === "CODE" ? language : null, title, alignment: alignment ?? "LEFT" })),
   };
 }
 

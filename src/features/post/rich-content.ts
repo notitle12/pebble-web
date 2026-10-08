@@ -14,6 +14,11 @@ const allowedStyles: NonNullable<IOptions["allowedStyles"]> = {
     width: [/^(?:[1-9]\d?|100)%$/],
   },
 };
+const withSafeAlignment = (attrs: sanitizeHtml.Attributes): sanitizeHtml.Attributes => {
+  const result = { ...attrs };
+  if (!["left", "center", "right"].includes(result["data-align"] || "")) delete result["data-align"];
+  return result;
+};
 
 const sanitizerOptions: IOptions = {
   allowedTags: [
@@ -21,11 +26,12 @@ const sanitizerOptions: IOptions = {
   ],
   allowedAttributes: {
     a: ["href", "name", "target", "rel", "title"],
-    img: ["src", "alt", "title", "width", "height", "data-media-src"],
+    img: ["src", "alt", "title", "width", "height", "data-media-src", "data-align"],
     iframe: ["src", "width", "height", "title", "loading", "sandbox", "allowfullscreen", "referrerpolicy"],
     mark: ["data-color"],
-    div: ["data-details-content", "data-pebble-type", "data-pebble-spec", "data-pebble-title"],
-    pre: ["data-language"],
+    div: ["data-details-content", "data-pebble-type", "data-pebble-spec", "data-pebble-title", "data-align"],
+    table: ["data-align"],
+    pre: ["data-language", "data-align"],
     "*": ["id", "class", "style", "colspan", "rowspan", "open", "aria-label", "data-level"],
   },
   allowedStyles,
@@ -42,9 +48,13 @@ const sanitizerOptions: IOptions = {
         const value = JSON.parse(attrs["data-pebble-spec"] || "");
         const spec = type === "TABLE" ? parseTableSpec(value) : type === "ARCHITECTURE" ? parseArchitectureSpec(value) : null;
         if (!spec) throw new Error();
-        return { tagName: "div", attribs: { "data-pebble-type": type, "data-pebble-spec": JSON.stringify(spec), ...(attrs["data-pebble-title"] ? { "data-pebble-title": attrs["data-pebble-title"].slice(0, 100) } : {}) } };
+        const align = ["left", "center", "right"].includes(attrs["data-align"] || "") ? attrs["data-align"] : undefined;
+        return { tagName: "div", attribs: { "data-pebble-type": type, "data-pebble-spec": JSON.stringify(spec), ...(align ? { "data-align": align } : {}), ...(attrs["data-pebble-title"] ? { "data-pebble-title": attrs["data-pebble-title"].slice(0, 100) } : {}) } };
       } catch { return { tagName: "div", attribs: {} as sanitizeHtml.Attributes }; }
     },
+    img: (_tagName, attrs) => ({ tagName: "img", attribs: withSafeAlignment(attrs) }),
+    table: (_tagName, attrs) => ({ tagName: "table", attribs: withSafeAlignment(attrs) }),
+    pre: (_tagName, attrs) => ({ tagName: "pre", attribs: withSafeAlignment(attrs) }),
     a: (_tagName,attrs)=>({tagName:"a",attribs:{...attrs,rel:"nofollow noopener noreferrer",...(attrs.href?.startsWith("#")?{target:"_self"}:{})}}),
     iframe: (_tagName, attrs) => {
       if (!isSafeOpenStreetMapEmbed(attrs.src || "")) return { tagName: "span", attribs: {} as sanitizeHtml.Attributes };
@@ -90,7 +100,7 @@ function stableImages(html: string): string {
       img: (_tagName, attrs) => {
         const stableSrc = attrs["data-media-src"] || attrs.src || "";
         const { ["data-media-src"]: _mediaSrc, ...rest } = attrs;
-        return { tagName: "img", attribs: { ...rest, src: stableSrc } };
+        return { tagName: "img", attribs: { ...withSafeAlignment(rest), src: stableSrc } };
       },
     },
   });
@@ -108,12 +118,14 @@ export function richEditorHtml(content: string, format: RichBodyFormat, imagePre
   const safe = richContentHtml(content, format);
   return sanitizeHtml(safe, {
     ...sanitizerOptions,
+    // Only this editor preview pass can show blob URLs from its own in-memory map.
+    allowedSchemesByTag: { img: ["http", "https", "blob"] },
     transformTags: {
       ...sanitizerOptions.transformTags,
       img: (_tagName, attrs) => {
         const stableSrc = attrs.src || "";
         const preview = imagePreviews[stableSrc];
-        return { tagName: "img", attribs: { ...attrs, ...(preview ? { src: preview } : {}), "data-media-src": stableSrc } };
+        return { tagName: "img", attribs: { ...withSafeAlignment(attrs), ...(preview ? { src: preview } : {}), "data-media-src": stableSrc } };
       },
     },
   });

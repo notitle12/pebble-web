@@ -7,6 +7,7 @@ import {PostProjectPicker} from "./post-project-picker";
 import {PostClassification} from "./post-classification";
 import type {Classification} from "../api/member-posts";
 import {RichBodyEditor} from "./rich-body-editor";
+import {representativeImageSrc} from "../post-images";
 
 export type { PostEditorValue } from "../post-editor-model";
 export type PostSaveAction={kind:"temporary"}|{kind:"complete";visibility:PostVisibility;slug:string};
@@ -30,7 +31,7 @@ export function PostEditor({ memberId, initialValue, onSave, busy = false, visib
   const normalizedSlug=normalizePostSlug(slug);
   const slugError=slugMode==="CUSTOM"&&!validatePostSlug(normalizedSlug)?"주소는 영문 소문자·숫자와 하이픈으로 된 200자 이하여야 하며 숫자만 사용할 수 없고 search는 사용할 수 없습니다.":"";
   const imagePreviews = useMemo(() => Object.assign({}, ...value.blocks.map(block => block.imagePreviews ?? {})), [value.blocks]);
-  const updateDocument = useCallback((blocks: PostEditorValue["blocks"]) => setValue(current => ({ ...current, blocks })), []);
+  const updateDocument = useCallback((blocks: PostEditorValue["blocks"]) => setValue(current => ({ ...current, blocks, thumbnailImageSrc: representativeImageSrc(blocks, current.thumbnailImageSrc) })), []);
 
   useEffect(() => {
     const warn = (event: BeforeUnloadEvent) => { if (dirty) { event.preventDefault(); event.returnValue = ""; } };
@@ -58,7 +59,7 @@ export function PostEditor({ memberId, initialValue, onSave, busy = false, visib
   return <section className="post-editor writer-composer" aria-label="게시글 작성기">
     <header className="writer-action-bar"><button type="button" className="writer-exit" disabled={busy} onClick={leave}>나가기</button><span aria-live="polite">{busy?"저장 중…":saveMessage|| (dirty?"저장되지 않은 변경 사항":"변경 사항 없음")}</span><div><button type="button" className="secondary" disabled={busy||temporaryErrors.length>0} onClick={()=>void save({kind:"temporary"})}>{busy?"저장 중…":"임시저장"}</button><button type="button" disabled={busy||errors.length>0} onClick={()=>{setSaveMessage("");setSaveError("");setPublishRevision(n=>n+1);setReview(true);}}>완료</button></div></header>
     <label className="writer-title-field"><span className="writer-visually-hidden">제목</span><input value={value.title} maxLength={400} aria-label="제목" aria-invalid={!value.title.trim() || Array.from(value.title).length > 200} placeholder="제목을 입력하세요" onChange={event => setValue(current => ({ ...current, title: event.target.value }))} /><small>{Array.from(value.title).length}/200</small></label>
-    <RichBodyEditor blocks={value.blocks} onChangeBlocks={updateDocument} disabled={busy} imagePreviews={imagePreviews} uploadImage={uploadImage ? async file => {
+    <RichBodyEditor blocks={value.blocks} onChangeBlocks={updateDocument} disabled={busy} imagePreviews={imagePreviews} representativeImageSrc={representativeImageSrc(value.blocks, value.thumbnailImageSrc)} onSelectRepresentativeImage={src => setValue(current => ({ ...current, thumbnailImageSrc: src }))} uploadImage={uploadImage ? async file => {
       const image = await uploadImage(file, value);
       setValue(current => ({ ...current, blocks: current.blocks.map(block => ({ ...block, imagePreviews: { ...block.imagePreviews, [image.src]: image.previewUrl } })) }));
       return image;
