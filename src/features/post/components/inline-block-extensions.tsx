@@ -78,7 +78,16 @@ export const HeadingParagraphReset = Extension.create({
   addKeyboardShortcuts() { return { Enter: () => {
     const { $from, empty } = this.editor.state.selection;
     if (!empty || $from.parent.type.name !== "heading" || $from.parentOffset !== $from.parent.content.size) return false;
-    return this.editor.chain().splitBlock().setParagraph().updateAttributes("paragraph", { fontSize: defaultTextSizes.p, id: null }).run();
+    const state = this.editor.state;
+    const nextPosition = $from.after();
+    const next = state.doc.nodeAt(nextPosition);
+    if (next?.type.name === "paragraph" && next.content.size === 0 && nextPosition + next.nodeSize === state.doc.content.size) {
+      return this.editor.chain().focus().setTextSelection(nextPosition + 1).updateAttributes("paragraph", { fontSize: defaultTextSizes.p, id: null }).run();
+    }
+    // splitBlock already chooses the default paragraph at the heading end.
+    // setParagraph on that paragraph can return false and let the next Enter
+    // keymap split again even though the first transaction was applied.
+    return this.editor.chain().splitBlock().updateAttributes("paragraph", { fontSize: defaultTextSizes.p, id: null }).run();
   } }; },
   addProseMirrorPlugins() { return [new Plugin({ appendTransaction: (transactions, _oldState, state) => {
     if (!transactions.some(tr => tr.docChanged)) return null;

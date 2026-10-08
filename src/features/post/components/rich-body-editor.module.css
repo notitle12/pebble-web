@@ -141,3 +141,11 @@
 :global(.writer-shell .writer-composer):has(.sourceGrid){max-width:1400px}
 .editor :global(.tiptap table),.rendered :global(table){display:table;table-layout:fixed;width:100%}
 .rendered{max-width:100%;overflow-x:auto}
+
+/* Paragraph alignment also carries the inline list marker with the text. */
+.editor :global(.tiptap li:has(> p[style*="text-align: center"])),.rendered :global(li:has(> p[style*="text-align: center"])){text-align:center;list-style-position:inside}
+.editor :global(.tiptap li:has(> p[style*="text-align: right"])),.rendered :global(li:has(> p[style*="text-align: right"])){text-align:right;list-style-position:inside}
+.editor :global(.tiptap li:has(> p[style*="text-align: center"]) > p:first-child),.editor :global(.tiptap li:has(> p[style*="text-align: right"]) > p:first-child),.rendered :global(li:has(> p[style*="text-align: center"]) > p:first-child),.rendered :global(li:has(> p[style*="text-align: right"]) > p:first-child){display:inline}
+/* Enter adds one new paragraph; keep default block margins from looking like a blank extra line. */
+.editor :global(.tiptap p),.editor :global(.tiptap h1),.editor :global(.tiptap h2),.editor :global(.tiptap h3){margin-block:0}
+.editor :global(.tiptap > p + p),.editor :global(.tiptap > h1 + p),.editor :global(.tiptap > h2 + p),.editor :global(.tiptap > h3 + p){margin-top:0}
