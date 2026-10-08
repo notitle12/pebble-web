@@ -79,3 +79,19 @@ test("user markup cannot borrow application overlay classes",()=>{
  assert.doesNotMatch(safe,/writer-action-bar|writer-identity|position:|z-index:/);
  assert.match(safe,/class="post-toc"/);
 });
+
+test("Markdown headings require a space and one newline renders a line break", () => {
+  const result = richContentHtml("### 제목\n\n###제목아님\n\n첫 줄\n둘째 줄\n\n1. 하나\n2. 둘", "MARKDOWN");
+  assert.match(result, /<h3[^>]*>제목<\/h3>/);
+  assert.match(result, /###제목아님/);
+  assert.match(result, /첫 줄<br\s*\/?>(?:\n)?둘째 줄/);
+  assert.match(result, /<ol>/);
+  assert.match(result, /<li>둘<\/li>/);
+});
+test("toggle summary and content survive persistence without introducing an editable summary paragraph", () => {
+ const source='<details open><summary>세부 &amp; 내용</summary><div data-details-content><p>첫 줄<br>둘째 줄</p></div></details>';
+ const result=persistedRichHtml(source);
+ assert.match(result,/<summary>세부 &amp; 내용<\/summary>/);
+ assert.match(result,/data-details-content/);
+ assert.match(result,/<p>첫 줄<br\s*\/?>(?:\n)?둘째 줄<\/p>/);
+});

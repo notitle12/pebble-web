@@ -12,7 +12,7 @@ import { TextStyle } from "@tiptap/extension-text-style";
 import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { buildOpenStreetMapEmbed, escapeRichText, isSafeOpenStreetMapEmbed, persistedRichHtml, richContentHtml, richEditorHtml, type RichBodyFormat } from "../rich-content";
-import { InlineCode, InlineTableSpec, InlineArchitecture, TocNode, AutomaticToc, ControllableTable, HeadingParagraphReset } from "./inline-block-extensions";
+import { InlineCode, InlineTableSpec, InlineArchitecture, TocNode, AutomaticToc, ControllableTable, HeadingParagraphReset, EditableToggle } from "./inline-block-extensions";
 import { defaultInlineTableSpec, defaultInlineArchitectureSpec } from "./inline-block-views";
 import { blocksToDocument, documentToBlocks, blocksSignature, textSizes, defaultTextSizes, textColors, highlightColors } from "../writer-document";
 import type { EditorBlock } from "../post-editor-model";
@@ -33,7 +33,9 @@ const iconPaths: Record<string, string[]> = {
   image: ["M4 4h16v16H4z", "m4 16 5-5 4 4 3-3 4 4", "M9 9h.01"], bold: ["M7 4h6a4 4 0 0 1 0 8H7z", "M7 12h7a4 4 0 0 1 0 8H7z"],
   italic: ["M14 4h6", "M4 20h6", "m15 4-6 16"], underline: ["M6 4v6a6 6 0 0 0 12 0V4", "M4 21h16"], strike: ["M4 12h16", "M7 6a5 5 0 0 1 9-2", "M17 18a5 5 0 0 1-9 2"],
   color: ["M12 3 5 13a7 7 0 0 0 14 0z"], highlight: ["M4 20h16", "m7 14 7-7 4 4-7 7H7z", "m13 8 2-2 4 4-2 2"],
-  align: ["M4 6h16", "M4 10h10", "M4 14h16", "M4 18h10"], quote: ["M4 11h7v7H4z", "M13 11h7v7h-7z", "M6 11c0-3 1-5 4-6", "M15 11c0-3 1-5 4-6"],
+  alignLeft: ["M4 6h16", "M4 10h10", "M4 14h16", "M4 18h10"], quote: ["M4 11h7v7H4z", "M13 11h7v7h-7z", "M6 11c0-3 1-5 4-6", "M15 11c0-3 1-5 4-6"],
+  alignCenter: ["M4 6h16", "M7 10h10", "M4 14h16", "M7 18h10"], alignRight: ["M4 6h16", "M10 10h10", "M4 14h16", "M10 18h10"], alignJustify: ["M4 6h16", "M4 10h16", "M4 14h16", "M4 18h16"],
+  ordered: ["M9 6h11", "M9 12h11", "M9 18h11", "M3 4h1v4", "M3 11c3-2 3 1 0 3h3", "M3 17h3l-2 2h2l-1 2H3"],
   table: ["M4 5h16v14H4z", "M4 10h16", "M10 5v14", "M15 5v14"], link: ["M10 13a5 5 0 0 0 7 .5l2-2a5 5 0 0 0-7-7l-1 1", "M14 11a5 5 0 0 0-7-.5l-2 2a5 5 0 0 0 7 7l1-1"],
   list: ["M9 6h11", "M9 12h11", "M9 18h11", "M4 6h.01", "M4 12h.01", "M4 18h.01"], rule: ["M4 12h16"],
   undo: ["M9 14 4 9l5-5", "M4 9h10a6 6 0 0 1 0 12h-2"], redo: ["m15 14 5-5-5-5", "M20 9H10a6 6 0 0 0 0 12h2"], dots: ["M5 12h.01", "M12 12h.01", "M19 12h.01"],
@@ -47,18 +49,6 @@ function Icon({ name }: { name: string }) {
 function ToolButton({ icon, label, onClick, disabled, pressed, role }: { icon: string; label: string; onClick: () => void; disabled?: boolean; pressed?: boolean; role?: "menuitem" }) {
   return <button className={styles.toolButton} type="button" role={role} title={label} aria-label={label} aria-pressed={pressed} disabled={disabled} onClick={onClick}><Icon name={icon}/></button>;
 }
-
-const DetailsNode = TiptapNode.create({
-  name: "details",
-  group: "block",
-  content: "block+",
-  defining: true,
-  addAttributes() {
-    return { summary: { default: "자세히 보기", parseHTML: (element: HTMLElement) => element.querySelector("summary")?.textContent || "자세히 보기" } };
-  },
-  parseHTML() { return [{ tag: "details", contentElement: (element: HTMLElement) => element.querySelector("[data-details-content]") || element }]; },
-  renderHTML({ node, HTMLAttributes }) { return ["details", HTMLAttributes, ["summary", {}, node.attrs.summary], ["div", { "data-details-content": "" }, 0]]; },
-});
 
 const FontSize = TextStyle.extend({
   addAttributes() {
@@ -131,7 +121,7 @@ const extensionSet = [
   Color,
   Highlight.configure({ multicolor: true }),
   TextAlign.configure({ types: ["heading", "paragraph"] }),
-  DetailsNode,
+  EditableToggle,
   TocNode,
   MapEmbed,
   HeadingIds,
@@ -200,7 +190,7 @@ export function RichBodyEditor({ blocks, onChangeBlocks, uploadImage, imagePrevi
     if (!current) return null;
     const heading = current.isActive("heading");
     const kind: "p"|"1"|"2"|"3" = heading ? String(current.getAttributes("heading").level) as "1"|"2"|"3" : "p";
-    return { kind, size: current.getAttributes(heading ? "heading" : "paragraph").fontSize || current.getAttributes("textStyle").fontSize || defaultTextSizes[kind], font: current.getAttributes("textStyle").fontFamily || "", color: current.getAttributes("textStyle").color || "#202124", bold: current.isActive("bold"), italic: current.isActive("italic"), underline: current.isActive("underline"), strike: current.isActive("strike") };
+    return { align: current.getAttributes(heading ? "heading" : "paragraph").textAlign || "left", bullet: current.isActive("bulletList"), ordered: current.isActive("orderedList"), kind, size: current.getAttributes(heading ? "heading" : "paragraph").fontSize || current.getAttributes("textStyle").fontSize || defaultTextSizes[kind], font: current.getAttributes("textStyle").fontFamily || "", color: current.getAttributes("textStyle").color || "#202124", bold: current.isActive("bold"), italic: current.isActive("italic"), underline: current.isActive("underline"), strike: current.isActive("strike") };
   } });
   useEffect(() => {
     const close = (event: PointerEvent) => {
@@ -234,7 +224,7 @@ export function RichBodyEditor({ blocks, onChangeBlocks, uploadImage, imagePrevi
     if (next === displayMode) return;
     if (next === "MARKDOWN") {
       const html = format === "TEXT" ? escapeRichText(draftContent) : displayMode === "HTML" ? draftContent : editor?.getHTML() ?? draftContent;
-      publishSource(`<!-- Pebble HTML content -->\n${html}`, "MARKDOWN");
+      publishSource(`<!-- Pebble HTML content -->\n${html}\n\n`, "MARKDOWN");
       setDisplayMode("MARKDOWN");
       return;
     }
@@ -317,7 +307,7 @@ export function RichBodyEditor({ blocks, onChangeBlocks, uploadImage, imagePrevi
     const node = type === "CODE" ? { type: "pebbleCode", attrs: { key, language: "TYPESCRIPT" } } : { type: type === "TABLE" ? "tableSpec" : "architectureSpec", attrs: { key, spec: type === "TABLE" ? defaultInlineTableSpec() : defaultInlineArchitectureSpec(), valid: true } };
     const selection = editor.state.selection.$from;
     const chain = editor.chain().focus();
-    if (selection.depth > 1) chain.insertContentAt(selection.after(1), [node, { type: "paragraph" }]).run();
+    if (selection.depth > 1 || selection.parent.type.name === "pebbleCode") chain.insertContentAt(selection.after(1), [node, { type: "paragraph" }]).run();
     else chain.insertContent([node, { type: "paragraph" }]).run();
     setInsertMenuOpen(false);
   };
@@ -332,7 +322,11 @@ export function RichBodyEditor({ blocks, onChangeBlocks, uploadImage, imagePrevi
   const addToggle = (event: React.FormEvent) => {
     event.preventDefault();
     const summary = toggleSummary.trim() || "자세히 보기";
-    editor?.chain().focus().insertContent(`<details><summary>${summary.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</summary><div data-details-content><p>여기에 내용을 입력하세요.</p></div></details>`).run();
+    if (!editor) return;
+    const toggle = { type: "details", attrs: { summary, open: true }, content: [{ type: "paragraph", content: [{ type: "text", text: "여기에 내용을 입력하세요." }] }] };
+    const selection = editor.state.selection.$from;
+    if (selection.parent.type.name === "pebbleCode") editor.chain().focus().insertContentAt(selection.after(), toggle).run();
+    else editor.chain().focus().insertContent(toggle).run();
     setForm(null); setToggleSummary("자세히 보기");
   };
 
@@ -360,11 +354,12 @@ export function RichBodyEditor({ blocks, onChangeBlocks, uploadImage, imagePrevi
           <ToolButton icon="strike" label="취소선" disabled={disabled} pressed={selection?.strike} onClick={() => run(() => editor?.chain().focus().toggleStrike().run())}/>
           <button type="button" className={styles.colorTool} aria-label="글자색" aria-expanded={palette === "text"} aria-haspopup="dialog" disabled={disabled} onClick={event => { setPaletteLeft(Math.min(event.currentTarget.getBoundingClientRect().left, window.innerWidth - 230)); setPalette(palette === "text" ? null : "text"); setTablePicker(false); setInsertMenuOpen(false); }}>A</button>
           <button type="button" className={styles.colorTool} aria-label="글씨 배경색" aria-expanded={palette === "highlight"} aria-haspopup="dialog" disabled={disabled} onClick={event => { setPaletteLeft(Math.min(event.currentTarget.getBoundingClientRect().left, window.innerWidth - 230)); setPalette(palette === "highlight" ? null : "highlight"); setTablePicker(false); setInsertMenuOpen(false); }}>▰</button>
-          <select aria-label="정렬" className={styles.select} defaultValue="left" disabled={disabled} onChange={event => run(() => editor?.chain().focus().setTextAlign(event.target.value).run())}><option value="left">왼쪽</option><option value="center">가운데</option><option value="right">오른쪽</option><option value="justify">양쪽</option></select>
+          <ToolButton icon={{left:"alignLeft",center:"alignCenter",right:"alignRight",justify:"alignJustify"}[selection?.align as "left"|"center"|"right"|"justify"] ?? "alignLeft"} label={`문단 정렬: ${{left:"왼쪽",center:"가운데",right:"오른쪽",justify:"양쪽"}[selection?.align as "left"|"center"|"right"|"justify"] ?? "왼쪽"} (클릭해서 변경)`} disabled={disabled} onClick={() => run(() => { const choices = ["left","center","right","justify"]; editor?.chain().focus().setTextAlign(choices[(choices.indexOf(selection?.align ?? "left") + 1) % choices.length]).run(); })}/>
           <ToolButton icon="quote" label="인용" disabled={disabled} onClick={() => run(() => editor?.chain().focus().toggleBlockquote().run())}/>
           <span onMouseEnter={() => { setTablePicker(true); setPalette(null); setInsertMenuOpen(false); }}><ToolButton icon="table" label="표 삽입" disabled={disabled} onClick={() => { setTablePicker(true); setPalette(null); setInsertMenuOpen(false); }}/></span>
           <ToolButton icon="link" label="링크 삽입" disabled={disabled} onClick={() => openForm("link")}/>
-          <ToolButton icon="list" label="목록 삽입" disabled={disabled} onClick={() => run(() => editor?.chain().focus().toggleBulletList().run())}/>
+          <ToolButton icon="list" label="글머리 목록" pressed={selection?.bullet} disabled={disabled} onClick={() => run(() => editor?.chain().focus().toggleBulletList().run())}/>
+          <ToolButton icon="ordered" label="번호 목록" pressed={selection?.ordered} disabled={disabled} onClick={() => run(() => editor?.chain().focus().toggleOrderedList().run())}/>
           <ToolButton icon="rule" label="구분선 삽입" disabled={disabled} onClick={() => run(() => editor?.chain().focus().setHorizontalRule().run())}/>
           <div className={styles.insertWrap}>
             <button className={`${styles.toolButton} ${styles.insertButton}`} type="button" aria-label="추가 삽입 도구" aria-haspopup="menu" aria-expanded={insertMenuOpen} disabled={disabled} onClick={() => { setInsertMenuOpen(open => !open); setPalette(null); setTablePicker(false); setForm(null); }}><Icon name="plus"/><Icon name="dots"/><span>삽입</span></button>
@@ -390,7 +385,7 @@ export function RichBodyEditor({ blocks, onChangeBlocks, uploadImage, imagePrevi
     {tablePicker && <div data-writer-popup className={styles.tablePicker} role="dialog" aria-label="표 크기 선택"><strong>{tableSize.rows}행 × {tableSize.cols}열</strong><div role="grid" aria-label="표 행·열 선택">{Array.from({ length: 8 }, (_, row) => Array.from({ length: 10 }, (_, col) => <button type="button" key={`${row}-${col}`} role="gridcell" data-table-cell={`${row + 1}-${col + 1}`} tabIndex={tableSize.rows === row + 1 && tableSize.cols === col + 1 ? 0 : -1} aria-label={`${row + 1}행 ${col + 1}열 표`} aria-selected={row < tableSize.rows && col < tableSize.cols} onMouseEnter={() => setTableSize({ rows: row + 1, cols: col + 1 })} onClick={() => chooseTable(row + 1, col + 1)} onKeyDown={event => { const direction = { ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] }[event.key]; if (!direction) return; event.preventDefault(); const rows = Math.max(1, Math.min(8, row + 1 + direction[0])), cols = Math.max(1, Math.min(10, col + 1 + direction[1])); setTableSize({ rows, cols }); requestAnimationFrame(() => root.current?.querySelector<HTMLButtonElement>(`[data-table-cell="${rows}-${cols}"]`)?.focus()); }}/>))}</div></div>}
     {displayMode === "NORMAL" ? <div className={styles.editor}><EditorContent editor={editor}/></div>
       : displayMode === "HTML" ? <div className={styles.sourceGrid}><label>HTML 원문<textarea aria-label="HTML 원문" value={contentForView} disabled={disabled} onChange={event => publishSource(event.target.value, "HTML")}/></label><section aria-label="안전한 HTML 미리보기"><h3>미리보기</h3><div className={styles.preview}><PostBody blocks={blocks.filter(block => block.valid !== false)}/></div></section></div>
-      : <div className={styles.sourceGrid}><label>마크다운 원문<textarea aria-label="마크다운 원문" value={contentForView} disabled={disabled} onChange={event => publishSource(event.target.value, "MARKDOWN")}/></label><section aria-label="마크다운 미리보기"><h3>미리보기</h3><div className={styles.preview}><PostBody blocks={blocks.filter(block => block.valid !== false)}/></div></section></div>}
+      : <div className={styles.sourceGrid}><label>마크다운 원문<small className={styles.markdownHelp}>제목은 ### 뒤에 공백을 넣어 작성하세요. Enter는 줄바꿈, 빈 줄은 문단 나눔입니다.</small><textarea aria-label="마크다운 원문" value={contentForView} disabled={disabled} onChange={event => publishSource(event.target.value, "MARKDOWN")}/></label><section aria-label="마크다운 미리보기"><h3>미리보기</h3><div className={styles.preview}><PostBody blocks={blocks.filter(block => block.valid !== false)}/></div></section></div>}
 
     {form && <form data-writer-popup className={styles.form} onSubmit={form === "link" ? insertLink : form === "map" ? insertMap : form === "toggle" ? addToggle : insertHtmlBlock}>
       <h3>{form === "link" ? "링크 추가" : form === "map" ? "OpenStreetMap 위치" : form === "image" ? "이미지 추가" : form === "html" ? "안전한 HTML 블록 추가" : "접기/펼치기 추가"}</h3>

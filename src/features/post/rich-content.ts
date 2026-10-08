@@ -99,7 +99,7 @@ function stableImages(html: string): string {
 /** Safe HTML for preview/public rendering. Markdown output is always sanitized after parsing. */
 export function richContentHtml(content: string, format: RichBodyFormat): string {
   if (format === "TEXT") return stableImages(escapeRichText(content));
-  if (format === "MARKDOWN") return stableImages(marked.parse(content, { async: false, gfm: true, breaks: false }));
+  if (format === "MARKDOWN") return stableImages(marked.parse(content, { async: false, gfm: true, breaks: true }));
   return stableImages(content);
 }
 

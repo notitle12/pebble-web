@@ -1,6 +1,6 @@
 "use client";
 import { Extension, Node as TiptapNode } from "@tiptap/core";
-import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from "@tiptap/react";
+import { NodeViewWrapper, NodeViewContent, useEditorState, ReactNodeViewRenderer, type NodeViewProps } from "@tiptap/react";
 import { Table, TableView } from "@tiptap/extension-table";
 import { Plugin } from "@tiptap/pm/state";
 import type { DOMOutputSpec, Node as PMNode } from "@tiptap/pm/model";
@@ -14,9 +14,41 @@ export const InlineCode = TiptapNode.create({
   addAttributes() { return { language: { default: "TYPESCRIPT" }, key: { default: null, rendered: false }, title: { default: null, rendered: false } }; },
   parseHTML() { return [{ tag: "pre", preserveWhitespace: "full", getAttrs: element => ({ language: codeLanguages.includes(element.getAttribute("data-language") ?? "") ? element.getAttribute("data-language") : "TYPESCRIPT" }) }]; },
   renderHTML({ node }) { return ["pre", { "data-language": node.attrs.language }, ["code", {}, 0]]; },
-  addNodeView() { return ReactNodeViewRenderer(InlineCodeView); },
+  addNodeView() { return ReactNodeViewRenderer(InlineCodeView, { contentDOMElementTag: "code" }); },
+  addProseMirrorPlugins() { return [new Plugin({ props: { handlePaste: (view, event) => {
+    const { $from, $to, from, to } = view.state.selection;
+    if ($from.parent.type.name !== this.name || !$from.sameParent($to) || !event.clipboardData) return false;
+    const text = event.clipboardData.getData("text/plain");
+    if (!text) return false;
+    event.preventDefault();
+    view.dispatch(view.state.tr.insertText(text.replace(/\r\n?/g, "\n"), from, to).scrollIntoView());
+    return true;
+  } } })]; },
   addKeyboardShortcuts() { return { Tab: () => this.editor.isActive(this.name) ? this.editor.commands.insertContent("  ") : false, "Mod-Enter": () => this.editor.isActive(this.name) ? this.editor.commands.exitCode() : false }; },
 });
+function ToggleView({ node, editor, updateAttributes }: NodeViewProps) {
+  const editable = useEditorState({ editor, selector: ({ editor: current }) => current.isEditable });
+  return <NodeViewWrapper className={styles.toggleBlock}>
+    <div className={styles.toggleHeader} contentEditable={false}>
+      <button type="button" aria-label={node.attrs.open ? "내용 접기" : "내용 펼치기"} aria-expanded={!!node.attrs.open} onClick={() => updateAttributes({ open: !node.attrs.open })}>
+        <svg aria-hidden="true" viewBox="0 0 16 16" style={{ transform: node.attrs.open ? "rotate(90deg)" : undefined }}><path d="m6 3 5 5-5 5" fill="none" stroke="currentColor" strokeWidth="1.6"/></svg>
+      </button>
+      <input aria-label="접기/펼치기 제목" value={node.attrs.summary} disabled={!editable} onChange={event => updateAttributes({ summary: event.target.value })}/>
+    </div>
+    <NodeViewContent className={styles.toggleContent} hidden={!node.attrs.open}/>
+  </NodeViewWrapper>;
+}
+export const EditableToggle = TiptapNode.create({
+  name: "details", group: "block", content: "block+", defining: true,
+  addAttributes() { return {
+    summary: { default: "자세히 보기", rendered: false, parseHTML: (element: HTMLElement) => element.querySelector("summary")?.textContent || "자세히 보기" },
+    open: { default: true, parseHTML: (element: HTMLElement) => element.hasAttribute("open"), renderHTML: attrs => attrs.open ? { open: "" } : {} },
+  }; },
+  parseHTML() { return [{ tag: "details", contentElement: (element: HTMLElement) => element.querySelector("[data-details-content]") || element }]; },
+  renderHTML({ node, HTMLAttributes }) { return ["details", HTMLAttributes, ["summary", {}, node.attrs.summary], ["div", { "data-details-content": "" }, 0]]; },
+  addNodeView() { return ReactNodeViewRenderer(ToggleView); },
+});
+
 function structured(name: string, type: "TABLE" | "ARCHITECTURE") {
   return TiptapNode.create({
     name, group: "block", atom: true, defining: true,
@@ -81,8 +113,8 @@ export const ControllableTable = Table.extend({
   addNodeView() { return ({ node, view, HTMLAttributes, getPos }) => {
     const base = new TableView(node, this.options.cellMinWidth, view, HTMLAttributes);
     base.dom.classList.add(styles.editableTable);
-    const columns = document.createElement("div"), rows = document.createElement("div");
-    columns.className = styles.columnTools; rows.className = styles.rowTools;
+    const columns = document.createElement("div"), rows = document.createElement("div"), remove = document.createElement("div");
+    columns.className = styles.columnTools; rows.className = styles.rowTools; remove.className = styles.tableDelete;
     const buttons: HTMLButtonElement[] = [];
     const action = (command: "addColumnAfter" | "deleteColumn" | "addRowAfter" | "deleteRow" | "deleteTable") => {
       const pos = getPos(); if (typeof pos !== "number" || !this.editor.isEditable) return;
@@ -97,10 +129,10 @@ export const ControllableTable = Table.extend({
       button.addEventListener("mousedown", event => event.preventDefault()); button.addEventListener("click", () => action(command)); target.append(button); buttons.push(button); return button;
     };
     makeButton(columns, "+", "열 추가", "addColumnAfter"); const removeColumn = makeButton(columns, "−", "마지막 열 삭제", "deleteColumn");
-    makeButton(rows, "+", "행 추가", "addRowAfter"); const removeRow = makeButton(rows, "−", "마지막 행 삭제", "deleteRow"); makeButton(rows, "삭제", "표 삭제", "deleteTable");
-    columns.contentEditable = "false"; rows.contentEditable = "false"; base.dom.append(columns, rows);
+    makeButton(rows, "+", "행 추가", "addRowAfter"); const removeRow = makeButton(rows, "−", "마지막 행 삭제", "deleteRow"); makeButton(remove, "×", "표 삭제", "deleteTable");
+    columns.contentEditable = "false"; rows.contentEditable = "false"; remove.contentEditable = "false"; base.dom.append(columns, rows, remove);
     const refresh = (next: PMNode) => { for (const button of buttons) button.disabled = !this.editor.isEditable; removeColumn.disabled ||= next.firstChild?.childCount === 1; removeRow.disabled ||= next.childCount === 1; };
     refresh(node);
-    return { dom: base.dom, contentDOM: base.contentDOM, update: (next: PMNode) => { const result = base.update(next); if (result) refresh(next); return result; }, ignoreMutation: mutation => !base.contentDOM.contains(mutation.target) || base.ignoreMutation(mutation), stopEvent: event => columns.contains(event.target as globalThis.Node) || rows.contains(event.target as globalThis.Node) };
+    return { dom: base.dom, contentDOM: base.contentDOM, update: (next: PMNode) => { const result = base.update(next); if (result) refresh(next); return result; }, ignoreMutation: mutation => !base.contentDOM.contains(mutation.target) || base.ignoreMutation(mutation), stopEvent: event => columns.contains(event.target as globalThis.Node) || rows.contains(event.target as globalThis.Node) || remove.contains(event.target as globalThis.Node) };
   }; },
 }).configure({ resizable: false });
