@@ -364,7 +364,7 @@ main.personal-blog-layout{max-width:none;width:100%;margin:0;padding:0;display:g
 .board-add-button:hover:not(:disabled),.board-save-button:hover:not(:disabled){background:#2e4277!important;border-color:#2e4277!important;color:#fff!important}
 .comments-panel .button{min-height:34px}
 .comment-actions{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-top:10px}
-.comment-actions .button{margin:0;padding:4px 9px;min-height:28px;background:transparent;border-color:transparent;box-shadow:none;font-size:12px;color:#79818c}
+.comment-actions .button{margin:0;padding:4px 9px;min-height:28px;background:transparent;border-color:transparent;box-shadow:none;font-size:12px;color:#657080}
 .comment-actions .button:hover:not(:disabled){background:#f3f5f8;border-color:transparent;color:#354052}
 .comment-actions .button:last-child:hover:not(:disabled){color:#a34545}
 .comment-compose-row{grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px}
