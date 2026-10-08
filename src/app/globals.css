@@ -359,6 +359,13 @@ fieldset { min-width:0; }
 .post-classification-field { display:grid; gap:8px; min-width:0; }
 .post-classification-field > label { color:#34435d; font-size:14px; font-weight:650; }
 .post-classification-field > input, .post-classification-field > select { width:100%; min-width:0; border:1px solid #dce4ef; border-radius:9px; padding:11px 12px; background:#fff; color:#17243d; font:inherit; }
+.post-classification-add-tag { display:flex; flex-wrap:wrap; gap:8px; }
+.post-classification-add-tag input { flex:1 1 220px; min-width:0; border:1px solid #dce4ef; border-radius:9px; padding:11px 12px; background:#fff; color:#17243d; font:inherit; }
+.post-classification-add-tag input:focus-visible { outline:3px solid #9bb6ff; outline-offset:2px; }
+.post-classification-chips { display:inline-flex; flex-wrap:wrap; gap:6px; margin-left:6px; }
+.post-classification-chip { display:inline-flex; align-items:center; gap:6px; border:1px solid #cbd8f4; border-radius:16px; padding:3px 6px 3px 10px; background:#f4f7ff; color:#234da8; }
+.post-classification-chip button { border:0; border-radius:50%; width:22px; height:22px; padding:0; background:transparent; color:inherit; font:inherit; cursor:pointer; }
+.post-classification-chip button:focus-visible { outline:2px solid #356dff; }
 .post-classification-field > input:focus-visible, .post-classification-field > select:focus-visible, .post-classification-tags input:focus-visible, .post-classification-help button:focus-visible { outline:3px solid #9bb6ff; outline-offset:2px; }
 .post-classification-help, .post-classification-selected { margin:0; color:#748198; font-size:13px; line-height:1.5; overflow-wrap:anywhere; }
 .post-classification-help button { border:0; padding:0; background:transparent; color:#285bdc; font:inherit; text-decoration:underline; cursor:pointer; }
@@ -469,6 +476,7 @@ fieldset { min-width:0; }
 .comments-panel {margin:48px 0;padding-top:28px;border-top:1px solid var(--line);}
 .comment-list {list-style:none;margin:0;padding:0;}.comment-list > li {padding:24px 0;border-bottom:1px solid var(--line);}
 .comment-meta {display:flex;gap:12px;flex-wrap:wrap;align-items:center;font-size:12px;color:var(--muted);}.comment-meta strong {color:var(--text);}
+.comment-secret-badge {display:inline-flex;align-items:center;gap:4px;border-radius:999px;padding:2px 7px;background:#fff3d8;color:#805500;font-weight:650;}.comment-secret-badge svg {width:13px;height:13px;}
 .comment-body {white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px;line-height:1.8;margin:14px 0;}
 .comment-actions {display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:12px;font-size:12px;}
 .comment-form {margin-top:24px;}.comments-panel form > label:not(.comment-secret) {display:block;margin:12px 0;font-size:14px;}
@@ -510,7 +518,7 @@ fieldset { min-width:0; }
 /* Focused writing canvas: toolbar above, actions below, content in between. */
 body:has(.writer-shell){background:#fff}
 .writer-shell.page-shell{max-width:none;margin:0;padding:114px 48px 148px;min-height:100dvh}
-.writer-shell .writer-composer{max-width:900px;margin:0;gap:0;padding:0;color:#222}
+.writer-shell .writer-composer{max-width:900px;margin:0 auto;gap:0;padding:0;color:#222}
 .writer-visually-hidden{position:absolute!important;width:1px;height:1px;padding:0!important;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 .writer-identity{position:fixed;right:48px;top:20px;z-index:46;display:flex;align-items:center;gap:10px;font-size:12px;color:#333;max-width:150px;background:white}
 .writer-identity>span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
