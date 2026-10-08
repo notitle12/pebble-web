@@ -400,3 +400,73 @@ main.personal-blog-layout{max-width:none;width:100%;margin:0;padding:0;display:g
 @media(max-width:480px){.comment-composer{grid-template-columns:32px minmax(0,1fr);column-gap:10px}.comment-composer-avatar{width:32px;height:32px;font-size:13px}.comment-composer-card{padding:13px 14px}.comments-panel .comment-composer-card textarea{font-size:16px}.comment-composer-meta{max-width:calc(100% - 96px)}}
 @media(pointer:coarse){.comment-composer-buttons button{width:44px;height:44px}}
 @media(prefers-reduced-motion:reduce){.comment-composer-card,.comment-composer-buttons button{transition:none}}
+
+/* Compact reading cards reserve the same rows even when media or prose is absent. */
+.discovery-shell .post-card,
+.personal-blog-content .post-card,
+.personal-blog-content .post-card:has(.content-thumbnail) {
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 160px;
+  grid-template-rows:22px 58px 54px 24px;
+  gap:6px 24px;
+  padding:24px 0;
+  align-content:start;
+  min-width:0;
+}
+.discovery-shell .post-card .post-meta,
+.personal-blog-content .post-card .post-meta {
+  grid-column:1;grid-row:1;display:flex;flex-direction:row;align-items:center;
+  gap:8px;margin:0;padding:0;font-size:11px;overflow:hidden;white-space:nowrap;
+}
+.discovery-shell .post-author-link {overflow:hidden;text-overflow:ellipsis;max-width:45%;}
+.discovery-shell .post-card h3,
+.personal-blog-content .post-card h3 {
+  grid-column:1;grid-row:2;margin:0;font-size:20px;line-height:1.45;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+}
+.discovery-shell .post-card .post-summary,
+.personal-blog-content .post-card .post-summary {
+  grid-column:1;grid-row:3;margin:0;font-size:13px;line-height:1.9;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+}
+.discovery-shell .post-card .tag-list,
+.personal-blog-content .post-card .tag-list {
+  grid-column:1;grid-row:4;margin:0;align-self:start;flex-wrap:nowrap;overflow:hidden;
+}
+.discovery-shell .post-card .content-thumbnail,
+.personal-blog-content .post-card .content-thumbnail {
+  grid-column:2;grid-row:1 / span 4;align-self:center;
+  width:160px;height:106px;max-height:106px;margin:0;object-fit:cover;border-radius:8px;
+}
+.discovery-shell .popular-section .post-card {
+  display:grid;grid-template-columns:minmax(0,1fr) 80px;
+  grid-template-rows:32px 58px 54px 0px;gap:6px 12px;padding:20px 0;
+}
+.discovery-shell .popular-section .post-card .post-meta {margin:0;gap:6px;font-size:10px;}
+.discovery-shell .popular-section .post-card h3 {font-size:17px;line-height:1.6;}
+.discovery-shell .popular-section .post-card .post-summary {-webkit-line-clamp:2;}
+.discovery-shell .popular-section .post-card .content-thumbnail {
+  grid-row:2 / span 2;width:80px;height:80px;max-height:80px;
+}
+@media(max-width:900px) and (min-width:681px) {
+  .popular-section .post-list {grid-template-columns:1fr;gap:0;}
+}
+@media(max-width:680px) {
+  .discovery-shell .post-card,
+  .personal-blog-content .post-card,
+  .personal-blog-content .post-card:has(.content-thumbnail),
+  .discovery-shell .popular-section .post-card {
+    grid-template-columns:minmax(0,1fr) 96px;
+    grid-template-rows:22px 52px 50px 22px;
+    gap:6px 14px;padding:22px 0;
+  }
+  .discovery-shell .post-card .post-meta,
+  .personal-blog-content .post-card .post-meta {grid-column:1 / -1;font-size:10px;}
+  .discovery-shell .post-card h3,
+  .personal-blog-content .post-card h3 {font-size:17px;line-height:1.5;}
+  .discovery-shell .post-card .content-thumbnail,
+  .discovery-shell .popular-section .post-card .content-thumbnail,
+  .personal-blog-content .post-card .content-thumbnail {
+    grid-row:2 / span 2;width:96px;height:72px;max-height:72px;
+  }
+}
