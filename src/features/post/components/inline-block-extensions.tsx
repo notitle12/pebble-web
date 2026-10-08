@@ -7,6 +7,7 @@ import type { DOMOutputSpec, Node as PMNode } from "@tiptap/pm/model";
 import { parseTableSpec, parseArchitectureSpec } from "../api/post-list";
 import { codeLanguages, defaultTextSizes, textSizes } from "../writer-document";
 import { InlineCodeView, InlineTableSpecView, InlineArchitectureView, defaultInlineTableSpec, defaultInlineArchitectureSpec } from "./inline-block-views";
+import { headingEnterTransaction } from "../heading-enter";
 import styles from "./rich-body-editor.module.css";
 
 export const InlineCode = TiptapNode.create({
@@ -76,18 +77,11 @@ export const TocNode = TiptapNode.create({
 export const HeadingParagraphReset = Extension.create({
   name: "headingParagraphReset", priority: 1100,
   addKeyboardShortcuts() { return { Enter: () => {
-    const { $from, empty } = this.editor.state.selection;
-    if (!empty || $from.parent.type.name !== "heading" || $from.parentOffset !== $from.parent.content.size) return false;
-    const state = this.editor.state;
-    const nextPosition = $from.after();
-    const next = state.doc.nodeAt(nextPosition);
-    if (next?.type.name === "paragraph" && next.content.size === 0 && nextPosition + next.nodeSize === state.doc.content.size) {
-      return this.editor.chain().focus().setTextSelection(nextPosition + 1).updateAttributes("paragraph", { fontSize: defaultTextSizes.p, id: null }).run();
-    }
-    // splitBlock already chooses the default paragraph at the heading end.
-    // setParagraph on that paragraph can return false and let the next Enter
-    // keymap split again even though the first transaction was applied.
-    return this.editor.chain().splitBlock().updateAttributes("paragraph", { fontSize: defaultTextSizes.p, id: null }).run();
+    if (this.editor.view.composing) return false;
+    const tr = headingEnterTransaction(this.editor.state);
+    if (!tr) return false;
+    this.editor.view.dispatch(tr);
+    return true;
   } }; },
   addProseMirrorPlugins() { return [new Plugin({ appendTransaction: (transactions, _oldState, state) => {
     if (!transactions.some(tr => tr.docChanged)) return null;
