@@ -9,7 +9,7 @@ import StarterKit from "@tiptap/starter-kit";
 import { TableKit } from "@tiptap/extension-table";
 import TextAlign from "@tiptap/extension-text-align";
 import { TextStyle } from "@tiptap/extension-text-style";
-import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
+import { EditorContent, ReactNodeViewRenderer, useEditor, useEditorState } from "@tiptap/react";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { buildOpenStreetMapEmbed, escapeRichText, isSafeOpenStreetMapEmbed, persistedRichHtml, richContentHtml, richEditorHtml, type RichBodyFormat } from "../rich-content";
 import { InlineCode, InlineTableSpec, InlineArchitecture, TocNode, AutomaticToc, ControllableTable, HeadingParagraphReset, EditableToggle } from "./inline-block-extensions";
@@ -19,6 +19,8 @@ import type { EditorBlock } from "../post-editor-model";
 import { BodyBlockHandle } from "./body-block-handle";
 import { PostBody } from "./post-body";
 import styles from "./rich-body-editor.module.css";
+import { BlockAlignment } from "../block-alignment";
+import { ImageNodeView, RepresentativeImageProvider } from "./image-node-view";
 
 type UploadResult = { src: string; previewUrl: string };
 export type RichBodyEditorProps = {
@@ -26,6 +28,8 @@ export type RichBodyEditorProps = {
   onChangeBlocks: (blocks: EditorBlock[]) => void;
   uploadImage?: (file: File) => Promise<UploadResult>;
   imagePreviews?: Record<string, string>;
+  representativeImageSrc?: string | null;
+  onSelectRepresentativeImage?: (src: string) => void;
   disabled?: boolean;
 };
 
@@ -68,9 +72,18 @@ const RichImage = Image.extend({
   addAttributes() {
     return {
       ...this.parent?.(),
+      align: {
+        default: "left",
+        parseHTML: (element: HTMLElement) => ["left", "center", "right"].includes(element.getAttribute("data-align") || "") ? element.getAttribute("data-align") : "left",
+        renderHTML: (attributes: Record<string, unknown>) => ({ "data-align": ["left", "center", "right"].includes(String(attributes.align)) ? attributes.align : "left" }),
+      },
       src: {
         default: null,
-        parseHTML: (element: HTMLElement) => isSafeHref(element.getAttribute("src") || "") ? element.getAttribute("src") : null,
+        parseHTML: (element: HTMLElement) => {
+          const src = element.getAttribute("src") || "";
+          const stableSrc = element.getAttribute("data-media-src") || "";
+          return isSafeHref(src) || (src.startsWith("blob:") && isSafeHref(stableSrc)) ? src : null;
+        },
       },
       mediaSrc: {
         default: null,
@@ -78,6 +91,9 @@ const RichImage = Image.extend({
         renderHTML: (attributes: Record<string, unknown>) => attributes.mediaSrc ? { "data-media-src": attributes.mediaSrc } : {},
       },
     };
+  },
+  addNodeView() {
+    return ReactNodeViewRenderer(ImageNodeView, { stopEvent: ({ event }) => event.target instanceof Element && !!event.target.closest("[data-representative-image-control]") });
   },
 });
 
@@ -118,6 +134,7 @@ const extensionSet = [
   TableKit.configure({ table: false }),
   ControllableTable, HeadingParagraphReset, InlineCode, InlineTableSpec, InlineArchitecture, AutomaticToc,
   FontSize,
+  BlockAlignment,
   FontFamily,
   Color,
   Highlight.configure({ multicolor: true }),
@@ -130,7 +147,7 @@ const extensionSet = [
 
 const isSafeHref = (value: string) => /^(https?:|mailto:)/i.test(value.trim());
 
-export function RichBodyEditor({ blocks, onChangeBlocks, uploadImage, imagePreviews = {}, disabled = false }: RichBodyEditorProps) {
+export function RichBodyEditor({ blocks, onChangeBlocks, uploadImage, imagePreviews = {}, representativeImageSrc = null, onSelectRepresentativeImage = () => {}, disabled = false }: RichBodyEditorProps) {
   const first = blocks[0];
   const initialFormat: RichBodyFormat = blocks.length === 1 && first?.type === "MARKDOWN" ? "MARKDOWN" : "HTML";
   const content = blocks.length === 1 && ["TEXT", "HTML", "MARKDOWN"].includes(first?.type) ? first.content : "";
@@ -193,7 +210,8 @@ export function RichBodyEditor({ blocks, onChangeBlocks, uploadImage, imagePrevi
     if (!current) return null;
     const heading = current.isActive("heading");
     const kind: "p"|"1"|"2"|"3" = heading ? String(current.getAttributes("heading").level) as "1"|"2"|"3" : "p";
-    return { align: current.getAttributes(heading ? "heading" : "paragraph").textAlign || "left", bullet: current.isActive("bulletList"), ordered: current.isActive("orderedList"), kind, size: current.getAttributes(heading ? "heading" : "paragraph").fontSize || current.getAttributes("textStyle").fontSize || defaultTextSizes[kind], font: current.getAttributes("textStyle").fontFamily || "", color: current.getAttributes("textStyle").color || "#202124", bold: current.isActive("bold"), italic: current.isActive("italic"), underline: current.isActive("underline"), strike: current.isActive("strike") };
+    const media = current.isActive("image") ? "image" : current.isActive("table") ? "table" : current.isActive("pebbleCode") ? "pebbleCode" : current.isActive("tableSpec") ? "tableSpec" : current.isActive("architectureSpec") ? "architectureSpec" : null;
+    return { align: media ? current.getAttributes(media).align || "left" : current.getAttributes(heading ? "heading" : "paragraph").textAlign || "left", media, bullet: current.isActive("bulletList"), ordered: current.isActive("orderedList"), kind, size: current.getAttributes(heading ? "heading" : "paragraph").fontSize || current.getAttributes("textStyle").fontSize || defaultTextSizes[kind], font: current.getAttributes("textStyle").fontFamily || "", color: current.getAttributes("textStyle").color || "#202124", bold: current.isActive("bold"), italic: current.isActive("italic"), underline: current.isActive("underline"), strike: current.isActive("strike") };
   } });
   useEffect(() => {
     const close = (event: PointerEvent) => {
@@ -273,7 +291,7 @@ export function RichBodyEditor({ blocks, onChangeBlocks, uploadImage, imagePrevi
     setBusy(true); setFormError("");
     try {
       const uploaded = await uploadImage(file);
-      if (!isSafeHref(uploaded.src) || !isSafeHref(uploaded.previewUrl)) throw new Error("이미지 응답 주소가 올바르지 않습니다.");
+      if (!isSafeHref(uploaded.src) || !(isSafeHref(uploaded.previewUrl) || uploaded.previewUrl.startsWith("blob:"))) throw new Error("이미지 응답 주소가 올바르지 않습니다.");
       editor.chain().focus().setImage({ src: uploaded.previewUrl, alt: file.name }).updateAttributes("image", { mediaSrc: uploaded.src }).run();
       setForm(null);
     } catch (error) { setFormError(error instanceof Error ? error.message : "이미지를 업로드하지 못했습니다."); }
@@ -357,7 +375,7 @@ export function RichBodyEditor({ blocks, onChangeBlocks, uploadImage, imagePrevi
           <ToolButton icon="strike" label="취소선" disabled={disabled} pressed={selection?.strike} onClick={() => run(() => editor?.chain().focus().toggleStrike().run())}/>
           <button type="button" className={styles.colorTool} aria-label="글자색" aria-expanded={palette === "text"} aria-haspopup="dialog" disabled={disabled} onClick={event => { setPaletteLeft(Math.min(event.currentTarget.getBoundingClientRect().left, window.innerWidth - 230)); setPalette(palette === "text" ? null : "text"); setTablePicker(false); setInsertMenuOpen(false); }}>A</button>
           <button type="button" className={styles.colorTool} aria-label="글씨 배경색" aria-expanded={palette === "highlight"} aria-haspopup="dialog" disabled={disabled} onClick={event => { setPaletteLeft(Math.min(event.currentTarget.getBoundingClientRect().left, window.innerWidth - 230)); setPalette(palette === "highlight" ? null : "highlight"); setTablePicker(false); setInsertMenuOpen(false); }}>▰</button>
-          <ToolButton icon={{left:"alignLeft",center:"alignCenter",right:"alignRight",justify:"alignJustify"}[selection?.align as "left"|"center"|"right"|"justify"] ?? "alignLeft"} label={`문단 정렬: ${{left:"왼쪽",center:"가운데",right:"오른쪽",justify:"양쪽"}[selection?.align as "left"|"center"|"right"|"justify"] ?? "왼쪽"} (클릭해서 변경)`} disabled={disabled} onClick={() => run(() => { const choices = ["left","center","right","justify"]; editor?.chain().focus().setTextAlign(choices[(choices.indexOf(selection?.align ?? "left") + 1) % choices.length]).run(); })}/>
+          <ToolButton icon={{left:"alignLeft",center:"alignCenter",right:"alignRight",justify:"alignJustify"}[selection?.align as "left"|"center"|"right"|"justify"] ?? "alignLeft"} label={`${selection?.media ? "블록" : "문단"} 정렬: ${{left:"왼쪽",center:"가운데",right:"오른쪽",justify:"양쪽"}[selection?.align as "left"|"center"|"right"|"justify"] ?? "왼쪽"} (클릭해서 변경)`} disabled={disabled} onClick={() => run(() => { const choices = selection?.media ? ["left","center","right"] : ["left","center","right","justify"]; const align = choices[(choices.indexOf(selection?.align ?? "left") + 1) % choices.length]; if (selection?.media) editor?.chain().focus().updateAttributes(selection.media, { align }).run(); else editor?.chain().focus().setTextAlign(align).run(); })}/>
           <ToolButton icon="quote" label="인용" disabled={disabled} onClick={() => run(() => editor?.chain().focus().toggleBlockquote().run())}/>
           <span onMouseEnter={event => { if (!disabled) { anchorPopup(event.currentTarget,244); setTablePicker(true); setPalette(null); setInsertMenuOpen(false); } }} onClick={event => anchorPopup(event.currentTarget,244)}><ToolButton icon="table" label="표 삽입" disabled={disabled} onClick={() => { setTablePicker(true); setPalette(null); setInsertMenuOpen(false); }}/></span>
           <ToolButton icon="link" label="링크 삽입" disabled={disabled} onClick={() => openForm("link")}/>
@@ -383,7 +401,7 @@ export function RichBodyEditor({ blocks, onChangeBlocks, uploadImage, imagePrevi
 
     {palette && <div data-writer-popup className={styles.palette} style={{ left: Math.max(12, paletteLeft) }} role="dialog" aria-label={palette === "text" ? "글자색 선택" : "글씨 배경색 선택"}><strong>{palette === "text" ? "글자색" : "글씨 배경색"}</strong><div>{(palette === "text" ? textColors : highlightColors).map(color => <button key={color} type="button" title={color} aria-label={`${color} 색상`} style={{ backgroundColor: color }} onClick={() => pickColor(color)}/>)}</div><button type="button" onClick={() => { if (palette === "text") editor?.chain().focus().unsetColor().run(); else editor?.chain().focus().unsetHighlight().run(); setPalette(null); }}>기본색으로 초기화</button></div>}
     {tablePicker && <div data-writer-popup className={styles.tablePicker} style={popupAnchor} onMouseLeave={() => setTablePicker(false)} role="dialog" aria-label="표 크기 선택"><strong>{tableSize.rows}행 × {tableSize.cols}열</strong><div role="grid" aria-label="표 행·열 선택">{Array.from({ length: 8 }, (_, row) => Array.from({ length: 10 }, (_, col) => <button type="button" key={`${row}-${col}`} role="gridcell" data-table-cell={`${row + 1}-${col + 1}`} tabIndex={tableSize.rows === row + 1 && tableSize.cols === col + 1 ? 0 : -1} aria-label={`${row + 1}행 ${col + 1}열 표`} aria-selected={row < tableSize.rows && col < tableSize.cols} onMouseEnter={() => setTableSize({ rows: row + 1, cols: col + 1 })} onClick={() => chooseTable(row + 1, col + 1)} onKeyDown={event => { const direction = { ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] }[event.key]; if (!direction) return; event.preventDefault(); const rows = Math.max(1, Math.min(8, row + 1 + direction[0])), cols = Math.max(1, Math.min(10, col + 1 + direction[1])); setTableSize({ rows, cols }); requestAnimationFrame(() => root.current?.querySelector<HTMLButtonElement>(`[data-table-cell="${rows}-${cols}"]`)?.focus()); }}/>))}</div></div>}
-    {displayMode === "NORMAL" ? <div className={styles.editor}><EditorContent editor={editor}/><BodyBlockHandle editor={editor} disabled={disabled}/></div>
+    {displayMode === "NORMAL" ? <div className={styles.editor}><RepresentativeImageProvider selectedSrc={representativeImageSrc} disabled={disabled} onSelect={onSelectRepresentativeImage}><EditorContent editor={editor}/></RepresentativeImageProvider><BodyBlockHandle editor={editor} disabled={disabled}/></div>
       : displayMode === "HTML" ? <div className={styles.sourceGrid}><label>HTML 원문<textarea aria-label="HTML 원문" value={contentForView} disabled={disabled} onChange={event => publishSource(event.target.value, "HTML")}/></label><section aria-label="안전한 HTML 미리보기"><h3>미리보기</h3><div className={styles.preview}><PostBody blocks={blocks.filter(block => block.valid !== false)}/></div></section></div>
       : <div className={styles.sourceGrid}><label>마크다운 원문<small className={styles.markdownHelp}>제목은 ### 뒤에 공백을 넣어 작성하세요. Enter는 줄바꿈, 빈 줄은 문단 나눔입니다.</small><textarea aria-label="마크다운 원문" value={contentForView} disabled={disabled} onChange={event => publishSource(event.target.value, "MARKDOWN")}/></label><section aria-label="마크다운 미리보기"><h3>미리보기</h3><div className={styles.preview}><PostBody blocks={blocks.filter(block => block.valid !== false)}/></div></section></div>}
 
@@ -391,7 +409,7 @@ export function RichBodyEditor({ blocks, onChangeBlocks, uploadImage, imagePrevi
       <h3>{form === "link" ? "링크 추가" : form === "map" ? "OpenStreetMap 위치" : form === "image" ? "이미지 추가" : form === "html" ? "안전한 HTML 블록 추가" : "접기/펼치기 추가"}</h3>
       {form === "link" && <><label>주소<input type="url" value={linkHref} onChange={event => setLinkHref(event.target.value)} placeholder="https://example.com" required/></label><label>표시 문구 (선택)<input value={linkLabel} onChange={event => setLinkLabel(event.target.value)} /></label><button type="submit">링크 적용</button></>}
       {form === "map" && <><label>위도<input type="number" min="-90" max="90" step="any" value={mapLat} onChange={event => setMapLat(event.target.value)} required/></label><label>경도<input type="number" min="-180" max="180" step="any" value={mapLon} onChange={event => setMapLon(event.target.value)} required/></label><button type="submit">지도 삽입</button></>}
-      {form === "image" && <><input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" disabled={busy} onChange={event => void chooseImage(event.target.files?.[0])}/>{busy && <span role="status">업로드 중…</span>}</>}
+      {form === "image" && <><p>이미지는 이 브라우저에서 미리 보며, 임시저장이나 발행할 때 업로드합니다.</p><input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" disabled={busy} onChange={event => void chooseImage(event.target.files?.[0])}/>{busy && <span role="status">미리보기 준비 중…</span>}</>}
       {form === "html" && <><label>HTML 원문<textarea aria-label="HTML 블록 원문" value={htmlDraft} onChange={event => setHtmlDraft(event.target.value)} rows={8}/></label><div className={styles.preview} aria-label="HTML 미리보기" dangerouslySetInnerHTML={{ __html: richContentHtml(htmlDraft, "HTML") }}/><button type="submit">삽입</button></>}
       {form === "toggle" && <><label>접기 제목<input value={toggleSummary} onChange={event => setToggleSummary(event.target.value)} required/></label><button type="submit">추가</button></>}
       {formError && <p role="alert">{formError}</p>}<button type="button" onClick={() => setForm(null)}>닫기</button>

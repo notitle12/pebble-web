@@ -8,7 +8,7 @@ export const defaultTextSizes = { p: "16px", "1": "32px", "2": "24px", "3": "20p
 export const textColors = ["#202124", "#5f6368", "#9aa0a6", "#c62828", "#ef6c00", "#b8860b", "#2e7d32", "#1565c0", "#6a1b9a", "#ffffff"];
 export const highlightColors = ["#fff29a", "#ffccbc", "#f8bbd0", "#e1bee7", "#bbdefb", "#b2dfdb", "#c8e6c9", "#eeeeee"];
 const nodeTypes = { CODE: "pebbleCode", TABLE: "tableSpec", ARCHITECTURE: "architectureSpec" };
-const attrs = (block: EditorBlock) => ({ key: block.key, title: block.title, valid: block.valid });
+const attrs = (block: EditorBlock) => ({ key: block.key, title: block.title, valid: block.valid, align: block.alignment === "CENTER" ? "center" : block.alignment === "RIGHT" ? "right" : "left" });
 
 /** 저장 블록을 한 문서로 조립한다. HTML 파싱은 호출자가 안전한 HTML/스키마로 수행한다. */
 export function blocksToDocument(blocks: EditorBlock[], parseRich: (block: EditorBlock) => JSONContent): JSONContent {
@@ -41,7 +41,7 @@ export function documentToBlocks(doc: JSONContent, renderRich: (doc: JSONContent
     if (isSpecial(node)) {
       flush();
       const type = node.type === "pebbleCode" ? "CODE" : node.type === "tableSpec" ? "TABLE" : "ARCHITECTURE";
-      result.push({ key: node.attrs?.key ?? `inline-${result.length}`, type, content: type === "CODE" ? (node.content ?? []).map(child => child.text ?? "").join("") : JSON.stringify(node.attrs?.spec), language: type === "CODE" ? node.attrs?.language ?? "TYPESCRIPT" : null, title: node.attrs?.title ?? null, valid: node.attrs?.valid !== false });
+      result.push({ key: node.attrs?.key ?? `inline-${result.length}`, type, content: type === "CODE" ? (node.content ?? []).map(child => child.text ?? "").join("") : JSON.stringify(node.attrs?.spec), language: type === "CODE" ? node.attrs?.language ?? "TYPESCRIPT" : null, title: node.attrs?.title ?? null, valid: node.attrs?.valid !== false, alignment: node.attrs?.align === "center" ? "CENTER" : node.attrs?.align === "right" ? "RIGHT" : "LEFT" });
     } else if (node.content?.some(containsSpecial)) {
       // 붙여넣은 인용/목록 안에 구조 블록이 있어도 누락하지 않고 형식 경계에서 분리한다.
       let children: JSONContent[] = [];
@@ -54,4 +54,4 @@ export function documentToBlocks(doc: JSONContent, renderRich: (doc: JSONContent
   flush();
   return result.length ? result : [{ key: "rich-0", type: "HTML", content: "<p></p>", language: null, title: null, valid: true }];
 }
-export const blocksSignature = (blocks: EditorBlock[]) => JSON.stringify(blocks.map(({ type, content, language, title, valid }) => ({ type, content, language, title, valid })));
+export const blocksSignature = (blocks: EditorBlock[]) => JSON.stringify(blocks.map(({ type, content, language, title, valid, alignment }) => ({ type, content, language, title, valid, alignment: alignment ?? "LEFT" })));

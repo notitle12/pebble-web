@@ -33,6 +33,10 @@
 .editor :global(.tiptap mark), .preview :global(mark) { border-radius: .12em; padding: 0 .08em; }
 .editor :global(.tiptap pre), .preview :global(pre) { background: #f6f6f6; overflow-x: auto; padding: .8rem; }
 .editor :global(.tiptap img), .preview :global(img) { height: auto; max-width: 100%; }
+.editor :global(.tiptap img[data-align="center"]), .preview :global(img[data-align="center"]), .rendered :global(img[data-align="center"]) { display: block; margin-left: auto; margin-right: auto; }
+.editor :global(.tiptap img[data-align="right"]), .preview :global(img[data-align="right"]), .rendered :global(img[data-align="right"]) { display: block; margin-left: auto; margin-right: 0; }
+.editor :global(.tiptap table[data-align="center"]), .preview :global(table[data-align="center"]), .rendered :global(table[data-align="center"]) { margin-left: auto; margin-right: auto; width: auto; }
+.editor :global(.tiptap table[data-align="right"]), .preview :global(table[data-align="right"]), .rendered :global(table[data-align="right"]) { margin-left: auto; margin-right: 0; width: auto; }
 .editor :global(.tiptap iframe) { border: 0; height: 18rem; max-width: 100%; width: 100%; }
 .editor :global(.tiptap table), .preview :global(table) { border-collapse: collapse; table-layout: fixed; width: 100%; }
 .editor :global(.tiptap td), .editor :global(.tiptap th), .preview :global(td), .preview :global(th) { border: 1px solid #b8c0cc; min-width: 1.5rem; padding: .4rem; vertical-align: top; }
@@ -149,3 +153,7 @@
 /* Enter adds one new paragraph; keep default block margins from looking like a blank extra line. */
 .editor :global(.tiptap p),.editor :global(.tiptap h1),.editor :global(.tiptap h2),.editor :global(.tiptap h3){margin-block:0}
 .editor :global(.tiptap > p + p),.editor :global(.tiptap > h1 + p),.editor :global(.tiptap > h2 + p),.editor :global(.tiptap > h3 + p){margin-top:0}
+
+/* TableView owns the live DOM, so align both its wrapper and nested table after width defaults. */
+.editor :global(.tableWrapper[data-align="center"] table),.editor :global(.tiptap table[data-align="center"]){margin-left:auto;margin-right:auto;width:auto}
+.editor :global(.tableWrapper[data-align="right"] table),.editor :global(.tiptap table[data-align="right"]){margin-left:auto;margin-right:0;width:auto}
