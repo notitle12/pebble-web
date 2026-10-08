@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useMemo, useState } from "react";
 import { getPublicCategories, type PublicCategory } from "../../category/api/public-categories";
-import { getPublicTags, type PublicTag } from "../../tag/api/public-tags";
+import { type PublicTag } from "../../tag/api/public-tags";
 import { createTag, normalizeTagName, splitTagInput } from "../../tag/api/create-tag";
 import { userSession } from "../../auth/user-session";
 import { useUserSession } from "../../auth/components/member-gate";
@@ -18,16 +18,16 @@ type Props = {
   showCategory?:boolean;
   categoryLabel?:string;
   showTags?:boolean;
+  disabled?:boolean;
 };
 
-export function PostClassification({ categoryId, tagIds, existingCategory, existingTags = [], onChange, showCategory=true, showTags=true, categoryLabel="분류" }: Props) {
+export function PostClassification({ categoryId, tagIds, existingCategory, existingTags = [], onChange, showCategory=true, showTags=true, disabled=false, categoryLabel="분류" }: Props) {
   const id = useId();
   const session = useUserSession();
   const [categories, setCategories] = useState<PublicCategory[]>([]);
   const [tags, setTags] = useState<PublicTag[]>([]);
   const [categoryState, setCategoryState] = useState<"loading" | "ready" | "error">("loading");
   const [tagState, setTagState] = useState<"loading" | "ready" | "error">("loading");
-  const [query, setQuery] = useState("");
   const [tagInput, setTagInput] = useState("");
   const [tagBusy, setTagBusy] = useState(false);
   const [tagError, setTagError] = useState("");
@@ -35,7 +35,7 @@ export function PostClassification({ categoryId, tagIds, existingCategory, exist
   async function loadLookups() {
     setCategoryState("loading");
     setTagState("loading");
-    const [categoryResult, tagResult] = await Promise.allSettled([showCategory?getPublicCategories():Promise.resolve([]), showTags?getPublicTags():Promise.resolve([])]);
+    const [categoryResult, tagResult] = await Promise.allSettled([showCategory?getPublicCategories():Promise.resolve([]), Promise.resolve([])]);
     if (categoryResult.status === "fulfilled") {
       setCategories(categoryResult.value);
       setCategoryState("ready");
@@ -55,8 +55,7 @@ export function PostClassification({ categoryId, tagIds, existingCategory, exist
     return [...byId.values()];
   }, [tags, existingTags]);
   const selectedTags = allTags.filter(tag => tagIds.includes(tag.id));
-  const visibleTags = allTags.filter(tag => tag.status === "ACTIVE" && tag.name.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()));
-  const canCreateTags = session.phase === "ready" && session.member?.profileCompleted === true;
+  const canCreateTags = !disabled && session.phase === "ready" && session.member?.profileCompleted === true;
 
   async function addTags() {
     if (tagBusy || tagState !== "ready" || !canCreateTags) return;
@@ -121,42 +120,20 @@ export function PostClassification({ categoryId, tagIds, existingCategory, exist
     </div>}
 
     {showTags&&<div className="post-classification-field">
-      <label htmlFor={`${id}-tag-search`}>기술 태그</label>
-      <label htmlFor={`${id}-tag-add`}>새 태그 추가</label>
+      <label htmlFor={`${id}-tag-add`}>태그</label>
       <div className="post-classification-add-tag">
-        <input id={`${id}-tag-add`} value={tagInput} onChange={event => { setTagInput(event.target.value); setTagError(""); }} onKeyDown={event => { if (event.key === "Enter") { event.preventDefault(); void addTags(); } }} placeholder="#태그 입력 후 Enter" disabled={tagBusy || tagState !== "ready" || !canCreateTags} aria-describedby={tagError ? `${id}-tag-error` : `${id}-tag-help`} />
+        <input id={`${id}-tag-add`} value={tagInput} onChange={event => { setTagInput(event.target.value); setTagError(""); }} onKeyDown={event => { if (!event.nativeEvent.isComposing && (event.key === "Enter" || event.key === ",")) { event.preventDefault(); void addTags(); } }} placeholder="#태그 입력 후 Enter 또는 쉼표" disabled={tagBusy || tagState !== "ready" || !canCreateTags} aria-describedby={tagError ? `${id}-tag-error` : `${id}-tag-help`} />
         <button type="button" className="button" onClick={() => void addTags()} disabled={tagBusy || tagState !== "ready" || !canCreateTags || !tagInput.trim()}>{tagBusy ? "추가 중…" : "태그 추가"}</button>
       </div>
       <p id={`${id}-tag-help`} className="post-classification-help">쉼표나 Enter로 추가할 수 있어요. 여러 태그는 #springboot #아무개처럼 입력하세요.</p>
       {!canCreateTags && <p className="post-classification-help">새 태그 추가는 프로필 설정을 완료한 회원만 사용할 수 있어요.</p>}
       {tagError && <p id={`${id}-tag-error`} className="post-classification-help" role="alert">{tagError}</p>}
-      <input id={`${id}-tag-search`} type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="태그 검색" autoComplete="off" />
       <div className="post-classification-selected" aria-live="polite">
-        <span>현재 선택:</span> {selectedTags.length ? <span className="post-classification-chips">{selectedTags.map(tag => <span className="post-classification-chip" key={tag.id}>{tag.name}<button type="button" aria-label={`${tag.name} 태그 삭제`} onClick={() => onChange({ tagIds: tagIds.filter(selectedId => selectedId !== tag.id) })} disabled={tagBusy}>×</button></span>)}</span> : "없음"}
+        {selectedTags.length ? <span className="post-classification-chips">{selectedTags.map(tag => <span className="post-classification-chip" key={tag.id}>#{tag.name}<button type="button" aria-label={`${tag.name} 태그 삭제`} onClick={() => onChange({ tagIds: tagIds.filter(selectedId => selectedId !== tag.id) })} disabled={tagBusy || disabled}>×</button></span>)}</span> : "없음"}
       </div>
       {tagState === "loading" && <p className="post-classification-help" role="status">태그를 불러오는 중…</p>}
       {tagState === "error" && <p className="post-classification-help" role="alert">태그를 불러오지 못했어요. 현재 선택은 유지됩니다. <button type="button" onClick={() => void loadLookups()}>다시 시도</button></p>}
-      {tagState === "ready" && visibleTags.length === 0 && <p className="post-classification-help">검색 결과가 없어요.</p>}
-      <div className="post-classification-tags" role="group" aria-label="기술 태그 선택">
-        {visibleTags.map(tag => <label className="post-classification-tag" key={tag.id}>
-          <input type="checkbox" disabled={tagState !== "ready"} checked={tagIds.includes(tag.id)} onChange={event => {
-            const next = event.target.checked ? [...tagIds, tag.id] : tagIds.filter(id => id !== tag.id);
-            onChange({ tagIds: next });
-          }} />
-          <span>{tag.name}</span>
-        </label>)}
-        {allTags.filter(tag => tag.status !== "ACTIVE").map(tag => {
-          const checked = tagIds.includes(tag.id);
-          return <label className="post-classification-tag is-existing" key={tag.id}>
-            <input type="checkbox" checked={checked} disabled={!checked} onChange={() => onChange({ tagIds: tagIds.filter(id => id !== tag.id) })} />
-            <span>{tag.name} · 기존 태그</span>
-          </label>;
-        })}
-        {tagIds.map(selectedId => !allTags.some(tag => tag.id === selectedId) ? <label className="post-classification-tag is-existing" key={selectedId}>
-          <input type="checkbox" checked onChange={() => onChange({ tagIds: tagIds.filter(id => id !== selectedId) })} />
-          <span>기존 태그 ({selectedId})</span>
-        </label> : null)}
-      </div>
+      {tagIds.filter(selectedId => !allTags.some(tag => tag.id === selectedId)).map(selectedId => <button type="button" className="post-classification-chip" key={selectedId} onClick={() => onChange({tagIds:tagIds.filter(id=>id!==selectedId)})}>기존 태그 제거 ({selectedId}) ×</button>)}
     </div>}
   </section>;
 }

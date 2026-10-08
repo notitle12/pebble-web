@@ -40,13 +40,13 @@ function Comments({target,contentId,session}:{target:CommentTarget;contentId:str
       if(kind==="create"){setBody("");setVisibility("PUBLIC");setPage(Math.floor((data?.totalElements??0)/20));}
       if(kind==="edit")setEditing(null);
       if(kind==="delete"){setDeleting(null);if(data?.content.length===1&&page>0)setPage(n=>n-1);}
-      setNotice(kind==="create"?"댓글을 등록했습니다.":kind==="edit"?"댓글을 수정했습니다.":"댓글을 삭제했습니다.");setAttempt(n=>n+1);
+      setNotice(kind==="edit"?"댓글을 수정했습니다.":kind==="delete"?"댓글을 삭제했습니다.":"");setAttempt(n=>n+1);
     }catch(e){if(mounted.current)setNotice(commentFailure(e));}
     finally {writing.current=false;if(mounted.current)setBusy(false);}
   }
   const date=(value:string)=>new Intl.DateTimeFormat("ko-KR",{dateStyle:"medium",timeStyle:"short"}).format(new Date(value));
   return <section className="comments-panel" aria-label="댓글">
-    <div className="list-heading"><h2>댓글{data?` ${data.totalElements}`:""}</h2><button type="button" className="button" disabled={busy||session.phase==="loading"} onClick={()=>setAttempt(n=>n+1)}>댓글 새로고침</button></div>
+    <div className="list-heading"><h2>댓글{data?` ${data.totalElements}`:""}</h2></div>
     {session.phase==="loading"?<p role="status">로그인 상태를 확인하고 있어요.</p>:session.phase==="error"?<p role="alert">{session.message}</p>:loadError?<div><p role="alert">{loadError}</p><button className="button" onClick={()=>setAttempt(n=>n+1)}>댓글 다시 불러오기</button></div>:!data?<p role="status">댓글을 불러오고 있어요.</p>:!data.content.length?<p>{page>0?"이 페이지에는 댓글이 없어요.":"아직 댓글이 없어요. 첫 의견을 남겨보세요."}</p>:<ul className="comment-list">{data.content.map(comment=>{
       const own=ready&&comment.author.id===session.member!.id;
       return <li key={comment.id}><div className="comment-meta"><strong>{comment.author.nickname}</strong><time dateTime={comment.createdAt}>{date(comment.createdAt)}</time>{comment.updatedAt!==comment.createdAt&&<span>수정됨</span>}{comment.visibility==="SECRET"&&<span className="comment-secret-badge"><svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M4.5 7V4.75a3.5 3.5 0 0 1 7 0V7M3.25 7h9.5v7h-9.5z" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M8 9.3v2.4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg><span>비밀 댓글</span><span className="sr-only">자물쇠 표시</span></span>}</div>
@@ -56,6 +56,6 @@ function Comments({target,contentId,session}:{target:CommentTarget;contentId:str
     })}</ul>}
     {data&&<nav className="pagination" aria-label="댓글 페이지"><button className="button" disabled={busy||!data.hasPrevious} onClick={()=>{setPage(n=>n-1);setEditing(null);setDeleting(null);}}>이전 댓글</button><span>{page+1} / {Math.max(1,data.totalPages)}</span><button className="button" disabled={busy||!data.hasNext} onClick={()=>{setPage(n=>n+1);setEditing(null);setDeleting(null);}}>다음 댓글</button></nav>}
     {notice&&<p role="status">{notice}</p>}
-    {ready?<form className="comment-form" onSubmit={e=>{e.preventDefault();void mutate("create");}}><label htmlFor={`${uid}-body`}>댓글 남기기</label><textarea id={`${uid}-body`} value={body} onChange={e=>setBody(e.target.value)} rows={4} disabled={busy} placeholder="내용에 대한 의견을 남겨주세요."/><p className="comment-count">{Array.from(body).length} / 2,000자</p><label className="comment-secret"><input type="checkbox" checked={visibility==="SECRET"} onChange={e=>setVisibility(e.target.checked?"SECRET":"PUBLIC")} disabled={busy}/>비밀 댓글</label><p className="comment-help">비밀 댓글은 댓글 작성자와 콘텐츠 작성자, 관리자만 볼 수 있어요.</p><button className="button" disabled={busy}>{busy?"처리 중…":"댓글 등록"}</button></form>:session.phase!=="loading"&&<div className="comment-login"><p>댓글을 남기려면 로그인해 주세요.</p><NaverLoginButton/></div>}
+    {ready?<form className="comment-form" onSubmit={e=>{e.preventDefault();void mutate("create");}}><label className="comment-secret" htmlFor={`${uid}-secret`}><input id={`${uid}-secret`} type="checkbox" checked={visibility==="SECRET"} onChange={e=>setVisibility(e.target.checked?"SECRET":"PUBLIC")} disabled={busy}/>비밀 댓글</label><label htmlFor={`${uid}-body`}>댓글 남기기</label><textarea id={`${uid}-body`} value={body} onChange={e=>setBody(e.target.value)} rows={4} disabled={busy} placeholder="내용에 대한 의견을 남겨주세요."/><p className="comment-count">{Array.from(body).length} / 2,000자</p><p className="comment-help">비밀 댓글은 댓글 작성자와 콘텐츠 작성자, 관리자만 볼 수 있어요.</p><div className="comment-create-actions"><button className="button" disabled={busy}>{busy?"처리 중…":"댓글 등록"}</button></div></form>:session.phase!=="loading"&&<div className="comment-login"><p>댓글을 남기려면 로그인해 주세요.</p><NaverLoginButton/></div>}
   </section>;
 }
