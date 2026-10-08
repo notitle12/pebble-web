@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import {test} from "node:test";
 import {once} from "node:events";
 import {createMockApi} from "../scripts/mock-post-api.mjs";
-import {getPublicProjects,parseProjectQuery,parseProjectPage,projectPageHref} from "../src/features/project/api/project-list.ts";
+import {getPublicMemberProjects,getPublicProjects,parseProjectQuery,parseProjectPage,projectPageHref} from "../src/features/project/api/project-list.ts";
 test("프로젝트 입력·상태·중복 query를 검증하고 페이지 링크에 조건 보존",()=>{
   for(const input of [{lifecycleStatus:"PLANNED"},{lifecycleStatus:["COMPLETED","IN_PROGRESS"]},{q:["a","b"]},{page:"-1"},{tagId:"01"},{q:"😀".repeat(201)},{unknown:"x"}]) assert.equal(parseProjectQuery(input),null);
   const query=parseProjectQuery({q:" Pebble ",tagId:"1",lifecycleStatus:"COMPLETED"});
@@ -34,4 +34,16 @@ test("프로젝트 Guest 검색은 지원 조건만 전달",async()=>{
     assert.equal(url.pathname,"/api/v1/projects/search");assert.equal(url.searchParams.get("q"),"%_");assert.equal(url.searchParams.get("lifecycleStatus"),"COMPLETED");assert.equal(opts.credentials,"omit");assert.equal(opts.cache,"no-store");assert.deepEqual(opts.headers,{Accept:"application/json"});
     return Response.json({data:{content:[],page:0,size:20,totalElements:0,totalPages:0,hasNext:false,hasPrevious:false}});
   });
+});
+
+test("블로그 프로젝트는 작성자 API와 페이지를 사용하고 다른 소유자 응답을 거부",async()=>{
+ const data={content:[],page:2,size:20,totalElements:0,totalPages:0,hasNext:false,hasPrevious:true};
+ await getPublicMemberProjects("123",2,"https://api.example.com/api/v1",async(url,opts)=>{
+  assert.equal(url.pathname,"/api/v1/members/123/projects");assert.equal(url.searchParams.get("page"),"2");assert.equal(url.searchParams.get("size"),"20");assert.equal(opts.credentials,"omit");return Response.json({data});
+ });
+ const server=createMockApi();server.listen(0,"127.0.0.1");await once(server,"listening");
+ try{const result=await getPublicProjects({page:0},`http://127.0.0.1:${server.address().port}/api/v1`);
+ await assert.rejects(getPublicMemberProjects("123",0,"https://api.example.com/api/v1",async()=>Response.json({data:result})),error=>error.kind==="response");
+ }finally{await new Promise(resolve=>server.close(resolve));}
+ await assert.rejects(getPublicMemberProjects("../me"),error=>error.kind==="response");
 });

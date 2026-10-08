@@ -34,7 +34,7 @@ export async function PostList({ query, listPath = "/" }: { query: PostQuery; li
       {filtered && <Link className="button" href={listPath}>조건 초기화</Link>}
     </section>;
   }
-  return <section aria-label="공개 게시글 목록">
+  return <section className="content-panel" aria-label="공개 게시글 목록">
     <div className="list-heading"><h2>{filtered ? "검색 결과" : "새로운 기록"}</h2><span>총 {result.totalElements.toLocaleString("ko-KR")}개의 글</span></div>
     <PostCards posts={result.content} />
     <nav className="pagination" aria-label="게시글 페이지 이동">
