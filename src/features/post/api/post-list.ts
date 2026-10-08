@@ -111,7 +111,8 @@ export type ArchitectureNode = { id: string; type: "CLIENT" | "APP" | "DATABASE"
 export type ArchitectureSide = "TOP" | "RIGHT" | "BOTTOM" | "LEFT";
 export type ArchitectureEdge = { id: string; source: string; target: string; label?: string | null; sourceSide?: ArchitectureSide | null; targetSide?: ArchitectureSide | null; waypoint?: {x:number;y:number} | null };
 export type ArchitectureSpec = { schemaVersion: 1; groups: ArchitectureGroup[]; nodes: ArchitectureNode[]; edges: ArchitectureEdge[] };
-export type PostBlock = { type: "TEXT" | "CODE" | "TABLE" | "ARCHITECTURE" | "HTML" | "MARKDOWN"; content: string; language: string | null; title: string | null; displayOrder: number };
+export type BlockAlignment = "LEFT" | "CENTER" | "RIGHT";
+export type PostBlock = { type: "TEXT" | "CODE" | "TABLE" | "ARCHITECTURE" | "HTML" | "MARKDOWN"; content: string; language: string | null; title: string | null; displayOrder: number; alignment: BlockAlignment };
 export type PostDetail = PostSummary & { projectId?: string | null; blocks: PostBlock[] };
 const languages = ["JAVA", "JAVASCRIPT", "TYPESCRIPT", "PYTHON", "HTML", "CSS", "SQL", "JSON", "YAML", "MARKDOWN", "BASH", "SHELL"];
 const keysAre = (value: Record<string, unknown>, allowed: string[]) => Object.keys(value).every(key => allowed.includes(key));
@@ -216,11 +217,12 @@ export function parsePostDetail(value: unknown): PostDetail {
   if (!Array.isArray(data.blocks) || !data.blocks.every(block => record(block)
     && ["TEXT", "CODE", "TABLE", "ARCHITECTURE", "HTML", "MARKDOWN"].includes(String(block.type)) && typeof block.content === "string"
     && nullableText(block.title) && count(block.displayOrder)
+    && (block.alignment === undefined || ["LEFT", "CENTER", "RIGHT"].includes(String(block.alignment)))
     && (block.type === "TEXT" || block.type === "HTML" || block.type === "MARKDOWN" ? block.language === null && pointLength(block.content) <= 50000 : block.type === "CODE" ? typeof block.language === "string" && languages.includes(block.language)
       : block.language === null && textField(block.title ?? "", 100) && pointLength(block.content) <= 50000 && (() => {
         try { const parsed = JSON.parse(block.content); block.type === "TABLE" ? parseTableSpec(parsed) : parseArchitectureSpec(parsed); return true; } catch { return false; }
       })()))) throw new PostListError("response");
-  return { ...data, blocks: data.blocks } as PostDetail;
+  return { ...data, blocks: data.blocks.map(block => ({ ...block, alignment: block.alignment ?? "LEFT" })) } as PostDetail;
 }
 export async function getPublicPost(handle: string, key: string, baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL, request: typeof fetch = fetch): Promise<PostDetail> {
   const href = postHref(handle, key);

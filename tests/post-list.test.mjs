@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { getPublicPosts, parsePage, parsePostPage, pageHref, PostListError } from "../src/features/post/api/post-list.ts";
+import { getPublicPosts, parsePage, parsePostPage, parsePostDetail, pageHref, PostListError } from "../src/features/post/api/post-list.ts";
 const post = { id: "721389012345678901", urlKey: "spring-note", title: "Spring 기록", summary: null, author: { id: "721389012345678902", handle: "pebble-dev", nickname: "작성자", blogName: null }, tags: [], publishedAt: "2026-10-03T00:00:00Z", createdAt: "2026-10-03T00:00:00Z" };
 const body = (page = 0, content = [post], total = 21) => ({ data: { content, page, size: 20, totalElements: total, totalPages: Math.ceil(total / 20), hasPrevious: page > 0, hasNext: page + 1 < Math.ceil(total / 20) } });
 test("페이지 기본값·중복·음수·소수·offset 한도", () => {
@@ -36,4 +36,11 @@ test("누락·위험한 API 설정에서는 네트워크 호출을 하지 않음
   for (const base of ["", "file:///tmp", "https://user:secret@example.com", "https://api.example.com?token=secret"]) {
     await assert.rejects(getPublicPosts(0, base, async () => { assert.fail("호출하면 안 됨"); }), e => e.kind === "configuration");
   }
+});
+test("상세 블록 정렬은 허용값만 받고 누락된 기존 값은 왼쪽으로 읽음", () => {
+  const block = { type: "HTML", content: "<p>본문</p>", language: null, title: null, displayOrder: 0 };
+  const detail = parsePostDetail({ data: { ...post, blocks: [block] } });
+  assert.equal(detail.blocks[0].alignment, "LEFT");
+  assert.equal(parsePostDetail({ data: { ...post, blocks: [{ ...block, alignment: "RIGHT" }] } }).blocks[0].alignment, "RIGHT");
+  assert.throws(() => parsePostDetail({ data: { ...post, blocks: [{ ...block, alignment: "JUSTIFY" }] } }), PostListError);
 });

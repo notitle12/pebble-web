@@ -95,3 +95,17 @@ test("toggle summary and content survive persistence without introducing an edit
  assert.match(result,/data-details-content/);
  assert.match(result,/<p>첫 줄<br\s*\/?>(?:\n)?둘째 줄<\/p>/);
 });
+
+test('local image previews are editor-only and stable references persist',()=>{
+ const src='https://pebble.local.invalid/images/example';
+ const edited=richEditorHtml(`<img src="${src}">`,'HTML',{[src]:'blob:local-owned'});
+ assert.match(edited,/src="blob:local-owned"/);
+ assert.match(persistedRichHtml(edited),/src="https:\/\/pebble.local.invalid\/images\/example"/);
+ assert.doesNotMatch(richContentHtml('<img src="blob:untrusted">','HTML'),/src="blob:/);
+});
+test('image and HTML table alignment survive sanitization while invalid alignment is removed',()=>{
+ const safe=richContentHtml('<img src="https://images.example/photo.png" data-align="center"><table data-align="right"><tbody><tr><td>x</td></tr></tbody></table><img src="https://images.example/other.png" data-align="fixed">','HTML');
+ assert.match(safe,/<img[^>]*data-align="center"/);
+ assert.match(safe,/<table[^>]*data-align="right"/);
+ assert.doesNotMatch(safe,/data-align="fixed"/);
+});
