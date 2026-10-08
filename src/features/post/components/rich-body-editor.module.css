@@ -23,7 +23,7 @@
 .insertMenu button:hover { background: #f4f4f4; }
 .symbolMenu { cursor: default; gap: 8px; }
 .symbolMenu select { background: transparent; border: 0; color: inherit; font: inherit; min-width: 50px; }
-.editor { background: #fff; min-height: 55vh; padding: 0 0 120px; }
+.editor { background: #fff; min-height: 55vh; padding: 0 0 36px; }
 .editor :global(.tiptap) { line-height: 1.8; min-height: 55vh; outline: none; }
 .editor :global(.tiptap > * + *), .preview :global(* + *) { margin-top: .85em; }
 .editor :global(.tiptap h1), .preview :global(h1) { font-size: 2rem; }
@@ -127,3 +127,17 @@
 .root .tableDelete button{opacity:0;border:0;border-radius:4px;min-width:22px;min-height:22px;width:22px;height:22px;padding:0;background:#f1f2f3;color:#8d949e;font:18px/1 sans-serif;cursor:pointer}
 .tableDelete:hover button,.editableTable:focus-within .tableDelete button{opacity:1}.root .tableDelete button:hover{background:#ffecec;color:#ad3f3f}
 @media(max-width:720px){.sticky{padding:0 12px}.toolrow{max-width:100%}.columnTools,.rowTools{opacity:1}.root .tableDelete button{opacity:.6}}
+
+.insertMenu{width:320px;max-width:calc(100vw - 24px);grid-template-columns:repeat(2,minmax(0,1fr));border-radius:6px;box-shadow:0 8px 28px #0001}
+.sourceGrid{gap:36px;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.sourceGrid>label{display:flex;flex-direction:column;min-width:0}
+.root .sourceGrid textarea{box-sizing:border-box;flex:1;min-height:65vh;padding:20px;background:#fafafa;border:1px solid #e8e8e8;border-radius:6px;line-height:1.8}
+.sourceGrid>section{min-width:0;padding:0 20px}
+.editor :global(.tiptap table){table-layout:auto}
+.editor :global(.tiptap td),.editor :global(.tiptap th),.preview :global(td),.preview :global(th){border:1px solid #c4cbd4;padding:.45rem .65rem}
+.editor :global(.tiptap td p),.editor :global(.tiptap th p){margin:0}
+@media(max-width:900px){.sourceGrid{grid-template-columns:1fr}.sourceGrid>section{padding:0}.root .sourceGrid textarea{min-height:50vh}}
+
+:global(.writer-shell .writer-composer):has(.sourceGrid){max-width:1400px}
+.editor :global(.tiptap table),.rendered :global(table){display:table;table-layout:fixed;width:100%}
+.rendered{max-width:100%;overflow-x:auto}

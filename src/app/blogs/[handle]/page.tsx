@@ -56,7 +56,7 @@ export default async function PublicBlogPage({ params, searchParams }: {
         <p>{author.nickname}</p>
         <p className="personal-blog-handle">@{author.handle}</p>
         <BlogOwnerActions handle={handle}/>
-        <nav className="blog-board-nav" aria-label="글 폴더"><Link href={blogHref(handle,0)} aria-current={!selected?"page":undefined}>전체 글</Link>{flattenBoards(boards).map(board=><Link key={board.id} href={blogHref(handle,0,board.id)} aria-current={selected===board.id?"page":undefined} style={{paddingInlineStart:`${board.depth+1}rem`}}>{board.name}</Link>)}</nav>
+        <nav className="blog-board-nav" aria-label="글 폴더"><Link href={blogHref(handle,0)} aria-current={!selected?"page":undefined}>전체 게시글</Link>{flattenBoards(boards).map(board=><Link key={board.id} href={blogHref(handle,0,board.id)} aria-current={selected===board.id?"page":undefined} style={{paddingInlineStart:`${board.depth+1}rem`}}>{board.name}</Link>)}</nav>
         {boardError&&<p role="status">폴더를 불러오지 못했어요. 페이지를 새로고침해 주세요.</p>}
       </aside>
       <section className="personal-blog-content" aria-label="공개 게시글">
