@@ -337,3 +337,6 @@ main.personal-blog-layout{max-width:none;width:100%;margin:0;padding:0;display:g
 .board-draft-actions .button{margin:0;min-height:40px;padding:8px 14px}
 .board-cancel-button{background:#fff!important;color:#596579!important}
 @media(max-width:640px){.board-draft-actions{align-items:stretch;flex-direction:column}.board-draft-actions>div{justify-content:stretch}.board-draft-actions .button{flex:1}}
+
+/* Default collection and root boards share a baseline; only children indent. */
+.board-default-row{padding-inline:16px;gap:7px}.board-default-drag-space{width:26px;flex-shrink:0}.board-default-row>svg{width:22px}
