@@ -171,3 +171,34 @@ button,input,select,textarea {font-family:inherit;}
 .post-rich-content{overflow-wrap:anywhere;line-height:1.85}.post-rich-content p{margin:1em 0}.post-rich-content h1,.post-rich-content h2,.post-rich-content h3,.post-rich-content h4{margin:1.5em 0 .6em;line-height:1.4;scroll-margin-top:100px}.post-rich-content ul,.post-rich-content ol{padding-left:1.6em}.post-rich-content img{max-width:100%;height:auto;border-radius:10px}.post-rich-content blockquote{border-left:3px solid var(--line);margin:1.5em 0;padding:.5em 1.25em;color:var(--muted)}.post-rich-content pre{white-space:pre-wrap;background:#f1f4f8;padding:18px;border-radius:8px}.post-rich-content table{width:100%;border-collapse:collapse;table-layout:fixed}.post-rich-content td,.post-rich-content th{padding:10px;border:1px solid var(--line);overflow-wrap:anywhere}.post-rich-content th{background:#f4f6fa}.post-rich-content details{padding:14px 18px;border:1px solid var(--line);border-radius:8px;margin:1em 0}.post-rich-content summary{cursor:pointer;font-weight:600}.post-rich-content a{text-decoration:underline;text-underline-offset:3px}.post-rich-content hr{border:0;border-top:1px solid var(--line);margin:2em 0}.post-rich-content .post-toc{padding:18px;background:#f4f6fa;border-radius:8px}
 
 .post-rich-content iframe{display:block;width:100%;max-width:100%;height:320px;border:0;border-radius:8px}
+
+/* 콘텐츠 면과 페이지 배경을 공통으로 구분한다. */
+:root{--background:#f1f3f5;--line:#e3e6ea}
+body:has(.writer-shell){background:#fff}
+.discovery-shell{padding-bottom:40px}
+.pebble-banner{border:1px solid #dfe5ef;box-shadow:0 2px 8px #27344904;margin-bottom:28px}
+.discovery-section{background:#fff;border:1px solid var(--line);border-radius:16px;padding:30px 32px;margin-bottom:24px;box-shadow:0 3px 16px #26344c04}
+.discovery-heading{padding-bottom:20px;border-bottom:1px solid #eceef1;margin-bottom:8px}
+.discovery-shell .post-list{background:transparent;border:0}
+.discovery-shell .post-card{padding:24px 0}
+.personal-blog-layout{gap:24px;padding-top:36px}
+.personal-blog-profile{border:1px solid var(--line);background:#fff;border-radius:16px;box-shadow:0 3px 16px #26344c04;padding:28px}
+.personal-blog-content{background:#fff;border:1px solid var(--line);border-radius:16px;padding:30px 32px;box-shadow:0 3px 16px #26344c04}
+.personal-blog-heading{padding-bottom:22px;margin-bottom:4px}
+.personal-blog-content .post-card{padding:26px 0}
+.blog-board-nav a[aria-current="page"]{background:#f0f3fa;color:#3657d6}
+.detail-shell{max-width:980px;padding-top:30px}
+.detail-back{display:inline-flex;margin-bottom:18px;color:#727982;font-size:13px}
+.detail-shell .post-detail{background:#fff;border:1px solid var(--line);border-radius:16px;padding:44px 52px;box-shadow:0 3px 16px #26344c04}
+.post-heading-bar{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:22px;min-height:36px}
+.post-heading-bar .post-meta{margin:0;flex-wrap:wrap}
+.post-heading-bar .post-owner-actions{margin:0;flex-shrink:0}
+.post-owner-actions a{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:7px 12px;min-height:36px;border:1px solid #e5e8ed;border-radius:7px;background:#f8f9fb;color:#626b78;font-size:12px;font-weight:500;text-decoration:none;transition:background .15s,color .15s}
+.post-owner-actions svg{width:15px;height:15px}
+.post-owner-actions a:hover{background:#eef2f8;color:#3657d6;border-color:#dbe2ec}
+.post-owner-actions a:focus-visible{outline:2px solid #819be8;outline-offset:3px}
+.detail-shell .like-panel,.detail-shell .comments-panel{background:#fff;border:1px solid var(--line);border-radius:16px;padding:28px 36px;margin-top:18px;box-shadow:0 3px 16px #26344c04}
+.detail-shell .like-panel{padding:20px 36px}
+.detail-shell .comments-panel .list-heading{margin-top:0}
+@media(max-width:760px){.discovery-section{padding:22px 20px;border-radius:12px}.personal-blog-content{padding:24px 20px;border-radius:12px}.personal-blog-profile{padding:24px}.detail-shell .post-detail{padding:30px 24px;border-radius:12px}.detail-shell .like-panel,.detail-shell .comments-panel{padding:22px 24px;border-radius:12px}.post-heading-bar{gap:10px;align-items:flex-start}.post-heading-bar .post-meta{font-size:12px}.post-owner-actions a{padding:7px 10px}.personal-blog-layout{gap:18px}}
+@media(max-width:420px){.detail-shell .post-detail{padding:26px 20px}.detail-shell .like-panel,.detail-shell .comments-panel{padding:20px}.discovery-section{padding:20px 18px}.discovery-heading p{font-size:12px}}
