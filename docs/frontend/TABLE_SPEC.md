@@ -40,3 +40,7 @@ TABLE 전용 입력은 `features/post/components/table-spec-editor.tsx`, 검증 
 운영 차단은 page의 notFound와 src/proxy.ts의 /dev/:path* 제한으로 처리한다. root loading 스트리밍이 시작되면 notFound의 HTTP status가 200일 수 있어 proxy에서 먼저 404를 반환한다. 사용자 입력은 HTML로 삽입하지 않는다.
 
 후속 아키텍처는 Oracle Cloud/AWS/Cloudflare 그룹, Docker, 앱 서버, DB, 캐시, 스토리지 등 정해진 요소와 연결 설명을 선택하고 자동 배치하는 편집기다. 그 다음 ERD 관계 편집으로 확장한다. 현재 구현된 타입은 TABLE이며 두 도식 타입은 아직 없다.
+
+## 2026-10-08 화면 정리 (#53)
+
+PK 체크는 하나의 기본 키에 포함할 컬럼을 선택한다. 여러 컬럼을 선택하면 복합 기본 키 안내와 구성 컬럼을 표시한다. PK 컬럼의 NULL 금지는 유지한다.

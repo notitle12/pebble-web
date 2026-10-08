@@ -3,6 +3,7 @@ import {useEffect,useRef,useState,useId} from "react";
 import {useUserSession} from "@/features/auth/components/member-gate";
 import {NaverLoginButton} from "@/features/auth/components/naver-login-button";
 import {userSession,type SessionState} from "@/features/auth/user-session";
+import { commentPageNumbers } from "../page-numbers";
 import {commentFailure,commentInput,commentPath,parseComment,readComments,type Comment,type CommentPage,type CommentTarget,type CommentVisibility} from "../api/comments";
 export function CommentsPanel({target,contentId}:{target:CommentTarget;contentId:string}) {
   const session=useUserSession();
@@ -54,8 +55,17 @@ function Comments({target,contentId,session}:{target:CommentTarget;contentId:str
         {own&&editing?.id!==comment.id&&<div className="comment-actions">{deleting===comment.id?<><span>삭제하면 댓글 내용을 복구할 수 없어요.</span><button className="button" disabled={busy} onClick={()=>void mutate("delete",comment)}>댓글 삭제 확인</button><button className="button" disabled={busy} onClick={()=>setDeleting(null)}>삭제 취소</button></>:<><button className="button" disabled={busy} onClick={()=>{setEditing(comment);setEditBody(comment.body);setEditVisibility(comment.visibility);setDeleting(null);setNotice("");}}>수정</button><button className="button" disabled={busy} onClick={()=>{setDeleting(comment.id);setEditing(null);}}>삭제</button></>}</div>}
       </li>;
     })}</ul>}
-    {data&&<nav className="pagination" aria-label="댓글 페이지"><button className="button" disabled={busy||!data.hasPrevious} onClick={()=>{setPage(n=>n-1);setEditing(null);setDeleting(null);}}>이전 댓글</button><span>{page+1} / {Math.max(1,data.totalPages)}</span><button className="button" disabled={busy||!data.hasNext} onClick={()=>{setPage(n=>n+1);setEditing(null);setDeleting(null);}}>다음 댓글</button></nav>}
+    {data&&<nav className="comment-pagination" aria-label="댓글 페이지">
+      <button type="button" aria-label="이전 댓글 페이지" disabled={busy||!data.hasPrevious} onClick={()=>{setPage(n=>n-1);setEditing(null);setDeleting(null);}}><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m12 5-5 5 5 5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg></button>
+      {commentPageNumbers(page,data.totalPages).map(number=><button type="button" key={number} aria-label={`댓글 ${number+1}페이지`} aria-current={number===page?"page":undefined} disabled={busy} onClick={()=>{setPage(number);setEditing(null);setDeleting(null);}}>{number+1}</button>)}
+      <button type="button" aria-label="다음 댓글 페이지" disabled={busy||!data.hasNext} onClick={()=>{setPage(n=>n+1);setEditing(null);setDeleting(null);}}><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m8 5 5 5-5 5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg></button>
+    </nav>}
     {notice&&<p role="status">{notice}</p>}
-    {ready?<form className="comment-form" onSubmit={e=>{e.preventDefault();void mutate("create");}}><label className="comment-secret" htmlFor={`${uid}-secret`}><input id={`${uid}-secret`} type="checkbox" checked={visibility==="SECRET"} onChange={e=>setVisibility(e.target.checked?"SECRET":"PUBLIC")} disabled={busy}/>비밀 댓글</label><label htmlFor={`${uid}-body`}>댓글 남기기</label><textarea id={`${uid}-body`} value={body} onChange={e=>setBody(e.target.value)} rows={4} disabled={busy} placeholder="내용에 대한 의견을 남겨주세요."/><p className="comment-count">{Array.from(body).length} / 2,000자</p><p className="comment-help">비밀 댓글은 댓글 작성자와 콘텐츠 작성자, 관리자만 볼 수 있어요.</p><div className="comment-create-actions"><button className="button" disabled={busy}>{busy?"처리 중…":"댓글 등록"}</button></div></form>:session.phase!=="loading"&&<div className="comment-login"><p>댓글을 남기려면 로그인해 주세요.</p><NaverLoginButton/></div>}
+    {ready?<form className="comment-form" onSubmit={e=>{e.preventDefault();void mutate("create");}}>
+      <label htmlFor={`${uid}-body`}>댓글 남기기</label>
+      <div className="comment-compose-row"><textarea id={`${uid}-body`} aria-describedby={`${uid}-secret-help`} value={body} onChange={e=>setBody(e.target.value)} rows={3} disabled={busy} placeholder="내용에 대한 의견을 남겨주세요."/><button className="button" disabled={busy}>{busy?"처리 중…":"댓글 등록"}</button></div>
+      <div className="comment-compose-footer"><label className="comment-secret" htmlFor={`${uid}-secret`}><input id={`${uid}-secret`} type="checkbox" checked={visibility==="SECRET"} onChange={e=>setVisibility(e.target.checked?"SECRET":"PUBLIC")} disabled={busy}/>비밀 댓글</label><span className="comment-count">{Array.from(body).length} / 2,000자</span></div>
+      <p id={`${uid}-secret-help`} className="sr-only">비밀 댓글은 댓글 작성자와 콘텐츠 작성자, 관리자만 볼 수 있어요.</p>
+    </form>:session.phase!=="loading"&&<div className="comment-login"><p>댓글을 남기려면 로그인해 주세요.</p><NaverLoginButton/></div>}
   </section>;
 }
