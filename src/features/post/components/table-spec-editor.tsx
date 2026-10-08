@@ -1,4 +1,5 @@
 "use client";
+import { PrimaryKeyNote } from "./primary-key-note";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { parseTableSpec, type TableColumn, type TableSpec } from "../api/post-list";
 import { TableBlock } from "./table-block";
@@ -37,6 +38,7 @@ export function TableSpecEditor({ onChange, initialValue, embedded = false }: { 
       <div className="table-editor-field"><label htmlFor={`${id}-table-name`}>테이블명</label><input id={`${id}-table-name`} value={tableName} onChange={event => setTableName(event.target.value)} /></div>
       <div className="table-editor-field"><label htmlFor={`${id}-table-description`}>테이블 설명</label><textarea id={`${id}-table-description`} value={description} onChange={event => setDescription(event.target.value)} /></div>
       <div className="table-editor-columns-heading"><h2>컬럼 ({columns.length}/50)</h2><button type="button" disabled={columns.length >= 50} onClick={() => setColumns(rows => [...rows, { rowKey: nextKey.current++, name: "", dataType: "", nullable: true, primaryKey: false }])}>컬럼 추가</button></div>
+      <PrimaryKeyNote columns={spec.columns}/>
       {columns.map((column, index) => <fieldset className="table-column-editor" key={column.rowKey}>
         <legend>컬럼 {index + 1}</legend>
         <div className="table-editor-field"><label htmlFor={`${id}-column-${column.rowKey}-name`}>컬럼명 {index + 1}</label><input id={`${id}-column-${column.rowKey}-name`} value={column.name} onChange={event => update(column.rowKey, { name: event.target.value })} /></div>
