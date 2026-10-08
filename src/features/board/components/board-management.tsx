@@ -135,7 +135,7 @@ function BoardManagementForMember({ memberId }: { memberId: string }) {
       <span>{board.name} <small>순서 {board.displayOrder}</small></span>
       <button type="button" className="button" disabled={busy} onClick={() => edit(board)}>편집</button>
       {board.children.length > 0 ? <span>하위 폴더가 있어 삭제할 수 없습니다.</span> : <button type="button" className="button" disabled={busy} onClick={() => setPendingDelete(board.id)}>삭제</button>}
-      {pendingDelete === board.id && <div className="list-state" role="group" aria-label={`${board.name} 삭제 확인`}><p>폴더를 삭제하면 연결된 게시글은 미분류로 이동하며 본문은 보존됩니다. 이 작업을 진행할까요?</p><button type="button" disabled={busy} onClick={() => void remove(board)}>{busy ? "삭제 중…" : "삭제 확인"}</button><button type="button" className="secondary" disabled={busy} onClick={() => setPendingDelete(null)}>취소</button></div>}
+      {pendingDelete === board.id && <div className="list-state" role="group" aria-label={`${board.name} 삭제 확인`}><p>게시판을 삭제해도 연결된 글은 전체 게시글에 남으며 본문은 보존됩니다. 이 작업을 진행할까요?</p><button type="button" disabled={busy} onClick={() => void remove(board)}>{busy ? "삭제 중…" : "삭제 확인"}</button><button type="button" className="secondary" disabled={busy} onClick={() => setPendingDelete(null)}>취소</button></div>}
     </li>)}</ul>}
     {!loading && !error && <button type="button" className="button" disabled={busy} onClick={() => void load()}>목록 새로고침</button>}
   </section>;
