@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, type InputHTMLAttributes } from "react";
 import { createPortal } from "react-dom";
 import { NodeViewContent, NodeViewWrapper, useEditorState, type NodeViewProps } from "@tiptap/react";
 import { parseArchitectureSpec, parseTableSpec, type ArchitectureSpec, type TableColumn, type TableSpec } from "../api/post-list";
 import { ArchitectureBlock } from "./architecture-block";
 import { ArchitectureEditor } from "./architecture-editor";
 import styles from "./inline-block-views.module.css";
+import { transitionTableInputComposition, type TableInputCompositionState } from "./table-input-composition";
 
 const languages = ["JAVA", "JAVASCRIPT", "TYPESCRIPT", "PYTHON", "HTML", "CSS", "SQL", "JSON", "YAML", "MARKDOWN", "BASH", "SHELL"];
 export const defaultInlineTableSpec = (): TableSpec => ({ schemaVersion: 1, tableName: "table_name", columns: [{ name: "id", dataType: "BIGINT", primaryKey: true, nullable: false }] });
@@ -24,6 +25,23 @@ function tableError(spec: TableSpec): string {
     if (new Set(names).size !== names.length) return "컬럼명은 중복될 수 없습니다.";
     return "테이블명·컬럼명·자료형을 입력해 주세요. 이름·자료형은 100자, 참조는 200자, 설명은 500자까지 입력할 수 있으며 기본 키는 NULL을 허용하지 않습니다.";
   }
+}
+
+function TableTextInput({ value, disabled, onCommit, ...props }: Omit<InputHTMLAttributes<HTMLInputElement>, "value" | "onChange" | "onCompositionStart" | "onCompositionEnd"> & { value: string; onCommit: (value: string) => void }) {
+  const [draft, setDraft] = useState(value);
+  const composition = useRef<TableInputCompositionState>({ composing: false });
+  useEffect(() => { if (!composition.current.composing) setDraft(value); }, [value]);
+  const handleComposition = (event: Parameters<typeof transitionTableInputComposition>[1]) => {
+    const result = transitionTableInputComposition(composition.current, event);
+    composition.current = result.state;
+    if ("value" in event) setDraft(event.value);
+    if (result.commit !== undefined) onCommit(result.commit);
+  };
+  return <input {...props} disabled={disabled} value={draft}
+    onCompositionStart={() => handleComposition({ type: "compositionstart" })}
+    onChange={event => handleComposition({ type: "change", value: event.currentTarget.value })}
+    onCompositionEnd={event => handleComposition({ type: "compositionend", value: event.currentTarget.value })}
+    onBlur={event => handleComposition({ type: "blur", value: event.currentTarget.value })} />;
 }
 
 export function InlineCodeView({ node, editor, updateAttributes, deleteNode }: NodeViewProps) {
@@ -62,19 +80,19 @@ export function InlineTableSpecView({ node, editor, updateAttributes, deleteNode
   return <NodeViewWrapper className={`${styles.block} ${styles.tableBlock}`} contentEditable={false} onPointerDown={(event: React.PointerEvent) => event.stopPropagation()} onKeyDown={(event: React.KeyboardEvent) => event.stopPropagation()}>
     <div className={styles.heading}><span>{node.attrs.title ?? "테이블 명세"}</span><button type="button" disabled={!editable} aria-label="테이블 명세 블록 삭제" onClick={() => { if (editor.isEditable) deleteNode(); }}>삭제</button></div>
     <div className={styles.tableMeta}>
-      <label htmlFor={`${id}-name`}>테이블명<input id={`${id}-name`} disabled={!editable} value={spec.tableName} aria-invalid={!!error} onChange={event => change({ ...spec, tableName: event.target.value })} /></label>
-      <label htmlFor={`${id}-description`}>설명 (선택)<input id={`${id}-description`} disabled={!editable} value={spec.description ?? ""} onChange={event => change({ ...spec, description: event.target.value || null })} /></label>
+      <label htmlFor={`${id}-name`}>테이블명<TableTextInput id={`${id}-name`} disabled={!editable} value={spec.tableName} aria-invalid={!!error} onCommit={value => change({ ...spec, tableName: value })} /></label>
+      <label htmlFor={`${id}-description`}>설명 (선택)<TableTextInput id={`${id}-description`} disabled={!editable} value={spec.description ?? ""} onCommit={value => change({ ...spec, description: value || null })} /></label>
     </div>
     <div className={styles.tableScroll} tabIndex={0} role="region" aria-label="테이블 명세 편집 표">
       <table className={styles.table}><caption>{spec.tableName || "새 테이블"} 컬럼 명세</caption>
         <thead><tr><th scope="col">컬럼명</th><th scope="col">자료형</th><th scope="col">PK</th><th scope="col">NULL</th><th scope="col">참조</th><th scope="col">설명</th><th scope="col">삭제</th></tr></thead>
         <tbody>{spec.columns.map((column, index) => <tr key={index}>
-          <td><input aria-label={`컬럼 ${index + 1} 이름`} disabled={!editable} value={column.name} onChange={event => columnChange(index, { name: event.target.value })} /></td>
-          <td><input aria-label={`컬럼 ${index + 1} 자료형`} disabled={!editable} value={column.dataType} onChange={event => columnChange(index, { dataType: event.target.value })} /></td>
+          <td><TableTextInput aria-label={`컬럼 ${index + 1} 이름`} disabled={!editable} value={column.name} onCommit={value => columnChange(index, { name: value })} /></td>
+          <td><TableTextInput aria-label={`컬럼 ${index + 1} 자료형`} disabled={!editable} value={column.dataType} onCommit={value => columnChange(index, { dataType: value })} /></td>
           <td><input type="checkbox" aria-label={`컬럼 ${index + 1} 기본 키`} disabled={!editable} checked={column.primaryKey} onChange={event => columnChange(index, { primaryKey: event.target.checked, nullable: event.target.checked ? false : column.nullable })} /></td>
           <td><input type="checkbox" aria-label={`컬럼 ${index + 1} NULL 허용`} disabled={!editable || column.primaryKey} checked={column.nullable} onChange={event => columnChange(index, { nullable: event.target.checked })} /></td>
-          <td><input aria-label={`컬럼 ${index + 1} 외래 키 참조`} disabled={!editable} value={column.foreignKey ?? ""} placeholder="table.id" onChange={event => columnChange(index, { foreignKey: event.target.value || null })} /></td>
-          <td><input aria-label={`컬럼 ${index + 1} 설명`} disabled={!editable} value={column.description ?? ""} onChange={event => columnChange(index, { description: event.target.value || null })} /></td>
+          <td><TableTextInput aria-label={`컬럼 ${index + 1} 외래 키 참조`} disabled={!editable} value={column.foreignKey ?? ""} placeholder="table.id" onCommit={value => columnChange(index, { foreignKey: value || null })} /></td>
+          <td><TableTextInput aria-label={`컬럼 ${index + 1} 설명`} disabled={!editable} value={column.description ?? ""} onCommit={value => columnChange(index, { description: value || null })} /></td>
           <td><button type="button" aria-label={`컬럼 ${index + 1} 삭제`} disabled={!editable || spec.columns.length <= 1} onClick={() => change({ ...spec, columns: spec.columns.filter((_, position) => position !== index) })}>×</button></td>
         </tr>)}</tbody>
       </table>
