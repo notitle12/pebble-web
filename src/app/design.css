@@ -375,3 +375,28 @@ main.personal-blog-layout{max-width:none;width:100%;margin:0;padding:0;display:g
 .profile-check{min-height:36px;padding:7px 12px}
 @media(pointer:coarse){.button,.comments-panel .button,.comment-actions .button,.writer-action-bar button,.board-row-actions button{min-height:44px}.comment-actions{gap:8px}.comment-actions .button{padding-inline:12px}.comments-panel .comment-compose-row>.button{min-height:44px}}
 @media(prefers-reduced-motion:reduce){.button{transition:none}}
+
+/* Comment composer: an inset writing card with quiet controls below. */
+.comment-composer{display:grid;grid-template-columns:40px minmax(0,1fr);column-gap:14px;row-gap:10px;margin-top:28px}
+.comment-composer-avatar{display:grid;place-items:center;width:40px;height:40px;margin-top:4px;border-radius:50%;overflow:hidden;background:#eaf0fc;color:#3657d6;font-size:15px;font-weight:600}
+.comment-composer-avatar img{width:100%;height:100%;object-fit:cover}
+.comment-composer-card{min-width:0;padding:16px 18px 12px;border:1px solid transparent;border-radius:13px;background:#f5f6f8;transition:border-color .15s,background-color .15s}
+.comment-composer-card:focus-within{background:#f8f9fc;border-color:#bfccec}
+.comment-composer-name{display:block;color:#3a4350;font-size:13px;font-weight:600;line-height:20px;overflow-wrap:anywhere}
+.comments-panel .comment-composer-card textarea{display:block;width:100%;min-height:66px;margin:9px 0 0;padding:0;resize:vertical;border:0;border-radius:0;background:transparent;color:var(--text);font:inherit;font-size:14px;line-height:1.7;box-shadow:none}
+.comments-panel .comment-composer-card textarea:focus{outline:none;box-shadow:none}
+.comment-composer-card textarea::placeholder{color:#758091}
+.comment-composer-tools{grid-column:2;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.comment-composer-meta{display:flex;flex-wrap:wrap;gap:6px 12px;color:#6e7887;font-size:11px;line-height:1.5}
+.comment-composer-buttons{display:flex;gap:7px;flex-shrink:0}
+.comment-composer-buttons button{display:grid;place-items:center;width:36px;height:36px;padding:0;border:0;border-radius:10px;background:#f2f4f7;color:#657080;cursor:pointer;transition:background-color .15s,color .15s}
+.comment-composer-buttons svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.comment-composer-buttons button:hover:not(:disabled){background:#e8edf5;color:#3657d6}
+.comment-composer-toggle[aria-pressed=true]{background:#e7edfc;color:#3657d6}
+.comment-composer-buttons .comment-composer-send:not(:disabled){background:#3657d6;color:#fff}
+.comment-composer-buttons .comment-composer-send:hover:not(:disabled){background:#2c48bd;color:#fff}
+.comment-composer-buttons button:disabled{opacity:.5;cursor:default}
+.comment-composer-buttons button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+@media(max-width:480px){.comment-composer{grid-template-columns:32px minmax(0,1fr);column-gap:10px}.comment-composer-avatar{width:32px;height:32px;font-size:13px}.comment-composer-card{padding:13px 14px}.comments-panel .comment-composer-card textarea{font-size:16px}.comment-composer-meta{max-width:calc(100% - 96px)}}
+@media(pointer:coarse){.comment-composer-buttons button{width:44px;height:44px}}
+@media(prefers-reduced-motion:reduce){.comment-composer-card,.comment-composer-buttons button{transition:none}}

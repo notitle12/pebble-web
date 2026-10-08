@@ -3,6 +3,7 @@ import {useEffect,useRef,useState,useId} from "react";
 import {useUserSession} from "@/features/auth/components/member-gate";
 import {NaverLoginButton} from "@/features/auth/components/naver-login-button";
 import {userSession,type SessionState} from "@/features/auth/user-session";
+import {safeMediaUrl} from "@/features/media/model";
 import { commentPageNumbers } from "../page-numbers";
 import {commentFailure,commentInput,commentPath,parseComment,readComments,type Comment,type CommentPage,type CommentTarget,type CommentVisibility} from "../api/comments";
 export function CommentsPanel({target,contentId}:{target:CommentTarget;contentId:string}) {
@@ -61,10 +62,22 @@ function Comments({target,contentId,session}:{target:CommentTarget;contentId:str
       <button type="button" aria-label="다음 댓글 페이지" disabled={busy||!data.hasNext} onClick={()=>{setPage(n=>n+1);setEditing(null);setDeleting(null);}}><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m8 5 5 5-5 5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg></button>
     </nav>}
     {notice&&<p role="status">{notice}</p>}
-    {ready?<form className="comment-form" onSubmit={e=>{e.preventDefault();void mutate("create");}}>
-      <label htmlFor={`${uid}-body`}>댓글 남기기</label>
-      <div className="comment-compose-row"><textarea id={`${uid}-body`} aria-describedby={`${uid}-secret-help`} value={body} onChange={e=>setBody(e.target.value)} rows={3} disabled={busy} placeholder="내용에 대한 의견을 남겨주세요."/><button className="button" disabled={busy}>{busy?"처리 중…":"댓글 등록"}</button></div>
-      <div className="comment-compose-footer"><label className="comment-secret" htmlFor={`${uid}-secret`}><input id={`${uid}-secret`} type="checkbox" checked={visibility==="SECRET"} onChange={e=>setVisibility(e.target.checked?"SECRET":"PUBLIC")} disabled={busy}/>비밀 댓글</label><span className="comment-count">{Array.from(body).length} / 2,000자</span></div>
+    {ready?<form className="comment-form comment-composer" onSubmit={e=>{e.preventDefault();void mutate("create");}} aria-busy={busy}>
+      <span className="comment-composer-avatar" aria-hidden="true">{safeMediaUrl(session.member!.profileImageUrl)?<img src={safeMediaUrl(session.member!.profileImageUrl)!} alt="" width={40} height={40}/>:Array.from(session.member!.nickname)[0]}</span>
+      <div className="comment-composer-card">
+        <strong className="comment-composer-name">{session.member!.nickname}</strong>
+        <label className="sr-only" htmlFor={`${uid}-body`}>댓글 남기기</label>
+        <textarea id={`${uid}-body`} aria-describedby={`${uid}-secret-help`} value={body} onChange={e=>setBody(e.target.value)} rows={3} disabled={busy} placeholder="이 기록에 대한 생각을 남겨주세요."/>
+      </div>
+      <div className="comment-composer-tools">
+        <span className="comment-composer-meta" aria-live="polite">{visibility==="SECRET"?"비밀 댓글":"공개 댓글"}{body.length>0&&<span>{Array.from(body).length.toLocaleString()} / 2,000자</span>}</span>
+        <div className="comment-composer-buttons">
+          <button type="button" className="comment-composer-toggle" aria-label="비밀 댓글" aria-pressed={visibility==="SECRET"} aria-describedby={`${uid}-secret-help`} title={visibility==="SECRET"?"비밀 댓글 해제":"비밀 댓글로 작성"} disabled={busy} onClick={()=>setVisibility(v=>v==="SECRET"?"PUBLIC":"SECRET")}>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="3" fill="none" stroke="currentColor" strokeWidth="1.7"/>{visibility==="SECRET"?<path d="M8 10V7a4 4 0 0 1 8 0v3"/>:<path d="M8 10V7a4 4 0 0 1 7.5-2"/>}<circle cx="12" cy="15" r="1" fill="currentColor"/></svg>
+          </button>
+          <button type="submit" className="comment-composer-send" aria-label={busy?"댓글 등록 중":"댓글 등록"} title="댓글 등록" disabled={busy||!body.trim()}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m20 4-6.7 16-3.6-6-6-3.6L20 4Z"/><path d="m9.7 14 5.8-5.5"/></svg></button>
+        </div>
+      </div>
       <p id={`${uid}-secret-help`} className="sr-only">비밀 댓글은 댓글 작성자와 콘텐츠 작성자, 관리자만 볼 수 있어요.</p>
     </form>:session.phase!=="loading"&&<div className="comment-login"><p>댓글을 남기려면 로그인해 주세요.</p><NaverLoginButton/></div>}
   </section>;
