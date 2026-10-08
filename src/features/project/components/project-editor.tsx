@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useId, useMemo, useRef, useState } from "react";
-import { getPublicTags, type PublicTag } from "../../tag/api/public-tags";
+import { useId, useRef } from "react";
+import { PostClassification } from "../../post/components/post-classification";
 import type { ProjectTag } from "../api/member-projects";
 import type { FeatureInput, LinkInput, ProjectEditorValue, ProjectLifecycle, ProjectVisibility } from "../project-editor-model";
 
@@ -24,38 +24,8 @@ const linkTypes: { value: LinkInput["linkType"]; label: string }[] = [
 
 export function ProjectEditor({ value, onChange, busy, visibility, blocked, existingTags = [], onSave }: Props) {
   const id = useId();
-  const requestVersion = useRef(0);
-  const [tags, setTags] = useState<PublicTag[]>([]);
-  const [tagState, setTagState] = useState<"loading" | "ready" | "error">("loading");
-  const [tagQuery, setTagQuery] = useState("");
-
-  async function loadTags() {
-    const version = ++requestVersion.current;
-    setTagState("loading");
-    try {
-      const result = await getPublicTags();
-      if (requestVersion.current === version) {
-        setTags(result);
-        setTagState("ready");
-      }
-    } catch {
-      if (requestVersion.current === version) setTagState("error");
-    }
-  }
-
-  useEffect(() => {
-    void loadTags();
-    return () => { requestVersion.current += 1; };
-  }, []);
-
-  const allTags = useMemo(() => {
-    const byId = new Map<string, PublicTag>();
-    for (const tag of tags) byId.set(tag.id, tag);
-    for (const tag of existingTags) if (!byId.has(tag.id)) byId.set(tag.id, tag);
-    return [...byId.values()];
-  }, [tags, existingTags]);
-  const activeTags = allTags.filter(tag => tag.status === "ACTIVE" && tag.name.toLocaleLowerCase().includes(tagQuery.trim().toLocaleLowerCase()));
-  const selectedTags = allTags.filter(tag => value.tagIds.includes(tag.id));
+  const currentValue = useRef(value);
+  currentValue.current = value;
 
   function update<K extends keyof ProjectEditorValue>(key: K, next: ProjectEditorValue[K]) {
     onChange({ ...value, [key]: next });
@@ -138,31 +108,15 @@ export function ProjectEditor({ value, onChange, busy, visibility, blocked, exis
           <label htmlFor={`${id}-completed`}>완료일</label>
           <input id={`${id}-completed`} type="date" value={value.completedOn} onInput={event => update("completedOn", event.currentTarget.value)} onChange={event => update("completedOn", event.target.value)} />
         </div>
-        <div className="post-classification-field">
-          <label htmlFor={`${id}-tag-search`}>기술 태그</label>
-          <input id={`${id}-tag-search`} type="search" value={tagQuery} onChange={event => setTagQuery(event.target.value)} placeholder="태그 검색" autoComplete="off" />
-          <p className="post-classification-selected" aria-live="polite">현재 선택: {selectedTags.length ? selectedTags.map(tag => tag.name).join(", ") : value.tagIds.length ? value.tagIds.join(", ") : "없음"}</p>
-          {tagState === "loading" && <p className="post-classification-help" role="status">태그를 불러오는 중…</p>}
-          {tagState === "error" && <p className="post-classification-help" role="alert">태그를 불러오지 못했어요. 현재 선택은 유지됩니다. <button type="button" onClick={() => void loadTags()}>다시 시도</button></p>}
-          {tagState === "ready" && activeTags.length === 0 && <p className="post-classification-help">검색 결과가 없어요.</p>}
-          <div className="post-classification-tags" role="group" aria-label="기술 태그 선택">
-            {activeTags.map(tag => <label className="post-classification-tag" key={tag.id}>
-              <input type="checkbox" checked={value.tagIds.includes(tag.id)} disabled={tagState !== "ready"} onChange={event => update("tagIds", event.target.checked ? [...value.tagIds, tag.id] : value.tagIds.filter(tagId => tagId !== tag.id))} />
-              <span>{tag.name}</span>
-            </label>)}
-            {allTags.filter(tag => tag.status !== "ACTIVE").map(tag => {
-              const checked = value.tagIds.includes(tag.id);
-              return <label className="post-classification-tag is-existing" key={tag.id}>
-                <input type="checkbox" checked={checked} disabled={!checked} onChange={() => update("tagIds", value.tagIds.filter(tagId => tagId !== tag.id))} />
-                <span>{tag.name} · 기존 태그</span>
-              </label>;
-            })}
-            {value.tagIds.map(tagId => !allTags.some(tag => tag.id === tagId) ? <label className="post-classification-tag is-existing" key={tagId}>
-              <input type="checkbox" checked onChange={() => update("tagIds", value.tagIds.filter(id => id !== tagId))} />
-              <span>{existingTags.find(tag => tag.id === tagId)?.name ?? `기존 태그 (${tagId})`}</span>
-            </label> : null)}
-          </div>
-        </div>
+        <PostClassification
+          categoryId={null}
+          tagIds={value.tagIds}
+          existingTags={existingTags}
+          onChange={patch => { if (patch.tagIds) onChange({ ...currentValue.current, tagIds: patch.tagIds }); }}
+          showCategory={false}
+          disabled={busy}
+          ariaLabel="프로젝트 기술 태그"
+        />
       </section>
 
       <section aria-labelledby={`${id}-features-title`}>
