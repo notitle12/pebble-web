@@ -12,9 +12,9 @@ import styles from "./rich-body-editor.module.css";
 
 export const InlineCode = TiptapNode.create({
   name: "pebbleCode", group: "block", content: "text*", marks: "", code: true, defining: true,
-  addAttributes() { return { language: { default: "TYPESCRIPT" }, key: { default: null, rendered: false }, title: { default: null, rendered: false } }; },
-  parseHTML() { return [{ tag: "pre", preserveWhitespace: "full", getAttrs: element => ({ language: codeLanguages.includes(element.getAttribute("data-language") ?? "") ? element.getAttribute("data-language") : "TYPESCRIPT" }) }]; },
-  renderHTML({ node }) { return ["pre", { "data-language": node.attrs.language }, ["code", {}, 0]]; },
+  addAttributes() { return { language: { default: "TYPESCRIPT" }, align: { default: "left", parseHTML: (element: HTMLElement) => ["left", "center", "right"].includes(element.getAttribute("data-align") || "") ? element.getAttribute("data-align") : "left", renderHTML: attrs => ({ "data-align": ["left", "center", "right"].includes(String(attrs.align)) ? attrs.align : "left" }) }, key: { default: null, rendered: false }, title: { default: null, rendered: false } }; },
+  parseHTML() { return [{ tag: "pre", preserveWhitespace: "full", getAttrs: element => ({ language: codeLanguages.includes(element.getAttribute("data-language") ?? "") ? element.getAttribute("data-language") : "TYPESCRIPT", align: ["left", "center", "right"].includes(element.getAttribute("data-align") || "") ? element.getAttribute("data-align") : "left" }) }]; },
+  renderHTML({ node, HTMLAttributes }) { return ["pre", { ...HTMLAttributes, "data-language": node.attrs.language }, ["code", {}, 0]]; },
   addNodeView() { return ReactNodeViewRenderer(InlineCodeView, { contentDOMElementTag: "code" }); },
   addProseMirrorPlugins() { return [new Plugin({ props: { handlePaste: (view, event) => {
     const { $from, $to, from, to } = view.state.selection;
@@ -53,11 +53,11 @@ export const EditableToggle = TiptapNode.create({
 function structured(name: string, type: "TABLE" | "ARCHITECTURE") {
   return TiptapNode.create({
     name, group: "block", atom: true, defining: true,
-    addAttributes() { return { spec: { default: type === "TABLE" ? defaultInlineTableSpec() : defaultInlineArchitectureSpec() }, key: { default: null, rendered: false }, title: { default: null }, valid: { default: true, rendered: false } }; },
+    addAttributes() { return { spec: { default: type === "TABLE" ? defaultInlineTableSpec() : defaultInlineArchitectureSpec() }, align: { default: "left", parseHTML: (element: HTMLElement) => ["left", "center", "right"].includes(element.getAttribute("data-align") || "") ? element.getAttribute("data-align") : "left", renderHTML: attrs => ({ "data-align": ["left", "center", "right"].includes(String(attrs.align)) ? attrs.align : "left" }) }, key: { default: null, rendered: false }, title: { default: null }, valid: { default: true, rendered: false } }; },
     parseHTML() { return [{ tag: `div[data-pebble-type="${type}"]`, getAttrs: element => {
-      try { const value = JSON.parse(element.getAttribute("data-pebble-spec") ?? ""); return { spec: type === "TABLE" ? parseTableSpec(value) : parseArchitectureSpec(value), title: element.getAttribute("data-pebble-title") }; } catch { return false; }
+      try { const value = JSON.parse(element.getAttribute("data-pebble-spec") ?? ""); return { spec: type === "TABLE" ? parseTableSpec(value) : parseArchitectureSpec(value), title: element.getAttribute("data-pebble-title"), align: ["left", "center", "right"].includes(element.getAttribute("data-align") || "") ? element.getAttribute("data-align") : "left" }; } catch { return false; }
     } }]; },
-    renderHTML({ node }) { return ["div", { "data-pebble-type": type, "data-pebble-spec": JSON.stringify(node.attrs.spec), ...(node.attrs.title ? { "data-pebble-title": node.attrs.title } : {}) }]; },
+    renderHTML({ node, HTMLAttributes }) { return ["div", { ...HTMLAttributes, "data-pebble-type": type, "data-pebble-spec": JSON.stringify(node.attrs.spec), ...(node.attrs.title ? { "data-pebble-title": node.attrs.title } : {}) }]; },
     addNodeView() { return ReactNodeViewRenderer(type === "TABLE" ? InlineTableSpecView : InlineArchitectureView); },
   });
 }
@@ -116,6 +116,12 @@ export const ControllableTable = Table.extend({
   addNodeView() { return ({ node, view, HTMLAttributes, getPos }) => {
     const base = new TableView(node, this.options.cellMinWidth, view, HTMLAttributes);
     base.dom.classList.add(styles.editableTable);
+    const syncAlignment = (next: PMNode) => {
+      const align = ["left", "center", "right"].includes(next.attrs.align) ? next.attrs.align : "left";
+      base.dom.setAttribute("data-align", align);
+      base.contentDOM.closest("table")?.setAttribute("data-align", align);
+    };
+    syncAlignment(node);
     const columns = document.createElement("div"), rows = document.createElement("div"), remove = document.createElement("div");
     columns.className = styles.columnTools; rows.className = styles.rowTools; remove.className = styles.tableDelete;
     const buttons: HTMLButtonElement[] = [];
@@ -136,6 +142,6 @@ export const ControllableTable = Table.extend({
     columns.contentEditable = "false"; rows.contentEditable = "false"; remove.contentEditable = "false"; base.dom.append(columns, rows, remove);
     const refresh = (next: PMNode) => { for (const button of buttons) button.disabled = !this.editor.isEditable; removeColumn.disabled ||= next.firstChild?.childCount === 1; removeRow.disabled ||= next.childCount === 1; };
     refresh(node);
-    return { dom: base.dom, contentDOM: base.contentDOM, update: (next: PMNode) => { const result = base.update(next); if (result) refresh(next); return result; }, ignoreMutation: mutation => !base.contentDOM.contains(mutation.target) || base.ignoreMutation(mutation), stopEvent: event => columns.contains(event.target as globalThis.Node) || rows.contains(event.target as globalThis.Node) || remove.contains(event.target as globalThis.Node) };
+    return { dom: base.dom, contentDOM: base.contentDOM, update: (next: PMNode) => { const result = base.update(next); if (result) { syncAlignment(next); refresh(next); } return result; }, ignoreMutation: mutation => !base.contentDOM.contains(mutation.target) || base.ignoreMutation(mutation), stopEvent: event => columns.contains(event.target as globalThis.Node) || rows.contains(event.target as globalThis.Node) || remove.contains(event.target as globalThis.Node) };
   }; },
 }).configure({ resizable: false });

@@ -67,6 +67,12 @@ input:focus-visible, select:focus-visible, button:focus-visible { outline: 3px s
 .post-detail { background: white; border: 1px solid var(--line); border-radius: 16px; padding: 40px; }
 .post-detail > header { padding-bottom: 28px; border-bottom: 1px solid var(--line); }
 .post-body { padding-top: 28px; }
+.post-body > [data-block-alignment="CENTER"] > :is(.code-block, .table-block, .architecture-block) { margin-left: auto; margin-right: auto; width: fit-content; max-width: 100%; }
+.post-body > [data-block-alignment="RIGHT"] > :is(.code-block, .table-block, .architecture-block) { margin-left: auto; margin-right: 0; width: fit-content; max-width: 100%; }
+.post-rich-content img[data-align="center"] { display: block; margin-left: auto; margin-right: auto; }
+.post-rich-content img[data-align="right"] { display: block; margin-left: auto; margin-right: 0; }
+.post-rich-content table[data-align="center"] { margin-left: auto; margin-right: auto; width: auto; }
+.post-rich-content table[data-align="right"] { margin-left: auto; margin-right: 0; width: auto; }
 .text-block { margin: 24px 0; }
 .text-block p { white-space: pre-wrap; color: var(--text); }
 .code-block { min-width: 0; margin: 28px 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }

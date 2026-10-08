@@ -1,0 +1,39 @@
+.image {
+  box-sizing: border-box;
+  display: table;
+  margin: 1em 0;
+  max-width: 100%;
+  position: relative;
+  width: fit-content;
+}
+
+.image[data-align="center"] { margin-left: auto; margin-right: auto; }
+.image[data-align="right"] { margin-left: auto; margin-right: 0; }
+.image img { display: block; height: auto; max-width: 100%; width: auto; }
+
+.representativeButton {
+  background: #202124dc;
+  border: 1px solid #ffffff8c;
+  border-radius: 999px;
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+  inset: 8px 8px auto auto;
+  opacity: 0;
+  padding: 6px 9px;
+  pointer-events: none;
+  position: absolute;
+  transition: opacity .12s ease;
+  z-index: 2;
+}
+
+.image:hover .representativeButton,
+.image:focus-within .representativeButton,
+.representativeButton:focus-visible,
+.representativeButton[aria-pressed="true"] { opacity: 1; pointer-events: auto; }
+.representativeButton[aria-pressed="true"] { background: #245dc4; }
+.representativeButton:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.representativeButton:disabled { cursor: not-allowed; opacity: .5; }

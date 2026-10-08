@@ -16,8 +16,16 @@ test("editor conversion preserves block order, content and architecture coordina
   const body = buildPostBody(value);
   assert.deepEqual(body.blocks.map(block => block.type), ["TEXT", "ARCHITECTURE"]);
   assert.equal(body.blocks[0].content, "안녕하세요 🌱");
+  assert.equal(body.blocks[0].alignment, "LEFT");
   assert.deepEqual(JSON.parse(body.blocks[1].content).nodes[0].position, { x: 317, y: 428 });
   assert.deepEqual(validateEditorValue(value), []);
+});
+
+test("representative image source defaults to the first body image and saves its image id",()=>{
+  const first="https://api.example.com/api/v1/posts/10/images/2/content", second="https://api.example.com/api/v1/posts/10/images/3/content";
+  const value={title:"글",summary:"",blocks:[{...createEditorBlock("HTML"),content:`<p><img src="${first}"></p><p><img src="${second}"></p>`}]};
+  assert.equal(buildPostBody(value).thumbnailImageId,"2");
+  assert.equal(buildPostBody({...value,thumbnailImageSrc:second}).thumbnailImageId,"3");
 });
 
 test("validation rejects invalid structured references and Unicode title overflow", () => {
@@ -32,9 +40,11 @@ test("validation rejects invalid structured references and Unicode title overflo
 test("body omits editor-only keys while preserving optional block metadata", () => {
   const value = { title: "글", summary: "  요약  ", blocks: [{ ...createEditorBlock("CODE"), content: "const name = 'Pebble';", title: "예제", language: "TYPESCRIPT" }] };
   const body = buildPostBody(value);
-  assert.deepEqual(body, { title: "글", summary: null, blocks: [{ type: "CODE", content: "const name = 'Pebble';", language: "TYPESCRIPT", title: "예제" }] });
+  assert.deepEqual(body, { title: "글", thumbnailImageId: null, summary: null, blocks: [{ type: "CODE", content: "const name = 'Pebble';", language: "TYPESCRIPT", title: "예제", alignment: "LEFT" }] });
   assert.equal("key" in body.blocks[0], false);
   assert.equal("valid" in body.blocks[0], false);
+  const centered = buildPostBody({ ...value, blocks: [{ ...value.blocks[0], alignment: "CENTER" }] });
+  assert.equal(centered.blocks[0].alignment, "CENTER");
 });
 
 

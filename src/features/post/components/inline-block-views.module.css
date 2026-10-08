@@ -1,4 +1,6 @@
 .block { border: 1px solid #e1e3e6; border-radius: 5px; box-sizing: border-box; margin: 1.2em 0; max-width: 100%; overflow: hidden; }
+.block[data-align="center"] { margin-left: auto; margin-right: auto; width: fit-content; }
+.block[data-align="right"] { margin-left: auto; margin-right: 0; width: fit-content; }
 .block button, .dialog button { background: #fff; border: 1px solid #d9dde2; border-radius: 4px; color: #4a5059; cursor: pointer; font: inherit; font-size: 12px; min-height: 30px; padding: 4px 10px; }
 .block button:disabled, .dialog button:disabled { cursor: not-allowed; opacity: .45; }
 .block button:focus-visible, .dialog button:focus-visible, .block input:focus-visible, .block select:focus-visible { outline: 2px solid #7c9ed0; outline-offset: 2px; }
