@@ -28,14 +28,25 @@ function tableError(spec: TableSpec): string {
 
 export function InlineCodeView({ node, editor, updateAttributes, deleteNode }: NodeViewProps) {
   const editable = useEditable(editor);
-  return <NodeViewWrapper className={`${styles.block} ${styles.code}`} contentEditable={false}>
-    <div className={styles.toolbar} onPointerDown={event => event.stopPropagation()} onKeyDown={event => event.stopPropagation()}>
+  const [copyMessage, setCopyMessage] = useState("");
+  const copyCode = async () => {
+    try {
+      await navigator.clipboard.writeText(node.textContent);
+      setCopyMessage("코드를 복사했어요.");
+    } catch {
+      setCopyMessage("코드를 복사하지 못했어요. 코드를 직접 선택해 주세요.");
+    }
+  };
+  return <NodeViewWrapper className={`${styles.block} ${styles.code}`}>
+    <div className={styles.toolbar} contentEditable={false} onPointerDown={event => event.stopPropagation()} onKeyDown={event => event.stopPropagation()}>
       <select aria-label="코드 언어" value={node.attrs.language ?? "TYPESCRIPT"} disabled={!editable} onChange={event => { if (editor.isEditable) updateAttributes({ language: event.target.value }); }}>
         {languages.map(language => <option key={language} value={language}>{language}</option>)}
       </select>
+      <button type="button" onClick={() => void copyCode()}>코드 복사</button>
       <button type="button" aria-label="코드 블록 삭제" disabled={!editable} onClick={() => { if (editor.isEditable) deleteNode(); }}>삭제</button>
     </div>
-    <NodeViewContent<"pre"> as="pre" className={styles.codeContent} contentEditable={editable} spellCheck={false} aria-label="코드 내용" />
+    <NodeViewContent<"pre"> as="pre" className={styles.codeContent} spellCheck={false} aria-label="코드 내용" />
+    <p className={styles.copyStatus} contentEditable={false} role="status">{copyMessage}</p>
   </NodeViewWrapper>;
 }
 

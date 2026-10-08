@@ -104,3 +104,26 @@
 .root .columnTools button,.root .rowTools button{background:#f6f7f9;border:1px solid #dce0e6;border-radius:4px;min-width:26px;height:26px;padding:0 6px;color:#536071;font:14px/1 sans-serif;cursor:pointer}
 .root .columnTools button:disabled,.root .rowTools button:disabled{opacity:.35;cursor:default}
 @media(max-width:720px){.root .palette,.root .tablePicker{top:64px}.tablePicker{left:12px}.textControls{margin-right:0;padding-right:3px}.root .textControls .select{min-width:64px}.editor :global(.tableWrapper).editableTable{margin-right:30px}}
+
+/* 도구 묶음의 실제 너비를 기준으로 화면 중앙에 배치한다. */
+.sticky{justify-content:center;padding:0 24px}
+.toolrow{flex:0 1 auto;width:max-content;max-width:calc(100vw - 320px)}
+.modeSelect{margin-left:8px;border-left:1px solid #ececec;padding-left:12px}
+.toggleBlock{margin:18px 0;border:1px solid #eceef0;border-radius:5px;padding:10px 12px}
+.toggleHeader{display:flex;align-items:center;gap:6px}
+.root .toggleHeader button{border:0;background:transparent;min-width:26px;min-height:26px;padding:4px;cursor:pointer;color:#676c74}
+.toggleHeader svg{display:block;width:16px;height:16px;transition:transform .15s}
+.root .toggleHeader input{border:0;border-radius:0;background:transparent;padding:3px;font-family:inherit;font-weight:500;font-size:14px;line-height:1.6;min-width:0}
+.toggleContent{padding:6px 4px 2px 32px}.toggleContent[hidden]{display:none!important}
+.markdownHelp{font-size:12px;font-weight:400;color:#858a93;line-height:1.7;margin:2px 0 8px}
+.columnTools,.rowTools{opacity:0;gap:3px}
+.columnTools{left:calc(100% + 4px);top:0;height:100%;width:20px}
+.rowTools{left:0;top:calc(100% + 4px);width:100%;height:20px}
+.root .columnTools button,.root .rowTools button{border:0;background:#f1f2f3;border-radius:4px;min-width:20px;min-height:20px;width:20px;height:20px;padding:0;color:#969ba3;font:16px/1 sans-serif}
+.root .columnTools button:first-child{flex:1;width:20px}.root .rowTools button:first-child{flex:1;height:20px}
+.root .columnTools button:hover,.root .rowTools button:hover{background:#e6e8eb;color:#444b55}
+.root .columnTools button:focus-visible,.root .rowTools button:focus-visible,.root .tableDelete button:focus-visible{outline:2px solid #7c9ed0;outline-offset:2px}
+.tableDelete{position:absolute;left:-26px;top:-26px;padding:8px;z-index:3}
+.root .tableDelete button{opacity:0;border:0;border-radius:4px;min-width:22px;min-height:22px;width:22px;height:22px;padding:0;background:#f1f2f3;color:#8d949e;font:18px/1 sans-serif;cursor:pointer}
+.tableDelete:hover button,.editableTable:focus-within .tableDelete button{opacity:1}.root .tableDelete button:hover{background:#ffecec;color:#ad3f3f}
+@media(max-width:720px){.sticky{padding:0 12px}.toolrow{max-width:100%}.columnTools,.rowTools{opacity:1}.root .tableDelete button{opacity:.6}}
