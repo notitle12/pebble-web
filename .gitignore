@@ -10,3 +10,9 @@ node_modules/
 .wrangler/
 .dev.vars*
 .worker-build-path
+
+# Project documents are maintained in the local shared documentation folder.
+/docs/
+*.md
+*.mdx
+!/.github/**/*.md
