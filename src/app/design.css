@@ -222,8 +222,36 @@ main.personal-blog-layout{max-width:none;width:100%;margin:0;padding:0;display:g
 .blog-board-nav a:hover,.blog-project-nav a:hover{background:#e9ebf1;color:#252a34}
 .blog-board-nav a[aria-current=page],.blog-project-nav a[aria-current=page]{background:#e9ebf1;color:#252a34;font-weight:650}
 .blog-board-nav h2,.blog-project-nav h2{font-size:13px;margin:12px 8px 4px;color:#2d323c}
+.blog-search-form{margin-top:18px;padding-top:16px;border-top:1px solid #e0e3e9}
+.blog-search-form label{display:block;margin:0 8px 8px;font-size:12px;font-weight:600;color:#515866}
+.blog-search-form>div{display:flex;gap:5px;min-width:0}
+.blog-search-form input{min-width:0;width:100%;height:36px;padding:6px 8px;border:1px solid #dfe3ea;border-radius:5px;background:#fff;font:inherit;font-size:12px}
+.blog-search-form button{flex:0 0 auto;min-height:36px;padding:0 9px;border:1px solid #dfe3ea;border-radius:5px;background:#fff;color:#434b59;font:inherit;font-size:12px;cursor:pointer}
+.blog-search-form :focus-visible,.blog-external-links a:focus-visible,.blog-owner-actions a:focus-visible{outline:2px solid #819be8;outline-offset:2px}
+.blog-visit-count,.blog-external-links{margin-top:22px;padding:16px 8px 0;border-top:1px solid #e0e3e9}
+.blog-visit-count h2,.blog-external-links h2{font-size:13px;margin:0 0 10px;color:#2d323c}
+.blog-visit-count dl{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0}
+.blog-visit-count dl div{display:flex;flex-direction:column;gap:4px}
+.blog-visit-count dt,.blog-visit-count p,.blog-external-links p{font-size:11px;color:#777e89;margin:0}
+.blog-visit-count dd{font-size:14px;font-weight:650;color:#343a45;margin:0}
+.blog-external-links>a{display:flex;align-items:center;gap:9px;min-height:36px;padding:6px 5px;border-radius:5px;color:#545b67;text-decoration:none;font-size:12px;overflow-wrap:anywhere}
+.blog-external-links>a:hover{background:#e9ebf1;color:#252a34}
+.blog-external-links svg,.blog-external-links img,.blog-link-fallback{width:22px;height:22px;flex:0 0 22px}
+.blog-external-links img{object-fit:contain;border-radius:4px;background:#fff}
+.blog-link-fallback{display:grid;place-items:center;border-radius:4px;background:#e4e7ed;color:#616978;font-size:16px}
 .personal-blog-layout .blog-owner-actions{border-top:1px solid #e0e3e9;padding-top:20px;margin-top:28px;gap:8px}
 .personal-blog-layout .blog-owner-actions a{font-size:12px}
+.blog-management{max-width:760px;margin:36px auto;background:#fff;border:1px solid var(--line);border-radius:16px;padding:34px;box-shadow:0 3px 16px #26344c04}
+.blog-management h1{margin:0;font-size:28px}.blog-management-intro{color:#737985;font-size:14px;margin:10px 0 26px}
+.blog-management nav ul{list-style:none;margin:0;padding:0;border-top:1px solid var(--line)}
+.blog-management nav li{border-bottom:1px solid var(--line)}
+.blog-management nav a{display:grid;grid-template-columns:1fr auto;gap:5px 18px;padding:18px 4px;color:#273247;text-decoration:none}
+.blog-management nav a:hover span:first-child{color:#356dff}
+.blog-management nav a span:first-child{font-weight:650}.blog-management nav small{grid-column:1;color:#737985;font-size:12px;line-height:1.6}.blog-management-arrow{grid-column:2;grid-row:1/3;align-self:center;color:#8a92a0;font-size:20px}
+.blog-management-public{display:inline-flex;margin-top:24px;color:#356dff;font-size:13px;font-weight:600}
+.blog-links-editor{margin-top:26px}.blog-links-editor .profile-heading h2{margin:0}.blog-site-editor-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:24px 0 12px}.blog-site-editor-heading h3{margin:0;font-size:16px}
+.blog-site-draft{display:grid;gap:12px;margin:12px 0;padding:16px;border:1px solid var(--line);border-radius:10px;min-width:0}.blog-site-draft legend{padding:0 6px;font-size:13px;font-weight:600}
+.blog-site-logo{display:grid;gap:8px;font-size:13px}.blog-site-logo>img{width:56px;height:56px;object-fit:contain;border:1px solid var(--line);border-radius:6px;background:#fff}.blog-site-logo input{max-width:100%;font-size:13px}
 .personal-blog-layout .personal-blog-content{padding:0;background:#fff;border:0;border-radius:0;box-shadow:none;min-width:0}
 .personal-blog-layout .personal-blog-heading{display:block;text-align:center;padding:66px 24px 58px;margin:0;border-bottom:1px solid var(--line)}
 .personal-blog-heading h2{font-size:28px;letter-spacing:-.04em;margin:0 0 10px}
@@ -239,4 +267,4 @@ main.personal-blog-layout{max-width:none;width:100%;margin:0;padding:0;display:g
 @media(max-width:900px){main.personal-blog-layout{grid-template-columns:200px minmax(0,1fr)}.blog-content-body{padding:24px 28px 48px}.personal-blog-content .post-card:has(.content-thumbnail){grid-template-columns:minmax(0,1fr) 140px;column-gap:20px}.personal-blog-content .post-card .content-thumbnail{width:140px;height:112px}}
 @media(max-width:640px){.content-panel{padding:22px 20px;border-radius:12px}.projects-shell .search-panel,.projects-shell .list-state,.detail-shell .related-posts{padding:22px 20px}main.personal-blog-layout{display:block}.personal-blog-layout .personal-blog-profile{padding:24px 20px;border-right:0;border-bottom:1px solid var(--line)}.blog-profile-identity{margin-bottom:20px}.blog-profile-avatar{width:64px;height:64px;margin-bottom:12px}.blog-board-nav{flex-direction:row;flex-wrap:wrap;margin-top:12px;gap:4px}.blog-project-nav{margin-top:16px}.blog-project-nav a:not([aria-current]){padding:8px}.personal-blog-layout .personal-blog-heading{padding:32px 20px}.personal-blog-heading h2{font-size:24px}.blog-content-body{padding:8px 24px 32px}.personal-blog-content .post-card:has(.content-thumbnail){display:block}.personal-blog-content .post-card .content-thumbnail{width:100%;height:180px;margin:12px 0}.personal-blog-content .post-card h3,.blog-project-list h3{font-size:20px}}
 
-@media(max-width:640px){.blog-project-nav a:nth-of-type(n+2){display:none}.blog-profile-identity{margin-bottom:14px}.blog-profile-identity .personal-blog-handle{margin-bottom:0}.personal-blog-layout .blog-owner-actions{margin-top:16px;padding-top:14px}}
+@media(max-width:640px){.blog-project-nav a:nth-of-type(n+2){display:none}.blog-profile-identity{margin-bottom:14px}.blog-profile-identity .personal-blog-handle{margin-bottom:0}.personal-blog-layout .blog-owner-actions{margin-top:16px;padding-top:14px}.blog-search-form{max-width:420px}.blog-visit-count,.blog-external-links{max-width:420px}.blog-management{margin:20px auto;padding:24px 20px;border-radius:12px}.blog-management h1{font-size:24px}.blog-site-draft{padding:12px}.blog-links-editor{padding:0}}

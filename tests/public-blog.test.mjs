@@ -13,13 +13,13 @@ const page = (content = [], requestedPage = 0, totalElements = content.length) =
   hasNext: requestedPage + 1 < Math.ceil(totalElements / 20), hasPrevious: requestedPage > 0,
 } });
 
-test("requests a guest blog page with the validated handle and page parameters", async () => {
+test("requests a guest blog page with the validated handle, page, and search parameters", async () => {
   let seen;
   const result = await getPublicBlogPosts("pebble-dev", 2, "https://api.example/api/v1", async (input, init) => {
     seen = { url: String(input), init };
     return Response.json(page([post()], 2, 60));
-  });
-  assert.equal(seen.url, "https://api.example/api/v1/blogs/pebble-dev/posts?page=2&size=20");
+  }, "배포 기록");
+  assert.equal(seen.url, "https://api.example/api/v1/blogs/pebble-dev/posts?page=2&size=20&q=%EB%B0%B0%ED%8F%AC+%EA%B8%B0%EB%A1%9D");
   assert.equal(seen.init.credentials, "omit");
   assert.equal(seen.init.cache, "no-store");
   assert.equal(result.page, 2);
@@ -28,8 +28,16 @@ test("requests a guest blog page with the validated handle and page parameters",
 test("builds validated personal blog pagination links", () => {
   assert.equal(blogHref("pebble-dev", 0), "/blogs/pebble-dev");
   assert.equal(blogHref("pebble-dev", 3), "/blogs/pebble-dev?page=3");
+  assert.equal(blogHref("pebble-dev", 3, undefined, "검색 단어"), "/blogs/pebble-dev?q=%EA%B2%80%EC%83%89+%EB%8B%A8%EC%96%B4&page=3");
   assert.throws(() => blogHref("bad/handle", 0), GuestApiError);
   assert.throws(() => blogHref("pebble-dev", -1), GuestApiError);
+});
+
+test("rejects a blog search term longer than the API contract", async () => {
+  await assert.rejects(getPublicBlogPosts("pebble-dev", 0, "https://api.example", async () => {
+    throw new Error("must not request an invalid search");
+  }, "x".repeat(201)), GuestApiError);
+  assert.throws(() => blogHref("pebble-dev", 0, undefined, "x".repeat(201)), GuestApiError);
 });
 
 test("rejects invalid handles and mixed-author results", async () => {

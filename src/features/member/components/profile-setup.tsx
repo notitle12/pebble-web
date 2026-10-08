@@ -5,6 +5,7 @@ import Link from "next/link";
 import {MemberGate,useUserSession} from "@/features/auth/components/member-gate";
 import {userSession,type Member} from "@/features/auth/user-session";
 import {MemberApiError,responseData} from "@/lib/member-api";
+import {BlogLinksEditor} from "@/features/blog-tools/components/blog-links-editor";
 import {formatProfileAvailability,normalizeHandle,normalizeProfileName,parseEditableMemberProfile,safeProfileReturnTo,type EditableMemberProfile} from "../profile-model";
 
 type EditorState=EditableMemberProfile&{nicknameDraft:string;blogNameDraft:string};
@@ -83,6 +84,7 @@ function Setup({member}:{member:Member}){
    </fieldset>
    <div className="profile-actions">{uncertain?<button className="button" type="button" disabled={busy} onClick={()=>void refreshAfterUnknown(member.id)}>서버 상태 다시 불러오기</button>:<button className="button profile-primary" type="submit" disabled={active}>{busy?"저장 중…":completed?"변경 사항 저장":"저장"}</button>}{completed&&<button className="button" type="button" disabled={active||uncertain} onClick={cancelEdit}>취소</button>}</div>
   </form>
+  {completed&&<BlogLinksEditor member={member}/>}
  </section>;
 }
 export function ProfileSetup(){return <MemberGate preserveOnExpiry>{member=><Setup key={member.id} member={member}/>}</MemberGate>;}
