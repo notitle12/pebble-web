@@ -222,11 +222,12 @@ main.personal-blog-layout{max-width:none;width:100%;margin:0;padding:0;display:g
 .blog-board-nav a:hover,.blog-project-nav a:hover{background:#e9ebf1;color:#252a34}
 .blog-board-nav a[aria-current=page],.blog-project-nav a[aria-current=page]{background:#e9ebf1;color:#252a34;font-weight:650}
 .blog-board-nav h2,.blog-project-nav h2{font-size:13px;margin:12px 8px 4px;color:#2d323c}
-.blog-search-form{margin-top:18px;padding-top:16px;border-top:1px solid #e0e3e9}
+.blog-search-form{margin:0 0 24px}
 .blog-search-form label{display:block;margin:0 8px 8px;font-size:12px;font-weight:600;color:#515866}
 .blog-search-form>div{display:flex;gap:5px;min-width:0}
 .blog-search-form input{min-width:0;width:100%;height:36px;padding:6px 8px;border:1px solid #dfe3ea;border-radius:5px;background:#fff;font:inherit;font-size:12px}
-.blog-search-form button{flex:0 0 auto;min-height:36px;padding:0 9px;border:1px solid #dfe3ea;border-radius:5px;background:#fff;color:#434b59;font:inherit;font-size:12px;cursor:pointer}
+.blog-search-form button{display:grid;place-items:center;flex:0 0 36px;min-height:36px;padding:0;border:1px solid #dfe3ea;border-radius:5px;background:#fff;color:#434b59;font:inherit;font-size:12px;cursor:pointer}
+.blog-search-form button svg{width:18px;height:18px}
 .blog-search-form :focus-visible,.blog-external-links a:focus-visible,.blog-owner-actions a:focus-visible{outline:2px solid #819be8;outline-offset:2px}
 .blog-visit-count,.blog-external-links{margin-top:22px;padding:16px 8px 0;border-top:1px solid #e0e3e9}
 .blog-visit-count h2,.blog-external-links h2{font-size:13px;margin:0 0 10px;color:#2d323c}
@@ -240,7 +241,9 @@ main.personal-blog-layout{max-width:none;width:100%;margin:0;padding:0;display:g
 .blog-external-links img{object-fit:contain;border-radius:4px;background:#fff}
 .blog-link-fallback{display:grid;place-items:center;border-radius:4px;background:#e4e7ed;color:#616978;font-size:16px}
 .personal-blog-layout .blog-owner-actions{border-top:1px solid #e0e3e9;padding-top:20px;margin-top:28px;gap:8px}
-.personal-blog-layout .blog-owner-actions a{font-size:12px}
+.personal-blog-layout .blog-owner-actions a{display:flex;align-items:center;gap:8px;padding:8px;border:0;border-radius:5px;font-size:12px}
+.personal-blog-layout .blog-owner-actions a:hover{background:#e9ebf1}
+.blog-owner-actions svg{width:18px;height:18px;flex:0 0 18px}
 .blog-management{max-width:760px;margin:36px auto;background:#fff;border:1px solid var(--line);border-radius:16px;padding:34px;box-shadow:0 3px 16px #26344c04}
 .blog-management h1{margin:0;font-size:28px}.blog-management-intro{color:#737985;font-size:14px;margin:10px 0 26px}
 .blog-management nav ul{list-style:none;margin:0;padding:0;border-top:1px solid var(--line)}
