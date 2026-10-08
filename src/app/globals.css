@@ -518,7 +518,7 @@ fieldset { min-width:0; }
 /* Focused writing canvas: toolbar above, actions below, content in between. */
 body:has(.writer-shell){background:#fff}
 .writer-shell.page-shell{max-width:none;margin:0;padding:114px 48px 148px;min-height:100dvh}
-.writer-shell .writer-composer{max-width:900px;margin:0 auto;gap:0;padding:0;color:#222}
+.writer-shell .writer-composer{max-width:900px;min-width:0;grid-template-columns:minmax(0,1fr);margin:0 auto;gap:0;padding:0;color:#222}
 .writer-visually-hidden{position:absolute!important;width:1px;height:1px;padding:0!important;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 .writer-identity{position:fixed;right:48px;top:20px;z-index:46;display:flex;align-items:center;gap:10px;font-size:12px;color:#333;max-width:150px;background:white}
 .writer-identity>span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
