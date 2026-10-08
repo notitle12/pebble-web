@@ -1,4 +1,4 @@
-.root { box-sizing: border-box; color: #292a2d; min-height: 55vh; position: relative; }
+.root { min-width: 0; width: 100%; box-sizing: border-box; color: #292a2d; min-height: 55vh; position: relative; }
 .sticky { align-items: center; background: #fff; border-bottom: 1px solid #e7e7e7; box-sizing: border-box; display: flex; height: 72px; left: 0; padding: 0 180px 0 48px; position: fixed; right: 0; top: 0; z-index: 1000; }
 .toolrow { align-items: center; display: flex; flex: 1 1 auto; gap: 5px; height: 100%; min-width: 0; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; white-space: nowrap; }
 .toolrow::-webkit-scrollbar { display: none; }
