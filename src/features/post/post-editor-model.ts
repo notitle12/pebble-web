@@ -1,5 +1,6 @@
 import { validTagId } from "../../lib/list-query.ts";
 import { parseArchitectureSpec, parseTableSpec, type ArchitectureSpec, type PostDetail, type TableSpec } from "./api/post-list.ts";
+import { derivePostExcerpt } from "./post-excerpt.ts";
 
 export type EditorBlockType = "TEXT" | "CODE" | "TABLE" | "ARCHITECTURE" | "HTML" | "MARKDOWN";
 export type EditorBlock = { key: string; type: EditorBlockType; content: string; language: string | null; title: string | null; valid: boolean; imagePreviews?: Record<string,string> };
@@ -82,7 +83,9 @@ export function validateEditorValue(value: PostEditorValue): string[] {
 export function buildPostBody(value: PostEditorValue) {
   return {
     title: value.title,
-    summary: value.summary.trim() ? value.summary : null,
+    // Keep summary in the editor model for older drafts, but derive the persisted
+    // list excerpt from the current readable body on every save.
+    summary: derivePostExcerpt(value.blocks),
     blocks: value.blocks.map(({ type, content, language, title }) => ({ type, content, language: type === "CODE" ? language : null, title })),
   };
 }

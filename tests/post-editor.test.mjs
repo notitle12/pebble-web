@@ -32,7 +32,7 @@ test("validation rejects invalid structured references and Unicode title overflo
 test("body omits editor-only keys while preserving optional block metadata", () => {
   const value = { title: "글", summary: "  요약  ", blocks: [{ ...createEditorBlock("CODE"), content: "const name = 'Pebble';", title: "예제", language: "TYPESCRIPT" }] };
   const body = buildPostBody(value);
-  assert.deepEqual(body, { title: "글", summary: "  요약  ", blocks: [{ type: "CODE", content: "const name = 'Pebble';", language: "TYPESCRIPT", title: "예제" }] });
+  assert.deepEqual(body, { title: "글", summary: null, blocks: [{ type: "CODE", content: "const name = 'Pebble';", language: "TYPESCRIPT", title: "예제" }] });
   assert.equal("key" in body.blocks[0], false);
   assert.equal("valid" in body.blocks[0], false);
 });
