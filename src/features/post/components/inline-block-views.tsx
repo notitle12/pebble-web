@@ -1,4 +1,5 @@
 "use client";
+import { PrimaryKeyNote } from "./primary-key-note";
 
 import { useEffect, useId, useRef, useState, type InputHTMLAttributes } from "react";
 import { createPortal } from "react-dom";
@@ -97,6 +98,7 @@ export function InlineTableSpecView({ node, editor, updateAttributes, deleteNode
         </tr>)}</tbody>
       </table>
     </div>
+    <PrimaryKeyNote columns={spec.columns}/>
     <div className={styles.tableFooter}><button type="button" disabled={!editable || spec.columns.length >= 50} onClick={() => change({ ...spec, columns: [...spec.columns, { name: "", dataType: "", primaryKey: false, nullable: true }] })}>컬럼 추가</button><span>{spec.columns.length}/50</span></div>
     {error && <p className={styles.error} role="alert">{error}</p>}
   </NodeViewWrapper>;
