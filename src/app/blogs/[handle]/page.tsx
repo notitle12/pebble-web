@@ -77,16 +77,16 @@ export default async function PublicBlogPage({ params, searchParams }: {
         <p>{author.nickname}</p>
         <p className="personal-blog-handle">@{author.handle}</p>
         </div>
+        <form className="blog-search-form" action={`/blogs/${encodeURIComponent(handle)}`} method="get"><label className="sr-only" htmlFor="blog-search">이 블로그에서 검색</label><div><input id="blog-search" name="q" type="search" maxLength={200} defaultValue={q??""} placeholder="이 블로그에서 검색"/><button type="submit" aria-label="블로그 검색"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/></svg></button></div></form>
         <nav className="blog-board-nav" aria-label="게시판"><h2>게시판</h2><Link href={blogHref(handle,0)} aria-current={!selected&&!projectView&&!searched?"page":undefined}>전체 게시글</Link>{flattenBoards(boards).map(board=><Link key={board.id} href={blogHref(handle,0,board.id)} aria-current={selected===board.id?"page":undefined} style={{paddingInlineStart:`${board.depth+1}rem`}}>{board.name}</Link>)}</nav>
-        {!projectView&&<form className="blog-search-form" action={`/blogs/${encodeURIComponent(handle)}`} method="get"><label htmlFor="blog-search">블로그 검색</label><div><input id="blog-search" name="q" type="search" maxLength={200} defaultValue={q??""} placeholder="이 블로그에서 검색"/><button type="submit" aria-label="블로그 검색">검색</button></div></form>}
         {boardError&&<p role="status">폴더를 불러오지 못했어요. 페이지를 새로고침해 주세요.</p>}
         <nav className="blog-project-nav" aria-label="블로그 프로젝트"><h2>프로젝트</h2><Link href={projectPageHref(0)} aria-current={projectView?"page":undefined}>전체 프로젝트</Link>
           {sidebarProjects?.content.slice(0,5).map(project=><Link key={project.id} href={`/projects/${project.id}`} prefetch={false}>{project.name}</Link>)}
           {projectError&&<p role="status">프로젝트를 불러오지 못했어요.</p>}
         </nav>
         <BlogVisitCount handle={handle}/>
-        <PublicBlogLinks links={links} failed={linksError}/>
         <BlogOwnerActions handle={handle}/>
+        <PublicBlogLinks links={links} failed={linksError}/>
       </aside>
       <section className="personal-blog-content" aria-label={projectView?"블로그 프로젝트":"공개 게시글"}>
         <div className="personal-blog-heading"><h2>{projectView?"프로젝트":searched?`검색 결과: ${q}`:selected?flattenBoards(boards).find(board=>board.id===selected)?.name:"전체 게시글"}</h2><p>{author.nickname}</p></div>
