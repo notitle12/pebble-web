@@ -3,6 +3,9 @@
 import { useEffect, useId, useMemo, useState } from "react";
 import { getPublicCategories, type PublicCategory } from "../../category/api/public-categories";
 import { getPublicTags, type PublicTag } from "../../tag/api/public-tags";
+import { createTag, normalizeTagName, splitTagInput } from "../../tag/api/create-tag";
+import { userSession } from "../../auth/user-session";
+import { useUserSession } from "../../auth/components/member-gate";
 
 type ExistingCategory = { id: string; name: string; status: string };
 type ExistingTag = { id: string; name: string; status: string };
@@ -19,11 +22,15 @@ type Props = {
 
 export function PostClassification({ categoryId, tagIds, existingCategory, existingTags = [], onChange, showCategory=true, showTags=true, categoryLabel="분류" }: Props) {
   const id = useId();
+  const session = useUserSession();
   const [categories, setCategories] = useState<PublicCategory[]>([]);
   const [tags, setTags] = useState<PublicTag[]>([]);
   const [categoryState, setCategoryState] = useState<"loading" | "ready" | "error">("loading");
   const [tagState, setTagState] = useState<"loading" | "ready" | "error">("loading");
   const [query, setQuery] = useState("");
+  const [tagInput, setTagInput] = useState("");
+  const [tagBusy, setTagBusy] = useState(false);
+  const [tagError, setTagError] = useState("");
 
   async function loadLookups() {
     setCategoryState("loading");
@@ -49,6 +56,35 @@ export function PostClassification({ categoryId, tagIds, existingCategory, exist
   }, [tags, existingTags]);
   const selectedTags = allTags.filter(tag => tagIds.includes(tag.id));
   const visibleTags = allTags.filter(tag => tag.status === "ACTIVE" && tag.name.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()));
+  const canCreateTags = session.phase === "ready" && session.member?.profileCompleted === true;
+
+  async function addTags() {
+    if (tagBusy || tagState !== "ready" || !canCreateTags) return;
+    const parts = splitTagInput(tagInput);
+    if (!parts.length) { setTagError("태그 이름을 입력해 주세요."); return; }
+    setTagBusy(true); setTagError("");
+    const nextIds = [...tagIds];
+    const knownByName = new Map<string, {id:string;name:string;status:string}>();
+    for (const tag of [...tags, ...existingTags]) {
+      try { if (tag.status === "ACTIVE") knownByName.set(normalizeTagName(tag.name), tag); } catch { /* preserve malformed legacy labels without matching them */ }
+    }
+    try {
+      for (const part of parts) {
+        const name = normalizeTagName(part);
+        const existing = knownByName.get(name);
+        if (existing) { if (!nextIds.includes(existing.id)) nextIds.push(existing.id); continue; }
+        const created = await createTag(name, (path, options) => userSession.request(path, options));
+        const item: PublicTag = { id: created.id, name: created.name, status: created.status };
+        knownByName.set(name, item);
+        setTags(current => current.some(tag => tag.id === item.id) ? current : [...current, item]);
+        if (!nextIds.includes(item.id)) nextIds.push(item.id);
+      }
+      onChange({ tagIds: nextIds }); setTagInput("");
+    } catch (error) {
+      onChange({ tagIds: nextIds });
+      setTagError(error instanceof Error ? error.message : "태그를 추가하지 못했습니다.");
+    } finally { setTagBusy(false); }
+  }
 
   const renderLeaf = (category: PublicCategory) => (
     <option key={category.id} value={category.id} disabled={category.status !== "ACTIVE" && category.id !== categoryId}>
@@ -86,9 +122,17 @@ export function PostClassification({ categoryId, tagIds, existingCategory, exist
 
     {showTags&&<div className="post-classification-field">
       <label htmlFor={`${id}-tag-search`}>기술 태그</label>
+      <label htmlFor={`${id}-tag-add`}>새 태그 추가</label>
+      <div className="post-classification-add-tag">
+        <input id={`${id}-tag-add`} value={tagInput} onChange={event => { setTagInput(event.target.value); setTagError(""); }} onKeyDown={event => { if (event.key === "Enter") { event.preventDefault(); void addTags(); } }} placeholder="#태그 입력 후 Enter" disabled={tagBusy || tagState !== "ready" || !canCreateTags} aria-describedby={tagError ? `${id}-tag-error` : `${id}-tag-help`} />
+        <button type="button" className="button" onClick={() => void addTags()} disabled={tagBusy || tagState !== "ready" || !canCreateTags || !tagInput.trim()}>{tagBusy ? "추가 중…" : "태그 추가"}</button>
+      </div>
+      <p id={`${id}-tag-help`} className="post-classification-help">쉼표나 Enter로 추가할 수 있어요. 여러 태그는 #springboot #아무개처럼 입력하세요.</p>
+      {!canCreateTags && <p className="post-classification-help">새 태그 추가는 프로필 설정을 완료한 회원만 사용할 수 있어요.</p>}
+      {tagError && <p id={`${id}-tag-error`} className="post-classification-help" role="alert">{tagError}</p>}
       <input id={`${id}-tag-search`} type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="태그 검색" autoComplete="off" />
       <div className="post-classification-selected" aria-live="polite">
-        <span>현재 선택:</span> {selectedTags.length ? selectedTags.map(tag => tag.name).join(", ") : "없음"}
+        <span>현재 선택:</span> {selectedTags.length ? <span className="post-classification-chips">{selectedTags.map(tag => <span className="post-classification-chip" key={tag.id}>{tag.name}<button type="button" aria-label={`${tag.name} 태그 삭제`} onClick={() => onChange({ tagIds: tagIds.filter(selectedId => selectedId !== tag.id) })} disabled={tagBusy}>×</button></span>)}</span> : "없음"}
       </div>
       {tagState === "loading" && <p className="post-classification-help" role="status">태그를 불러오는 중…</p>}
       {tagState === "error" && <p className="post-classification-help" role="alert">태그를 불러오지 못했어요. 현재 선택은 유지됩니다. <button type="button" onClick={() => void loadLookups()}>다시 시도</button></p>}

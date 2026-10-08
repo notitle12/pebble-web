@@ -1,3 +1,4 @@
+import { parseArchitectureSpec, parseTableSpec } from "./api/post-list.ts";
 import { marked } from "marked";
 import sanitizeHtml, { type IOptions } from "sanitize-html";
 
@@ -23,7 +24,8 @@ const sanitizerOptions: IOptions = {
     img: ["src", "alt", "title", "width", "height", "data-media-src"],
     iframe: ["src", "width", "height", "title", "loading", "sandbox", "allowfullscreen", "referrerpolicy"],
     mark: ["data-color"],
-    div: ["data-details-content"],
+    div: ["data-details-content", "data-pebble-type", "data-pebble-spec", "data-pebble-title"],
+    pre: ["data-language"],
     "*": ["id", "class", "style", "colspan", "rowspan", "open", "aria-label", "data-level"],
   },
   allowedStyles,
@@ -33,6 +35,16 @@ const sanitizerOptions: IOptions = {
   allowedIframeHostnames: ["www.openstreetmap.org"],
   allowProtocolRelative: false,
   transformTags: {
+    div: (_tagName, attrs) => {
+      const type = attrs["data-pebble-type"];
+      if (!type) return { tagName: "div", attribs: attrs };
+      try {
+        const value = JSON.parse(attrs["data-pebble-spec"] || "");
+        const spec = type === "TABLE" ? parseTableSpec(value) : type === "ARCHITECTURE" ? parseArchitectureSpec(value) : null;
+        if (!spec) throw new Error();
+        return { tagName: "div", attribs: { "data-pebble-type": type, "data-pebble-spec": JSON.stringify(spec), ...(attrs["data-pebble-title"] ? { "data-pebble-title": attrs["data-pebble-title"].slice(0, 100) } : {}) } };
+      } catch { return { tagName: "div", attribs: {} as sanitizeHtml.Attributes }; }
+    },
     a: (_tagName,attrs)=>({tagName:"a",attribs:{...attrs,rel:"nofollow noopener noreferrer",...(attrs.href?.startsWith("#")?{target:"_self"}:{})}}),
     iframe: (_tagName, attrs) => {
       if (!isSafeOpenStreetMapEmbed(attrs.src || "")) return { tagName: "span", attribs: {} as sanitizeHtml.Attributes };
