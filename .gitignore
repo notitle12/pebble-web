@@ -5,3 +5,9 @@ node_modules/
 !.env.example
 *.tsbuildinfo
 .DS_Store
+
+# Project documents are local only.
+/docs/
+*.md
+*.mdx
+!/.github/**/*.md
