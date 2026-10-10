@@ -4,13 +4,13 @@
 .toolrow::-webkit-scrollbar { display: none; }
 .root .toolButton { align-items: center; background: transparent; border: 0; border-radius: 4px; color: #33363b; cursor: pointer; display: inline-flex; flex: 0 0 34px; height: 34px; justify-content: center; min-width: 34px; padding: 0; width: 34px; }
 .toolButton:hover, .toolButton[aria-pressed="true"] { background: #f1f2f3; }
-.toolButton:focus-visible, .select:focus-visible, .colorTool:focus-within, .insertMenu button:focus-visible { outline: 2px solid #7c9ed0; outline-offset: 2px; }
+.root .toolButton:focus-visible, .root .select:focus-visible, .root .insertMenu button:focus-visible { outline: 2px solid #7c9ed0; outline-offset: -2px; }
 .toolButton:disabled, .select:disabled, .colorTool:has(input:disabled) { cursor: not-allowed; opacity: .42; }
 .toolButton svg { height: 18px; width: 18px; }
 .root .select { appearance: none; background: transparent; border: 0; border-radius: 4px; color: #34373c; cursor: pointer; flex: 0 0 auto; font: inherit; font-size: 13px; height: 34px; min-width: 50px; padding: 0 7px; width: auto; }
 .select:hover { background: #f4f4f4; }
 .select option { background: #fff; color: #202124; }
-.colorTool { align-items: center; border-radius: 4px; color: #34373c; cursor: pointer; display: flex; flex: 0 0 30px; font: 600 16px/1 Georgia, serif; height: 32px; justify-content: center; position: relative; }
+.root .colorTool { align-items: center; border-radius: 4px; color: #34373c; cursor: pointer; display: flex; font: 600 16px/1 Georgia, serif; justify-content: center; position: relative; }
 .colorTool:hover { background: #f4f4f4; }
 .root .colorTool input[type="color"] { cursor: pointer; height: 4px; left: 8px; padding: 0; position: absolute; top: 23px; width: 15px; }
 .insertWrap { flex: 0 0 auto; }
