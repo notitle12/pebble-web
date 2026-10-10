@@ -80,7 +80,7 @@ export default async function PublicBlogPage({ params, searchParams }: {
     <a className="skip-link" href="#main-content">본문으로 바로가기</a>
     <SiteHeader />
     <main id="main-content" className="page-shell personal-blog-layout">
-      <BlogSidebar footer={<BlogOwnerActions handle={handle}/>}>
+      <BlogSidebar footer={<BlogOwnerActions handle={handle}/>} links={<PublicBlogLinks links={links} failed={linksError}/>} handle={handle} query={q} homeView={homeView} selected={selected} projectView={projectView} searched={searched} boards={flattenBoards(boards)} projects={sidebarProjects?.content.slice(0,5)??[]} boardError={boardError} projectError={projectError}>
         <div className="blog-profile-identity">
         {photo?<img className="blog-profile-avatar" src={photo} alt={`${author.nickname} 프로필 사진`}/>:<span className="blog-profile-avatar blog-avatar-fallback" aria-hidden="true">{Array.from(author.nickname)[0]}</span>}
         <h1>{author.blogName}</h1>
@@ -88,14 +88,6 @@ export default async function PublicBlogPage({ params, searchParams }: {
         <p className="personal-blog-handle">@{author.handle}</p>
         </div>
         <BlogVisitCount handle={handle}/>
-        <form className="blog-search-form" action={`/blogs/${encodeURIComponent(handle)}`} method="get"><label className="sr-only" htmlFor="blog-search">이 블로그에서 검색</label><div><input id="blog-search" name="q" type="search" maxLength={200} defaultValue={q??""} placeholder="이 블로그에서 검색"/><button type="submit" aria-label="블로그 검색"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/></svg></button></div></form>
-        <nav className="blog-primary-nav" aria-label="블로그 메뉴"><Link href={`/blogs/${encodeURIComponent(handle)}`} aria-current={homeView?"page":undefined}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3.5 10 8.5-7 8.5 7v10a1 1 0 0 1-1 1h-5.5v-7h-4v7H4.5a1 1 0 0 1-1-1z"/></svg><span>홈</span></Link><Link href={blogHref(handle,0)} aria-current={!homeView&&!selected&&!projectView&&!searched?"page":undefined}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3.5h7l5 5V20a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1z"/><path d="M14 3.5v5h5M9 13h6M9 16.5h6"/></svg><span>전체 게시글</span></Link></nav><nav className="blog-board-nav" aria-label="게시판"><h2>게시판</h2>{flattenBoards(boards).map(board=><Link key={board.id} href={blogHref(handle,0,board.id)} aria-current={selected===board.id?"page":undefined} style={{paddingInlineStart:`${8 + board.depth * 16}px`}}>{board.depth>0&&<span className="blog-board-branch" aria-hidden="true">└ </span>}{board.name}</Link>)}</nav>
-        {boardError&&<p role="status">폴더를 불러오지 못했어요. 페이지를 새로고침해 주세요.</p>}
-        <nav className="blog-project-nav" aria-label="블로그 프로젝트"><h2>프로젝트</h2><Link href={projectPageHref(0)} aria-current={projectView?"page":undefined}>전체 프로젝트</Link>
-          {sidebarProjects?.content.slice(0,5).map(project=><Link key={project.id} href={`/projects/${project.id}`} prefetch={false}>{project.name}</Link>)}
-          {projectError&&<p role="status">프로젝트를 불러오지 못했어요.</p>}
-        </nav>
-        <PublicBlogLinks links={links} failed={linksError}/>
       </BlogSidebar>
       <section className="personal-blog-content" aria-label={homeView?"블로그 홈":projectView?"블로그 프로젝트":"공개 게시글"}>
         {homeView ? home ? <BlogHomeView handle={handle} settings={home} activity={home.activity} projects={homeProjects} projectErrors={homeProjectErrors} hasFeaturedProjects={home.featuredProjectIds.length>0} posts={homePosts} postsFailed={homePostsFailed}/> : <div className="blog-home-failure"><h2>블로그 홈을 불러올 수 없어요</h2><p role="alert">{homeError?"활동과 홈 구성을 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.":"블로그 홈 데이터를 불러오지 못했습니다."}</p><a href={`/blogs/${encodeURIComponent(handle)}`}>다시 시도</a></div> : <><div className="personal-blog-heading"><h2>{projectView?"프로젝트":searched?`검색 결과: ${q}`:selected?flattenBoards(boards).find(board=>board.id===selected)?.name:"전체 게시글"}</h2><p>{author.nickname}</p></div>
