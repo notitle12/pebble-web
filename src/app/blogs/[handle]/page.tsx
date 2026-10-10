@@ -6,13 +6,17 @@ import { notFound } from "next/navigation";
 import { SiteHeader } from "@/components/site-header";
 import { GuestApiError } from "@/lib/public-api";
 import { parsePage,validTagId } from "@/lib/list-query";
-import { blogHref, getPublicBlogPosts, getPublicBlogProfile } from "@/features/post/api/public-blog";
+import { blogHref, getPublicBlogPosts, getPublicBlogProfile, type PublicBlogProfile } from "@/features/post/api/public-blog";
 import {safeMediaUrl} from "@/features/media/model";
 import {getPublicMemberProjects,type ProjectPage} from "@/features/project/api/project-list";
 import { PostCards } from "@/features/post/components/post-cards";
+import type { PostPage } from "@/features/post/api/post-list";
 import { BlogVisitCount } from "@/features/blog-tools/components/blog-visit-count";
 import { PublicBlogLinks } from "@/features/blog-tools/components/public-blog-links";
 import { getPublicBlogLinks, type BlogLinks } from "@/features/blog-tools/api/blog-tools";
+import { getPublicBlogHome, visibleHomeDataLoads, type PublicBlogHome } from "@/features/blog-home/api/blog-home";
+import { BlogHomeView } from "@/features/blog-home/components/blog-home-view";
+import { getPublicProject, type ProjectDetail } from "@/features/project/api/project-list";
 
 export const dynamic = "force-dynamic";
 const validHandle = (handle: string) => /^[a-z][a-z0-9_-]{1,28}[a-z0-9_]$/.test(handle);
@@ -30,18 +34,20 @@ export default async function PublicBlogPage({ params, searchParams }: {
   const query = await searchParams;
   const page = parsePage(query.page);
   const projectView=query.view==="projects";
+  const homeView=(query.view===undefined||query.view==="home")&&query.boardId===undefined&&query.q===undefined&&query.page===undefined;
   const selected=typeof query.boardId==="string"?query.boardId:undefined;
   const q=typeof query.q==="string"?query.q.trim():undefined;
   const searched=Boolean(q?.length);
   const invalidSearch=query.q!==undefined&&(q===undefined||Array.from(q).length>200)||searched&&(Boolean(selected)||projectView);
-  if (page === null || Object.keys(query).some(key => !["page","boardId","view","q"].includes(key)) || query.boardId!==undefined&&(!selected||!validTagId(selected)) || query.view!==undefined&&!projectView || projectView&&query.boardId!==undefined || invalidSearch) {
+  if (page === null || Object.keys(query).some(key => !["page","boardId","view","q"].includes(key)) || query.boardId!==undefined&&(!selected||!validTagId(selected)) || query.view!==undefined&&!projectView&&query.view!=="posts"&&query.view!=="home" || projectView&&query.boardId!==undefined || query.view==="home"&&(query.boardId!==undefined||searched||query.page!==undefined) || invalidSearch) {
     return <><SiteHeader /><main className="page-shell"><InvalidPage search={Boolean(invalidSearch)} /></main></>;
   }
 
-  let result;let projects:ProjectPage|undefined;let sidebarProjects:ProjectPage|undefined;let projectError=false;let author;let boards:Board[]=[];let boardError=false;let links:BlogLinks|null=null;let linksError=false;
+  let result:PostPage|undefined;let projects:ProjectPage|undefined;let sidebarProjects:ProjectPage|undefined;let projectError=false;let author:PublicBlogProfile|undefined;let home:PublicBlogHome|null=null;let homeError=false;let homeProjects:ProjectDetail[]=[];let homeProjectErrors=0;let homePosts:PostPage|null=null;let homePostsFailed=false;let boards:Board[]=[];let boardError=false;let links:BlogLinks|null=null;let linksError=false;
   try {
     author = await getPublicBlogProfile(handle);
     try { links=await getPublicBlogLinks(handle); } catch { linksError=true; }
+    if(homeView){try { home=await getPublicBlogHome(handle); } catch { homeError=true; }}
     try { boards = await getPublicBoards(author.id); }
     catch (error) { if (selected) throw error; boardError = true; }
     if (selected && !flattenBoards(boards).some(board => board.id === selected)) throw new GuestApiError("not-found");
@@ -52,7 +58,8 @@ export default async function PublicBlogPage({ params, searchParams }: {
         try {sidebarProjects=await getPublicMemberProjects(author.id,0);}catch{sidebarProjects=undefined;projectError=true;}
       }
     } catch(error) {if(projectView)throw error;projectError=true;}
-    result = projectView ? undefined : selected ? await getBoardPosts(author.id, selected, page) : await getPublicBlogPosts(handle, page, undefined, fetch, q);
+    result = homeView||projectView ? undefined : selected ? await getBoardPosts(author.id, selected, page) : await getPublicBlogPosts(handle, page, undefined, fetch, q);
+    if(homeView&&home){ const {recentPosts:showPosts,featuredProjects:showProjects}=visibleHomeDataLoads(home); const [postResults,projectResults]=await Promise.all([Promise.allSettled(showPosts?[getPublicBlogPosts(handle,0)]:[]),Promise.allSettled(showProjects?home.featuredProjectIds.map(id=>getPublicProject(id).then(project=>{if(project.owner.id!==author!.id)throw new GuestApiError("response");return project})):[])]); const postResult=postResults[0]; if(postResult?.status==="fulfilled")homePosts=postResult.value; else if(postResult)homePostsFailed=true; homeProjects=projectResults.flatMap(item=>item.status==="fulfilled"?[item.value]:[]); homeProjectErrors=projectResults.filter(item=>item.status==="rejected").length; }
   } catch (error) {
     if (error instanceof GuestApiError && error.kind === "not-found") notFound();
     const message = error instanceof GuestApiError && error.kind === "configuration"
@@ -64,6 +71,8 @@ export default async function PublicBlogPage({ params, searchParams }: {
     </section></main></>;
   }
 
+
+  if(!author) notFound();
 
   const projectPageHref=(targetPage:number)=>`/blogs/${handle}?view=projects${targetPage>0?`&page=${targetPage}`:""}`;
   const photo=safeMediaUrl(author.profileImageUrl);
@@ -80,7 +89,7 @@ export default async function PublicBlogPage({ params, searchParams }: {
         </div>
         <BlogVisitCount handle={handle}/>
         <form className="blog-search-form" action={`/blogs/${encodeURIComponent(handle)}`} method="get"><label className="sr-only" htmlFor="blog-search">이 블로그에서 검색</label><div><input id="blog-search" name="q" type="search" maxLength={200} defaultValue={q??""} placeholder="이 블로그에서 검색"/><button type="submit" aria-label="블로그 검색"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/></svg></button></div></form>
-        <nav className="blog-board-nav" aria-label="게시판"><h2>게시판</h2><Link href={blogHref(handle,0)} aria-current={!selected&&!projectView&&!searched?"page":undefined}>전체 게시글</Link>{flattenBoards(boards).map(board=><Link key={board.id} href={blogHref(handle,0,board.id)} aria-current={selected===board.id?"page":undefined} style={{paddingInlineStart:`${8 + board.depth * 16}px`}}>{board.name}</Link>)}</nav>
+        <nav className="blog-primary-nav" aria-label="블로그 메뉴"><Link href={`/blogs/${encodeURIComponent(handle)}`} aria-current={homeView?"page":undefined}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3.5 10 8.5-7 8.5 7v10a1 1 0 0 1-1 1h-5.5v-7h-4v7H4.5a1 1 0 0 1-1-1z"/></svg><span>홈</span></Link><Link href={blogHref(handle,0)} aria-current={!homeView&&!selected&&!projectView&&!searched?"page":undefined}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3.5h7l5 5V20a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1z"/><path d="M14 3.5v5h5M9 13h6M9 16.5h6"/></svg><span>전체 게시글</span></Link></nav><nav className="blog-board-nav" aria-label="게시판"><h2>게시판</h2>{flattenBoards(boards).map(board=><Link key={board.id} href={blogHref(handle,0,board.id)} aria-current={selected===board.id?"page":undefined} style={{paddingInlineStart:`${8 + board.depth * 16}px`}}>{board.depth>0&&<span className="blog-board-branch" aria-hidden="true">└ </span>}{board.name}</Link>)}</nav>
         {boardError&&<p role="status">폴더를 불러오지 못했어요. 페이지를 새로고침해 주세요.</p>}
         <nav className="blog-project-nav" aria-label="블로그 프로젝트"><h2>프로젝트</h2><Link href={projectPageHref(0)} aria-current={projectView?"page":undefined}>전체 프로젝트</Link>
           {sidebarProjects?.content.slice(0,5).map(project=><Link key={project.id} href={`/projects/${project.id}`} prefetch={false}>{project.name}</Link>)}
@@ -88,8 +97,8 @@ export default async function PublicBlogPage({ params, searchParams }: {
         </nav>
         <PublicBlogLinks links={links} failed={linksError}/>
       </BlogSidebar>
-      <section className="personal-blog-content" aria-label={projectView?"블로그 프로젝트":"공개 게시글"}>
-        <div className="personal-blog-heading"><h2>{projectView?"프로젝트":searched?`검색 결과: ${q}`:selected?flattenBoards(boards).find(board=>board.id===selected)?.name:"전체 게시글"}</h2><p>{author.nickname}</p></div>
+      <section className="personal-blog-content" aria-label={homeView?"블로그 홈":projectView?"블로그 프로젝트":"공개 게시글"}>
+        {homeView ? home ? <BlogHomeView handle={handle} settings={home} activity={home.activity} projects={homeProjects} projectErrors={homeProjectErrors} hasFeaturedProjects={home.featuredProjectIds.length>0} posts={homePosts} postsFailed={homePostsFailed}/> : <div className="blog-home-failure"><h2>블로그 홈을 불러올 수 없어요</h2><p role="alert">{homeError?"활동과 홈 구성을 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.":"블로그 홈 데이터를 불러오지 못했습니다."}</p><a href={`/blogs/${encodeURIComponent(handle)}`}>다시 시도</a></div> : <><div className="personal-blog-heading"><h2>{projectView?"프로젝트":searched?`검색 결과: ${q}`:selected?flattenBoards(boards).find(board=>board.id===selected)?.name:"전체 게시글"}</h2><p>{author.nickname}</p></div>
         <div className="blog-content-body">
         {projectView&&projects&&<>
           {!projects.content.length?<section className="list-state"><h3>공개된 프로젝트가 없어요</h3><p>프로젝트가 공개되면 이곳에서 만나볼 수 있어요.</p>{page>0&&<Link href={projectPageHref(0)}>첫 페이지로</Link>}</section>:<ul className="blog-project-list">{projects.content.map(project=><li key={project.id}><article><div className="post-meta"><span>{project.lifecycleStatus==="COMPLETED"?"완료":"진행 중"}</span><time dateTime={project.createdAt}>{new Intl.DateTimeFormat("ko-KR",{dateStyle:"medium",timeZone:"Asia/Seoul"}).format(new Date(project.createdAt))}</time></div><h3><Link href={`/projects/${project.id}`} prefetch={false}>{project.name}</Link></h3>{project.summary&&<p className="post-summary">{project.summary}</p>}<ul className="tag-list">{project.tags.map(tag=><li key={tag.id}>{tag.name}</li>)}</ul></article></li>)}</ul>}
@@ -106,7 +115,7 @@ export default async function PublicBlogPage({ params, searchParams }: {
           {result.hasNext ? <Link className="page-link" href={blogHref(handle, page + 1,selected,q)} prefetch={false}>다음 →</Link> : <span className="page-link disabled" aria-disabled="true">다음 →</span>}
         </nav>}
         </>}
-        </div>
+        </div></>}
       </section>
     </main>
   </>;
