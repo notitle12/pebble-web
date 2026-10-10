@@ -59,3 +59,15 @@ test("preserves not-found and retriable API errors", async () => {
   await assert.rejects(getPublicBlogPosts("pebble-dev", 0, "https://api.example", async () => new Response(null, { status: 503 })),
     error => error instanceof GuestApiError && error.kind === "response");
 });
+
+ test("retains placement filters in requests and pagination links", async () => {
+  for (const placement of ["boards", "projects"]) {
+    let seen;
+    await getPublicBlogPosts("pebble-dev", 1, "https://api.example/api/v1", async input => {
+      seen = new URL(String(input)); return Response.json(page([], 1));
+    }, undefined, placement);
+    assert.equal(seen.searchParams.get("placement"), placement);
+    assert.equal(seen.searchParams.get("page"), "1");
+    assert.equal(blogHref("pebble-dev", 2, undefined, undefined, placement), `/blogs/pebble-dev?view=${placement}&page=2`);
+  }
+});
