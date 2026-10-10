@@ -46,14 +46,14 @@ function Projects({ projects, configured, failed }: { projects: ProjectDetail[];
 }
 function RecentPosts({ posts, postsFailed, handle }: { posts: PostPage | null; postsFailed: boolean; handle: string }) {
   if (!posts?.content.length) return <p className="blog-home-empty" role={postsFailed ? "alert" : undefined}>{postsFailed ? "최근 글을 불러오지 못했어요." : "아직 공개된 글이 없어요."}</p>;
-  return <ul className="blog-home-posts">{posts.content.slice(0, 3).map(post => <li key={post.id}><Link href={`/blogs/${encodeURIComponent(handle)}/posts/${encodeURIComponent(post.urlKey)}`} prefetch={false}>
-    {post.thumbnailUrl ? <img src={post.thumbnailUrl} alt="" width={48} height={48}/> : <span className="blog-post-placeholder" aria-hidden="true">글</span>}
-    <span className="blog-home-post-copy"><strong>{post.title}</strong>{post.summary && <span>{post.summary}</span>}</span><time dateTime={post.publishedAt??post.createdAt}>{new Intl.DateTimeFormat("ko-KR", { month: "numeric", day: "numeric", timeZone: "Asia/Seoul" }).format(new Date(post.publishedAt??post.createdAt))}</time>
+  return <ul className="blog-home-posts">{posts.content.slice(0, 3).map((post, index) => <li key={post.id}><Link href={`/blogs/${encodeURIComponent(handle)}/posts/${encodeURIComponent(post.urlKey)}`} prefetch={false}>
+    <span className="blog-home-post-number" aria-hidden="true">{index + 1}</span>
+    <span className="blog-home-post-copy"><strong>{post.title}</strong>{post.summary && <span>{post.summary}</span>}<time dateTime={post.publishedAt??post.createdAt}>{new Intl.DateTimeFormat("ko-KR", { month: "numeric", day: "numeric", timeZone: "Asia/Seoul" }).format(new Date(post.publishedAt??post.createdAt))}</time></span>
+    {post.thumbnailUrl ? <img src={post.thumbnailUrl} alt="" width={80} height={64}/> : <span className="blog-post-placeholder" aria-hidden="true"/>}
   </Link></li>)}</ul>;
 }
 export function BlogHomeView({ handle, settings, activity, projects, projectErrors, hasFeaturedProjects, posts, postsFailed }: { handle: string; settings: BlogHomeSettings; activity: BlogActivity; projects: ProjectDetail[]; projectErrors: number; hasFeaturedProjects: boolean; posts: PostPage | null; postsFailed: boolean }) {
   return <section className="blog-home-content" aria-label="블로그 홈">
-    <h2 className="blog-home-heading">홈</h2>
     {settings.sections.filter(section => section.visible).map(section => <div className="blog-home-block" key={section.key}>
       {section.key === "ACTIVITY" && <Activity data={activity}/>}
       {section.key === "TECH_STACKS" && <section className="blog-home-section" aria-labelledby="home-tech-title"><h2 id="home-tech-title">{titles.TECH_STACKS}</h2><Stacks items={settings.techStacks}/></section>}
