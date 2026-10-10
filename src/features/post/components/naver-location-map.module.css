@@ -1,0 +1,10 @@
+.root { color: #27272a; font-size: 14px; display: grid; gap: 10px; padding: 12px; }
+.root p { margin: 0; line-height: 1.6; }
+.root label { display: grid; gap: 6px; }
+.root input { font: inherit; border: 1px solid #d4d4d8; border-radius: 4px; padding: 8px; width: 100%; box-sizing: border-box; }
+.canvas { min-height: 240px; width: 100%; }
+.root ul { margin: 0; padding: 0; list-style: none; }
+.root button { cursor: pointer; font: inherit; padding: 8px; background: #fff; color: #27272a; border: 1px solid #d4d4d8; border-radius: 4px; text-align: left; }
+.root button:disabled { opacity: .5; cursor: default; }
+.root a { color: #166534; }
+.root :focus-visible { outline: 2px solid #166534; outline-offset: 2px; }

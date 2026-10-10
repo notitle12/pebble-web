@@ -11,8 +11,8 @@ import styles from "./inline-block-views.module.css";
 import { transitionTableInputComposition, type TableInputCompositionState } from "./table-input-composition";
 
 const languages = ["JAVA", "JAVASCRIPT", "TYPESCRIPT", "PYTHON", "HTML", "CSS", "SQL", "JSON", "YAML", "MARKDOWN", "BASH", "SHELL"];
-export const defaultInlineTableSpec = (): TableSpec => ({ schemaVersion: 1, tableName: "table_name", columns: [{ name: "id", dataType: "BIGINT", primaryKey: true, nullable: false }] });
-export const defaultInlineArchitectureSpec = (): ArchitectureSpec => ({ schemaVersion: 1, groups: [], nodes: [{ id: "client", type: "CLIENT", label: "클라이언트", icon: "CLIENT", position: { x: 56, y: 80 } }], edges: [] });
+export const defaultInlineTableSpec = (): TableSpec => ({ schemaVersion: 1, tableName: "", columns: [{ name: "", dataType: "", primaryKey: false, nullable: true }] });
+export const defaultInlineArchitectureSpec = (): ArchitectureSpec => ({ schemaVersion: 1, groups: [], nodes: [{ id: "client", type: "CLIENT", label: "", icon: "CLIENT", position: { x: 56, y: 80 } }], edges: [] });
 function useEditable(editor: NodeViewProps["editor"]) {
   return useEditorState({ editor, selector: ({ editor: current }) => current.isEditable });
 }
@@ -81,15 +81,15 @@ export function InlineTableSpecView({ node, editor, updateAttributes, deleteNode
   return <NodeViewWrapper className={`${styles.block} ${styles.tableBlock}`} data-align={node.attrs.align ?? "left"} contentEditable={false} onPointerDown={(event: React.PointerEvent) => event.stopPropagation()} onKeyDown={(event: React.KeyboardEvent) => event.stopPropagation()} onClick={(event: React.MouseEvent) => { if ((event.target as Element).closest("button,input,select,textarea")) return; const pos = getPos(); if (editor.isEditable && typeof pos === "number") editor.commands.setNodeSelection(pos); }}>
     <div className={styles.heading}><span>{node.attrs.title ?? "테이블 명세"}</span><button type="button" disabled={!editable} aria-label="테이블 명세 블록 삭제" onClick={() => { if (editor.isEditable) deleteNode(); }}>삭제</button></div>
     <div className={styles.tableMeta}>
-      <label htmlFor={`${id}-name`}>테이블명<TableTextInput id={`${id}-name`} disabled={!editable} value={spec.tableName} aria-invalid={!!error} onCommit={value => change({ ...spec, tableName: value })} /></label>
+      <label htmlFor={`${id}-name`}>테이블명<TableTextInput id={`${id}-name`} disabled={!editable} value={spec.tableName} placeholder="테이블명" aria-invalid={!!error} onCommit={value => change({ ...spec, tableName: value })} /></label>
       <label htmlFor={`${id}-description`}>설명 (선택)<TableTextInput id={`${id}-description`} disabled={!editable} value={spec.description ?? ""} onCommit={value => change({ ...spec, description: value || null })} /></label>
     </div>
     <div className={styles.tableScroll} tabIndex={0} role="region" aria-label="테이블 명세 편집 표">
       <table className={styles.table}><caption>{spec.tableName || "새 테이블"} 컬럼 명세</caption>
         <thead><tr><th scope="col">컬럼명</th><th scope="col">자료형</th><th scope="col">PK</th><th scope="col">NULL</th><th scope="col">참조</th><th scope="col">설명</th><th scope="col">삭제</th></tr></thead>
         <tbody>{spec.columns.map((column, index) => <tr key={index}>
-          <td><TableTextInput aria-label={`컬럼 ${index + 1} 이름`} disabled={!editable} value={column.name} onCommit={value => columnChange(index, { name: value })} /></td>
-          <td><TableTextInput aria-label={`컬럼 ${index + 1} 자료형`} disabled={!editable} value={column.dataType} onCommit={value => columnChange(index, { dataType: value })} /></td>
+          <td><TableTextInput aria-label={`컬럼 ${index + 1} 이름`} disabled={!editable} value={column.name} placeholder="컬럼명" onCommit={value => columnChange(index, { name: value })} /></td>
+          <td><TableTextInput aria-label={`컬럼 ${index + 1} 자료형`} disabled={!editable} value={column.dataType} placeholder="자료형" onCommit={value => columnChange(index, { dataType: value })} /></td>
           <td><input type="checkbox" aria-label={`컬럼 ${index + 1} 기본 키`} disabled={!editable} checked={column.primaryKey} onChange={event => columnChange(index, { primaryKey: event.target.checked, nullable: event.target.checked ? false : column.nullable })} /></td>
           <td><input type="checkbox" aria-label={`컬럼 ${index + 1} NULL 허용`} disabled={!editable || column.primaryKey} checked={column.nullable} onChange={event => columnChange(index, { nullable: event.target.checked })} /></td>
           <td><TableTextInput aria-label={`컬럼 ${index + 1} 외래 키 참조`} disabled={!editable} value={column.foreignKey ?? ""} placeholder="table.id" onCommit={value => columnChange(index, { foreignKey: value || null })} /></td>
@@ -120,7 +120,7 @@ export function InlineArchitectureView({ node, editor, updateAttributes, deleteN
     else { element?.close(); if (open) setOpen(false); }
   }, [open, editable]);
   const close = () => { dialog.current?.close(); setOpen(false); opener.current?.focus(); };
-  const show = () => { if (editor.isEditable) { setDraft(validSpec); setOpen(true); } };
+  const show = () => { if (editor.isEditable) { setDraft(spec); setOpen(true); } };
   const apply = () => {
     if (!editor.isEditable || !draft) return;
     try {
@@ -134,7 +134,7 @@ export function InlineArchitectureView({ node, editor, updateAttributes, deleteN
     <div onDoubleClick={show}>{validSpec ? <ArchitectureBlock spec={validSpec} title={null} /> : <p className={styles.error} role="alert">구성도를 편집해 올바른 요소와 연결을 입력해 주세요.</p>}</div>
     {open && createPortal(<dialog ref={dialog} className={styles.dialog} aria-labelledby={headingId} onCancel={event => { event.preventDefault(); close(); }} onClose={() => { setOpen(false); opener.current?.focus(); }} onPointerDown={event => event.stopPropagation()} onKeyDown={event => { if (event.key === "Escape") { event.preventDefault(); close(); } event.stopPropagation(); }}>
       <header><h2 id={headingId}>구성도 편집</h2><button type="button" aria-label="구성도 편집 취소" onClick={close}>×</button></header>
-      <fieldset disabled={!editable} className={styles.diagramEditor}><ArchitectureEditor initialValue={validSpec ?? undefined} embedded onChange={setDraft} /></fieldset>
+      <fieldset disabled={!editable} className={styles.diagramEditor}><ArchitectureEditor initialValue={spec} embedded onChange={setDraft} /></fieldset>
       {!draft && <p className={styles.error} role="alert">입력 오류를 수정하면 구성도를 적용할 수 있습니다.</p>}
       <footer><button type="button" onClick={close}>취소</button><button type="button" disabled={!editable || !draft} onClick={apply}>적용</button></footer>
     </dialog>, document.body)}

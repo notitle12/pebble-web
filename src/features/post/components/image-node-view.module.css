@@ -12,28 +12,27 @@
 .image img { display: block; height: auto; max-width: 100%; width: auto; }
 
 .representativeButton {
-  background: #202124dc;
-  border: 1px solid #ffffff8c;
+  background: #fff;
+  border: 1px solid #52525b;
+  box-shadow: 0 2px 8px #0004;
   border-radius: 999px;
-  color: #fff;
+  color: #18181b;
   cursor: pointer;
   font: inherit;
   font-size: 11px;
   font-weight: 600;
   line-height: 1.2;
-  inset: 8px 8px auto auto;
-  opacity: 0;
+  inset: 8px auto auto 8px;
+  opacity: 1;
   padding: 6px 9px;
-  pointer-events: none;
+  pointer-events: auto;
   position: absolute;
   transition: opacity .12s ease;
   z-index: 2;
 }
 
-.image:hover .representativeButton,
-.image:focus-within .representativeButton,
-.representativeButton:focus-visible,
-.representativeButton[aria-pressed="true"] { opacity: 1; pointer-events: auto; }
-.representativeButton[aria-pressed="true"] { background: #245dc4; }
-.representativeButton:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.image .representativeButton:hover:not(:disabled) { background: #f4f4f5; color: #18181b; border-color: #52525b; }
+.image .representativeButton[aria-pressed="true"],
+.image .representativeButton[aria-pressed="true"]:hover:not(:disabled) { background: #18181b; color: #fff; border-color: #fff; }
+.representativeButton:focus-visible { outline: 3px solid #b45309; outline-offset: 2px; }
 .representativeButton:disabled { cursor: not-allowed; opacity: .5; }

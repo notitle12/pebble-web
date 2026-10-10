@@ -18,12 +18,12 @@ export type PostEditorValue = {
   blocks: EditorBlock[];
 };
 
-const blankTable: TableSpec = { schemaVersion: 1, tableName: "table_name", columns: [{ name: "id", dataType: "BIGINT", nullable: false, primaryKey: true }] };
-const blankArchitecture: ArchitectureSpec = { schemaVersion: 1, groups: [], nodes: [{ id: "node-1", type: "CUSTOM", label: "서비스" }], edges: [] };
+const blankTable: TableSpec = { schemaVersion: 1, tableName: "", columns: [{ name: "", dataType: "", nullable: true, primaryKey: false }] };
+const blankArchitecture: ArchitectureSpec = { schemaVersion: 1, groups: [], nodes: [{ id: "node-1", type: "CUSTOM", label: "" }], edges: [] };
 
 export function createEditorBlock(type: EditorBlockType = "TEXT") {
   const content = type === "TABLE" ? JSON.stringify(blankTable) : type === "ARCHITECTURE" ? JSON.stringify(blankArchitecture) : "";
-  return { key: globalThis.crypto?.randomUUID?.() ?? `block-${Date.now()}-${Math.random().toString(36).slice(2)}`, type, content, language: type === "CODE" ? "TYPESCRIPT" : null, title: null, valid: true };
+  return { key: globalThis.crypto?.randomUUID?.() ?? `block-${Date.now()}-${Math.random().toString(36).slice(2)}`, type, content, language: type === "CODE" ? "TYPESCRIPT" : null, title: null, valid: type !== "TABLE" && type !== "ARCHITECTURE" };
 }
 
 export function editorValueFromPost(post: PostDetail & {category?: {id:string} | null;projectId?:string|null;boardId?:string|null;draft?:boolean;thumbnailImageId?:string|null;imagePreviews?:Record<string,string>}): PostEditorValue {
