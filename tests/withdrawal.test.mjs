@@ -16,25 +16,33 @@ test("WITHDRAWAL_PENDING retains only one valid ISO deletion time and formats it
  await assert.rejects(memberJson("/auth/naver/login",{},async()=>Response.json({error:{code:"OTHER",message:"x",details:[{field:"withdrawalScheduledAt",reason:"2026-10-10T15:00:00Z"}]}},{status:409}),base),error=>error instanceof MemberApiError&&error.withdrawalScheduledAt===undefined);
  assert.equal(formatSeoulDateTime("2026-02-30T15:00:00Z"),null);
 });
-test("탈퇴 취소 의도는 같은 OAuth state에만 적용한다",()=>{
- assert.equal(callbackMode(null,"state"),"login");assert.equal(callbackMode(JSON.stringify({mode:"withdrawal-cancel",state:"state"}),"state"),"withdrawal-cancel");
- for(const input of ["invalid",JSON.stringify({mode:"login",state:"state"}),JSON.stringify({mode:"withdrawal-cancel",state:"other"})])assert.throws(()=>callbackMode(input,"state"));
+test("탈퇴 인증 의도는 같은 OAuth state에만 적용한다",()=>{
+ assert.equal(callbackMode(null,"state"),"login");assert.equal(callbackMode(JSON.stringify({mode:"withdrawal",state:"state"}),"state"),"withdrawal");
+ for(const input of ["invalid",JSON.stringify({mode:"login",state:"state"}),JSON.stringify({mode:"withdrawal",state:"other"}),JSON.stringify({mode:"withdrawal-cancel",state:"state"})])assert.throws(()=>callbackMode(input,"state"));
 });
-test("탈퇴 예약은 Bearer로 한 번 요청하고 성공 시 모든 로컬 인증을 비운다",async()=>{
+test("탈퇴 시작은 DELETE /members/me에 Bearer와 Cookie를 보내고 승인 URL을 검증한다",async()=>{
  let writes=0;const session=createUserSession(async(url,options)=>{
   if(url.pathname.endsWith('/refresh'))return grant();
-  if(options.method==='DELETE'){writes++;assert.equal(options.credentials,'include');assert.equal(options.headers.Authorization,'Bearer temporary');assert.equal(options.body,undefined);return json({withdrawalScheduledAt:'2026-10-11T00:00:00Z'});}
+  if(options.method==='DELETE'){writes++;assert.equal(url.pathname,'/api/v1/members/me');assert.equal(url.search,'');assert.equal(options.credentials,'include');assert.equal(options.headers.Authorization,'Bearer temporary');assert.equal(options.body,undefined);return json({authorizationUrl:'https://nid.naver.com/oauth2.0/authorize?state=fresh'});}
   return json(member);
  },action=>action(),base);
- await session.ensure();await session.withdraw();assert.equal(writes,1);assert.equal(session.snapshot().phase,'guest');assert.equal(session.snapshot().member,null);await assert.rejects(()=>session.request('/posts'));
+ await session.ensure();assert.equal(await session.startWithdrawal(),'https://nid.naver.com/oauth2.0/authorize?state=fresh');assert.equal(writes,1);assert.equal(session.snapshot().phase,'ready');
 });
-test("탈퇴 예약 응답 유실은 자동 재요청 없이 불확실 상태를 유지한다",async()=>{
- let writes=0;const session=createUserSession(async(url,options)=>{
-  if(url.pathname.endsWith('/refresh'))return grant();if(options.method==='DELETE'){writes++;throw new Error('lost');}return json(member);
+test("withdrawal OAuth callback is single-flight, sends no Bearer, and clears local auth after scheduling",async()=>{
+ const calls=[];const session=createUserSession(async(url,options)=>{calls.push(url.pathname);assert.equal(options.method,'POST');assert.equal(options.credentials,'include');assert.equal(options.headers.Authorization,undefined);assert.deepEqual(JSON.parse(options.body),{authorizationCode:'code',state:'state'});return json({withdrawalScheduledAt:'2026-10-11T00:00:00Z'});},action=>action(),base);
+ const results=await Promise.all([session.completeWithdrawal('code','state'),session.completeWithdrawal('code','state')]);assert.deepEqual(results,['2026-10-11T00:00:00Z','2026-10-11T00:00:00Z']);assert.deepEqual(calls,['/api/v1/auth/naver/withdrawal']);assert.equal(session.snapshot().phase,'guest');assert.equal(session.snapshot().member,null);
+});
+test("late withdrawal callback cannot clear a newer login session",async()=>{
+ let finishWithdrawal;const response=new Promise(resolve=>{finishWithdrawal=resolve;});
+ const session=createUserSession(async(url,options)=>{
+  if(url.pathname.endsWith('/withdrawal'))return response;
+  if(url.pathname.endsWith('/login'))return grant();
+  if(url.pathname.endsWith('/members/me'))return json(member);
+  throw new Error(`unexpected ${url.pathname}`);
  },action=>action(),base);
- await session.ensure();await assert.rejects(()=>session.withdraw());assert.equal(writes,1);assert.equal(session.snapshot().phase,'error');assert.equal(session.snapshot().member,null);await assert.rejects(()=>session.withdraw());assert.equal(writes,1);
-});
-test("탈퇴 취소는 재인증 코드를 한 번 사용하며 새 세션을 발급하거나 로그인하지 않는다",async()=>{
- const calls=[];const session=createUserSession(async(url,options)=>{calls.push(url.pathname);assert.equal(options.credentials,'include');assert.equal(options.headers.Authorization,undefined);assert.deepEqual(JSON.parse(options.body),{authorizationCode:'code',state:'state'});return json({status:'ACTIVE'});},action=>action(),base);
- await Promise.all([session.cancelWithdrawal('code','state'),session.cancelWithdrawal('code','state')]);assert.deepEqual(calls,['/api/v1/auth/naver/withdrawal/cancel']);assert.equal(session.snapshot().phase,'guest');assert.equal(session.snapshot().member,null);
+ const withdrawing=session.completeWithdrawal('code','withdrawal-state');
+ await session.complete('new-login-code','login-state');
+ finishWithdrawal(json({withdrawalScheduledAt:'2026-10-11T00:00:00Z'}));
+ await assert.rejects(withdrawing,error=>error instanceof MemberApiError&&error.code==='SESSION_CHANGED');
+ assert.equal(session.snapshot().phase,'ready');assert.equal(session.snapshot().member?.id,'1');
 });

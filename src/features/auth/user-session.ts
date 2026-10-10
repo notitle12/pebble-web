@@ -11,7 +11,7 @@ export function parseMember(value: unknown): Member {
 type Exclusive = <T>(action:()=>Promise<T>)=>Promise<T>;
 export function createUserSession(request: typeof fetch = fetch, exclusive: Exclusive = browserLock, base?: string, announce: ()=>void = ()=>{}) {
   let state = initialSession, access = "", expiresAt = 0, generation = 0;
-  let restoration: Promise<void> | null = null, completion: Promise<void> | null = null;
+  let restoration: Promise<void> | null = null, completion: Promise<void> | null = null, withdrawalCompletion: Promise<string> | null = null;
   const listeners = new Set<()=>void>();
   const publish = (next:SessionState) => {state=next; listeners.forEach(fn=>fn());};
   const clear = () => {generation++; access=""; expiresAt=0;};
@@ -64,10 +64,7 @@ export function createUserSession(request: typeof fetch = fetch, exclusive: Excl
     async authorization(){
       listenSessionChanges();
       const d=responseData(await raw("/auth/naver/authorization",{method:"POST",cookies:true}));
-      if(typeof d.authorizationUrl!=="string")throw new MemberApiError(0,"INVALID_RESPONSE","로그인 주소를 확인하지 못했습니다.");
-      const url=new URL(d.authorizationUrl);
-      if(url.protocol!=="https:" || url.hostname!=="nid.naver.com" || url.pathname!=="/oauth2.0/authorize" || url.username || url.password)throw new MemberApiError(0,"INVALID_RESPONSE","로그인 주소를 확인하지 못했습니다.");
-      return url.href;
+      return naverAuthorizationUrl(d.authorizationUrl,"로그인");
     },
     complete(authorizationCode:string,stateValue:string) {
       listenSessionChanges();
@@ -82,33 +79,25 @@ export function createUserSession(request: typeof fetch = fetch, exclusive: Excl
       }).catch(e=>{if(epoch===generation)publish({phase:"error",member:null,message:e instanceof Error?e.message:"로그인을 완료하지 못했습니다."});throw e;});
       return completion;
     },
-    async withdraw(){
+    async startWithdrawal(){
       const epoch=generation,bearer=await token();
       if(epoch!==generation)throw new MemberApiError(401,"SESSION_CHANGED","로그인 상태가 변경되었습니다.");
-      try {
-        const data=responseData(await exclusive(()=>raw("/members/me",{method:"DELETE",token:bearer,cookies:true})));
+      const data=responseData(await exclusive(()=>raw("/members/me",{method:"DELETE",token:bearer,cookies:true})));
+      if(epoch!==generation)throw new MemberApiError(401,"SESSION_CHANGED","로그인 상태가 변경되었습니다.");
+      return naverAuthorizationUrl(data.authorizationUrl,"탈퇴 인증");
+    },
+    completeWithdrawal(authorizationCode:string,stateValue:string){
+      listenSessionChanges();
+      if(withdrawalCompletion)return withdrawalCompletion;
+      const epoch=generation;
+      withdrawalCompletion=exclusive(async()=>{
+        const data=responseData(await raw("/auth/naver/withdrawal",{method:"POST",cookies:true,body:{authorizationCode,state:stateValue}}));
         if(!isIsoInstant(data.withdrawalScheduledAt))throw new MemberApiError(0,"INVALID_RESPONSE","탈퇴 예약 결과를 확인하지 못했습니다.");
         if(epoch!==generation)throw new MemberApiError(401,"SESSION_CHANGED","로그인 상태가 변경되었습니다.");
         clear();publish({phase:"guest",member:null,message:"탈퇴 예약이 완료되었습니다."});announce();
         return data.withdrawalScheduledAt;
-      }catch(error){
-        if(epoch===generation && error instanceof MemberApiError && (error.status===0||error.status===401||error.code==="ACCOUNT_WITHDRAWAL_PENDING")){
-          clear();publish({phase:"error",member:null,message:"탈퇴 예약 결과를 확인하지 못했습니다. 재요청하지 말고 네이버로 로그인하여 계정 상태를 확인해 주세요."});announce();
-        }
-        throw error;
-      }
-    },
-    cancelWithdrawal(authorizationCode:string,stateValue:string){
-      listenSessionChanges();
-      if(completion)return completion;
-      clear();const epoch=generation;publish({...initialSession});
-      completion=exclusive(async()=>{
-        const data=responseData(await raw("/auth/naver/withdrawal/cancel",{method:"POST",cookies:true,body:{authorizationCode,state:stateValue}}));
-        if(data.status!=="ACTIVE")throw new MemberApiError(0,"INVALID_RESPONSE","탈퇴 취소 결과를 확인하지 못했습니다.");
-        if(epoch!==generation)return;
-        clear();publish({phase:"guest",member:null,message:"탈퇴 예약을 취소했습니다. 다시 로그인해 주세요."});announce();
-      }).catch(error=>{if(epoch===generation)publish({phase:"error",member:null,message:error instanceof Error?error.message:"탈퇴 예약을 취소하지 못했습니다."});throw error;});
-      return completion;
+      }).catch(error=>{if(epoch===generation){clear();publish({phase:"error",member:null,message:error instanceof Error?error.message:"탈퇴 예약 결과를 확인하지 못했습니다."});announce();}throw error;});
+      return withdrawalCompletion;
     },
     async reloadMember(){const epoch=generation;const member=parseMember(await this.request("/members/me"));if(epoch===generation)publish({phase:"ready",member,message:""});},
     async logout(){clear();publish({phase:"loading",member:null,message:""});announce();const epoch=generation;
@@ -116,6 +105,12 @@ export function createUserSession(request: typeof fetch = fetch, exclusive: Excl
       catch{if(epoch===generation)publish({phase:"error",member:null,message:"로그아웃 완료를 확인하지 못했습니다. 로그아웃을 다시 시도해 주세요."});}
     },
   };
+}
+function naverAuthorizationUrl(value:unknown,action:string){
+  if(typeof value!=="string")throw new MemberApiError(0,"INVALID_RESPONSE",`${action} 주소를 확인하지 못했습니다.`);
+  let url:URL;try{url=new URL(value);}catch{throw new MemberApiError(0,"INVALID_RESPONSE",`${action} 주소를 확인하지 못했습니다.`);}
+  if(url.protocol!=="https:" || url.hostname!=="nid.naver.com" || url.pathname!=="/oauth2.0/authorize" || url.username || url.password)throw new MemberApiError(0,"INVALID_RESPONSE",`${action} 주소를 확인하지 못했습니다.`);
+  return url.href;
 }
 async function browserLock<T>(action:()=>Promise<T>):Promise<T> {
   if(typeof navigator==="undefined" || !navigator.locks)throw new Error("session lock unavailable");
