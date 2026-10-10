@@ -1,3 +1,4 @@
+import { normalizeTagName } from "../tag/api/create-tag.ts";
 import { validTagId } from "../../lib/list-query.ts";
 import { parseArchitectureSpec, parseTableSpec, type ArchitectureSpec, type PostDetail, type TableSpec } from "./api/post-list.ts";
 import {bodyImageId,representativeImageSrc,postImageSources} from "./post-images.ts";
@@ -13,6 +14,7 @@ export type PostEditorValue = {
   projectId?: string | null;
   boardId?: string | null;
   tagIds?: string[];
+  pendingTagNames?: string[];
   slug?: string;
   thumbnailImageSrc?: string | null;
   blocks: EditorBlock[];
@@ -68,6 +70,8 @@ export function validateEditorValue(value: PostEditorValue): string[] {
   if (value.projectId != null && !validTagId(value.projectId)) errors.push("프로젝트를 다시 선택해 주세요.");
   if (value.categoryId != null && !validTagId(value.categoryId)) errors.push("카테고리를 다시 선택해 주세요.");
   if (value.tagIds && (value.tagIds.some(id => !validTagId(id)) || new Set(value.tagIds).size !== value.tagIds.length)) errors.push("태그를 중복 없이 다시 선택해 주세요.");
+  try { if (value.pendingTagNames && (value.pendingTagNames.some(name => normalizeTagName(name) !== name) || new Set(value.pendingTagNames).size !== value.pendingTagNames.length)) errors.push("태그를 중복 없이 다시 입력해 주세요."); }
+  catch { errors.push("태그 이름을 확인해 주세요."); }
   if (!value.blocks.length) errors.push("본문 블록을 하나 이상 추가해 주세요.");
   for (const [index, block] of value.blocks.entries()) {
     if (!block.valid) errors.push(`${index + 1}번째 블록의 입력을 확인해 주세요.`);
@@ -101,6 +105,7 @@ export type PostSaveOptions={draft?:boolean;visibility?:PostVisibility;finalize?
 export function buildPostSaveBody(value:PostEditorValue,existing?:{visibilityStatus:PostVisibility;isBlocked:boolean;draft?:boolean;urlKey?:string;boardId?:string|null;projectId?:string|null;category?:{id:string}|null;tags?:{id:string}[]},visibilityOrOptions?:PostVisibility|PostSaveOptions){
   const options=typeof visibilityOrOptions==="string"?{visibility:visibilityOrOptions}:visibilityOrOptions??{};
   const visibility=options.visibility;
+  if(options.draft!==true && value.pendingTagNames?.length)throw new Error("새 태그를 저장한 뒤 발행해 주세요.");
   const errors=validateEditorValue(value);
   if(errors.length)throw new Error(errors[0]);
   if(visibility!==undefined && visibility!=="PUBLIC" && visibility!=="HIDDEN")throw new Error("공개 또는 비공개를 선택해 주세요.");

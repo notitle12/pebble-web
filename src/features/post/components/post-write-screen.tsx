@@ -9,6 +9,7 @@ import {apiUrl,MemberApiError,responseData} from "@/lib/member-api";
 import {safeMediaUrl,mediaFileError} from "@/features/media/model";
 import {PostEditor,type PostEditorValue,type PostSaveAction} from "./post-editor";
 import {buildPostSaveBody,editorValueFromPost,type PostSaveOptions} from "../post-editor-model";
+import {createPendingTags,parsePendingTagNames} from "../pending-tags";
 import {createPendingImages} from "../pending-images";
 
 const localKey=(memberId:string,postId:string)=>`pebble:post-edit:${memberId}:${postId}`;
@@ -16,7 +17,7 @@ function validEditorDraft(value:unknown):value is PostEditorValue{
   if(typeof value!=="object"||value===null||Array.isArray(value))return false;
   const draft=value as Record<string,unknown>;
   const nullableId=(item:unknown)=>item===undefined||item===null||typeof item==="string";
-  return (draft.thumbnailImageSrc===undefined||draft.thumbnailImageSrc===null||typeof draft.thumbnailImageSrc==="string")&&typeof draft.title==="string"&&typeof draft.summary==="string"&&(draft.slug===undefined||typeof draft.slug==="string")&&nullableId(draft.categoryId)&&nullableId(draft.projectId)&&nullableId(draft.boardId)&&(draft.tagIds===undefined||Array.isArray(draft.tagIds)&&draft.tagIds.every(item=>typeof item==="string"))&&Array.isArray(draft.blocks)&&draft.blocks.length>0&&draft.blocks.every(item=>{
+  return (draft.thumbnailImageSrc===undefined||draft.thumbnailImageSrc===null||typeof draft.thumbnailImageSrc==="string")&&typeof draft.title==="string"&&typeof draft.summary==="string"&&(draft.slug===undefined||typeof draft.slug==="string")&&nullableId(draft.categoryId)&&nullableId(draft.projectId)&&nullableId(draft.boardId)&&(draft.tagIds===undefined||Array.isArray(draft.tagIds)&&draft.tagIds.every(item=>typeof item==="string"))&&(draft.pendingTagNames===undefined||Array.isArray(draft.pendingTagNames)&&draft.pendingTagNames.every(item=>typeof item==="string"))&&Array.isArray(draft.blocks)&&draft.blocks.length>0&&draft.blocks.every(item=>{
     if(typeof item!=="object"||item===null||Array.isArray(item))return false;
     const block=item as Record<string,unknown>;
     return typeof block.key==="string"&&["TEXT","CODE","TABLE","ARCHITECTURE","HTML","MARKDOWN"].includes(String(block.type))&&typeof block.content==="string"&&typeof block.valid==="boolean"&&(block.language===null||typeof block.language==="string")&&(block.title===null||typeof block.title==="string")&&(block.imagePreviews===undefined||typeof block.imagePreviews==="object"&&block.imagePreviews!==null&&!Array.isArray(block.imagePreviews)&&Object.values(block.imagePreviews).every(value=>typeof value==="string"));
@@ -39,9 +40,11 @@ function Writer({member,id}:{member:Member;id?:string}){
   const router=useRouter();
   const[post,setPost]=useState<OwnPost|null>(null),[loading,setLoading]=useState(!!id),[error,setError]=useState(""),[busy,setBusy]=useState(false),[saved,setSaved]=useState(""),[restoredValue,setRestoredValue]=useState<PostEditorValue|null>(null),[restoreNotice,setRestoreNotice]=useState(""),[imagePreviews,setImagePreviews]=useState<Record<string,string>>({});
   const saving=useRef(false),restored=useRef(false);
+  const pendingTags=useRef(createPendingTags());
   const pendingImages=useRef(createPendingImages());
   useEffect(()=>()=>pendingImages.current.dispose(),[]);
   useEffect(()=>{if(!id)return;let live=true;setLoading(true);void Promise.resolve().then(()=>userSession.request(`/posts/${postId(id)}`)).then(async value=>{if(!live)return;const next=parseOwnPost(value);if(next.author.id!==member.id)throw new Error("본인 글만 수정할 수 있습니다.");setPost(next);
+    if(next.draft){try{const raw=window.localStorage.getItem(localKey(member.id,id)+":tags");if(raw)setRestoredValue({...editorValueFromPost(next),pendingTagNames:parsePendingTagNames(JSON.parse(raw))});}catch{setError("이 브라우저에 저장한 태그를 복원하지 못했습니다. 다시 입력해 주세요.");}}
     try{const images=await userSession.request(`/posts/${postId(id)}/images`);const previews=previewMap(images,id);if(live)setImagePreviews(previews);}catch{if(live)setImagePreviews({});}
     if(!restored.current&&!next.draft){restored.current=true;try{const raw=window.localStorage.getItem(localKey(member.id,id));if(raw){const parsed:unknown=JSON.parse(raw);if(validEditorDraft(parsed)&&window.confirm("이 브라우저에 임시 저장한 편집 내용을 복원할까요?")){setRestoredValue({...parsed,slug:editorValueFromPost(next).slug,blocks:parsed.blocks.map(block=>({...block,imagePreviews}))});setRestoreNotice("이 브라우저에 임시 저장한 편집 내용을 복원했습니다.");}else if(!validEditorDraft(parsed))window.localStorage.removeItem(localKey(member.id,id));}}catch{setError("브라우저 임시 저장 내용을 읽지 못했습니다. 서버에 저장된 글은 그대로 열었습니다.");}}
   }).catch(e=>{if(live)setError(e instanceof Error?e.message:"글을 불러오지 못했습니다.");}).finally(()=>{if(live)setLoading(false);});return()=>{live=false;};},[id,member.id]);
@@ -68,7 +71,7 @@ function Writer({member,id}:{member:Member;id?:string}){
     try{
       let current=post;
       if(pendingImages.current.has(value)&&!current){current=await saveServer(pendingImages.current.withoutPending(value),{kind:"temporary"});}
-      const resolved=await pendingImages.current.resolve(value,async file=>{
+      let resolved=await pendingImages.current.resolve(value,async file=>{
         if(!current)throw new Error("이미지를 저장할 글을 찾지 못했습니다.");
         const form=new FormData();form.append("file",file);
         const uploaded=parseImageUpload(await userSession.request(`/posts/${postId(current.id)}/images`,{method:"POST",body:form}),current.id);
@@ -80,9 +83,13 @@ function Writer({member,id}:{member:Member;id?:string}){
         window.localStorage.setItem(localKey(member.id,current.id),JSON.stringify(localValue));
         setRestoredValue(resolved);setSaved("이 브라우저에 임시 저장했습니다.");return "local";
       }
+      if(action.kind==="complete")resolved=await pendingTags.current.resolve(resolved,(path,options)=>userSession.request(path,options));
       const result=await saveServer(resolved,action,current);
+      if(action.kind==="temporary"){
+        window.localStorage.setItem(localKey(member.id,result.id)+":tags",JSON.stringify(value.pendingTagNames??[]));
+      }
       if(action.kind==="complete"){
-        try{window.localStorage.removeItem(localKey(member.id,result.id));}catch{/* Browser storage may be disabled. */}
+        try{window.localStorage.removeItem(localKey(member.id,result.id));window.localStorage.removeItem(localKey(member.id,result.id)+":tags");}catch{/* Browser storage may be disabled. */}
         const destination=action.visibility==="PUBLIC"?`/blogs/${encodeURIComponent(result.author.handle)}/posts/${encodeURIComponent(result.urlKey)}`:"/me/posts";
         router.push(destination);return "server";
       }
