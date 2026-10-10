@@ -3,8 +3,7 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { getPublicCategories, type PublicCategory } from "../../category/api/public-categories";
 import { type PublicTag } from "../../tag/api/public-tags";
-import { createTag, normalizeTagName, splitTagInput } from "../../tag/api/create-tag";
-import { userSession } from "../../auth/user-session";
+import { normalizeTagName, splitTagInput } from "../../tag/api/create-tag";
 import { useUserSession } from "../../auth/components/member-gate";
 
 type ExistingCategory = { id: string; name: string; status: string };
@@ -12,9 +11,10 @@ type ExistingTag = { id: string; name: string; status: string };
 type Props = {
   categoryId: string | null;
   tagIds: string[];
+  pendingTagNames?: string[];
   existingCategory?: ExistingCategory;
   existingTags?: ExistingTag[];
-  onChange: (patch: { categoryId?: string | null; tagIds?: string[] }) => void;
+  onChange: (patch: { categoryId?: string | null; tagIds?: string[]; pendingTagNames?: string[] }) => void;
   showCategory?:boolean;
   categoryLabel?:string;
   showTags?:boolean;
@@ -22,19 +22,13 @@ type Props = {
   ariaLabel?:string;
 };
 
-export function PostClassification({ categoryId, tagIds, existingCategory, existingTags = [], onChange, showCategory=true, showTags=true, disabled=false, categoryLabel="분류", ariaLabel="게시글 분류" }: Props) {
+export function PostClassification({ categoryId, tagIds, pendingTagNames = [], existingCategory, existingTags = [], onChange, showCategory=true, showTags=true, disabled=false, categoryLabel="분류", ariaLabel="게시글 분류" }: Props) {
   const id = useId();
   const session = useUserSession();
-  const tagOperationVersion = useRef(0);
-  const sessionKey = `${session.phase}:${session.member?.id ?? ""}`;
-  const currentSessionKey = useRef(sessionKey);
-  currentSessionKey.current = sessionKey;
   const lookupVersion = useRef(0);
   const [categories, setCategories] = useState<PublicCategory[]>([]);
-  const [tags, setTags] = useState<PublicTag[]>([]);
   const [categoryState, setCategoryState] = useState<"loading" | "ready" | "error">("loading");
   const [tagInput, setTagInput] = useState("");
-  const [tagBusy, setTagBusy] = useState(false);
   const [tagError, setTagError] = useState("");
 
   async function loadLookups() {
@@ -53,60 +47,29 @@ export function PostClassification({ categoryId, tagIds, existingCategory, exist
     return () => { lookupVersion.current += 1; };
   }, [showCategory,showTags]);
 
-  useEffect(() => {
-    tagOperationVersion.current += 1;
-    setTags([]);
-    setTagInput("");
-    setTagError("");
-    setTagBusy(false);
-  }, [session.phase, session.member?.id]);
-  useEffect(() => () => { tagOperationVersion.current += 1; }, []);
+  useEffect(() => { setTagInput(""); setTagError(""); }, [session.phase, session.member?.id]);
 
   const allTags = useMemo(() => {
     const byId = new Map<string, PublicTag>();
-    for (const tag of tags) byId.set(tag.id, tag);
     for (const tag of existingTags) if (!byId.has(tag.id)) byId.set(tag.id, tag as PublicTag);
     return [...byId.values()];
-  }, [tags, existingTags]);
+  }, [existingTags]);
   const selectedTags = allTags.filter(tag => tagIds.includes(tag.id));
   const canCreateTags = !disabled && session.phase === "ready" && session.member?.profileCompleted === true;
 
-  async function addTags() {
-    if (tagBusy || !canCreateTags) return;
-    const operationVersion = ++tagOperationVersion.current;
-    const operationSessionKey = sessionKey;
-    const isCurrentOperation = () => {
-      const liveSession = userSession.snapshot();
-      const liveSessionKey = `${liveSession.phase}:${liveSession.member?.id ?? ""}`;
-      return tagOperationVersion.current === operationVersion && currentSessionKey.current === operationSessionKey && liveSessionKey === operationSessionKey;
-    };
-    const parts = splitTagInput(tagInput);
-    if (!parts.length) { setTagError("태그 이름을 입력해 주세요."); return; }
-    setTagBusy(true); setTagError("");
-    const nextIds = [...tagIds];
-    const knownByName = new Map<string, {id:string;name:string;status:string}>();
-    for (const tag of [...tags, ...existingTags]) {
-      try { if (tag.status === "ACTIVE") knownByName.set(normalizeTagName(tag.name), tag); } catch { /* preserve malformed legacy labels without matching them */ }
-    }
+  function addTags() {
+    if (!canCreateTags) return;
     try {
-      for (const part of parts) {
-        const name = normalizeTagName(part);
-        const existing = knownByName.get(name);
-        if (existing) { if (!nextIds.includes(existing.id)) nextIds.push(existing.id); continue; }
-        const created = await createTag(name, (path, options) => userSession.request(path, options));
-        if (!isCurrentOperation()) return;
-        const item: PublicTag = { id: created.id, name: created.name, status: created.status };
-        knownByName.set(name, item);
-        setTags(current => current.some(tag => tag.id === item.id) ? current : [...current, item]);
-        if (!nextIds.includes(item.id)) nextIds.push(item.id);
+      const parts = splitTagInput(tagInput).map(normalizeTagName);
+      if (!parts.length) { setTagError("태그 이름을 입력해 주세요."); return; }
+      const nextIds = new Set(tagIds), nextNames = new Set(pendingTagNames);
+      for (const name of parts) {
+        const existing = existingTags.find(tag => tag.status === "ACTIVE" && normalizeTagName(tag.name) === name);
+        if (existing) nextIds.add(existing.id); else nextNames.add(name);
       }
-      if (isCurrentOperation()) { onChange({ tagIds: nextIds }); setTagInput(""); }
-    } catch (error) {
-      if (isCurrentOperation()) {
-        onChange({ tagIds: nextIds });
-        setTagError(error instanceof Error ? error.message : "태그를 추가하지 못했습니다.");
-      }
-    } finally { if (isCurrentOperation()) setTagBusy(false); }
+      onChange({ tagIds: [...nextIds], pendingTagNames: [...nextNames] });
+      setTagInput(""); setTagError("");
+    } catch (error) { setTagError(error instanceof Error ? error.message : "태그를 추가하지 못했습니다."); }
   }
 
   const renderLeaf = (category: PublicCategory) => (
@@ -146,16 +109,16 @@ export function PostClassification({ categoryId, tagIds, existingCategory, exist
     {showTags&&<div className="post-classification-field">
       <label htmlFor={`${id}-tag-add`}>태그</label>
       <div className="post-classification-add-tag">
-        <input id={`${id}-tag-add`} value={tagInput} onChange={event => { setTagInput(event.target.value); setTagError(""); }} onKeyDown={event => { if (!event.nativeEvent.isComposing && (event.key === "Enter" || event.key === ",")) { event.preventDefault(); void addTags(); } }} placeholder="#태그 입력 후 Enter 또는 쉼표" disabled={tagBusy || !canCreateTags} aria-describedby={tagError ? `${id}-tag-error` : `${id}-tag-help`} />
-        <button type="button" className="button" onClick={() => void addTags()} disabled={tagBusy || !canCreateTags || !tagInput.trim()}>{tagBusy ? "추가 중…" : "태그 추가"}</button>
+        <input id={`${id}-tag-add`} value={tagInput} onChange={event => { setTagInput(event.target.value); setTagError(""); }} onKeyDown={event => { if (!event.nativeEvent.isComposing && (event.key === "Enter" || event.key === ",")) { event.preventDefault(); addTags(); } }} placeholder="#태그 입력 후 Enter 또는 쉼표" disabled={!canCreateTags} aria-describedby={tagError ? `${id}-tag-error` : `${id}-tag-help`} />
+        <button type="button" className="button" onClick={() => addTags()} disabled={!canCreateTags || !tagInput.trim()}>태그 추가</button>
       </div>
       <p id={`${id}-tag-help`} className="post-classification-help">쉼표나 Enter로 추가할 수 있어요. 여러 태그는 #springboot #아무개처럼 입력하세요.</p>
       {!canCreateTags && <p className="post-classification-help">새 태그 추가는 프로필 설정을 완료한 회원만 사용할 수 있어요.</p>}
       {tagError && <p id={`${id}-tag-error`} className="post-classification-help" role="alert">{tagError}</p>}
       <div className="post-classification-selected" aria-live="polite">
-        {selectedTags.length ? <span className="post-classification-chips">{selectedTags.map(tag => <span className="post-classification-chip" key={tag.id}>#{tag.name}<button type="button" aria-label={`${tag.name} 태그 삭제`} onClick={() => onChange({ tagIds: tagIds.filter(selectedId => selectedId !== tag.id) })} disabled={tagBusy || disabled}>×</button></span>)}</span> : "없음"}
+        {selectedTags.length || pendingTagNames.length ? <span className="post-classification-chips">{selectedTags.map(tag => <span className="post-classification-chip" key={tag.id}>#{tag.name}<button type="button" aria-label={`${tag.name} 태그 삭제`} onClick={() => onChange({ tagIds: tagIds.filter(selectedId => selectedId !== tag.id) })} disabled={disabled}>×</button></span>)}{pendingTagNames.map(name => <span className="post-classification-chip" key={`pending-${name}`}>#{name}<button type="button" aria-label={`${name} 태그 삭제`} disabled={disabled} onClick={() => onChange({pendingTagNames: pendingTagNames.filter(item => item !== name)})}>×</button></span>)}</span> : "없음"}
       </div>
-      {tagIds.filter(selectedId => !allTags.some(tag => tag.id === selectedId)).map(selectedId => <button type="button" className="post-classification-chip" key={selectedId} disabled={tagBusy || disabled} onClick={() => onChange({tagIds:tagIds.filter(id=>id!==selectedId)})}>기존 태그 제거 ({selectedId}) ×</button>)}
+      {tagIds.filter(selectedId => !allTags.some(tag => tag.id === selectedId)).map(selectedId => <button type="button" className="post-classification-chip" key={selectedId} disabled={disabled} onClick={() => onChange({tagIds:tagIds.filter(id=>id!==selectedId)})}>기존 태그 제거 ({selectedId}) ×</button>)}
     </div>}
   </section>;
 }
