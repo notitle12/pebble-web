@@ -1,0 +1,40 @@
+"use client";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { MemberGate } from "../../auth/components/member-gate";
+import { userSession, type Member } from "../../auth/user-session";
+import { parseOwnProjects, type OwnProjectSummary } from "../../project/api/member-projects";
+import { HOME_SECTION_KEYS, defaultBlogHomeSettings, getMyBlogHome, normalizeTechStacks, saveMyBlogHome, type BlogHomeSettings, type HomeSectionKey } from "../api/blog-home";
+
+const label: Record<HomeSectionKey, string> = { ACTIVITY: "블로그 활동", TECH_STACKS: "기술 스택", PROJECTS: "대표 프로젝트", RECENT_POSTS: "최근 글" };
+function Editor({ member }: { member: Member }) {
+  const [saved, setSaved] = useState<BlogHomeSettings | null>(null);
+  const [draft, setDraft] = useState<BlogHomeSettings>(defaultBlogHomeSettings());
+  const [projects, setProjects] = useState<OwnProjectSummary[] | null>(null); const [loadAttempt, setLoadAttempt] = useState(0);
+  const [stackInput, setStackInput] = useState("");
+  const [loading, setLoading] = useState(true), [saving, setSaving] = useState(false), [error, setError] = useState(""), [notice, setNotice] = useState(""), [stackError, setStackError] = useState("");
+  const savingRef = useRef(false);
+  useEffect(() => { let live = true; setLoading(true); setError(""); Promise.all([getMyBlogHome(path => userSession.request(path)), (async () => { const rows: OwnProjectSummary[] = []; let page = 0; let totalPages = 1; while (page < totalPages) { const value = await userSession.request(`/members/me/projects?page=${page}&size=20&visibilityStatus=PUBLIC&sort=createdAt,desc`); const result = parseOwnProjects(value, page, member.id); rows.push(...result.content.filter(project => project.visibilityStatus === "PUBLIC" && !project.isBlocked)); totalPages = result.totalPages; page += 1; } return rows; })()]).then(([home, rows]) => { if (live) { setSaved(home); setDraft(home); setProjects(rows); } }).catch(() => { if (live) setError("홈 구성을 불러오지 못했어요. 다시 시도해 주세요."); }).finally(() => { if (live) setLoading(false); }); return () => { live = false; }; }, [member.id, loadAttempt]);
+  const dirty = useMemo(() => JSON.stringify(saved) !== JSON.stringify(draft), [saved, draft]);
+  function update(change: (current: BlogHomeSettings) => BlogHomeSettings) { setDraft(current => change(current)); setNotice(""); }
+  function move(index: number, delta: number) { update(current => { const sections = [...current.sections]; const target = index + delta; if (target < 0 || target >= sections.length) return current; [sections[index], sections[target]] = [sections[target], sections[index]]; return { ...current, sections }; }); }
+  async function submit(event: React.FormEvent) { event.preventDefault(); if (savingRef.current || !dirty) return; savingRef.current = true; setSaving(true); setError(""); setNotice(""); try { const next = await saveMyBlogHome({ ...draft, techStacks: normalizeTechStacks(draft.techStacks) }, (path, options) => userSession.request(path, options)); setSaved(next); setDraft(next); setNotice("홈 구성을 저장했어요."); } catch (e) { setError(e instanceof Error ? e.message : "저장하지 못했어요. 입력 내용을 유지했으니 다시 시도해 주세요."); } finally { savingRef.current = false; setSaving(false); } }
+  function addStack() {
+    const value = stackInput.normalize("NFKC").trim();
+    if (!value || Array.from(value).length > 50 || /[\p{Cc}\p{Cs}]/u.test(value)) { setStackError("기술 이름은 제어 문자가 없는 1~50자여야 해요."); return; }
+    if (draft.techStacks.some(item => item.normalize("NFKC").toLocaleLowerCase("und") === value.toLocaleLowerCase("und"))) { setStackError("이미 추가한 기술 이름이에요."); return; }
+    const next = normalizeTechStacks([...draft.techStacks, value]);
+    if (next.length === draft.techStacks.length || next.length > 20) { setStackError("기술 스택은 최대 20개까지 추가할 수 있어요."); return; }
+    update(current => ({ ...current, techStacks: next })); setStackInput(""); setStackError("");
+  }
+  const ownProjects = projects ?? [];
+  return <section className="blog-home-settings" aria-labelledby="home-settings-title"><p className="profile-eyebrow">{member.blogName ?? "Pebble"}</p><h1 id="home-settings-title">홈 구성</h1><p className="blog-management-intro">공개 블로그 홈에 보여줄 항목과 순서를 정합니다.</p>
+    {loading ? <p role="status">홈 구성을 불러오고 있어요.</p> : saved === null || projects === null ? <div className="blog-home-error"><p role="alert">{error}</p><button className="button" type="button" onClick={() => { setError(""); setLoadAttempt(value => value + 1); }}>다시 불러오기</button></div> : <form onSubmit={submit}>
+      {error && <p className="blog-home-error" role="alert">{error}</p>}{notice && <p role="status">{notice}</p>}
+      <fieldset><legend>홈 섹션</legend><p>표시할 섹션을 고르고 위아래 버튼으로 순서를 바꾸세요.</p><ol className="home-section-order">{draft.sections.map((section, index) => <li key={section.key}><label><input type="checkbox" checked={section.visible} disabled={saving} onChange={event => update(current => ({ ...current, sections: current.sections.map(item => item.key === section.key ? { ...item, visible: event.target.checked } : item) }))}/>{label[section.key]}</label><div><button type="button" aria-label={`${label[section.key]} 위로`} disabled={index === 0 || saving} onClick={() => move(index, -1)}>↑</button><button type="button" aria-label={`${label[section.key]} 아래로`} disabled={index === draft.sections.length - 1 || saving} onClick={() => move(index, 1)}>↓</button></div></li>)}</ol></fieldset>
+      <fieldset><legend>기술 스택</legend><p>최대 20개, 이름은 50자까지 입력할 수 있어요.</p><ul className="home-stack-editor">{draft.techStacks.map(name => <li key={name}>{name}<button type="button" aria-label={`${name} 삭제`} disabled={saving} onClick={() => update(current => ({ ...current, techStacks: current.techStacks.filter(item => item !== name) }))}>삭제</button></li>)}</ul><div className="home-stack-input"><label htmlFor="home-stack">기술 이름</label><input id="home-stack" value={stackInput} maxLength={50} disabled={saving} onChange={event => setStackInput(event.target.value)} onKeyDown={event => { if (event.key === "Enter" && !event.nativeEvent.isComposing) { event.preventDefault(); addStack(); } }}/><button type="button" disabled={saving || !stackInput.trim() || draft.techStacks.length >= 20 || draft.techStacks.some(item => item.normalize("NFKC").toLocaleLowerCase("und") === stackInput.normalize("NFKC").trim().toLocaleLowerCase("und"))} onClick={addStack}>추가</button></div>{stackError && <p className="blog-home-error" role="alert">{stackError}</p>}</fieldset>
+      <fieldset><legend>대표 프로젝트</legend><p>공개 중인 프로젝트를 최대 6개 고를 수 있어요.</p><div className="home-project-editor">{ownProjects.length ? ownProjects.map(project => <label key={project.id}><input type="checkbox" checked={draft.featuredProjectIds.includes(project.id)} disabled={saving || !draft.featuredProjectIds.includes(project.id) && draft.featuredProjectIds.length >= 6} onChange={event => update(current => ({ ...current, featuredProjectIds: event.target.checked ? [...current.featuredProjectIds, project.id] : current.featuredProjectIds.filter(id => id !== project.id) }))}/>{project.name}</label>) : <p>선택할 수 있는 공개 프로젝트가 없어요.</p>}</div></fieldset>
+      {draft.featuredProjectIds.filter(id => !ownProjects.some(project => project.id === id)).map(id => <p className="blog-home-error" key={id}>이전에 선택한 프로젝트 ({id})를 찾을 수 없어요. <button type="button" disabled={saving} onClick={() => update(current => ({ ...current, featuredProjectIds: current.featuredProjectIds.filter(item => item !== id) }))}>선택 해제</button></p>)}
+      <div className="home-settings-actions"><button className="button" type="submit" disabled={saving || !dirty || draft.featuredProjectIds.some(id => !ownProjects.some(project => project.id === id))}>{saving ? "저장 중…" : "변경 저장"}</button><button className="button" type="button" disabled={saving || !dirty} onClick={() => saved && setDraft(saved)}>변경 취소</button></div>
+    </form>}</section>;
+}
+export function BlogHomeSettings() { return <MemberGate profile>{member => <Editor key={member.id} member={member}/>}</MemberGate>; }
