@@ -42,6 +42,6 @@ export function ImageNodeView({ node, selected }: NodeViewProps) {
       draggable={false}
       onClick={event => { event.stopPropagation(); representative.onSelect(stableSrc); }}
       onKeyDown={event => event.stopPropagation()}
-    >대표이미지 ✓</button>}
+    >{isRepresentative ? "✓ 대표 이미지" : "대표 이미지 선택"}</button>}
   </NodeViewWrapper>;
 }

@@ -1,4 +1,5 @@
 import { parseArchitectureSpec, parseTableSpec } from "./api/post-list.ts";
+import { parseNaverMapEmbed } from "./naver-map.ts";
 import { marked } from "marked";
 import sanitizeHtml, { type IOptions } from "sanitize-html";
 
@@ -39,6 +40,7 @@ const sanitizerOptions: IOptions = {
   allowedSchemes: ["http", "https", "mailto"],
   allowedSchemesByTag: { img: ["http", "https"] },
   allowedIframeHostnames: ["www.openstreetmap.org"],
+  allowIframeRelativeUrls: true,
   allowProtocolRelative: false,
   transformTags: {
     div: (_tagName, attrs) => {
@@ -57,6 +59,7 @@ const sanitizerOptions: IOptions = {
     pre: (_tagName, attrs) => ({ tagName: "pre", attribs: withSafeAlignment(attrs) }),
     a: (_tagName,attrs)=>({tagName:"a",attribs:{...attrs,rel:"nofollow noopener noreferrer",...(attrs.href?.startsWith("#")?{target:"_self"}:{})}}),
     iframe: (_tagName, attrs) => {
+      if (parseNaverMapEmbed(attrs.src || "")) return { tagName: "iframe", attribs: { src: attrs.src, width: "600", height: "450", title: "네이버 지도", loading: "lazy", sandbox: "allow-scripts allow-same-origin", referrerpolicy: "strict-origin-when-cross-origin" } };
       if (!isSafeOpenStreetMapEmbed(attrs.src || "")) return { tagName: "span", attribs: {} as sanitizeHtml.Attributes };
       return { tagName: "iframe", attribs: { src: attrs.src, width: "600", height: "450", title: "지도: OpenStreetMap", loading: "lazy", sandbox: "allow-scripts allow-same-origin", referrerpolicy: "no-referrer" } };
     },

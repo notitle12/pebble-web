@@ -34,7 +34,7 @@ function ToggleView({ node, editor, updateAttributes }: NodeViewProps) {
       <button type="button" aria-label={node.attrs.open ? "내용 접기" : "내용 펼치기"} aria-expanded={!!node.attrs.open} onClick={() => updateAttributes({ open: !node.attrs.open })}>
         <svg aria-hidden="true" viewBox="0 0 16 16" style={{ transform: node.attrs.open ? "rotate(90deg)" : undefined }}><path d="m6 3 5 5-5 5" fill="none" stroke="currentColor" strokeWidth="1.6"/></svg>
       </button>
-      <input aria-label="접기/펼치기 제목" value={node.attrs.summary} disabled={!editable} onChange={event => updateAttributes({ summary: event.target.value })}/>
+      <input aria-label="접는 글 제목" placeholder="제목을 입력하세요" value={node.attrs.summary} disabled={!editable} onChange={event => updateAttributes({ summary: event.target.value })}/>
     </div>
     <NodeViewContent className={styles.toggleContent} hidden={!node.attrs.open}/>
   </NodeViewWrapper>;
@@ -42,7 +42,7 @@ function ToggleView({ node, editor, updateAttributes }: NodeViewProps) {
 export const EditableToggle = TiptapNode.create({
   name: "details", group: "block", content: "block+", defining: true,
   addAttributes() { return {
-    summary: { default: "자세히 보기", rendered: false, parseHTML: (element: HTMLElement) => element.querySelector("summary")?.textContent || "자세히 보기" },
+    summary: { default: "", rendered: false, parseHTML: (element: HTMLElement) => element.querySelector("summary")?.textContent || "" },
     open: { default: true, parseHTML: (element: HTMLElement) => element.hasAttribute("open"), renderHTML: attrs => attrs.open ? { open: "" } : {} },
   }; },
   parseHTML() { return [{ tag: "details", contentElement: (element: HTMLElement) => element.querySelector("[data-details-content]") || element }]; },

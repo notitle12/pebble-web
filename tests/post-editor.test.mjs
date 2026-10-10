@@ -7,6 +7,26 @@ import {parseOwnPost} from "../src/features/post/api/member-posts.ts";
 const author = { id: "1", handle: "pebble-user", nickname: "Pebble", blogName: null };
 const basePost = { id: "10", urlKey: "first-post", title: "첫 글", summary: null, author, tags: [], publishedAt: null, createdAt: "2026-10-03T00:00:00Z" };
 
+test("new editor blocks do not prefill example text", () => {
+  assert.equal(createEditorBlock("TEXT").content, "");
+  assert.equal(createEditorBlock("CODE").content, "");
+  assert.equal(createEditorBlock("HTML").content, "");
+  assert.equal(createEditorBlock("MARKDOWN").content, "");
+  assert.deepEqual(JSON.parse(createEditorBlock("TABLE").content), {
+    schemaVersion: 1, tableName: "", columns: [{ name: "", dataType: "", nullable: true, primaryKey: false }],
+  });
+  assert.equal(createEditorBlock("TABLE").valid, false);
+  assert.deepEqual(JSON.parse(createEditorBlock("ARCHITECTURE").content), {
+    schemaVersion: 1, groups: [], nodes: [{ id: "node-1", type: "CUSTOM", label: "" }], edges: [],
+  });
+  assert.equal(createEditorBlock("ARCHITECTURE").valid, false);
+  for (const type of ["TABLE", "ARCHITECTURE"]) {
+    const value = { title: "제목", summary: "", blocks: [createEditorBlock(type)] };
+    assert.ok(validateEditorValue(value).some(error => error.includes("입력")));
+    assert.throws(() => buildPostSaveBody(value), /입력/);
+  }
+});
+
 test("editor conversion preserves block order, content and architecture coordinates", () => {
   const blocks = [
     { type: "TEXT", content: "안녕하세요 🌱", language: null, title: null, displayOrder: 0 },
