@@ -16,7 +16,8 @@ export function blocksToDocument(blocks: EditorBlock[], parseRich: (block: Edito
   for (const block of blocks) {
     if (block.type === "CODE") content.push({ type: nodeTypes.CODE, attrs: { ...attrs(block), language: block.language }, content: block.content ? [{ type: "text", text: block.content }] : [] });
     else if (block.type === "TABLE" || block.type === "ARCHITECTURE") {
-      const spec = block.type === "TABLE" ? parseTableSpec(JSON.parse(block.content)) : parseArchitectureSpec(JSON.parse(block.content));
+      const parsed = JSON.parse(block.content);
+      const spec = block.valid === false ? parsed : block.type === "TABLE" ? parseTableSpec(parsed) : parseArchitectureSpec(parsed);
       content.push({ type: nodeTypes[block.type], attrs: { ...attrs(block), spec } });
     } else {
       if (block.title) content.push({ type: "heading", attrs: { level: 2 }, content: [{ type: "text", text: block.title }] });

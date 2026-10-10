@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {blocksToDocument, documentToBlocks, blocksSignature} from '../src/features/post/writer-document.ts';
 import {richContentHtml} from '../src/features/post/rich-content.ts';
 import {BlockAlignment} from '../src/features/post/block-alignment.ts';
+import {createEditorBlock} from '../src/features/post/post-editor-model.ts';
 const spec={schemaVersion:1,tableName:'users',columns:[{name:'id',dataType:'BIGINT',primaryKey:true,nullable:false}]};
 const architecture={schemaVersion:1,groups:[],nodes:[{id:'client',type:'CLIENT',label:'클라이언트',icon:'CLIENT',position:{x:56,y:80}}],edges:[]};
 const rich=text=>({type:'paragraph',content:[{type:'text',text}]});
@@ -13,6 +14,12 @@ test('본문 사이의 코드·명세·아키텍처는 저장과 재편집에서
  const saved=documentToBlocks(blocksToDocument(blocks,parse),render);
  assert.equal(blocksSignature(saved),blocksSignature(blocks));
  assert.equal(blocksSignature(documentToBlocks(blocksToDocument(saved,parse),render)),blocksSignature(saved));
+});
+test('작성 중인 빈 구조 블록은 오류 상태로 재편집 문서 왕복 시 값을 보존한다',()=>{
+ const blocks=[createEditorBlock('TABLE'),createEditorBlock('ARCHITECTURE')];
+ const roundTrip=documentToBlocks(blocksToDocument(blocks,parse),render);
+ assert.deepEqual(roundTrip.map(block=>block.valid),[false,false]);
+ assert.deepEqual(roundTrip.map(block=>JSON.parse(block.content)),blocks.map(block=>JSON.parse(block.content)));
 });
 test('코드·테이블 명세·아키텍처 정렬은 저장과 재편집 사이에 보존한다',()=>{
  const blocks=[{key:'code',type:'CODE',content:'x',language:'JAVA',title:null,valid:true,alignment:'CENTER'}, {key:'table',type:'TABLE',content:JSON.stringify(spec),language:null,title:null,valid:true,alignment:'RIGHT'}, {key:'architecture',type:'ARCHITECTURE',content:JSON.stringify(architecture),language:null,title:null,valid:true,alignment:'CENTER'}];
