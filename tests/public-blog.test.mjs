@@ -26,9 +26,9 @@ test("requests a guest blog page with the validated handle, page, and search par
 });
 
 test("builds validated personal blog pagination links", () => {
-  assert.equal(blogHref("pebble-dev", 0), "/blogs/pebble-dev");
-  assert.equal(blogHref("pebble-dev", 3), "/blogs/pebble-dev?page=3");
-  assert.equal(blogHref("pebble-dev", 3, undefined, "검색 단어"), "/blogs/pebble-dev?q=%EA%B2%80%EC%83%89+%EB%8B%A8%EC%96%B4&page=3");
+  assert.equal(blogHref("pebble-dev", 0), "/blogs/pebble-dev?view=posts");
+  assert.equal(blogHref("pebble-dev", 3), "/blogs/pebble-dev?view=posts&page=3");
+  assert.equal(blogHref("pebble-dev", 3, undefined, "검색 단어"), "/blogs/pebble-dev?view=posts&q=%EA%B2%80%EC%83%89+%EB%8B%A8%EC%96%B4&page=3");
   assert.throws(() => blogHref("bad/handle", 0), GuestApiError);
   assert.throws(() => blogHref("pebble-dev", -1), GuestApiError);
 });

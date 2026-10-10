@@ -13,7 +13,7 @@ test("폴더 입력과 공개 URL은 올바른 문자·순서·경로 조건을 
  assert.equal(boardInput("🌱".repeat(50),null,0).name.length,100);
  for(const name of [" ","x".repeat(51),"\u0000","\ud800"])assert.throws(()=>boardInput(name,null,0));
  for(const order of [-1,1.5,2147483648])assert.throws(()=>boardInput("폴더",null,order));
- assert.equal(blogHref("writer-1",2,"9007199254740993"),"/blogs/writer-1?boardId=9007199254740993&page=2");
+ assert.equal(blogHref("writer-1",2,"9007199254740993"),"/blogs/writer-1?view=posts&boardId=9007199254740993&page=2");
  assert.throws(()=>blogHref("writer-1",0,"../1"));
 });
 test("글 폴더 연결은 복원·미변경 생략·변경·null 해제 계약을 따른다",()=>{

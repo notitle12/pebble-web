@@ -10,7 +10,7 @@ export function blogHref(handle: string, page: number, boardId?:string, q?:strin
   }
   if(boardId!==undefined&&!validTagId(boardId))throw new GuestApiError("response");
   if(q!==undefined&&q.length>200)throw new GuestApiError("response");
-  const params=new URLSearchParams();if(boardId)params.set("boardId",boardId);if(q)params.set("q",q);if(page>0)params.set("page",String(page));
+  const params=new URLSearchParams();params.set("view","posts");if(boardId)params.set("boardId",boardId);if(q)params.set("q",q);if(page>0)params.set("page",String(page));
   return `/blogs/${encodeURIComponent(handle)}${params.size?`?${params}`:""}`;
 }
 
