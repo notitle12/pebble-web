@@ -107,7 +107,7 @@ export function BlogLinksEditor({ member }: { member: Member }) {
 
   const disabled = busy || uncertain || !saved;
   return <section className="profile-screen blog-links-editor" aria-labelledby="blog-links-heading">
-    <header className="profile-heading"><div><p className="profile-eyebrow">블로그 공개 정보</p><h2 id="blog-links-heading">외부 링크</h2></div></header>
+    <header className="profile-heading"><div><p className="profile-eyebrow">블로그 공개 정보</p><h1 id="blog-links-heading">외부 링크</h1></div></header>
     {!saved && !error ? <p role="status">링크 설정을 불러오고 있어요.</p> : null}
     {saved && <form className="search-panel profile-form blog-links-form" onSubmit={submit}>
       <fieldset disabled={busy || uncertain}>
