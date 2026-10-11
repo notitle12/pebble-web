@@ -1,6 +1,7 @@
 "use client";
 import type {DatabaseSchema,DbColumn,DbReference,DbTable} from '../database-schema';
-import {DatabaseNotationPicker} from './database-notation-picker';
+import {connectDbColumns} from '../database-relationship-choice';
+import {DatabaseNotationPicker,DatabaseRelationShapePicker} from './database-notation-picker';
 import {relationCardinality} from '../database-schema';
 import {TableTextInput} from './inline-block-views';
 import s from './database-schema.module.css';
@@ -33,6 +34,7 @@ export function DatabaseRelationControls({schema,table,actions}:{schema:Database
  const refChange=(patch:Partial<DbReference>)=>change({reference:{...c.reference!,...patch}});
  return <details key={c.id}><summary>{c.name||'새 컬럼'} → {target?.name}.{targetColumn?.name} <span>관계선 설정 · {relation.many?'1:N':'1:1'}</span></summary><div className={s.relationFields}>
   <DatabaseNotationPicker label={`${table.name}.${c.name} 관계선 표기법`} value={relation.notation} onChange={notation=>refChange({notation})}/>
+  <DatabaseRelationShapePicker label={`${table.name}.${c.name} 관계선 모양`} notation={relation.notation} value={relation} isDisabled={shape=>c.primaryKey&&(!shape.targetRequired||shape.many&&table.columns.filter(k=>k.primaryKey).length===1)} onChange={shape=>{const next=connectDbColumns(schema,c.reference!,{tableId:table.id,columnId:c.id},shape,relation.notation==='CHEN'?'CHEN':'IE');const updated=next.tables.find(t=>t.id===table.id)!.columns.find(k=>k.id===c.id)!;change({unique:updated.unique,nullable:updated.nullable,reference:updated.reference});}}/>
 
  </div></details>;
  })}</div>;
