@@ -521,3 +521,10 @@ main.personal-blog-layout{max-width:none;width:100%;margin:0;padding:0;display:g
 /* Keep compact nesting with a small gap between the elbow and folder. */
 .blog-board-folder{position:relative;display:inline-flex;align-items:center;flex:0 0 15px;width:15px;height:15px}
 .blog-board-folder .blog-board-branch{position:absolute;left:-10px;top:0;width:6px;height:8px;border-left:1px solid #9298a3;border-bottom:1px solid #9298a3;pointer-events:none}
+
+/* Writing and project creation share the same account menu. */
+.session-links>a{white-space:nowrap}
+.writer-identity .account-avatar{width:32px;height:32px}
+.writer-identity .account-menu-panel{font-size:12px}
+.account-menu summary:focus-visible{outline:2px solid var(--accent);outline-offset:4px;border-radius:50%}
+@media(max-width:720px){.writer-identity{display:flex;right:22px;top:14px;background:transparent}.writer-identity>span:first-child{display:none}}
