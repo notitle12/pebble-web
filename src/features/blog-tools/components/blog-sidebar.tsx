@@ -33,7 +33,7 @@ export function BlogSidebar({children,footer,links,handle,query,homeView,selecte
           <section className="blog-folder-group" aria-label="게시판">
             <div className="blog-menu-parent"><Link className="blog-menu-row" href={boardsHref} aria-current={boardView&&!selected?"page":undefined}><BlogMenuIcon name="boards"/><span>게시판</span></Link><button type="button" className="blog-menu-disclosure" aria-label={`게시판 폴더 ${boardsOpen?"접기":"펼치기"}`} aria-expanded={boardsOpen} aria-controls="blog-board-folders" onClick={()=>setBoardsOpen(value=>!value)}><BlogMenuIcon name="chevron"/></button></div>
             <div id="blog-board-folders" className="blog-folder-items" hidden={!boardsOpen}>
-              {boards.map(board=><Link key={board.id} href={blogHref(handle,0,board.id)} aria-current={selected===board.id?"page":undefined} style={{paddingInlineStart:`${12+board.depth*14}px`}}>{board.depth>0&&<span className="blog-board-branch" aria-hidden="true">└</span>}<BlogMenuIcon name="folder"/><span>{board.name}</span></Link>)}
+              {boards.map(board=><Link key={board.id} href={blogHref(handle,0,board.id)} aria-current={selected===board.id?"page":undefined} style={{paddingInlineStart:`${8+board.depth*12}px`}}><span className="blog-board-folder">{board.depth>0&&<span className="blog-board-branch" aria-hidden="true"/>}<BlogMenuIcon name="folder"/></span><span>{board.name}</span></Link>)}
               {boardError&&<p role="status">게시판을 불러오지 못했어요.</p>}
             </div>
           </section>
