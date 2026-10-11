@@ -1,6 +1,7 @@
 "use client";
 import {useId,useState} from 'react';
-import {newDbColumn,newDbTable,parseDatabaseSchema,removeDbColumn,removeDbTable,updateDbColumn,type DatabaseSchema,type DbReference,type DbNotation} from '../database-schema';
+import {newDbColumn,newDbTable,parseDatabaseSchema,removeDbColumn,removeDbTable,updateDbColumn,type DatabaseSchema,type DbReference} from '../database-schema';
+import {DatabaseNotationPicker} from './database-notation-picker';
 import {DatabaseDiagram} from './database-schema-block';
 import {DatabaseColumnTable,DatabaseTableFooter,type DatabaseEditActions} from './database-edit-table';
 import {TableTextInput} from './inline-block-views';
@@ -8,7 +9,7 @@ import s from './database-schema.module.css';
 export function DatabaseSchemaEditor({value,onChange,initialTab='ERD'}:{value:DatabaseSchema;initialTab?:'ERD'|'SPEC';onChange:(schema:DatabaseSchema)=>void}){
  const schema=value,id=useId();
  const [tab,setTab]=useState<'ERD'|'SPEC'>(initialTab),[connecting,setConnecting]=useState(false),[from,setFrom]=useState<DbReference|null>(null),[message,setMessage]=useState('');
- const [relationType,setRelationType]=useState('MANY'),[required,setRequired]=useState(false),[sourceRequired,setSourceRequired]=useState(false),[notation,setNotation]=useState<DbNotation>('IE');
+ const [notation,setNotation]=useState<'IE'|'CHEN'>('IE');
  let error='';try{parseDatabaseSchema(schema);}catch(e){error=e instanceof Error?e.message:'입력값을 확인해 주세요.';}
  const update=(next:DatabaseSchema)=>onChange(next);
  const connect=(ref:DbReference)=>{
@@ -17,8 +18,7 @@ export function DatabaseSchemaEditor({value,onChange,initialTab='ERD'}:{value:Da
   if(ref.tableId===from.tableId&&ref.columnId===from.columnId){setMessage('다른 컬럼을 참조 대상으로 선택해 주세요.');return;}
   const table=schema.tables.find(t=>t.id===ref.tableId),target=table?.columns.find(c=>c.id===ref.columnId);
   if(!target||!(target.unique||target.primaryKey&&table!.columns.filter(c=>c.primaryKey).length===1)){setMessage('참조 대상은 단일 PK 또는 UNIQUE 컬럼이어야 해요.');return;}
-  const source=schema.tables.find(t=>t.id===from.tableId)!.columns.find(c=>c.id===from.columnId)!;
-  update(updateDbColumn(schema,from.tableId,from.columnId,{reference:{...ref,notation,sourceRequired},unique:relationType==='ONE',nullable:source.primaryKey?false:!required}));
+  update(updateDbColumn(schema,from.tableId,from.columnId,{reference:{...ref,notation}}));
   setFrom(null);setConnecting(false);setMessage('관계를 연결했어요. FK 옆에서 관계선을 다시 설정할 수 있어요.');
  };
  const actions:DatabaseEditActions={
@@ -33,7 +33,7 @@ export function DatabaseSchemaEditor({value,onChange,initialTab='ERD'}:{value:Da
   <div id={`${id}-panel`} role="tabpanel" aria-labelledby={`${id}-${tab==='ERD'?'erd':'spec'}`}>
    {tab==='ERD'?<>
     <div className={s.diagramActions}><button type="button" aria-pressed={connecting} onClick={()=>{setConnecting(v=>!v);setFrom(null);setMessage('');}}>{connecting?'관계 연결 취소':'관계 연결'}</button><button type="button" onClick={()=>update({...schema,tables:schema.tables.map((t,i)=>({...t,position:{x:32+(i%Math.ceil(Math.sqrt(schema.tables.length)))*340,y:32+Math.floor(i/Math.ceil(Math.sqrt(schema.tables.length)))*(180+Math.max(...schema.tables.map(k=>k.columns.length))*32)}}))})}>자동 배치</button><span>표에서 바로 입력하고 ⠿ 핸들을 드래그해 배치하세요.</span></div>
-    {connecting&&<div className={s.connectOptions}><label>관계<select aria-label="새 관계 유형" value={relationType} onChange={e=>setRelationType(e.target.value)}><option value="MANY">1:N</option><option value="ONE">1:1</option></select></label><label><input type="checkbox" checked={required} onChange={e=>setRequired(e.target.checked)}/>참조 대상 필수</label><label><input type="checkbox" checked={sourceRequired} onChange={e=>setSourceRequired(e.target.checked)}/>참조하는 행 필수</label><label>표기법<select aria-label="새 관계 표기법" value={notation} onChange={e=>setNotation(e.target.value as DbNotation)}><option value="IE">IE</option><option value="BARKER">Barker</option><option value="CHEN">숫자 · 1 / N</option></select></label><p role="status">{message||'FK가 될 컬럼의 화살표를 누른 뒤 참조할 PK 또는 UNIQUE 컬럼의 화살표를 눌러 주세요.'}</p></div>}
+    {connecting&&<div className={s.connectOptions}><DatabaseNotationPicker value={notation} onChange={setNotation}/><p role="status">{message||'FK가 될 컬럼의 화살표를 누른 뒤 참조할 PK 또는 UNIQUE 컬럼의 화살표를 눌러 주세요.'}</p></div>}
     <DatabaseDiagram schema={schema} actions={actions}/>
    </>:<div className={s.editSpecifications}>{schema.tables.map((t,i)=><section key={t.id} aria-label={`${t.name||'새 테이블'} 테이블 명세 편집`}><header className={s.specHeading}><TableTextInput aria-label={`테이블 ${i+1} 이름`} value={t.name} maxLength={100} placeholder="테이블명" onCommit={name=>actions.changeTable(t.id,{name})}/><button type="button" disabled={schema.tables.length<=1} aria-label={`${t.name||'새 테이블'} 테이블 삭제`} onClick={()=>actions.removeTable(t.id)}>테이블 삭제</button></header><DatabaseColumnTable schema={schema} table={t} actions={actions}/><DatabaseTableFooter schema={schema} table={t} actions={actions}/></section>)}</div>}
   </div>
