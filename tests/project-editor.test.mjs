@@ -6,7 +6,7 @@ import { parseOwnProject, parseOwnProjects } from "../src/features/project/api/m
 
 const editor=(overrides={})=>({...emptyProject(),name:"Pebble",...overrides});
 const ownData=(overrides={})=>({
-  id:"10",name:"Pebble",summary:"A project",owner:{id:"7",nickname:"Owner"},tags:[{id:"3",name:"TypeScript",status:"ACTIVE"},{id:"4",name:"Legacy",status:"INACTIVE"}],
+  id:"10",name:"Pebble",summary:"A project",owner:{id:"7",nickname:"Owner"},techStacks:[{id:"3",name:"TypeScript",status:"ACTIVE"},{id:"4",name:"Legacy",status:"INACTIVE"}],
   lifecycleStatus:"IN_PROGRESS",publishedAt:null,createdAt:"2026-01-01T00:00:00Z",description:"Description",architectureDescription:"Architecture",executionInstructions:"Run it",
   startedOn:"2026-01-02",completedOn:null,features:[{id:"20",title:"Search",description:"Find items",displayOrder:0}],
   links:[{id:"30",linkType:"GITHUB",label:"Source",url:"https://example.com/repo",displayOrder:0}],visibilityStatus:"HIDDEN",isBlocked:false,...overrides,
@@ -31,9 +31,9 @@ test("프로젝트 날짜는 실제 달력 날짜와 빈 값을 허용하고 잘
 });
 
 test("진행 상태와 태그 ID 및 중복 태그를 검증한다",()=>{
-  validateProject(editor({lifecycleStatus:"COMPLETED",tagIds:["1","9223372036854775807"]}));
+  validateProject(editor({lifecycleStatus:"COMPLETED",techStackIds:["1","9223372036854775807"]}));
   expectInvalid(()=>validateProject(editor({lifecycleStatus:"PAUSED"})));
-  for(const tagIds of [["01"],["9223372036854775808"],["1","1"]]) expectInvalid(()=>validateProject(editor({tagIds})));
+  for(const techStackIds of [["01"],["9223372036854775808"],["1","1"]]) expectInvalid(()=>validateProject(editor({techStackIds})));
 });
 
 test("기능 제목은 필수이고 기능 필드 길이와 Unicode를 확인한다",()=>{
@@ -53,7 +53,7 @@ test("변경되지 않은 배열은 PATCH에서 생략해 기존 항목 ID와 �
   assert.deepEqual(patch,{});
   assert.deepEqual(existing.features.map(f=>f.id),["20"]);
   assert.deepEqual(existing.links.map(l=>l.id),["30"]);
-  assert.deepEqual(existing.tags.map(t=>t.status),["ACTIVE","INACTIVE"]);
+  assert.deepEqual(existing.techStacks.map(t=>t.status),["ACTIVE","INACTIVE"]);
 });
 
 test("문자열 필드 비우기는 null PATCH이고 일부 수정은 바뀐 필드만 보낸다",()=>{
@@ -65,12 +65,12 @@ test("문자열 필드 비우기는 null PATCH이고 일부 수정은 바뀐 필
 
 test("배열이 바뀌면 해당 배열 전체를 교체하며 visibility와 차단 상태를 확인한다",()=>{
   const existing=parseOwnProject(ownResponse(),"7","10"),value=projectEditorValue(existing);
-  value.tagIds=["3"];
-  assert.deepEqual(buildProjectSaveBody(value,existing),{tagIds:["3"]});
+  value.techStackIds=["3"];
+  assert.deepEqual(buildProjectSaveBody(value,existing),{techStackIds:["3"]});
   value.features=[{title:"New",description:""}];
   value.links=[{linkType:"DEPLOYMENT",label:"",url:"https://example.com/app",displayOrder:0}];
   const patch=buildProjectSaveBody(value,existing);
-  assert.deepEqual(patch.tagIds,["3"]);
+  assert.deepEqual(patch.techStackIds,["3"]);
   assert.deepEqual(patch.features,[{title:"New",description:""}]);
   assert.deepEqual(patch.links,[{linkType:"DEPLOYMENT",label:null,url:"https://example.com/app",displayOrder:0}]);
   assert.equal("id" in patch.features[0],false);
@@ -79,17 +79,17 @@ test("배열이 바뀌면 해당 배열 전체를 교체하며 visibility와 차
 
 test("본인 프로젝트 상세는 owner·visibility·isBlocked·expected ID와 태그 상태를 검증한다",()=>{
   const parsed=parseOwnProject(ownResponse(),"7","10");
-  assert.equal(parsed.owner.id,"7");assert.equal(parsed.tags[1].status,"INACTIVE");assert.equal(parsed.isBlocked,false);
+  assert.equal(parsed.owner.id,"7");assert.equal(parsed.techStacks[1].status,"INACTIVE");assert.equal(parsed.isBlocked,false);
   expectResponseError(()=>parseOwnProject(ownResponse(),"8","10"));
   expectResponseError(()=>parseOwnProject(ownResponse({id:"11"}),"7","10"));
   expectResponseError(()=>parseOwnProject(ownResponse({isBlocked:"false"}),"7","10"));
   expectResponseError(()=>parseOwnProject(ownResponse({visibilityStatus:"PRIVATE"}),"7","10"));
-  expectResponseError(()=>parseOwnProject(ownResponse({tags:[{id:"3",name:"A",status:"DELETED"}]}),"7","10"));
-  expectResponseError(()=>parseOwnProject(ownResponse({tags:[{id:"3",name:"A",status:"ACTIVE"},{id:"3",name:"A duplicate",status:"INACTIVE"}]}),"7","10"));
+  expectResponseError(()=>parseOwnProject(ownResponse({techStacks:[{id:"3",name:"A",status:"DELETED"}]}),"7","10"));
+  expectResponseError(()=>parseOwnProject(ownResponse({techStacks:[{id:"3",name:"A",status:"ACTIVE"},{id:"3",name:"A duplicate",status:"INACTIVE"}]}),"7","10"));
 });
 
 test("본인 프로젝트 목록은 각 항목 owner와 isBlocked 및 중복 ID를 검증한다",()=>{
-  const summary={id:"10",name:"Pebble",summary:"A project",owner:{id:"7",nickname:"Owner"},tags:[{id:"3",name:"TypeScript"}],lifecycleStatus:"IN_PROGRESS",publishedAt:null,createdAt:"2026-01-01T00:00:00Z",visibilityStatus:"HIDDEN",isBlocked:false};
+  const summary={id:"10",name:"Pebble",summary:"A project",owner:{id:"7",nickname:"Owner"},techStacks:[{id:"3",name:"TypeScript"}],lifecycleStatus:"IN_PROGRESS",publishedAt:null,createdAt:"2026-01-01T00:00:00Z",visibilityStatus:"HIDDEN",isBlocked:false};
   const response=data=>({data:{content:data,page:0,size:20,totalElements:data.length,totalPages:data.length?1:0,hasNext:false,hasPrevious:false}});
   assert.equal(parseOwnProjects(response([summary]),0,"7").content.length,1);
   expectResponseError(()=>parseOwnProjects(response([{...summary,owner:{...summary.owner,id:"8"}}]),0,"7"));

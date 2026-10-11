@@ -18,7 +18,7 @@ export function ChoicePicker({ label: fieldLabel, name, controlId, allLabel, opt
   }, [open]);
   const label = tags.find(tag => tag.id === value)?.name ?? (value ? `선택한 항목 (${value})` : allLabel);
   const select = (next: string) => { setValue(next); setOpen(false); trigger.current?.focus(); };
-  return <div ref={root} className="tag-picker" onKeyDown={event => {
+  return <div ref={root} className="tech-stack-filter" onKeyDown={event => {
     if (event.key === "Escape" && open) { event.preventDefault(); setOpen(false); trigger.current?.focus(); }
   }} onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false); }}>
     <input type="hidden" name={name} value={value} />

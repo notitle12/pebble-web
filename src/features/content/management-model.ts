@@ -1,7 +1,7 @@
 import {MemberApiError} from "../../lib/member-api.ts";
-import {validTagId} from "../../lib/list-query.ts";
+import {validId} from "../../lib/list-query.ts";
 export function contentPath(kind:"posts"|"projects",id:string):string {
-  if(!["posts","projects"].includes(kind)||!validTagId(id))throw new MemberApiError(400,"INVALID_REQUEST","콘텐츠 주소를 확인해 주세요.");
+  if(!["posts","projects"].includes(kind)||!validId(id))throw new MemberApiError(400,"INVALID_REQUEST","콘텐츠 주소를 확인해 주세요.");
   return `/${kind}/${id}`;
 }
 export function postPosition(value:string,total:number):number {

@@ -1,9 +1,9 @@
 import {MemberApiError} from "../../../lib/member-api.ts";
 import {guestJson} from "../../../lib/public-api.ts";
-import {validTagId,parsePage} from "../../../lib/list-query.ts";
+import {validId,parsePage} from "../../../lib/list-query.ts";
 import {parsePostPage} from "../../post/api/post-list.ts";
 export type Board={id:string;name:string;displayOrder:number;parentId?:string|null;children:Board[]};
-export function boardId(id:string){if(typeof id!=="string"||!validTagId(id))throw new MemberApiError(400,"INVALID_REQUEST","폴더 주소를 확인해 주세요.");return id;}
+export function boardId(id:string){if(typeof id!=="string"||!validId(id))throw new MemberApiError(400,"INVALID_REQUEST","폴더 주소를 확인해 주세요.");return id;}
 const record=(value:unknown):value is Record<string,unknown>=>typeof value==="object"&&value!==null&&!Array.isArray(value);
 function invalid(){return new MemberApiError(0,"INVALID_RESPONSE","폴더 응답을 확인하지 못했습니다.");}
 export function parseBoards(value:unknown,own=false):Board[]{
@@ -12,7 +12,7 @@ export function parseBoards(value:unknown,own=false):Board[]{
  function parse(items:unknown[],depth:number,parentId:string|null):Board[]{
   if(depth>3&&items.length)throw invalid();
   return items.map(item=>{
-   if(!record(item)||typeof item.id!=="string"||!validTagId(item.id)||seen.has(item.id)||typeof item.name!=="string"||!item.name.trim()||typeof item.displayOrder!=="number"||!Number.isInteger(item.displayOrder)||item.displayOrder<0||item.displayOrder>2147483647||!Array.isArray(item.children)||(own&&item.parentId!==parentId))throw invalid();
+   if(!record(item)||typeof item.id!=="string"||!validId(item.id)||seen.has(item.id)||typeof item.name!=="string"||!item.name.trim()||typeof item.displayOrder!=="number"||!Number.isInteger(item.displayOrder)||item.displayOrder<0||item.displayOrder>2147483647||!Array.isArray(item.children)||(own&&item.parentId!==parentId))throw invalid();
    seen.add(item.id);
    return {id:item.id,name:item.name,displayOrder:item.displayOrder,...(own?{parentId}:{}),children:parse(item.children,depth+1,item.id)};
   }).sort((a,b)=>a.displayOrder-b.displayOrder||(BigInt(a.id)<BigInt(b.id)?-1:1));
@@ -37,7 +37,7 @@ export function boardFailure(e:unknown){if(e instanceof MemberApiError&&e.status
 
 export function parseBoardWrite(value:unknown,expectedId?:string):Board{
  if(!record(value)||!record(value.data))throw invalid();const d=value.data;
- if(d.parentId!==null&&(typeof d.parentId!=="string"||!validTagId(d.parentId))||expectedId!==undefined&&d.id!==expectedId)throw invalid();
+ if(d.parentId!==null&&(typeof d.parentId!=="string"||!validId(d.parentId))||expectedId!==undefined&&d.id!==expectedId)throw invalid();
  const board=parseBoards({data:[{...d,parentId:null,children:[]}]},true)[0];
  return {...board,parentId:d.parentId as string|null};
 }

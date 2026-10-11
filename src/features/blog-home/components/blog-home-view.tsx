@@ -40,7 +40,7 @@ function Projects({ projects, configured, failed }: { projects: ProjectDetail[];
     const image = safeMediaUrl(project.media.find(item => item.mediaRole === "THUMBNAIL")?.url ?? null);
     return <li key={project.id}><Link href={`/projects/${project.id}`} prefetch={false} className="blog-home-project">
       {image ? <img src={image} alt="" width={112} height={76}/> : <span className="blog-project-placeholder" aria-hidden="true">{Array.from(project.name)[0]}</span>}
-      <span className="blog-home-project-copy"><strong>{project.name}</strong>{project.summary && <span>{project.summary}</span>}<span className="blog-home-tags">{project.tags.map(tag => <span key={tag.id}>{tag.name}</span>)}</span></span>
+      <span className="blog-home-project-copy"><strong>{project.name}</strong>{project.summary && <span>{project.summary}</span>}<span className="blog-home-tags">{project.techStacks.map(tag => <span key={tag.id}>{tag.name}</span>)}</span></span>
     </Link></li>;
   })}</ul>;
 }

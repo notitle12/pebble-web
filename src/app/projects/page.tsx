@@ -5,7 +5,7 @@ import { parseProjectQuery } from "@/features/project/api/project-list";
 import { ProjectList, ProjectsLoading } from "@/features/project/components/project-list";
 import { ProjectSearch } from "@/features/project/components/project-search";
 export const dynamic="force-dynamic";
-export const metadata={title:"프로젝트",description:"개발자의 공개 프로젝트를 기술 태그와 진행 상태로 찾아보세요."};
+export const metadata={title:"프로젝트",description:"개발자의 공개 프로젝트를 기술 스택와 진행 상태로 찾아보세요."};
 export default async function Projects({searchParams}:{searchParams:Promise<Record<string,string|string[]|undefined>>}) {
   const query=parseProjectQuery(await searchParams);
   return <><a className="skip-link" href="#main-content">본문으로 바로가기</a><SiteHeader projects /><main className="page-shell editorial-shell projects-shell" id="main-content"><section className="intro">{process.env.NODE_ENV==="development" && process.env.PEBBLE_PREVIEW_MODE==="mock" && <p className="preview-notice">목 데이터 미리보기 · 실제 프로젝트가 아닙니다</p>}<p className="page-eyebrow">THE WORK / 프로젝트</p><h1>아이디어가<br/><span>실제가 되기까지.</span></h1><p>직접 만든 것들, 해결한 문제들.<br/>개발자의 프로젝트와 그 과정을 살펴보세요.</p></section>
