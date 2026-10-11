@@ -11,8 +11,8 @@ export const dynamic = "force-dynamic";
 export default async function HomePage({searchParams}:{searchParams:Promise<Record<string,string|string[]|undefined>>}) {
   const query=parsePostQuery(await searchParams);
   // 기존 키워드 검색 링크는 새 검색 화면으로 연결하되 분류 URL은 유지한다.
-  if(query?.q && !query.tagId && !query.categoryId) redirect(searchHref({q:query.q,type:"posts",page:query.page}));
-  const filtered=!!(query?.tagId||query?.categoryId);
+  if(query?.q && !query.categoryId) redirect(searchHref({q:query.q,type:"posts",page:query.page}));
+  const filtered=!!(query?.categoryId);
   return <>
     <a className="skip-link" href="#main-content">본문으로 바로가기</a><SiteHeader home/>
     <main id="main-content" className="page-shell home-shell discovery-shell">

@@ -1,11 +1,11 @@
 import {MemberApiError,responseData} from "../../../lib/member-api.ts";
 import {guestJson} from "../../../lib/public-api.ts";
-import {validTagId} from "../../../lib/list-query.ts";
+import {validId} from "../../../lib/list-query.ts";
 export type LikeTarget="posts"|"projects";
 export type LikeState={likeCount:number;likedByMe:boolean};
 export type LikeRequest=(path:string,options?:{method?:string})=>Promise<unknown>;
 export function likePath(target:LikeTarget,id:string,write=false){
-  if(!["posts","projects"].includes(target)||typeof id!=="string"||!validTagId(id))throw new MemberApiError(400,"INVALID_REQUEST","좋아요 대상 주소를 확인해 주세요.");
+  if(!["posts","projects"].includes(target)||typeof id!=="string"||!validId(id))throw new MemberApiError(400,"INVALID_REQUEST","좋아요 대상 주소를 확인해 주세요.");
   return `/${target}/${id}${write?"/like":""}`;
 }
 export function parseLikeState(value:unknown,expectedId:string,guest=false):LikeState{

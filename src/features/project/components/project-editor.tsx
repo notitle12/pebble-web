@@ -1,8 +1,8 @@
 "use client";
 
 import { useId, useRef } from "react";
-import { PostClassification } from "../../post/components/post-classification";
-import type { ProjectTag } from "../api/member-projects";
+import { TechStackSelection } from "../../tech-stack/components/tech-stack-selection";
+import type { ProjectTechStack } from "../api/member-projects";
 import type { FeatureInput, LinkInput, ProjectEditorValue, ProjectLifecycle, ProjectVisibility } from "../project-editor-model";
 
 type Props = {
@@ -11,7 +11,7 @@ type Props = {
   busy: boolean;
   visibility: ProjectVisibility;
   blocked: boolean;
-  existingTags?: ProjectTag[];
+  existingTechStacks?: ProjectTechStack[];
   onSave: (visibility: ProjectVisibility) => Promise<void>;
 };
 
@@ -22,7 +22,7 @@ const linkTypes: { value: LinkInput["linkType"]; label: string }[] = [
   { value: "OTHER", label: "기타" },
 ];
 
-export function ProjectEditor({ value, onChange, busy, visibility, blocked, existingTags = [], onSave }: Props) {
+export function ProjectEditor({ value, onChange, busy, visibility, blocked, existingTechStacks = [], onSave }: Props) {
   const id = useId();
   const currentValue = useRef(value);
   currentValue.current = value;
@@ -92,7 +92,7 @@ export function ProjectEditor({ value, onChange, busy, visibility, blocked, exis
         </label>
       </div>
 
-      <section className="post-classification" aria-label="프로젝트 상태와 기술 태그">
+      <section className="post-classification" aria-label="프로젝트 상태와 기술 스택">
         <div className="post-classification-field">
           <label htmlFor={`${id}-lifecycle`}>진행 상태</label>
           <select id={`${id}-lifecycle`} value={value.lifecycleStatus} onChange={event => update("lifecycleStatus", event.target.value as ProjectLifecycle)}>
@@ -108,15 +108,8 @@ export function ProjectEditor({ value, onChange, busy, visibility, blocked, exis
           <label htmlFor={`${id}-completed`}>완료일</label>
           <input id={`${id}-completed`} type="date" value={value.completedOn} onInput={event => update("completedOn", event.currentTarget.value)} onChange={event => update("completedOn", event.target.value)} />
         </div>
-        <PostClassification
-          categoryId={null}
-          tagIds={value.tagIds}
-          existingTags={existingTags}
-          onChange={patch => { if (patch.tagIds) onChange({ ...currentValue.current, tagIds: patch.tagIds }); }}
-          showCategory={false}
-          disabled={busy}
-          ariaLabel="프로젝트 기술 태그"
-        />
+        <TechStackSelection selected={value.techStackIds} existing={existingTechStacks} onChange={techStackIds=>onChange({...currentValue.current,techStackIds})} disabled={busy}/>
+
       </section>
 
       <section aria-labelledby={`${id}-features-title`}>

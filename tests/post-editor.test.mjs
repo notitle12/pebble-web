@@ -75,7 +75,7 @@ test("normal saves preserve existing visibility and publication must be explicit
   assert.equal(buildPostSaveBody(value,{visibilityStatus:"HIDDEN",isBlocked:false},"PUBLIC").visibilityStatus,"PUBLIC");
   assert.equal(buildPostSaveBody(value,{visibilityStatus:"PUBLIC",isBlocked:false},"HIDDEN").visibilityStatus,"HIDDEN");
   const body=buildPostSaveBody(value,undefined,"PUBLIC");assert.equal(body.visibilityStatus,"PUBLIC");
-  for(const field of ["isBlocked","categoryId","boardId","projectId","tagIds","slug"])assert.equal(field in body,false);
+  for(const field of ["isBlocked","categoryId","boardId","projectId","tags","slug"])assert.equal(field in body,false);
 });
 test("blocked publication and invalid content cannot be submitted",()=>{
   const value={title:"차단된 글",summary:"",blocks:[createEditorBlock("TEXT")]};
@@ -90,30 +90,30 @@ test("blocked publication and invalid content cannot be submitted",()=>{
 
 test("classification PATCH omits unchanged links, removes explicitly, and preserves tag order",()=>{
  const base={title:"분류 글",summary:"",blocks:[createEditorBlock("TEXT")]};
- const existing={visibilityStatus:"PUBLIC",isBlocked:false,category:{id:"100"},tags:[{id:"200"},{id:"300"}]};
- const unchanged={...base,categoryId:"100",tagIds:["200","300"]};
+ const existing={visibilityStatus:"PUBLIC",isBlocked:false,category:{id:"100"},tags:["200","300"]};
+ const unchanged={...base,categoryId:"100",tags:["200","300"]};
  const body=buildPostSaveBody(unchanged,existing);
- assert.equal("categoryId" in body,false);assert.equal("tagIds" in body,false);
- const removed=buildPostSaveBody({...base,categoryId:null,tagIds:[]},existing);
- assert.equal(removed.categoryId,null);assert.deepEqual(removed.tagIds,[]);
- const reordered=buildPostSaveBody({...unchanged,tagIds:["300","200"]},existing);
- assert.deepEqual(reordered.tagIds,["300","200"]);assert.equal("categoryId" in reordered,false);
- const created=buildPostSaveBody(unchanged);assert.equal(created.categoryId,"100");assert.deepEqual(created.tagIds,["200","300"]);
+ assert.equal("categoryId" in body,false);assert.equal("tags" in body,false);
+ const removed=buildPostSaveBody({...base,categoryId:null,tags:[]},existing);
+ assert.equal(removed.categoryId,null);assert.deepEqual(removed.tags,[]);
+ const reordered=buildPostSaveBody({...unchanged,tags:["300","200"]},existing);
+ assert.deepEqual(reordered.tags,["300","200"]);assert.equal("categoryId" in reordered,false);
+ const created=buildPostSaveBody(unchanged);assert.equal(created.categoryId,"100");assert.deepEqual(created.tags,["200","300"]);
  assert.equal("boardId" in created,false);assert.equal("slug" in created,false);
 });
 test("classification restores saved ids and rejects duplicate or malformed selection",()=>{
- const post={...basePost,category:{id:"100"},tags:[{id:"300",name:"태그"}],blocks:[{...createEditorBlock("TEXT"),displayOrder:0}]};
- const value=editorValueFromPost(post);assert.equal(value.categoryId,"100");assert.deepEqual(value.tagIds,["300"]);
- assert.throws(()=>buildPostSaveBody({...value,tagIds:["300","300"]}),/태그/);
+ const post={...basePost,category:{id:"100"},tags:["태그"],blocks:[{...createEditorBlock("TEXT"),displayOrder:0}]};
+ const value=editorValueFromPost(post);assert.equal(value.categoryId,"100");assert.deepEqual(value.tags,["태그"]);
+ assert.deepEqual(buildPostSaveBody({...value,tags:["300","300"]}).tags,["300"]);
  assert.throws(()=>buildPostSaveBody({...value,categoryId:"0"}),/카테고리/);
- assert.throws(()=>buildPostSaveBody({...value,tagIds:["9223372036854775808"]}),/태그/);
+ assert.throws(()=>buildPostSaveBody({...value,tags:["x".repeat(51)]}),/태그/);
 });
 
 test("own post classification parser preserves inactive links and refuses incomplete metadata",()=>{
- const data={...basePost,boardId:null,projectId:null,visibilityStatus:"HIDDEN",isBlocked:false,category:{id:"100",name:"기존 분류",status:"INACTIVE"},tags:[{id:"200",name:"기존 태그",status:"INACTIVE"}],blocks:[{type:"TEXT",content:"본문",language:null,title:null,displayOrder:0}]};
- const post=parseOwnPost({data});assert.equal(post.category.status,"INACTIVE");assert.equal(post.tags[0].status,"INACTIVE");
+ const data={...basePost,boardId:null,projectId:null,visibilityStatus:"HIDDEN",isBlocked:false,category:{id:"100",name:"기존 분류",status:"INACTIVE"},tags:["기존 태그"],blocks:[{type:"TEXT",content:"본문",language:null,title:null,displayOrder:0}]};
+ const post=parseOwnPost({data});assert.equal(post.category.status,"INACTIVE");assert.equal(post.tags[0],"기존 태그");
  assert.throws(()=>parseOwnPost({data:{...data,category:undefined}}));
- assert.throws(()=>parseOwnPost({data:{...data,tags:[{id:"200",name:"태그"}]}}));
+ assert.throws(()=>parseOwnPost({data:{...data,tags:[123]}}));
  assert.throws(()=>parseOwnPost({data:{...data,tags:[...data.tags,...data.tags]}}));
 });
 

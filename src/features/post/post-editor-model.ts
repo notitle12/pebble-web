@@ -1,5 +1,5 @@
-import { normalizeTagName } from "../tag/api/create-tag.ts";
-import { validTagId } from "../../lib/list-query.ts";
+import { normalizeTags } from "./post-tags.ts";
+import { validId } from "../../lib/list-query.ts";
 import { parseArchitectureSpec, parseTableSpec, type ArchitectureSpec, type PostDetail, type TableSpec } from "./api/post-list.ts";
 import {bodyImageId,representativeImageSrc,postImageSources} from "./post-images.ts";
 import { derivePostExcerpt } from "./post-excerpt.ts";
@@ -13,8 +13,7 @@ export type PostEditorValue = {
   categoryId?: string | null;
   projectId?: string | null;
   boardId?: string | null;
-  tagIds?: string[];
-  pendingTagNames?: string[];
+  tags?: string[];
   slug?: string;
   thumbnailImageSrc?: string | null;
   blocks: EditorBlock[];
@@ -35,7 +34,7 @@ export function editorValueFromPost(post: PostDetail & {category?: {id:string} |
     categoryId: post.category?.id ?? null,
     projectId: post.projectId ?? null,
     boardId: post.boardId ?? null,
-    tagIds: post.tags.map(tag => tag.id),
+    tags: [...post.tags],
     thumbnailImageSrc: post.thumbnailImageId ? postImageSources(post.blocks).find(src=>bodyImageId(src)===post.thumbnailImageId)??null : null,
     slug: /^[1-9]\d*$/.test(post.urlKey) ? "" : post.urlKey,
     blocks: post.blocks.map((block, index) => ({
@@ -66,12 +65,10 @@ export function validateEditorValue(value: PostEditorValue): string[] {
   if (!value.title.trim()) errors.push("제목을 입력해 주세요.");
   if (!safe(value.title) || length(value.title) > 200) errors.push("제목은 올바른 Unicode로 된 200자 이하여야 합니다.");
   if (!safe(value.summary) || length(value.summary) > 500) errors.push("요약은 올바른 Unicode로 된 500자 이하여야 합니다.");
-  if (value.boardId != null && !validTagId(value.boardId)) errors.push("글 폴더를 다시 선택해 주세요.");
-  if (value.projectId != null && !validTagId(value.projectId)) errors.push("프로젝트를 다시 선택해 주세요.");
-  if (value.categoryId != null && !validTagId(value.categoryId)) errors.push("카테고리를 다시 선택해 주세요.");
-  if (value.tagIds && (value.tagIds.some(id => !validTagId(id)) || new Set(value.tagIds).size !== value.tagIds.length)) errors.push("태그를 중복 없이 다시 선택해 주세요.");
-  try { if (value.pendingTagNames && (value.pendingTagNames.some(name => normalizeTagName(name) !== name) || new Set(value.pendingTagNames).size !== value.pendingTagNames.length)) errors.push("태그를 중복 없이 다시 입력해 주세요."); }
-  catch { errors.push("태그 이름을 확인해 주세요."); }
+  if (value.boardId != null && !validId(value.boardId)) errors.push("글 폴더를 다시 선택해 주세요.");
+  if (value.projectId != null && !validId(value.projectId)) errors.push("프로젝트를 다시 선택해 주세요.");
+  if (value.categoryId != null && !validId(value.categoryId)) errors.push("카테고리를 다시 선택해 주세요.");
+  try { normalizeTags(value.tags ?? []); } catch (error) { errors.push(error instanceof Error ? error.message : "태그를 확인해 주세요."); }
   if (!value.blocks.length) errors.push("본문 블록을 하나 이상 추가해 주세요.");
   for (const [index, block] of value.blocks.entries()) {
     if (!block.valid) errors.push(`${index + 1}번째 블록의 입력을 확인해 주세요.`);
@@ -102,10 +99,9 @@ export function buildPostBody(value: PostEditorValue) {
 
 export type PostVisibility = "PUBLIC" | "HIDDEN";
 export type PostSaveOptions={draft?:boolean;visibility?:PostVisibility;finalize?:boolean;slug?:string};
-export function buildPostSaveBody(value:PostEditorValue,existing?:{visibilityStatus:PostVisibility;isBlocked:boolean;draft?:boolean;urlKey?:string;boardId?:string|null;projectId?:string|null;category?:{id:string}|null;tags?:{id:string}[]},visibilityOrOptions?:PostVisibility|PostSaveOptions){
+export function buildPostSaveBody(value:PostEditorValue,existing?:{visibilityStatus:PostVisibility;isBlocked:boolean;draft?:boolean;urlKey?:string;boardId?:string|null;projectId?:string|null;category?:{id:string}|null;tags?:string[]},visibilityOrOptions?:PostVisibility|PostSaveOptions){
   const options=typeof visibilityOrOptions==="string"?{visibility:visibilityOrOptions}:visibilityOrOptions??{};
   const visibility=options.visibility;
-  if(options.draft!==true && value.pendingTagNames?.length)throw new Error("새 태그를 저장한 뒤 발행해 주세요.");
   const errors=validateEditorValue(value);
   if(errors.length)throw new Error(errors[0]);
   if(visibility!==undefined && visibility!=="PUBLIC" && visibility!=="HIDDEN")throw new Error("공개 또는 비공개를 선택해 주세요.");
@@ -116,10 +112,10 @@ export function buildPostSaveBody(value:PostEditorValue,existing?:{visibilitySta
   if(existing && existing.draft===false && slug && slug!==existing.urlKey)throw new Error("게시가 완료된 글 주소는 변경할 수 없습니다.");
   if(options.draft===true && existing && existing.draft===false)throw new Error("게시가 완료된 글을 임시 글로 되돌릴 수 없습니다.");
   if(options.finalize && existing && existing.draft===false && options.draft!==false)throw new Error("게시 상태가 이미 완료된 글입니다.");
-  const classification: {boardId?:string|null;projectId?:string|null;categoryId?:string|null;tagIds?:string[]} = {};
+  const classification: {boardId?:string|null;projectId?:string|null;categoryId?:string|null;tags?:string[]} = {};
   if(value.boardId !== undefined && (!existing || value.boardId !== (existing.boardId ?? null))) classification.boardId=value.boardId;
   if(value.projectId !== undefined && (!existing || value.projectId !== (existing.projectId ?? null))) classification.projectId=value.projectId;
   if(value.categoryId !== undefined && (!existing || value.categoryId !== (existing.category?.id ?? null))) classification.categoryId=value.categoryId;
-  if(value.tagIds !== undefined && (!existing || JSON.stringify(value.tagIds) !== JSON.stringify(existing.tags?.map(tag=>tag.id) ?? []))) classification.tagIds=[...value.tagIds];
+  if(value.tags !== undefined && (!existing || JSON.stringify(value.tags) !== JSON.stringify(existing.tags ?? []))) classification.tags=normalizeTags(value.tags);
   return {...buildPostBody(value),...classification,...(!existing?{visibilityStatus:visibility??"HIDDEN"}:visibility!==undefined?{visibilityStatus:visibility}:{}),...(options.draft!==undefined?{draft:options.draft}:{}),...(options.finalize?{draft:false}:{}),...(slug && options.draft!==true && (!existing || existing.draft===true)?{slug}:{})};
 }

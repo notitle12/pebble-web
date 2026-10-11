@@ -5,7 +5,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { SiteHeader } from "@/components/site-header";
 import { GuestApiError } from "@/lib/public-api";
-import { parsePage,validTagId } from "@/lib/list-query";
+import { parsePage,validId } from "@/lib/list-query";
 import { blogHref, getPublicBlogPosts, getPublicBlogProfile, type PublicBlogProfile } from "@/features/post/api/public-blog";
 import {safeMediaUrl} from "@/features/media/model";
 import {getPublicMemberProjects,type ProjectPage} from "@/features/project/api/project-list";
@@ -41,7 +41,7 @@ export default async function PublicBlogPage({ params, searchParams }: {
   const q=typeof query.q==="string"?query.q.trim():undefined;
   const searched=Boolean(q?.length);
   const invalidSearch=query.q!==undefined&&(q===undefined||Array.from(q).length>200)||searched&&(Boolean(selected)||projectView||boardView);
-  if (page === null || Object.keys(query).some(key => !["page","boardId","view","q"].includes(key)) || query.boardId!==undefined&&(!selected||!validTagId(selected)) || query.view!==undefined&&!projectView&&!boardView&&query.view!=="posts"&&query.view!=="home" || (projectView||boardView)&&query.boardId!==undefined || query.view==="home"&&(query.boardId!==undefined||searched||query.page!==undefined) || invalidSearch) {
+  if (page === null || Object.keys(query).some(key => !["page","boardId","view","q"].includes(key)) || query.boardId!==undefined&&(!selected||!validId(selected)) || query.view!==undefined&&!projectView&&!boardView&&query.view!=="posts"&&query.view!=="home" || (projectView||boardView)&&query.boardId!==undefined || query.view==="home"&&(query.boardId!==undefined||searched||query.page!==undefined) || invalidSearch) {
     return <><SiteHeader /><main className="page-shell"><InvalidPage search={Boolean(invalidSearch)} /></main></>;
   }
 

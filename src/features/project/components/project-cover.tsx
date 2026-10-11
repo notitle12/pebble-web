@@ -1,12 +1,12 @@
 type ProjectCoverProps = {
   title: string;
-  tags?: string[];
+  techStacks?: string[];
   index: number;
 };
 
-export function ProjectCover({ title, tags = [], index }: ProjectCoverProps) {
-  const firstTag = tags[0];
-  const isFrontend = tags.some((tag) => /react|frontend|front-end/i.test(tag));
+export function ProjectCover({ title, techStacks = [], index }: ProjectCoverProps) {
+  const firstTechStack = techStacks[0];
+  const isFrontend = techStacks.some((tag) => /react|frontend|front-end/i.test(tag));
   const number = String(index).padStart(2, "0");
 
   return (
@@ -38,7 +38,7 @@ export function ProjectCover({ title, tags = [], index }: ProjectCoverProps) {
       </svg>
       <span className="project-cover-index">PROJECT {number}</span>
       <span className="project-cover-title">{title}</span>
-      {firstTag && <span className="project-cover-caption">{firstTag}</span>}
+      {firstTechStack && <span className="project-cover-caption">{firstTechStack}</span>}
     </div>
   );
 }
