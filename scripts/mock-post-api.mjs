@@ -21,7 +21,7 @@ export const mockPosts = Array.from({ length: 21 }, (_, index) => {
     id: String(721389012345678901n + BigInt(index)), urlKey: `note-${index + 1}`, title: index < 6 ? title : `${title} (${index + 1})`, summary,
     author: { id: String(721389012345679000n + BigInt(index % samples.length)), handle: `writer-${index % samples.length + 1}`, nickname, blogName: null },
     category:{id:["102","202","302"][index%3],name:["Spring","React","Cloudflare"][index%3]},
-    tags: names.map(name => ({ id: mockTags.find(tag => tag.name === name).id, name })),
+    tags: names,
     likeCount: [32,15,8,4,0,1][index % samples.length], likedByMe: false,
     publishedAt: index === 5 ? null : new Date(Date.UTC(2026, 9, 3 - index, 3)).toISOString(),
     createdAt: new Date(Date.UTC(2026, 9, 3 - index, 3)).toISOString(),
@@ -33,7 +33,7 @@ export const mockProjects = Array.from({length:21},(_,i)=>({
   name:["Pebble 개발 기록 플랫폼","작은 팀을 위한 일정 관리","R2 이미지 아카이브"][i%3]+(i>2 ? ` (${i+1})` : ""),
   summary:["개발자의 글과 프로젝트를 한곳에 모아 공유하는 서비스입니다.","함께 작업할 때 필요한 일정과 기록을 간결하게 정리했습니다.","이미지를 저장하고 만료되는 URL을 안전하게 관리합니다."][i%3],
   likeCount:0,likedByMe:false,description:"목 프로젝트 상세 소개",lifecycleStatus:i%2 ? "COMPLETED" : "IN_PROGRESS",
-  tags:[mockTags[i%mockTags.length]],publishedAt:new Date(Date.UTC(2026,9,3-i,3)).toISOString(),createdAt:new Date(Date.UTC(2026,9,3-i,3)).toISOString()
+  techStacks:[mockTags[i%mockTags.length]],publishedAt:new Date(Date.UTC(2026,9,3-i,3)).toISOString(),createdAt:new Date(Date.UTC(2026,9,3-i,3)).toISOString()
 }));
 
 export function createMockApi(state = "normal") {
@@ -44,7 +44,7 @@ export function createMockApi(state = "normal") {
     const detail = url.pathname.match(/^\/api\/v1\/blogs\/([^/]+)\/posts\/([^/]+)$/);
     const numericPost = url.pathname.match(/^\/api\/v1\/posts\/([1-9]\d*)$/);
     const projectDetail=url.pathname.match(/^\/api\/v1\/projects\/([1-9]\d*)(\/posts)?$/);
-    if (request.method !== "GET" || (!projectDetail && !detail && !numericPost && !["/api/v1/posts", "/api/v1/posts/search", "/api/v1/tags", "/api/v1/categories", "/api/v1/projects", "/api/v1/projects/search"].includes(url.pathname))) {
+    if (request.method !== "GET" || (!projectDetail && !detail && !numericPost && !["/api/v1/posts", "/api/v1/posts/search", "/api/v1/tech-stacks", "/api/v1/categories", "/api/v1/projects", "/api/v1/projects/search"].includes(url.pathname))) {
       response.writeHead(404); response.end(JSON.stringify({ error: { code: "NOT_FOUND" } })); return;
     }
     if (state === "slow") await new Promise(resolve => setTimeout(resolve, 2500));
@@ -73,7 +73,7 @@ export function createMockApi(state = "normal") {
         {type:"TEXT",content:"검증 결과를 기록하고 다음 개선점을 정리합니다.",language:null,title:null,displayOrder:2}
       ]}})); return;
     }
-    if (url.pathname === "/api/v1/tags") { response.end(JSON.stringify({ data: state === "empty" ? [] : mockTags })); return; }
+    if (url.pathname === "/api/v1/tech-stacks") { response.end(JSON.stringify({ data: state === "empty" ? [] : mockTags })); return; }
     if (url.pathname === "/api/v1/categories") { response.end(JSON.stringify({data: state === "empty" ? [] : mockCategories})); return; }
     const page = Number(url.searchParams.get("page") ?? "0");
     const size = Number(url.searchParams.get("size") ?? "20");
@@ -82,12 +82,12 @@ export function createMockApi(state = "normal") {
     }
     const q = url.searchParams.get("q")?.trim().toLocaleLowerCase() ?? "";
     if (url.pathname.endsWith("/search") && !q) { response.writeHead(400); response.end(JSON.stringify({ error: { code: "VALIDATION_ERROR" } })); return; }
-    const tagId = url.searchParams.get("tagId");
+    const techStackId = url.searchParams.get("techStackId");
     if (url.pathname.startsWith("/api/v1/projects")) {
       const lifecycleStatus=url.searchParams.get("lifecycleStatus");
       const projects=(state === "empty" ? [] : mockProjects).filter(project=>
-        (!q || [project.name,project.summary,project.description,...project.tags.map(tag=>tag.name)].some(text=>text.toLowerCase().includes(q)))
-        && (!tagId || project.tags.some(tag=>tag.id===tagId)) && (!lifecycleStatus || project.lifecycleStatus===lifecycleStatus));
+        (!q || [project.name,project.summary,project.description,...project.techStacks.map(tag=>tag.name)].some(text=>text.toLowerCase().includes(q)))
+        && (!techStackId || project.techStacks.some(tag=>tag.id===techStackId)) && (!lifecycleStatus || project.lifecycleStatus===lifecycleStatus));
       const totalPages=Math.ceil(projects.length/size);
       const content=projects.slice(page*size,(page+1)*size).map(({description,...project})=>project);
       response.end(JSON.stringify({data:{content,page,size,totalElements:projects.length,totalPages,hasNext:page+1<totalPages,hasPrevious:page>0}}));return;
@@ -96,8 +96,8 @@ export function createMockApi(state = "normal") {
     const categoryIds=categoryId ? [categoryId,...(mockCategories.find(category=>category.id===categoryId)?.children.map(child=>child.id)??[])] : [];
     // 목 글은 본문을 갖지 않는다. 제목·태그·연결 분류와 상위 분류를 검색한다.
     const posts = (state === "empty" ? [] : mockPosts).filter(post =>
-      (!q || [post.title, ...post.tags.map(tag => tag.name), ...mockCategories.filter(category=>category.id===post.category.id || category.children.some(child=>child.id===post.category.id)).flatMap(category=>[category.name,...category.children.filter(child=>child.id===post.category.id).map(child=>child.name)])].some(text => text.toLocaleLowerCase().includes(q)))
-      && (!tagId || post.tags.some(tag => tag.id === tagId)) && (!categoryId || categoryIds.includes(post.category.id)));
+      (!q || [post.title, ...mockCategories.filter(category=>category.id===post.category.id || category.children.some(child=>child.id===post.category.id)).flatMap(category=>[category.name,...category.children.filter(child=>child.id===post.category.id).map(child=>child.name)])].some(text => text.toLocaleLowerCase().includes(q)))
+      && (!categoryId || categoryIds.includes(post.category.id)));
 
     const totalPages = Math.ceil(posts.length / size);
     response.end(JSON.stringify({ data: {

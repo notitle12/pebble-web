@@ -87,7 +87,7 @@ test("Post 상세의 선택적 좋아요 필드는 유효값을 보존하고 잘
 
 test("공개 글·프로젝트 목록은 집계를 보존하고 잘못된 값은 거부한다",()=>{
  const post={id:"10",urlKey:"note-1",title:"글",summary:null,author:{id:"20",handle:"writer-1",nickname:"작성자",blogName:null},tags:[],publishedAt:null,createdAt:"2026-10-04T00:00:00Z",likeCount:1234,likedByMe:false};
- const project={id:"30",name:"프로젝트",summary:null,owner:{id:"20",nickname:"작성자"},tags:[],lifecycleStatus:"IN_PROGRESS",publishedAt:null,createdAt:"2026-10-04T00:00:00Z",likeCount:0,likedByMe:false};
+ const project={id:"30",name:"프로젝트",summary:null,owner:{id:"20",nickname:"작성자"},techStacks:[],lifecycleStatus:"IN_PROGRESS",publishedAt:null,createdAt:"2026-10-04T00:00:00Z",likeCount:0,likedByMe:false};
  const envelope=item=>({data:{content:[item],page:0,size:20,totalElements:1,totalPages:1,hasNext:false,hasPrevious:false}});
  for(const [parser,item] of [[parsePostPage,post],[parseProjectPage,project]]){
    assert.equal(parser(envelope(item),0).content[0].likeCount,item.likeCount);

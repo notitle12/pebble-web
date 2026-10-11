@@ -1,5 +1,5 @@
 import { GuestApiError, guestJson } from "../../../lib/public-api.ts";
-import { validTagId } from "../../../lib/list-query.ts";
+import { validId } from "../../../lib/list-query.ts";
 
 export type BlogVisits = { totalVisitors: number; todayVisitors: number; date: string; timeZone: "Asia/Seoul" };
 export type BlogSiteLink = { id: string; label: string; url: string; logoUrl: string | null };
@@ -50,7 +50,7 @@ export function parseBlogLinks(value: unknown): BlogLinks {
   const ids = new Set<string>();
   const sites = data.sites.map(item => {
     const site = record(item);
-    if (typeof site.id !== "string" || !validTagId(site.id) || ids.has(site.id)
+    if (typeof site.id !== "string" || !validId(site.id) || ids.has(site.id)
       || !validSiteLabel(site.label)
       || !validExternalUrl(site.url) || !(site.logoUrl === null || validExternalUrl(site.logoUrl))) throw new GuestApiError("response");
     ids.add(site.id);

@@ -1,6 +1,6 @@
 import { GuestApiError, guestJson } from "../../../lib/public-api.ts";
 import { MemberApiError, responseData } from "../../../lib/member-api.ts";
-import { validTagId } from "../../../lib/list-query.ts";
+import { validId } from "../../../lib/list-query.ts";
 
 export const HOME_SECTION_KEYS = ["ACTIVITY", "TECH_STACKS", "PROJECTS", "RECENT_POSTS"] as const;
 export type HomeSectionKey = typeof HOME_SECTION_KEYS[number];
@@ -39,7 +39,7 @@ export function parseBlogHomeSettings(value: unknown): BlogHomeSettings {
   });
   if (new Set(stacks.map(item => item.normalize("NFKC").toLocaleLowerCase("und"))).size !== stacks.length) throw new GuestApiError("response");
   const ids = data.featuredProjectIds;
-  if (!ids.every(id => typeof id === "string" && validTagId(id)) || new Set(ids).size !== ids.length) throw new GuestApiError("response");
+  if (!ids.every(id => typeof id === "string" && validId(id)) || new Set(ids).size !== ids.length) throw new GuestApiError("response");
   return { sections, techStacks: stacks, featuredProjectIds: ids as string[] };
 }
 

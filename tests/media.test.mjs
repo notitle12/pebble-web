@@ -5,7 +5,7 @@ import {mediaFailure,mediaFileError,parseProjectMedia,safeMediaUrl} from "../src
 
 import {parseOwnedMedia} from "../src/features/media/owned-media.ts";
 
-const project={id:"10",name:"Pebble",summary:null,owner:{id:"7",nickname:"Owner"},tags:[],lifecycleStatus:"IN_PROGRESS",publishedAt:null,createdAt:"2026-10-03T00:00:00Z",description:null,architectureDescription:null,executionInstructions:null,startedOn:null,completedOn:null,features:[],links:[],visibilityStatus:"HIDDEN",isBlocked:false};
+const project={id:"10",name:"Pebble",summary:null,owner:{id:"7",nickname:"Owner"},techStacks:[],lifecycleStatus:"IN_PROGRESS",publishedAt:null,createdAt:"2026-10-03T00:00:00Z",description:null,architectureDescription:null,executionInstructions:null,startedOn:null,completedOn:null,features:[],links:[],visibilityStatus:"HIDDEN",isBlocked:false};
 const media={id:"11",mediaRole:"SCREENSHOT",altText:null,displayOrder:0,url:null,thumbnailUrl:null,createdAt:"2026-10-03T00:00:00Z"};
 
 test("project media validates the contract and keeps hidden signed URLs nullable",()=>{
