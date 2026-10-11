@@ -1,5 +1,6 @@
 /** ERD and specifications edit this one document; references use stable IDs. */
-export type DbReference = {tableId:string;columnId:string};
+export type DbNotation = 'IE'|'BARKER'|'CHEN';
+export type DbReference = {tableId:string;columnId:string;notation?:DbNotation;sourceRequired?:boolean};
 export type DbColumn = {id:string;name:string;dataType:string;nullable:boolean;primaryKey:boolean;unique:boolean;description:string;reference:DbReference|null};
 export type DbTable = {id:string;name:string;description:string;position:{x:number;y:number};columns:DbColumn[]};
 export type DatabaseSchema = {schemaVersion:1;display:'BOTH'|'ERD'|'SPEC';tables:DbTable[]};
@@ -16,7 +17,7 @@ export function parseDatabaseSchema(value:unknown):DatabaseSchema{
   const name=t.name.trim().toLowerCase();if(tableIds.has(t.id)||tableNames.has(name))fail();tableIds.add(t.id);tableNames.add(name);
   const ids=new Set<string>(),names=new Set<string>();
   for(const c of t.columns){
-   if(!object(c)||!keys(c,['id','name','dataType','nullable','primaryKey','unique','description','reference'])||!id(c.id)||!text(c.name,100,true)||!text(c.dataType,100,true)||!text(c.description,500)||typeof c.nullable!=='boolean'||typeof c.primaryKey!=='boolean'||typeof c.unique!=='boolean'||(c.primaryKey&&c.nullable)||!(c.reference===null||object(c.reference)&&keys(c.reference,['tableId','columnId'])&&id(c.reference.tableId)&&id(c.reference.columnId)))fail();
+   if(!object(c)||!keys(c,['id','name','dataType','nullable','primaryKey','unique','description','reference'])||!id(c.id)||!text(c.name,100,true)||!text(c.dataType,100,true)||!text(c.description,500)||typeof c.nullable!=='boolean'||typeof c.primaryKey!=='boolean'||typeof c.unique!=='boolean'||(c.primaryKey&&c.nullable)||!(c.reference===null||object(c.reference)&&keys(c.reference,['tableId','columnId','notation','sourceRequired'])&&id(c.reference.tableId)&&id(c.reference.columnId)&&(c.reference.notation===undefined||['IE','BARKER','CHEN'].includes(String(c.reference.notation)))&&(c.reference.sourceRequired===undefined||typeof c.reference.sourceRequired==='boolean')))fail();
    const n=c.name.trim().toLowerCase();if(ids.has(c.id)||names.has(n))fail();ids.add(c.id);names.add(n);
   }
  }
@@ -41,3 +42,7 @@ function clearReferences(schema:DatabaseSchema,tableId:string,columnId?:string):
 export function removeDbTable(schema:DatabaseSchema,id:string):DatabaseSchema{return clearReferences({...schema,tables:schema.tables.filter(t=>t.id!==id)},id);}
 export function removeDbColumn(schema:DatabaseSchema,tableId:string,columnId:string):DatabaseSchema{return clearReferences({...schema,tables:schema.tables.map(t=>t.id!==tableId?t:{...t,columns:t.columns.filter(c=>c.id!==columnId)})},tableId,columnId);}
 export function schemaTableSpec(schema:DatabaseSchema,t:DbTable){return {schemaVersion:1 as const,tableName:t.name,description:t.description,columns:t.columns.map(c=>{const target=schema.tables.find(t=>t.id===c.reference?.tableId);const column=target?.columns.find(k=>k.id===c.reference?.columnId);return {name:c.name,dataType:c.dataType,nullable:c.nullable,primaryKey:c.primaryKey,foreignKey:target&&column?`${target.name}.${column.name}`:null,description:c.description};})};}
+
+export function relationCardinality(table:DbTable,column:DbColumn){
+ return {many:!(column.unique||column.primaryKey&&table.columns.filter(c=>c.primaryKey).length===1),sourceRequired:column.reference?.sourceRequired??false,targetRequired:!column.nullable,notation:column.reference?.notation??'IE'};
+}
