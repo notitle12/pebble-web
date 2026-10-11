@@ -1,3 +1,4 @@
+import {parseDatabaseSchema} from "./database-schema.ts";
 import type { JSONContent } from "@tiptap/core";
 import type { EditorBlock } from "./post-editor-model.ts";
 import { parseArchitectureSpec, parseTableSpec } from "./api/post-list.ts";
@@ -7,17 +8,17 @@ export const textSizes = { p: ["12px", "14px", "16px", "18px", "20px", "24px"], 
 export const defaultTextSizes = { p: "16px", "1": "32px", "2": "24px", "3": "20px" };
 export const textColors = ["#202124", "#5f6368", "#9aa0a6", "#c62828", "#ef6c00", "#b8860b", "#2e7d32", "#1565c0", "#6a1b9a", "#ffffff"];
 export const highlightColors = ["#fff29a", "#ffccbc", "#f8bbd0", "#e1bee7", "#bbdefb", "#b2dfdb", "#c8e6c9", "#eeeeee"];
-const nodeTypes = { CODE: "pebbleCode", TABLE: "tableSpec", ARCHITECTURE: "architectureSpec" };
-const attrs = (block: EditorBlock) => ({ key: block.key, title: block.title, valid: block.valid, align: block.alignment === "CENTER" ? "center" : block.alignment === "RIGHT" ? "right" : "left" });
+const nodeTypes = { CODE: "pebbleCode", TABLE: "tableSpec", ARCHITECTURE: "architectureSpec", DB_SCHEMA: "databaseSchema" };
+const attrs = (block: EditorBlock) => ({ editorTab: block.editorTab ?? "ERD", key: block.key, title: block.title, valid: block.valid, align: block.alignment === "CENTER" ? "center" : block.alignment === "RIGHT" ? "right" : "left" });
 
 /** 저장 블록을 한 문서로 조립한다. HTML 파싱은 호출자가 안전한 HTML/스키마로 수행한다. */
 export function blocksToDocument(blocks: EditorBlock[], parseRich: (block: EditorBlock) => JSONContent): JSONContent {
   const content: JSONContent[] = [];
   for (const block of blocks) {
     if (block.type === "CODE") content.push({ type: nodeTypes.CODE, attrs: { ...attrs(block), language: block.language }, content: block.content ? [{ type: "text", text: block.content }] : [] });
-    else if (block.type === "TABLE" || block.type === "ARCHITECTURE") {
+    else if (block.type === "TABLE" || block.type === "ARCHITECTURE" || block.type === "DB_SCHEMA") {
       const parsed = JSON.parse(block.content);
-      const spec = block.valid === false ? parsed : block.type === "TABLE" ? parseTableSpec(parsed) : parseArchitectureSpec(parsed);
+      const spec = block.valid === false ? parsed : block.type === "DB_SCHEMA" ? parseDatabaseSchema(parsed) : block.type === "TABLE" ? parseTableSpec(parsed) : parseArchitectureSpec(parsed);
       content.push({ type: nodeTypes[block.type], attrs: { ...attrs(block), spec } });
     } else {
       if (block.title) content.push({ type: "heading", attrs: { level: 2 }, content: [{ type: "text", text: block.title }] });
@@ -41,8 +42,8 @@ export function documentToBlocks(doc: JSONContent, renderRich: (doc: JSONContent
   const append = (node: JSONContent) => {
     if (isSpecial(node)) {
       flush();
-      const type = node.type === "pebbleCode" ? "CODE" : node.type === "tableSpec" ? "TABLE" : "ARCHITECTURE";
-      result.push({ key: node.attrs?.key ?? `inline-${result.length}`, type, content: type === "CODE" ? (node.content ?? []).map(child => child.text ?? "").join("") : JSON.stringify(node.attrs?.spec), language: type === "CODE" ? node.attrs?.language ?? "TYPESCRIPT" : null, title: node.attrs?.title ?? null, valid: node.attrs?.valid !== false, alignment: node.attrs?.align === "center" ? "CENTER" : node.attrs?.align === "right" ? "RIGHT" : "LEFT" });
+      const type = node.type === "pebbleCode" ? "CODE" : node.type === "tableSpec" ? "TABLE" : node.type === "databaseSchema" ? "DB_SCHEMA" : "ARCHITECTURE";
+      result.push({ ...(type === "DB_SCHEMA" ? {editorTab: node.attrs?.editorTab === "SPEC" ? "SPEC" : "ERD"} : {}), key: node.attrs?.key ?? `inline-${result.length}`, type, content: type === "CODE" ? (node.content ?? []).map(child => child.text ?? "").join("") : JSON.stringify(node.attrs?.spec), language: type === "CODE" ? node.attrs?.language ?? "TYPESCRIPT" : null, title: node.attrs?.title ?? null, valid: node.attrs?.valid !== false, alignment: node.attrs?.align === "center" ? "CENTER" : node.attrs?.align === "right" ? "RIGHT" : "LEFT" });
     } else if (node.content?.some(containsSpecial)) {
       // 붙여넣은 인용/목록 안에 구조 블록이 있어도 누락하지 않고 형식 경계에서 분리한다.
       let children: JSONContent[] = [];
