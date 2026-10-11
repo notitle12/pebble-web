@@ -1,3 +1,4 @@
+import {parseDatabaseSchema} from "./database-schema.ts";
 import { parseArchitectureSpec, parseTableSpec } from "./api/post-list.ts";
 import { parseNaverMapEmbed } from "./naver-map.ts";
 import { marked } from "marked";
@@ -48,7 +49,7 @@ const sanitizerOptions: IOptions = {
       if (!type) return { tagName: "div", attribs: attrs };
       try {
         const value = JSON.parse(attrs["data-pebble-spec"] || "");
-        const spec = type === "TABLE" ? parseTableSpec(value) : type === "ARCHITECTURE" ? parseArchitectureSpec(value) : null;
+        const spec = type === "DB_SCHEMA" ? parseDatabaseSchema(value) : type === "TABLE" ? parseTableSpec(value) : type === "ARCHITECTURE" ? parseArchitectureSpec(value) : null;
         if (!spec) throw new Error();
         const align = ["left", "center", "right"].includes(attrs["data-align"] || "") ? attrs["data-align"] : undefined;
         return { tagName: "div", attribs: { "data-pebble-type": type, "data-pebble-spec": JSON.stringify(spec), ...(align ? { "data-align": align } : {}), ...(attrs["data-pebble-title"] ? { "data-pebble-title": attrs["data-pebble-title"].slice(0, 100) } : {}) } };

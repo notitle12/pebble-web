@@ -1,4 +1,6 @@
 "use client";
+import {parseDatabaseSchema,newDatabaseSchema} from "../database-schema";
+import {InlineDatabaseSchema} from "./inline-database-schema";
 import { Extension, Node as TiptapNode } from "@tiptap/core";
 import { NodeViewWrapper, NodeViewContent, useEditorState, ReactNodeViewRenderer, type NodeViewProps } from "@tiptap/react";
 import { Table, TableView } from "@tiptap/extension-table";
@@ -50,15 +52,15 @@ export const EditableToggle = TiptapNode.create({
   addNodeView() { return ReactNodeViewRenderer(ToggleView); },
 });
 
-function structured(name: string, type: "TABLE" | "ARCHITECTURE") {
+function structured(name: string, type: "TABLE" | "ARCHITECTURE" | "DB_SCHEMA") {
   return TiptapNode.create({
     name, group: "block", atom: true, defining: true,
-    addAttributes() { return { spec: { default: type === "TABLE" ? defaultInlineTableSpec() : defaultInlineArchitectureSpec() }, align: { default: "left", parseHTML: (element: HTMLElement) => ["left", "center", "right"].includes(element.getAttribute("data-align") || "") ? element.getAttribute("data-align") : "left", renderHTML: attrs => ({ "data-align": ["left", "center", "right"].includes(String(attrs.align)) ? attrs.align : "left" }) }, key: { default: null, rendered: false }, title: { default: null }, valid: { default: true, rendered: false } }; },
+    addAttributes() { return { editorTab:{default:"ERD",rendered:false}, spec: { default: type === "DB_SCHEMA" ? newDatabaseSchema() : type === "TABLE" ? defaultInlineTableSpec() : defaultInlineArchitectureSpec() }, align: { default: "left", parseHTML: (element: HTMLElement) => ["left", "center", "right"].includes(element.getAttribute("data-align") || "") ? element.getAttribute("data-align") : "left", renderHTML: attrs => ({ "data-align": ["left", "center", "right"].includes(String(attrs.align)) ? attrs.align : "left" }) }, key: { default: null, rendered: false }, title: { default: null }, valid: { default: true, rendered: false } }; },
     parseHTML() { return [{ tag: `div[data-pebble-type="${type}"]`, getAttrs: element => {
-      try { const value = JSON.parse(element.getAttribute("data-pebble-spec") ?? ""); return { spec: type === "TABLE" ? parseTableSpec(value) : parseArchitectureSpec(value), title: element.getAttribute("data-pebble-title"), align: ["left", "center", "right"].includes(element.getAttribute("data-align") || "") ? element.getAttribute("data-align") : "left" }; } catch { return false; }
+      try { const value = JSON.parse(element.getAttribute("data-pebble-spec") ?? ""); return { spec: type === "DB_SCHEMA" ? parseDatabaseSchema(value) : type === "TABLE" ? parseTableSpec(value) : parseArchitectureSpec(value), title: element.getAttribute("data-pebble-title"), align: ["left", "center", "right"].includes(element.getAttribute("data-align") || "") ? element.getAttribute("data-align") : "left" }; } catch { return false; }
     } }]; },
     renderHTML({ node, HTMLAttributes }) { return ["div", { ...HTMLAttributes, "data-pebble-type": type, "data-pebble-spec": JSON.stringify(node.attrs.spec), ...(node.attrs.title ? { "data-pebble-title": node.attrs.title } : {}) }]; },
-    addNodeView() { return ReactNodeViewRenderer(type === "TABLE" ? InlineTableSpecView : InlineArchitectureView); },
+    addNodeView() { return ReactNodeViewRenderer(type === "DB_SCHEMA" ? InlineDatabaseSchema : type === "TABLE" ? InlineTableSpecView : InlineArchitectureView); },
   });
 }
 export const InlineTableSpec = structured("tableSpec", "TABLE");
@@ -145,3 +147,5 @@ export const ControllableTable = Table.extend({
     return { dom: base.dom, contentDOM: base.contentDOM, update: (next: PMNode) => { const result = base.update(next); if (result) { syncAlignment(next); refresh(next); } return result; }, ignoreMutation: mutation => !base.contentDOM.contains(mutation.target) || base.ignoreMutation(mutation), stopEvent: event => columns.contains(event.target as globalThis.Node) || rows.contains(event.target as globalThis.Node) || remove.contains(event.target as globalThis.Node) };
   }; },
 }).configure({ resizable: false });
+
+export const InlineDatabase = structured("databaseSchema", "DB_SCHEMA");
