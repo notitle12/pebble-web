@@ -7,7 +7,7 @@ import {once} from "node:events";
 
 const projectId="721389012345680000";
 const project={
-  id:projectId,name:"Pebble",summary:"A project",owner:{id:"721389012345680001",nickname:"Owner"},tags:[],
+  id:projectId,name:"Pebble",summary:"A project",owner:{id:"721389012345680001",nickname:"Owner"},techStacks:[],
   lifecycleStatus:"IN_PROGRESS",publishedAt:null,createdAt:"2026-01-01T00:00:00Z",
   description:null,architectureDescription:null,executionInstructions:null,startedOn:null,completedOn:null,media:[],features:[],links:[],
 };

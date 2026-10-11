@@ -16,8 +16,8 @@ export function InvalidPage() {
 
 export async function PostList({ query, listPath = "/" }: { query: PostQuery; listPath?: "/" | "/posts" }) {
   const href = (page:number,filters:PostQuery=query) => pageHref(page,filters).replace(/^\//,listPath === "/" ? "/" : "/posts");
-  const { page, q, tagId, categoryId } = query;
-  const filtered = Boolean(q || tagId || categoryId);
+  const { page, q, categoryId } = query;
+  const filtered = Boolean(q || categoryId);
   let result;
   try { result = await getPublicPosts(page, undefined, undefined, query); }
   catch (error) {
@@ -29,7 +29,7 @@ export async function PostList({ query, listPath = "/" }: { query: PostQuery; li
   }
   if (result.content.length === 0) {
     return <section className="list-state"><h2>{page === 0 ? (filtered ? "조건에 맞는 글이 없어요" : "아직 공개된 글이 없어요") : "이 페이지에는 게시글이 없어요"}</h2>
-      <p>{page === 0 ? (filtered ? "검색어나 기술 태그를 바꿔서 다시 찾아보세요." : "새로운 개발 기록이 올라오면 이곳에서 만나볼 수 있어요.") : "글이 삭제되거나 목록이 변경되었을 수 있습니다."}</p>
+      <p>{page === 0 ? (filtered ? "검색어나 분류를 바꿔서 다시 찾아보세요." : "새로운 개발 기록이 올라오면 이곳에서 만나볼 수 있어요.") : "글이 삭제되거나 목록이 변경되었을 수 있습니다."}</p>
       {page > 0 && <Link className="button" href={href(0)}>첫 페이지로</Link>}
       {filtered && <Link className="button" href={listPath}>조건 초기화</Link>}
     </section>;

@@ -1,6 +1,6 @@
 import { GuestApiError, guestJson } from "../../../lib/public-api.ts";
 import { PAGE_SIZE, parsePostPage, type PostPage } from "./post-list.ts";
-import { parsePage, validTagId } from "../../../lib/list-query.ts";
+import { parsePage, validId } from "../../../lib/list-query.ts";
 
 const validHandle = (handle: string) => /^[a-z][a-z0-9_-]{1,28}[a-z0-9_]$/.test(handle);
 
@@ -8,7 +8,7 @@ export function blogHref(handle: string, page: number, boardId?:string, q?:strin
   if (!validHandle(handle) || !Number.isSafeInteger(page) || page < 0 || parsePage(String(page)) !== page) {
     throw new GuestApiError("response");
   }
-  if(boardId!==undefined&&!validTagId(boardId))throw new GuestApiError("response");
+  if(boardId!==undefined&&!validId(boardId))throw new GuestApiError("response");
   if(q!==undefined&&q.length>200)throw new GuestApiError("response");
   const params=new URLSearchParams();params.set("view",placement??"posts");if(boardId)params.set("boardId",boardId);if(q)params.set("q",q);if(page>0)params.set("page",String(page));
   return `/blogs/${encodeURIComponent(handle)}${params.size?`?${params}`:""}`;
@@ -47,7 +47,7 @@ export function parsePublicBlogProfile(value: unknown, handle: string): PublicBl
   const data = (value as Record<string, unknown>).data;
   if (typeof data !== "object" || data === null || Array.isArray(data)) throw new GuestApiError("response");
   const profile = data as Record<string, unknown>;
-  if (typeof profile.id !== "string" || !validTagId(profile.id) || profile.handle !== handle
+  if (typeof profile.id !== "string" || !validId(profile.id) || profile.handle !== handle
     || typeof profile.nickname !== "string" || !profile.nickname.trim()
     || typeof profile.blogName !== "string" || !profile.blogName.trim()
     || !(profile.profileImageUrl === null || typeof profile.profileImageUrl === "string")) throw new GuestApiError("response");

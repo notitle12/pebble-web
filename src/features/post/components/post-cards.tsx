@@ -11,7 +11,7 @@ export function PostCards({posts,showAuthor=true,showTags=true}:{posts:PostSumma
         {safeMediaUrl(post.thumbnailUrl??null)&&<img className="content-thumbnail" src={safeMediaUrl(post.thumbnailUrl??null)!} alt="" loading="lazy"/>}
         <h3><Link href={postHref(post.author.handle, post.urlKey)!} prefetch={false}>{post.title}</Link></h3>
         {post.summary && <p className="post-summary">{post.summary}</p>}
-        {showTags && post.tags.length > 0 && <ul className="tag-list" aria-label="기술 태그">{post.tags.map(tag => <li key={tag.id}>{tag.name}</li>)}</ul>}
+        {showTags && post.tags.length > 0 && <ul className="tag-list" aria-label="태그">{post.tags.map(tag => <li key={tag}>#{tag}</li>)}</ul>}
       </article></li>;
     })}</ul>
 </>;}

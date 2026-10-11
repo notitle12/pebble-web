@@ -11,7 +11,7 @@ export type PostSummary = {
   title: string;
   summary: string | null;
   author: { id: string; handle: string; nickname: string; blogName: string | null };
-  tags: { id: string; name: string }[];
+  tags: string[];
   publishedAt: string | null;
   createdAt: string;
 };
@@ -25,19 +25,19 @@ export type PostPage = {
   hasPrevious: boolean;
 };
 export { parsePage } from "../../../lib/list-query.ts";
-export type PostFilters = ListFilters & { categoryId?: string };
+export type PostFilters = { q?: string; categoryId?: string };
 export type PostQuery = PostFilters & { page: number };
-import { parsePage, parseListQuery, validTagId, type ListFilters } from "../../../lib/list-query.ts";
+import { parsePage, parseListQuery, validId, type ListFilters } from "../../../lib/list-query.ts";
 export function parsePostQuery(params: Record<string,string|string[]|undefined>): PostQuery | null {
+  if ("techStackId" in params || "tagId" in params) return null;
   const {categoryId,...rest}=params;
   const query=parseListQuery(rest);
-  if(!query || Array.isArray(categoryId) || (categoryId && !validTagId(categoryId)))return null;
+  if(!query || Array.isArray(categoryId) || (categoryId && !validId(categoryId)))return null;
   return {...query,...(categoryId ? {categoryId} : {})};
 }
 export function pageHref(page: number, filters: PostFilters = {}): string {
   const params = new URLSearchParams();
   if (filters.q) params.set("q", filters.q);
-  if (filters.tagId) params.set("tagId", filters.tagId);
   if (filters.categoryId) params.set("categoryId", filters.categoryId);
   if (page > 0) params.set("page", String(page));
   return params.size ? `/?${params}` : "/";
@@ -54,7 +54,7 @@ function isPost(value: unknown): value is PostSummary & Record<string, unknown> 
   return (value.thumbnailUrl===undefined||nullableText(value.thumbnailUrl)) && id(value.id) && typeof value.urlKey === "string" && validPostKey(value.urlKey)
     && typeof value.author.handle === "string" && validHandle(value.author.handle) && typeof value.title === "string" && nullableText(value.summary)
     && id(value.author.id) && typeof value.author.nickname === "string" && nullableText(value.author.blogName)
-    && Array.isArray(value.tags) && value.tags.every(tag => record(tag) && id(tag.id) && typeof tag.name === "string")
+    && Array.isArray(value.tags) && value.tags.every(tag => typeof tag === "string" && tag.length > 0)
     && (value.likeCount===undefined || count(value.likeCount)) && (value.likedByMe===undefined || typeof value.likedByMe==="boolean")
     && (value.publishedAt === null || timestamp(value.publishedAt)) && timestamp(value.createdAt);
 }
@@ -81,18 +81,16 @@ export async function getPublicPosts(
   request: typeof fetch = fetch,
   filters: PostFilters = {},
 ): Promise<PostPage> {
-  const query = parsePostQuery({ page: String(page), q: filters.q, tagId: filters.tagId, categoryId: filters.categoryId });
+  const query = parsePostQuery({page:String(page),q:filters.q,categoryId:filters.categoryId});
   if (!query) throw new PostListError("response");
   const params = new URLSearchParams({ page: String(page), size: String(PAGE_SIZE) });
   if (query.q) params.set("q", query.q);
-  if (query.tagId) params.set("tagId", query.tagId);
   if (query.categoryId) params.set("categoryId", query.categoryId);
   return parsePostPage(await guestJson(query.q ? "posts/search" : "posts", params, baseUrl, request), page);
 }
-export { getPublicTags, type PublicTag } from "../../tag/api/public-tags.ts";
 
 const validHandle = (value: string) => /^[a-z][a-z0-9_-]{1,28}[a-z0-9_]$/.test(value);
-const validPostKey = (value: string) => validTagId(value) || (value.length <= 200
+const validPostKey = (value: string) => validId(value) || (value.length <= 200
   && /^[a-z0-9]+(-[a-z0-9]+)*$/.test(value) && !/^\d+$/.test(value) && value !== "search");
 export function postHref(handle: string, key: string): string | null {
   return validHandle(handle) && validPostKey(key) ? `/blogs/${encodeURIComponent(handle)}/posts/${encodeURIComponent(key)}` : null;
@@ -213,7 +211,7 @@ export function parsePostDetail(value: unknown): PostDetail {
   if (!record(value) || !isPost(value.data) || !record(value.data)) throw new PostListError("response");
   const data = value.data;
   if(data.likeCount!==undefined && (typeof data.likeCount!=="number" || !Number.isSafeInteger(data.likeCount) || data.likeCount<0) || data.likedByMe!==undefined && typeof data.likedByMe!=="boolean") throw new PostListError("response");
-  if (data.projectId !== undefined && data.projectId !== null && (typeof data.projectId !== "string" || !validTagId(data.projectId))) throw new PostListError("response");
+  if (data.projectId !== undefined && data.projectId !== null && (typeof data.projectId !== "string" || !validId(data.projectId))) throw new PostListError("response");
   if (!Array.isArray(data.blocks) || !data.blocks.every(block => record(block)
     && ["TEXT", "CODE", "TABLE", "ARCHITECTURE", "HTML", "MARKDOWN"].includes(String(block.type)) && typeof block.content === "string"
     && nullableText(block.title) && count(block.displayOrder)
