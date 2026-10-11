@@ -1,5 +1,7 @@
 "use client";
+import {newDatabaseSchema} from "../database-schema";
 
+import {NodeSelection} from "@tiptap/pm/state";
 import { Extension, Node as TiptapNode, generateHTML, generateJSON } from "@tiptap/core";
 import Color from "@tiptap/extension-color";
 import FontFamily from "@tiptap/extension-font-family";
@@ -12,7 +14,7 @@ import { TextStyle } from "@tiptap/extension-text-style";
 import { EditorContent, ReactNodeViewRenderer, useEditor, useEditorState } from "@tiptap/react";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { escapeRichText, isSafeOpenStreetMapEmbed, persistedRichHtml, richContentHtml, richEditorHtml, type RichBodyFormat } from "../rich-content";
-import { InlineCode, InlineTableSpec, InlineArchitecture, TocNode, AutomaticToc, ControllableTable, HeadingParagraphReset, EditableToggle } from "./inline-block-extensions";
+import { InlineCode, InlineTableSpec, InlineArchitecture, InlineDatabase, TocNode, AutomaticToc, ControllableTable, HeadingParagraphReset, EditableToggle } from "./inline-block-extensions";
 import { defaultInlineTableSpec, defaultInlineArchitectureSpec } from "./inline-block-views";
 import { blocksToDocument, documentToBlocks, blocksSignature, textSizes, defaultTextSizes, textColors, highlightColors } from "../writer-document";
 import type { EditorBlock } from "../post-editor-model";
@@ -148,7 +150,7 @@ const extensionSet = [
   StarterKit.configure({ codeBlock: false, heading: { levels: [1, 2, 3] }, link: { openOnClick: false, autolink: true, defaultProtocol: "https", HTMLAttributes: {target:null} } }),
   RichImage.configure({ inline: false, allowBase64: false }),
   TableKit.configure({ table: false }),
-  ControllableTable, HeadingParagraphReset, InlineCode, InlineTableSpec, InlineArchitecture, AutomaticToc,
+  ControllableTable, HeadingParagraphReset, InlineCode, InlineTableSpec, InlineArchitecture, InlineDatabase, AutomaticToc,
   FontSize,
   BlockAlignment,
   FontFamily,
@@ -225,7 +227,7 @@ export function RichBodyEditor({ blocks, onChangeBlocks, uploadImage, imagePrevi
     if (!current) return null;
     const heading = current.isActive("heading");
     const kind: "p"|"1"|"2"|"3" = heading ? String(current.getAttributes("heading").level) as "1"|"2"|"3" : "p";
-    const media = current.isActive("image") ? "image" : current.isActive("table") ? "table" : current.isActive("pebbleCode") ? "pebbleCode" : current.isActive("tableSpec") ? "tableSpec" : current.isActive("architectureSpec") ? "architectureSpec" : null;
+    const media = current.isActive("image") ? "image" : current.isActive("table") ? "table" : current.isActive("pebbleCode") ? "pebbleCode" : current.isActive("tableSpec") ? "tableSpec" : current.isActive("architectureSpec") ? "architectureSpec" : current.isActive("databaseSchema") ? "databaseSchema" : null;
     return { align: media ? current.getAttributes(media).align || "left" : current.getAttributes(heading ? "heading" : "paragraph").textAlign || "left", media, bullet: current.isActive("bulletList"), ordered: current.isActive("orderedList"), kind, size: current.getAttributes(heading ? "heading" : "paragraph").fontSize || current.getAttributes("textStyle").fontSize || defaultTextSizes[kind], font: current.getAttributes("textStyle").fontFamily || "", color: current.getAttributes("textStyle").color || "#202124", bold: current.isActive("bold"), italic: current.isActive("italic"), underline: current.isActive("underline"), strike: current.isActive("strike") };
   } });
   useEffect(() => {
@@ -336,13 +338,14 @@ export function RichBodyEditor({ blocks, onChangeBlocks, uploadImage, imagePrevi
     if (!exists) editor.chain().focus().insertContentAt(0, { type: "tableOfContents" }).run();
     setInsertMenuOpen(false);
   };
-  const insertBlock = (type: "CODE" | "TABLE" | "ARCHITECTURE") => {
+  const insertBlock = (type: "CODE" | "TABLE" | "ARCHITECTURE" | "DB_SCHEMA", editorTab: "ERD" | "SPEC" = "ERD") => {
     if (!editor || disabled) return;
     const key = crypto.randomUUID();
-    const node = type === "CODE" ? { type: "pebbleCode", attrs: { key, language: "TYPESCRIPT" } } : { type: type === "TABLE" ? "tableSpec" : "architectureSpec", attrs: { key, spec: type === "TABLE" ? defaultInlineTableSpec() : defaultInlineArchitectureSpec(), valid: false } };
+    const node = type === "CODE" ? { type: "pebbleCode", attrs: { key, language: "TYPESCRIPT" } } : { type: type === "DB_SCHEMA" ? "databaseSchema" : type === "TABLE" ? "tableSpec" : "architectureSpec", attrs: { key, editorTab, spec: type === "DB_SCHEMA" ? newDatabaseSchema() : type === "TABLE" ? defaultInlineTableSpec() : defaultInlineArchitectureSpec(), valid: false } };
     const selection = editor.state.selection.$from;
     const chain = editor.chain().focus();
-    if (selection.depth > 1 || selection.parent.type.name === "pebbleCode") chain.insertContentAt(selection.after(1), [node, { type: "paragraph" }]).run();
+    if (editor.state.selection instanceof NodeSelection) chain.insertContentAt(editor.state.selection.to, [node, {type:"paragraph"}]).run();
+    else if (selection.depth > 1 || selection.parent.type.name === "pebbleCode") chain.insertContentAt(selection.after(1), [node, { type: "paragraph" }]).run();
     else chain.insertContent([node, { type: "paragraph" }]).run();
     setInsertMenuOpen(false);
   };
@@ -408,7 +411,8 @@ export function RichBodyEditor({ blocks, onChangeBlocks, uploadImage, imagePrevi
       <button type="button" role="menuitem" onClick={() => openForm("html")}>HTML</button>
       <button type="button" role="menuitem" onClick={() => insertAction(() => insertBlock("CODE"))}>코드</button>
       <button type="button" role="menuitem" onClick={() => insertAction(() => insertBlock("ARCHITECTURE"))}>아키텍처</button>
-      <button type="button" role="menuitem" onClick={() => insertAction(() => insertBlock("TABLE"))}>테이블 명세</button>
+      <button type="button" role="menuitem" onClick={() => insertAction(() => insertBlock("DB_SCHEMA"))}>DB 설계 · ERD</button>
+      <button type="button" role="menuitem" onClick={() => insertAction(() => insertBlock("DB_SCHEMA", "SPEC"))}>테이블 명세</button>
       <button type="button" role="menuitem" onClick={() => openForm("toggle")}>접는 글</button>
     </div>}
 
