@@ -28,7 +28,7 @@ function tableError(spec: TableSpec): string {
   }
 }
 
-function TableTextInput({ value, disabled, onCommit, ...props }: Omit<InputHTMLAttributes<HTMLInputElement>, "value" | "onChange" | "onCompositionStart" | "onCompositionEnd"> & { value: string; onCommit: (value: string) => void }) {
+export function TableTextInput({ value, disabled, onCommit, ...props }: Omit<InputHTMLAttributes<HTMLInputElement>, "value" | "onChange" | "onCompositionStart" | "onCompositionEnd"> & { value: string; onCommit: (value: string) => void }) {
   const [draft, setDraft] = useState(value);
   const composition = useRef<TableInputCompositionState>({ composing: false });
   useEffect(() => { if (!composition.current.composing) setDraft(value); }, [value]);

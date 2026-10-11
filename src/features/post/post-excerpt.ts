@@ -26,7 +26,7 @@ function htmlText(source: string): string {
     nonTextTags: [...nonProseTags],
     exclusiveFilter: frame => nonProseTags.has(frame.tag)
       || frame.tag === "nav" && frame.attribs.class?.split(/\s+/).includes("post-toc") === true
-      || frame.tag === "div" && ["TABLE", "ARCHITECTURE"].includes(frame.attribs["data-pebble-type"] ?? ""),
+      || frame.tag === "div" && ["TABLE", "ARCHITECTURE", "DB_SCHEMA"].includes(frame.attribs["data-pebble-type"] ?? ""),
   });
   const separated = proseHtml.replace(/<(?:\/)?(?:p|h[1-6]|li|div|br|td|th|blockquote)\b[^>]*>/gi, " ");
   return decodeEntities(sanitizeHtml(separated, { allowedTags: [], allowedAttributes: {} }));

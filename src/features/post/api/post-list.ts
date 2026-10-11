@@ -1,3 +1,4 @@
+import {parseDatabaseSchema} from "../database-schema.ts";
 import { GuestApiError as PostListError, guestJson } from "../../../lib/public-api.ts";
 export { GuestApiError as PostListError } from "../../../lib/public-api.ts";
 export const PAGE_SIZE = 20;
@@ -110,7 +111,7 @@ export type ArchitectureSide = "TOP" | "RIGHT" | "BOTTOM" | "LEFT";
 export type ArchitectureEdge = { id: string; source: string; target: string; label?: string | null; sourceSide?: ArchitectureSide | null; targetSide?: ArchitectureSide | null; waypoint?: {x:number;y:number} | null };
 export type ArchitectureSpec = { schemaVersion: 1; groups: ArchitectureGroup[]; nodes: ArchitectureNode[]; edges: ArchitectureEdge[] };
 export type BlockAlignment = "LEFT" | "CENTER" | "RIGHT";
-export type PostBlock = { type: "TEXT" | "CODE" | "TABLE" | "ARCHITECTURE" | "HTML" | "MARKDOWN"; content: string; language: string | null; title: string | null; displayOrder: number; alignment: BlockAlignment };
+export type PostBlock = { type: "TEXT" | "CODE" | "TABLE" | "ARCHITECTURE" | "DB_SCHEMA" | "HTML" | "MARKDOWN"; content: string; language: string | null; title: string | null; displayOrder: number; alignment: BlockAlignment };
 export type PostDetail = PostSummary & { projectId?: string | null; blocks: PostBlock[] };
 const languages = ["JAVA", "JAVASCRIPT", "TYPESCRIPT", "PYTHON", "HTML", "CSS", "SQL", "JSON", "YAML", "MARKDOWN", "BASH", "SHELL"];
 const keysAre = (value: Record<string, unknown>, allowed: string[]) => Object.keys(value).every(key => allowed.includes(key));
@@ -213,12 +214,12 @@ export function parsePostDetail(value: unknown): PostDetail {
   if(data.likeCount!==undefined && (typeof data.likeCount!=="number" || !Number.isSafeInteger(data.likeCount) || data.likeCount<0) || data.likedByMe!==undefined && typeof data.likedByMe!=="boolean") throw new PostListError("response");
   if (data.projectId !== undefined && data.projectId !== null && (typeof data.projectId !== "string" || !validId(data.projectId))) throw new PostListError("response");
   if (!Array.isArray(data.blocks) || !data.blocks.every(block => record(block)
-    && ["TEXT", "CODE", "TABLE", "ARCHITECTURE", "HTML", "MARKDOWN"].includes(String(block.type)) && typeof block.content === "string"
+    && ["TEXT", "CODE", "TABLE", "ARCHITECTURE", "DB_SCHEMA", "HTML", "MARKDOWN"].includes(String(block.type)) && typeof block.content === "string"
     && nullableText(block.title) && count(block.displayOrder)
     && (block.alignment === undefined || ["LEFT", "CENTER", "RIGHT"].includes(String(block.alignment)))
     && (block.type === "TEXT" || block.type === "HTML" || block.type === "MARKDOWN" ? block.language === null && pointLength(block.content) <= 50000 : block.type === "CODE" ? typeof block.language === "string" && languages.includes(block.language)
       : block.language === null && textField(block.title ?? "", 100) && pointLength(block.content) <= 50000 && (() => {
-        try { const parsed = JSON.parse(block.content); block.type === "TABLE" ? parseTableSpec(parsed) : parseArchitectureSpec(parsed); return true; } catch { return false; }
+        try { const parsed = JSON.parse(block.content); block.type === "DB_SCHEMA" ? parseDatabaseSchema(parsed) : block.type === "TABLE" ? parseTableSpec(parsed) : parseArchitectureSpec(parsed); return true; } catch { return false; }
       })()))) throw new PostListError("response");
   return { ...data, blocks: data.blocks.map(block => ({ ...block, alignment: block.alignment ?? "LEFT" })) } as PostDetail;
 }
