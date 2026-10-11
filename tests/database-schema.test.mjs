@@ -46,3 +46,16 @@ test('specification-first editor tab survives local writer roundtrip without lea
  const block={key:'spec',type:'DB_SCHEMA',content:JSON.stringify(schema()),language:null,title:null,valid:true,editorTab:'SPEC'};
  const saved=documentToBlocks(blocksToDocument([block],()=>({type:'doc'})),()=>'<p></p>');assert.equal(saved[0].editorTab,'SPEC');assert.equal('editorTab' in buildPostBody({title:'설계',summary:'',tags:[],blocks:saved}).blocks[0],false);
 });
+
+test('relation settings stay backward compatible and persist through writer serialization',()=>{
+ for(const notation of ['IE','BARKER','CHEN']){
+  const s=schema();s.tables[1].columns[1].reference={tableId:'users',columnId:'id',notation,sourceRequired:true};
+  parseDatabaseSchema(s);
+  const block={key:'settings',type:'DB_SCHEMA',content:JSON.stringify(s),language:null,title:null,valid:true};
+  const saved=documentToBlocks(blocksToDocument([block],()=>({type:'doc'})),()=>'<p></p>');
+  assert.deepEqual(JSON.parse(saved[0].content).tables[1].columns[1].reference,s.tables[1].columns[1].reference);
+ }
+ for(const patch of [{notation:'OTHER'},{notation:null},{sourceRequired:'false'},{sourceRequired:null}]){
+  const s=schema();Object.assign(s.tables[1].columns[1].reference,patch);assert.throws(()=>parseDatabaseSchema(s));
+ }
+});
