@@ -3,7 +3,7 @@ import {MemberApiError,responseData} from "../../../lib/member-api.ts";
 import {parsePostDetail,parsePostPage,type PostDetail,type PostPage} from "./post-list.ts";
 export type Classification={id:string;name:string;status:"ACTIVE"|"INACTIVE"};
 export type OwnPost=PostDetail & {thumbnailImageId:string|null;boardId:string|null;projectId:string|null;category:Classification|null;tags:string[];visibilityStatus:"PUBLIC"|"HIDDEN";isBlocked:boolean;draft:boolean};
-export type OwnPostPage=Omit<PostPage,"content"> & {content:(PostPage["content"][number]&{visibilityStatus:"PUBLIC"|"HIDDEN";isBlocked:boolean;displayOrder:number})[]};
+export type OwnPostPage=Omit<PostPage,"content"> & {content:(PostPage["content"][number]&{visibilityStatus:"PUBLIC"|"HIDDEN";isBlocked:boolean;draft?:boolean;displayOrder:number})[]};
 export function parseOwnPost(value:unknown):OwnPost{
   const post=parsePostDetail(value),d=responseData(value);
   if(d.thumbnailImageId!==undefined&&d.thumbnailImageId!==null&&(typeof d.thumbnailImageId!=="string"||!validId(d.thumbnailImageId)))throw new MemberApiError(0,"INVALID_RESPONSE","대표 이미지를 확인하지 못했습니다.");
@@ -16,7 +16,7 @@ export function parseOwnPost(value:unknown):OwnPost{
 }
 export function parseOwnPosts(value:unknown,page:number,memberId?:string):OwnPostPage{
   const parsed=parsePostPage(value,page);
-  for(const post of parsed.content){const d=post as unknown as Record<string,unknown>;if(!["PUBLIC","HIDDEN"].includes(String(d.visibilityStatus))||typeof d.isBlocked!=="boolean"||typeof d.displayOrder!=="number"||!Number.isInteger(d.displayOrder)||d.displayOrder<0||d.displayOrder>2147483647||memberId!==undefined&&post.author.id!==memberId)throw new MemberApiError(0,"INVALID_RESPONSE","내 글 목록을 확인하지 못했습니다.");}
+  for(const post of parsed.content){const d=post as unknown as Record<string,unknown>;if(!["PUBLIC","HIDDEN"].includes(String(d.visibilityStatus))||typeof d.isBlocked!=="boolean"||(d.draft!==undefined&&typeof d.draft!=="boolean")||typeof d.displayOrder!=="number"||!Number.isInteger(d.displayOrder)||d.displayOrder<0||d.displayOrder>2147483647||memberId!==undefined&&post.author.id!==memberId)throw new MemberApiError(0,"INVALID_RESPONSE","내 글 목록을 확인하지 못했습니다.");}
   return parsed as OwnPostPage;
 }
 export function postId(value:string):string {if(!/^[1-9]\d{0,18}$/.test(value)||BigInt(value)>9223372036854775807n)throw new MemberApiError(400,"INVALID_REQUEST","글 주소를 확인해 주세요.");return value;}
