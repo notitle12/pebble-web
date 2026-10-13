@@ -7,10 +7,10 @@ import { blogHref } from "../../post/api/public-blog";
 
 type BoardItem = {id: string; name: string; depth: number};
 type ProjectItem = {id: string; name: string};
-type Props = {footer: ReactNode; links: ReactNode; handle: string;
+type Props = {visitors:ReactNode;footer: ReactNode; links: ReactNode; handle: string;
   homeView: boolean; selected?: string; projectView: boolean; boardView: boolean; searched: boolean;
   boards: BoardItem[]; projects: ProjectItem[]; boardError: boolean; projectError: boolean};
-export function BlogSidebar({footer,links,handle,homeView,selected,projectView,boardView,searched,boards,projects,boardError,projectError}: Props) {
+export function BlogSidebar({visitors,footer,links,handle,homeView,selected,projectView,boardView,searched,boards,projects,boardError,projectError}: Props) {
   const [collapsed,setCollapsed]=useState(false);
   useEffect(()=>{if(window.matchMedia("(max-width: 640px)").matches)setCollapsed(true);},[]);
   const [postsOpen,setPostsOpen]=useState(true);
@@ -25,6 +25,7 @@ export function BlogSidebar({footer,links,handle,homeView,selected,projectView,b
     <SidebarToggle collapsed={collapsed} onToggle={()=>setCollapsed(value=>!value)}/>
     <div id="blog-sidebar-content" className="blog-sidebar-content" hidden={collapsed} inert={collapsed}>
 
+      <div className="blog-sidebar-visitors">{visitors}</div>
       <nav className="blog-tree-nav" aria-label="블로그 메뉴">
         <Link className="blog-menu-row" href={homeHref} aria-current={homeView?"page":undefined}><BlogMenuIcon name="home"/><span>홈</span></Link>
         <div className="blog-menu-parent"><Link className="blog-menu-row" href={blogHref(handle,0)} aria-current={allPosts?"page":undefined}><BlogMenuIcon name="posts"/><span>전체 게시글</span></Link><button type="button" className="blog-menu-disclosure" aria-expanded={postsOpen} aria-controls="blog-post-folders" aria-label={`게시판과 프로젝트 ${postsOpen?"접기":"펼치기"}`} onClick={()=>setPostsOpen(value=>!value)}><BlogMenuIcon name="chevron"/></button></div>
