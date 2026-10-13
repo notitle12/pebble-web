@@ -19,3 +19,11 @@ test("드래그 순서는 대상의 전역 위치로 이동하고 원본과 다�
  const up=movePostRow(rows,"3","1");assert.equal(up.displayOrder,20);assert.deepEqual(up.items.map(p=>p.id),["3","1","2"]);assert.equal(rows[0].id,"1");
  assert.equal(movePostRow(rows,"1","1"),null);assert.equal(movePostRow(rows,"missing","1"),null);
 });
+test("게시판 내부 이동은 전체 글 순서를 변경하지 않는다",()=>{
+ const rows=[{id:"1",displayOrder:8,boardDisplayOrder:0},{id:"2",displayOrder:2,boardDisplayOrder:1},{id:"3",displayOrder:5,boardDisplayOrder:2}];
+ const result=movePostRow(rows,"1","3",true);
+ assert.equal(result.displayOrder,2);assert.deepEqual(result.items.map(p=>p.id),["2","3","1"]);
+ assert.deepEqual(result.items.map(p=>p.boardDisplayOrder),[0,1,2]);
+ for(const row of result.items)assert.equal(row.displayOrder,rows.find(p=>p.id===row.id).displayOrder);
+ assert.throws(()=>movePostRow([{id:"1",displayOrder:0},{id:"2",displayOrder:1}],"1","2",true));
+});

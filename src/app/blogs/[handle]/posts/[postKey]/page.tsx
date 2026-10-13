@@ -40,5 +40,5 @@ export default async function PostPage({ params }: Props) {
       {safeMediaUrl(post.thumbnailUrl??null)&&<img className="content-thumbnail" src={safeMediaUrl(post.thumbnailUrl??null)!} alt="글 대표 이미지"/>}</header><PostBody blocks={post.blocks} /></article>
     <LikePanel target="posts" contentId={post.id} initialCount={post.likeCount}/>
     {post.projectId&&<Suspense fallback={<section className="linked-project" role="status">연결 프로젝트를 불러오는 중…</section>}><LinkedProject id={post.projectId}/></Suspense>}
-    <CommentsPanel target="posts" contentId={post.id}/></main><footer className="site-footer">Pebble · 함께 쌓아가는 개발 기록</footer></>;
+    <CommentsPanel target="posts" contentId={post.id}/></main></>;
 }

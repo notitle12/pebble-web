@@ -20,7 +20,6 @@ export function BlogSidebar({visitors,footer,links,handle,homeView,selected,proj
   const projectsHref=`${homeHref}?view=projects`;
   const boardsHref=`${homeHref}?view=boards`;
   const allPosts=!homeView&&!selected&&!projectView&&!boardView&&!searched;
-  function openSearch() { document.getElementById("blog-search")?.focus(); }
   return <aside id="blog-sidebar" className="personal-blog-profile" aria-label="블로그 탐색" data-collapsed={collapsed}>
     <SidebarToggle collapsed={collapsed} onToggle={()=>setCollapsed(value=>!value)}/>
     <div id="blog-sidebar-content" className="blog-sidebar-content" hidden={collapsed} inert={collapsed}>
@@ -49,7 +48,6 @@ export function BlogSidebar({visitors,footer,links,handle,homeView,selected,proj
       {links}
     </div>
     {collapsed&&<nav className="blog-icon-rail" aria-label="블로그 빠른 메뉴">
-      <button type="button" aria-label="블로그 검색 열기" title="검색" onClick={openSearch}><BlogMenuIcon name="search"/></button>
       <Link href={homeHref} aria-label="블로그 홈" title="홈" aria-current={homeView?"page":undefined}><BlogMenuIcon name="home"/></Link>
       <Link href={blogHref(handle,0)} aria-label="전체 게시글" title="전체 게시글" aria-current={allPosts?"page":undefined}><BlogMenuIcon name="posts"/></Link>
       <Link href={boardsHref} aria-label="게시판 전체 글" title="게시판" aria-current={boardView&&!selected?"page":undefined}><BlogMenuIcon name="boards"/></Link>
