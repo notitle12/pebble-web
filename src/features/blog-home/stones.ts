@@ -1,6 +1,6 @@
 import {validId} from "../../lib/list-query.ts";
 import {GuestApiError} from "../../lib/public-api.ts";
-export type Stone={id:string;postIds:string[];x:number;y:number;rotation:number};
+export type Stone={id:string;postIds:string[];x:number;y:number;rotation:number;shape?:number};
 export type StonePost={id:string;title:string;urlKey:string;publishedAt:string};
 export type StoneView={version:number;stones:Stone[];posts:StonePost[]};
 const object=(value:unknown):value is Record<string,unknown>=>value!==null&&typeof value==="object"&&!Array.isArray(value);
@@ -18,7 +18,8 @@ export function parseStoneView(value:unknown):StoneView{
   ids.add(raw.id);
   const postIds=raw.postIds.map(id=>{if(typeof id!=="string"||!allowed.has(id)||seen.has(id))throw new GuestApiError("response");seen.add(id);return id;});
   for(const [key,min,max] of [["x",0,1000],["y",0,360],["rotation",-180,180]] as const){if(typeof raw[key]!=="number"||!Number.isFinite(raw[key])||raw[key]<min||raw[key]>max)throw new GuestApiError("response");}
-  return {id:raw.id,postIds,x:raw.x as number,y:raw.y as number,rotation:raw.rotation as number};
+  if(raw.shape!==undefined&&(!Number.isInteger(raw.shape)||(raw.shape as number)<0||(raw.shape as number)>5))throw new GuestApiError("response");
+  return {...(raw.shape===undefined?{}:{shape:raw.shape as number}),id:raw.id,postIds,x:raw.x as number,y:raw.y as number,rotation:raw.rotation as number};
  });
  return {version:data.version as number,stones,posts};
 }
@@ -57,3 +58,6 @@ export function snapStone(stone:Stone,others:Stone[]):Stone{
  const floor=342-size.height*.46;
  return moveStone(stone,stone.x,Math.abs(stone.y-floor)<22?floor:stone.y);
 }
+
+export function stoneRotation(start:number,delta:number,snap=false){const angle=start+delta;const value=snap?Math.round(angle/15)*15:Math.round(angle);return ((value+180)%360+360)%360-180;}
+export function nudgeStone(stone:Stone,key:string,large=false):Stone{const step=large?10:1;const direction:Record<string,[number,number]>={ArrowLeft:[-step,0],ArrowRight:[step,0],ArrowUp:[0,-step],ArrowDown:[0,step]};const change=direction[key];return change?moveStone(stone,stone.x+change[0],stone.y+change[1]):stone;}
