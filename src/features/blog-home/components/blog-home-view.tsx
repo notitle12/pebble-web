@@ -10,8 +10,7 @@ import { safeMediaUrl } from "../../media/model";
 const titles: Record<HomeSectionKey, string> = { ACTIVITY: "블로그 활동", TECH_STACKS: "기술 스택", PROJECTS: "대표 프로젝트", RECENT_POSTS: "최근 글" };
 function Activity({ data }: { data: BlogActivity }) {
   const {cells,months,total,activeDays}=activityCalendar(data);
-  return <section className="blog-home-section blog-home-activity" aria-labelledby="home-activity-title">
-    <div className="blog-home-section-title"><h2 id="home-activity-title">{titles.ACTIVITY}</h2><span>글 {total}개 · 기록한 날 {activeDays}일</span></div>
+  return <div className="blog-home-activity">
     <p className="sr-only" id="blog-activity-description">최근 1년 동안 날짜별 공개 글 수입니다. 월요일부터 일요일 순서이며 진한 초록색일수록 글이 많습니다.</p>
     <div className="blog-activity-scroll" role="group" aria-label={`${data.from}부터 ${data.to}까지 날짜별 공개 글 수`} aria-describedby="blog-activity-description" tabIndex={0}>
       <div className="blog-activity-chart">
@@ -24,8 +23,8 @@ function Activity({ data }: { data: BlogActivity }) {
         </div>
       </div>
     </div>
-    <div className="blog-activity-footer"><p className="blog-activity-help">최근 1년간 공개한 글</p><div className="blog-activity-legend" aria-label="활동량 범례: 공개 글 없음, 1개, 2~3개, 4~5개, 6개 이상"><span>적음</span>{[0,1,2,3,4].map(level=><span key={level} className={`blog-activity-day activity-${level}`} aria-hidden="true"/>)}<span>많음</span></div></div>
-  </section>;
+    <div className="blog-activity-footer"><p className="blog-activity-help">최근 1년간 공개한 글</p><div className="blog-activity-footer-meta"><p className="blog-activity-summary">글 {total}개 · 기록한 날 {activeDays}일</p><div className="blog-activity-legend" aria-label="활동량 범례: 공개 글 없음, 1개, 2~3개, 4~5개, 6개 이상"><span>적음</span>{[0,1,2,3,4].map(level=><span key={level} className={`blog-activity-day activity-${level}`} aria-hidden="true"/>)}<span>많음</span></div></div></div>
+  </div>;
 }
 
 function Stacks({ items }: { items: string[] }) {
