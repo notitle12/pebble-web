@@ -3,6 +3,8 @@ import type { ReactNode } from "react";
 import {SiteFooter} from "../components/site-footer";
 import "./globals.css";
 import "./design.css";
+import "./theme.css";
+import {themeBootstrap} from "../features/appearance/theme";
 
 export const metadata: Metadata = {
   title: { default: "Pebble", template: "%s | Pebble" },
@@ -12,8 +14,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="ko">
-      <head><link rel="stylesheet" href="/fonts/pretendard/pretendard.css"/></head>
+    <html lang="ko" data-theme="light" suppressHydrationWarning>
+      <head><link rel="stylesheet" href="/fonts/pretendard/pretendard.css"/><script dangerouslySetInnerHTML={{__html:themeBootstrap}}/></head>
       <body>{children}<SiteFooter/></body>
     </html>
   );

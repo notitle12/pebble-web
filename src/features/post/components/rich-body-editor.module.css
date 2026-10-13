@@ -161,3 +161,13 @@
 .emptyParagraph::before { content: attr(data-placeholder); color: #a1a1aa; float: left; height: 0; pointer-events: none; }
 
 @media(max-width:720px){.sticky{padding-right:74px}}
+
+:global(html[data-theme=dark]) .root{color:var(--text)}
+:global(html[data-theme=dark]) :is(.sticky,.editor,.insertMenu,.form,.palette,.tablePicker){background:var(--surface);color:var(--text);border-color:var(--line)}
+:global(html[data-theme=dark]) .root :is(.toolButton,.select,.colorTool,.insertMenu button,.symbolMenu,.form button){color:var(--text);background:transparent}
+:global(html[data-theme=dark]) .root :is(.toolButton,.select,.colorTool,.insertMenu button):hover,:global(html[data-theme=dark]) .root .toolButton[aria-pressed=true]{background:var(--accent-soft)}
+:global(html[data-theme=dark]) .select option{background:var(--surface);color:var(--text)}
+:global(html[data-theme=dark]) .root .sourceGrid textarea{background:var(--surface);color:var(--text);border-color:var(--line)}
+:global(html[data-theme=dark]) :is(.editor,.preview,.rendered) :global(pre){background:#1c2b22;color:var(--text)}
+:global(html[data-theme=dark]) :is(.editor,.preview,.rendered) :global(blockquote){border-color:var(--line);color:var(--muted)}
+:global(html[data-theme=dark]) :is(.editor,.preview,.rendered) :is(:global(th),:global(td)){border-color:var(--line)}
