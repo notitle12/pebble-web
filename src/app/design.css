@@ -610,9 +610,7 @@ body>.site-header,body>.site-footer{flex-shrink:0}
 /* Quiet, unevenly shaped stones with broad contact surfaces. */
 .pebble-banner{background:linear-gradient(115deg,#f0f5ef,#e9f0e8 68%,#e3ece4)}
 .pebble-banner h1{color:var(--text)}.banner-link{color:var(--accent)}.banner-eyebrow,.stack-caption{color:var(--muted)}
-.pebble-stack .stone{background:radial-gradient(ellipse at 30% 24%,var(--stone-light),var(--stone-mid) 55%,var(--stone-dark));box-shadow:inset 0 -5px 10px #24372b12,0 5px 7px -4px #20362a55;transform:translateX(-50%) rotate(var(--stone-tilt));}
-.pebble-stack .stone-one{--stone-light:#a4b6a7;--stone-mid:#7e9785;--stone-dark:#5d7966;--stone-tilt:-2deg;bottom:20px;left:49%;width:204px;height:62px;border-radius:54% 43% 48% 38% / 66% 58% 40% 35%;z-index:1}
-.pebble-stack .stone-two{--stone-light:#c6c4b6;--stone-mid:#a4a695;--stone-dark:#7e8776;--stone-tilt:3deg;bottom:75px;left:47%;width:155px;height:63px;border-radius:44% 58% 40% 48% / 66% 68% 35% 34%;z-index:2}
-.pebble-stack .stone-three{--stone-light:#acc1b1;--stone-mid:#87a18d;--stone-dark:#607f69;--stone-tilt:-3deg;bottom:131px;left:51%;width:116px;height:52px;border-radius:57% 41% 50% 41% / 58% 69% 33% 35%;z-index:3}
-.pebble-stack .stone-four{--stone-light:#b4b8a7;--stone-mid:#939e88;--stone-dark:#6f826a;--stone-tilt:4deg;bottom:176px;left:49%;width:69px;height:43px;border-radius:50% 46% 41% 48% / 62% 69% 33% 38%;z-index:4}
-.pebble-stack::after{content:"";position:absolute;bottom:15px;left:50%;width:194px;height:12px;transform:translateX(-50%);background:radial-gradient(ellipse,#344f3a20,transparent 70%);z-index:0}
+ .pebble-stack .stone{background:radial-gradient(ellipse at 30% 24%,var(--stone-light),var(--stone-mid) 58%,var(--stone-dark));box-shadow:0 4px 5px -4px #20362a66;transform:translateX(-50%) rotate(var(--stone-tilt));}
+.pebble-stack .stone-one{--stone-light:#a0b6a7;--stone-mid:#88a18f;--stone-dark:#6f8d79;--stone-tilt:-1deg;bottom:30px;left:49%;width:202px;height:49px;border-radius:61% 39% 46% 40% / 75% 68% 29% 25%;z-index:1}
+.pebble-stack .stone-two{--stone-light:#bbb9aa;--stone-mid:#a7a797;--stone-dark:#909784;--stone-tilt:2deg;bottom:73px;left:46%;width:141px;height:47px;border-radius:38% 62% 42% 47% / 77% 66% 29% 27%;z-index:2}
+.pebble-stack .stone-three{--stone-light:#abc1b1;--stone-mid:#92ad99;--stone-dark:#779580;--stone-tilt:-2deg;bottom:114px;left:51%;width:91px;height:38px;border-radius:57% 43% 46% 38% / 69% 76% 28% 31%;z-index:3}

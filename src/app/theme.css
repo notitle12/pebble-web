@@ -45,4 +45,4 @@ html[data-theme=dark] .intro .page-eyebrow{color:var(--muted)}
 
 html[data-theme=dark] .search-submit{background:var(--accent);color:var(--background)}
 html[data-theme=dark] .projects-shell .intro h1 span{color:var(--muted)}
-html[data-theme=dark] .pebble-stack .stone{background:radial-gradient(ellipse at 30% 24%,var(--stone-light),var(--stone-mid) 55%,var(--stone-dark));box-shadow:inset 0 -5px 10px #14261a26,0 5px 8px -3px #02080566}
+html[data-theme=dark] .pebble-stack .stone{background:radial-gradient(ellipse at 30% 24%,var(--stone-light),var(--stone-mid) 58%,var(--stone-dark));box-shadow:0 4px 5px -4px #02080599}
