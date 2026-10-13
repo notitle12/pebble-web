@@ -569,3 +569,6 @@ main.personal-blog-layout{grid-template-columns:216px minmax(0,1fr);min-height:c
 .stone-settings-shell{max-width:1160px;padding:32px 28px 64px}.stone-settings-shell .stone-editor{margin:0 auto;padding:0}.stone-settings-shell .stone-editor h1{margin-bottom:8px}@media(max-width:680px){.stone-settings-shell{padding:24px 18px 40px}}
 
 .stone-piece.is-merge-target .stone-outline{fill:var(--accent-soft);stroke-dasharray:4 3}.stone-piece.is-merge-target text{font-family:inherit;font-weight:600}
+
+/* The public stone display stays as compact as the activity calendar. */
+.blog-stones .stone-frame{overflow:hidden}.blog-stones .stone-canvas{height:160px;min-width:0;width:100%}.stone-selection-summary{display:flex;align-items:center;justify-content:center;gap:12px;min-height:28px;margin-top:6px;font-size:12px;color:var(--muted)}.stone-selection-summary strong{font-weight:600;color:var(--text)}.stone-selection-summary>button{border:0;padding:3px 6px;font-size:11px;background:transparent;color:var(--muted)}@media(max-width:680px){.blog-stones .stone-canvas{height:140px}}

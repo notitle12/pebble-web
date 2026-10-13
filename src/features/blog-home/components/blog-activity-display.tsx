@@ -1,6 +1,5 @@
 "use client";
 import {useEffect,useRef,useState,type ReactNode} from "react";
-import Link from "next/link";
 import {getPublicStones} from "../api/blog-stones";
 import type {StoneView} from "../stones";
 import {StoneScene} from "./stone-scene";
@@ -12,7 +11,7 @@ function Stones({handle}:{handle:string}){
  const years=Array.from(new Set(dates.map(item=>item.date.slice(0,4)))).sort().reverse();const filtered=new Set(dates.filter(item=>(year==="all"||item.date.slice(0,4)===year)&&(month==="all"||item.date.slice(5,7)===month)).map(item=>item.post.id));
  const chosen=view?.stones.find(stone=>selected.includes(stone.id));
  return <section className="blog-home-section blog-stones" aria-labelledby="blog-stones-title"><div className="blog-home-section-title"><h2 id="blog-stones-title">기록의 돌</h2><div className="stone-date-filter"><select aria-label="돌 기록 연도" value={year} onChange={event=>setYear(event.target.value)}><option value="all">모든 연도</option>{years.map(y=><option key={y}>{y}</option>)}</select><select aria-label="돌 기록 월" value={month} onChange={event=>setMonth(event.target.value)}><option value="all">모든 달</option>{Array.from({length:12},(_,index)=><option key={index} value={String(index+1).padStart(2,"0")}>{index+1}월</option>)}</select></div></div>
-  {error?<p role="alert">돌을 불러오지 못했어요. <button type="button" onClick={()=>setAttempt(value=>value+1)}>다시 시도</button></p>:view===null?<p role="status">돌을 불러오고 있어요.</p>:!view.stones.length?<p className="blog-home-empty">아직 쌓아둔 돌이 없어요.</p>:<><div ref={frame} className="stone-frame"><StoneScene stones={view.stones} selected={selected} onSelect={id=>setSelected(current=>current.includes(id)?[]:[id])} highlight={year!=="all"||month!=="all"?filtered:undefined}/></div>{chosen&&<div className="stone-post-details"><button type="button" aria-label="돌의 글 목록 닫기" onClick={()=>setSelected([])}>닫기</button><ul>{view.posts.filter(post=>chosen.postIds.includes(post.id)).map(post=><li key={post.id}><Link href={`/blogs/${encodeURIComponent(handle)}/posts/${encodeURIComponent(post.urlKey)}`}>{post.title}</Link></li>)}</ul></div>}</>}
+  {error?<p role="alert">돌을 불러오지 못했어요. <button type="button" onClick={()=>setAttempt(value=>value+1)}>다시 시도</button></p>:view===null?<p role="status">돌을 불러오고 있어요.</p>:!view.stones.length?<p className="blog-home-empty">아직 쌓아둔 돌이 없어요.</p>:<><div ref={frame} className="stone-frame"><StoneScene stones={view.stones} selected={selected} onSelect={id=>setSelected(current=>current.includes(id)?[]:[id])} highlight={year!=="all"||month!=="all"?filtered:undefined}/></div><div className="stone-selection-summary" aria-live="polite">{chosen&&<><span>이 돌에 담긴 글 <strong>{chosen.postIds.length}개</strong></span><button type="button" aria-label="돌 선택 해제" onClick={()=>setSelected([])}>닫기</button></>}</div></>}
  </section>;
 }
 export function BlogActivityDisplay({handle,defaultDisplay="GRASS",grass}:{handle:string;defaultDisplay?:"GRASS"|"STONES";grass:ReactNode}){
