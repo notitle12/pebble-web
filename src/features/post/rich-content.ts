@@ -111,10 +111,10 @@ function stableImages(html: string): string {
 }
 
 /** Safe HTML for preview/public rendering. Markdown output is always sanitized after parsing. */
-export function richContentHtml(content: string, format: RichBodyFormat): string {
-  if (format === "TEXT") return stableImages(escapeRichText(content));
-  if (format === "MARKDOWN") return stableImages(marked.parse(content, { async: false, gfm: true, breaks: true }));
-  return stableImages(content);
+export function richContentHtml(content: string, format: RichBodyFormat, imagePreviews: Record<string,string> = {}): string {
+  const safe=stableImages(format==="TEXT"?escapeRichText(content):format==="MARKDOWN"?marked.parse(content,{async:false,gfm:true,breaks:true}):content);
+  if(!Object.keys(imagePreviews).length)return safe;
+  return sanitizeHtml(safe,{...sanitizerOptions,transformTags:{...sanitizerOptions.transformTags,img:(_tagName,attrs)=>({tagName:"img",attribs:{...withSafeAlignment(attrs),src:imagePreviews[attrs.src??""]??attrs.src??""}})}});
 }
 
 /** HTML to place in Tiptap: starts from sanitized content and substitutes short-lived owner previews. */
