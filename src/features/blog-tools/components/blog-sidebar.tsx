@@ -1,31 +1,30 @@
 "use client";
 import Link from "next/link";
-import { useRef, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { SidebarToggle } from "../../blog-home/components/sidebar-toggle";
 import { BlogMenuIcon } from "./blog-menu-icon";
 import { blogHref } from "../../post/api/public-blog";
 
 type BoardItem = {id: string; name: string; depth: number};
 type ProjectItem = {id: string; name: string};
-type Props = {children: ReactNode; footer: ReactNode; links: ReactNode; handle: string; query?: string;
+type Props = {footer: ReactNode; links: ReactNode; handle: string;
   homeView: boolean; selected?: string; projectView: boolean; boardView: boolean; searched: boolean;
   boards: BoardItem[]; projects: ProjectItem[]; boardError: boolean; projectError: boolean};
-export function BlogSidebar({children,footer,links,handle,query,homeView,selected,projectView,boardView,searched,boards,projects,boardError,projectError}: Props) {
+export function BlogSidebar({footer,links,handle,homeView,selected,projectView,boardView,searched,boards,projects,boardError,projectError}: Props) {
   const [collapsed,setCollapsed]=useState(false);
+  useEffect(()=>{if(window.matchMedia("(max-width: 640px)").matches)setCollapsed(true);},[]);
   const [postsOpen,setPostsOpen]=useState(true);
   const [boardsOpen,setBoardsOpen]=useState(true);
   const [projectsOpen,setProjectsOpen]=useState(true);
-  const searchInput=useRef<HTMLInputElement>(null);
   const homeHref=`/blogs/${encodeURIComponent(handle)}`;
   const projectsHref=`${homeHref}?view=projects`;
   const boardsHref=`${homeHref}?view=boards`;
   const allPosts=!homeView&&!selected&&!projectView&&!boardView&&!searched;
-  function openSearch() { setCollapsed(false); requestAnimationFrame(()=>searchInput.current?.focus()); }
-  return <aside id="blog-sidebar" className="personal-blog-profile" aria-label="블로그 정보" data-collapsed={collapsed}>
+  function openSearch() { document.getElementById("blog-search")?.focus(); }
+  return <aside id="blog-sidebar" className="personal-blog-profile" aria-label="블로그 탐색" data-collapsed={collapsed}>
     <SidebarToggle collapsed={collapsed} onToggle={()=>setCollapsed(value=>!value)}/>
     <div id="blog-sidebar-content" className="blog-sidebar-content" hidden={collapsed} inert={collapsed}>
-      {children}
-      <form className="blog-search-form" action={homeHref} method="get"><label className="sr-only" htmlFor="blog-search">이 블로그에서 검색</label><div><input ref={searchInput} id="blog-search" name="q" type="search" maxLength={200} defaultValue={query??""} placeholder="이 블로그에서 검색"/><button type="submit" aria-label="블로그 검색"><BlogMenuIcon name="search"/></button></div></form>
+
       <nav className="blog-tree-nav" aria-label="블로그 메뉴">
         <Link className="blog-menu-row" href={homeHref} aria-current={homeView?"page":undefined}><BlogMenuIcon name="home"/><span>홈</span></Link>
         <div className="blog-menu-parent"><Link className="blog-menu-row" href={blogHref(handle,0)} aria-current={allPosts?"page":undefined}><BlogMenuIcon name="posts"/><span>전체 게시글</span></Link><button type="button" className="blog-menu-disclosure" aria-expanded={postsOpen} aria-controls="blog-post-folders" aria-label={`게시판과 프로젝트 ${postsOpen?"접기":"펼치기"}`} onClick={()=>setPostsOpen(value=>!value)}><BlogMenuIcon name="chevron"/></button></div>
