@@ -20,7 +20,7 @@ export default async function HomePage({searchParams}:{searchParams:Promise<Reco
       {process.env.NODE_ENV==="development"&&process.env.PEBBLE_PREVIEW_MODE==="mock"&&<p className="preview-notice" role="status">목 데이터 미리보기 · 실제 게시글이 아닙니다</p>}
       <section className="pebble-banner" aria-labelledby="home-title">
         <div className="banner-copy"><p className="banner-eyebrow">A LITTLE, EVERY DAY</p><h1 id="home-title">하루의 작은 기록이<br/>나만의 길이 되도록.</h1><p>코드 한 줄, 새롭게 배운 것, 만들어 낸 프로젝트.<br/>작은 기록을 하나씩 쌓아가세요.</p><Link href="/me/blog" prefetch={false} className="banner-link">내 블로그에 기록 쌓기 <span aria-hidden="true">↗</span></Link></div>
-        <div className="pebble-stack" aria-hidden="true"><span className="stone stone-one"/><span className="stone stone-two"/><span className="stone stone-three"/><span className="stone stone-four"/><span className="stack-caption">one day, one pebble.</span></div>
+        <div className="pebble-stack" aria-hidden="true"><span className="stone stone-one"/><span className="stone stone-two"/><span className="stone stone-three"/><span className="stack-caption">one day, one pebble.</span></div>
       </section>
       {!query?<InvalidPage/>:<Suspense key={JSON.stringify(query)} fallback={<PostListLoading/>}>{filtered?<PostList query={query}/>:<HomeFeed query={query}/>}</Suspense>}
     </main>
