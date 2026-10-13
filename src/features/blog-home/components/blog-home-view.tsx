@@ -50,7 +50,7 @@ function RecentPosts({ posts, postsFailed, handle }: { posts: PostPage | null; p
 }
 export function BlogHomeView({ handle, settings, activity, projects, projectErrors, hasFeaturedProjects, posts, postsFailed }: { handle: string; settings: BlogHomeSettings; activity: BlogActivity; projects: ProjectDetail[]; projectErrors: number; hasFeaturedProjects: boolean; posts: PostPage | null; postsFailed: boolean }) {
   const visibleSections = settings.sections.filter(section => section.visible);
-  const sections = [...visibleSections.filter(section => section.key === "TECH_STACKS"), ...visibleSections.filter(section => section.key !== "TECH_STACKS")];
+  const sections = visibleSections;
   return <section className="blog-home-content" aria-label="블로그 홈">
     {sections.map(section => <div className="blog-home-block" key={section.key}>
       {section.key === "ACTIVITY" && <BlogActivityDisplay handle={handle} defaultDisplay={settings.activityDisplay} grass={<Activity data={activity}/>}/>}
