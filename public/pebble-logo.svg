@@ -3,5 +3,4 @@
  <path d="M28 64C39 42 66 31 91 35C116 39 137 57 140 80C144 105 124 124 94 128C64 133 32 126 23 106C16 91 20 78 28 64Z" fill="url(#stone)"/>
  <path d="M31 72C43 52 68 44 91 47C110 49 124 58 130 72" stroke="#DBE6DF" stroke-opacity=".5" stroke-width="3" stroke-linecap="round"/>
  <path d="M34 106C52 119 91 122 118 108" stroke="#365943" stroke-opacity=".35" stroke-width="3" stroke-linecap="round"/>
- <path d="m55 74 5-2m39 21 4-1m-31 13 3 1" stroke="#E6EEE8" stroke-opacity=".4" stroke-width="2" stroke-linecap="round"/>
 </svg>
