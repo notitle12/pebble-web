@@ -47,3 +47,6 @@ html[data-theme=dark] :is(.discovery-heading,.discovery-shell .popular-section .
 html[data-theme=dark] :is(.discovery-shell .post-meta,.discovery-shell .post-summary,.discovery-shell .post-author-link,.pagination){color:var(--muted)}
 
 html[data-theme=dark] .intro .page-eyebrow{color:var(--muted)}
+
+html[data-theme=dark] .search-submit{background:var(--accent);color:var(--background)}
+html[data-theme=dark] .projects-shell .intro h1 span{color:var(--muted)}
