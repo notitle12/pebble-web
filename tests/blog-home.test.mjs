@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import { GuestApiError } from "../src/lib/public-api.ts";
 import { defaultBlogHomeSettings, normalizeTechStacks, parseBlogHomeSettings, parsePublicBlogHome, visibleHomeDataLoads } from "../src/features/blog-home/api/blog-home.ts";
 
+import {activityCalendar} from "../src/features/blog-home/activity-calendar.ts";
+
 const settings = { sections: ["ACTIVITY", "TECH_STACKS", "PROJECTS", "RECENT_POSTS"].map(key => ({ key, visible: true })), techStacks: ["Java", "Spring Boot"], featuredProjectIds: ["721389012345678901"] };
 const activity = { from: "2025-10-10", to: "2026-10-10", timeZone: "Asia/Seoul", days: [{ date: "2025-11-02", count: 2 }, { date: "2026-01-01", count: 1 }] };
 
@@ -38,4 +40,25 @@ test("hidden homepage sections do not request recent posts or featured projects"
   const hidden = { ...settings, sections: settings.sections.map(section => ({ ...section, visible: false })) };
   assert.deepEqual(visibleHomeDataLoads(hidden), { recentPosts: false, featuredProjects: false });
   assert.deepEqual(visibleHomeDataLoads(settings), { recentPosts: true, featuredProjects: true });
+});
+
+
+test("activity calendar aligns weekdays and month labels across a leap day",()=>{
+ const result=activityCalendar({from:"2024-02-28",to:"2024-03-04",timeZone:"Asia/Seoul",days:[{date:"2024-02-29",count:2},{date:"2024-03-04",count:6}]});
+ assert.deepEqual(result.cells.slice(0,2),[null,null]);
+ assert.deepEqual(result.cells.slice(2).map(cell=>cell.date),["2024-02-28","2024-02-29","2024-03-01","2024-03-02","2024-03-03","2024-03-04"]);
+ assert.deepEqual(result.months,[{label:"2월",week:0}]);
+ assert.equal(result.cells[3].level,2);
+ assert.equal(result.cells[7].level,4);
+ assert.equal(result.total,8);
+ assert.equal(result.activeDays,2);
+});
+
+test("activity calendar shows complete annual data and only counts days with posts",()=>{
+ const result=activityCalendar({...activity,days:[...activity.days,{date:"2026-01-02",count:0}]});
+ assert.equal(result.cells.filter(Boolean).length,366);
+ assert.equal(result.activeDays,2);
+ assert.equal(result.total,3);
+ assert.deepEqual(result.months.slice(0,2),[{label:"10월",week:0},{label:"11월",week:3}]);
+ assert.equal(result.months.at(-1).label,"10월");
 });

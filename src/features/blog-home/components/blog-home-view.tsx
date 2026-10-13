@@ -1,4 +1,5 @@
 import Link from "next/link";
+import {activityCalendar} from "../activity-calendar";
 import type { BlogActivity, BlogHomeSettings, HomeSectionKey } from "../api/blog-home";
 import type { ProjectDetail } from "../../project/api/project-list";
 import type { PostPage } from "../../post/api/post-list";
@@ -10,27 +11,25 @@ const techLogos: Record<string, string> = {
   postgresql: "/tech/postgresql.svg", postgres: "/tech/postgresql.svg", redis: "/tech/redis.svg", react: "/tech/react.svg", typescript: "/tech/typescript.svg",
 };
 function Activity({ data }: { data: BlogActivity }) {
-  const byDate = new Map(data.days.map(day => [day.date, day.count]));
-  const start = new Date(`${data.from}T00:00:00Z`);
-  const end = new Date(`${data.to}T00:00:00Z`);
-  const dates: string[] = [];
-  for (const cursor = new Date(start); cursor <= end; cursor.setUTCDate(cursor.getUTCDate() + 1)) dates.push(cursor.toISOString().slice(0, 10));
-  const firstOffset = (new Date(`${data.from}T00:00:00Z`).getUTCDay() + 6) % 7;
-  const padded = [...Array(firstOffset).fill(null), ...dates];
+  const {cells,months,total,activeDays}=activityCalendar(data);
   return <section className="blog-home-section blog-home-activity" aria-labelledby="home-activity-title">
-    <div className="blog-home-section-title"><h2 id="home-activity-title">{titles.ACTIVITY}</h2><span>{data.days.reduce((sum, item) => sum + item.count, 0)}회</span></div>
-    <p className="sr-only" id="blog-activity-description">최근 1년 동안 날짜별 공개 글 수를 보여줍니다. 날짜별 수량은 각 날짜 칸의 대체 텍스트에서 확인할 수 있습니다.</p><div className="blog-activity-scroll" role="group" aria-label={`${data.from}부터 ${data.to}까지 날짜별 공개 글 수`} aria-describedby="blog-activity-description">
-      <ol className="blog-activity-grid" aria-label="월요일부터 일요일 순서의 활동 달력">
-        {padded.map((date, index) => {
-          if (!date) return <li key={`pad-${index}`} aria-hidden="true" className="blog-activity-day is-pad"/>;
-          const count = byDate.get(date) ?? 0;
-          return <li key={date}><span role="img" className={`blog-activity-day activity-${count === 0 ? 0 : count === 1 ? 1 : count <= 3 ? 2 : count <= 5 ? 3 : 4}`} title={`${date}: 공개 글 ${count}개`} aria-label={`${date}, 공개 글 ${count}개`}/></li>;
-        })}
-      </ol>
+    <div className="blog-home-section-title"><h2 id="home-activity-title">{titles.ACTIVITY}</h2><span>글 {total}개 · 기록한 날 {activeDays}일</span></div>
+    <p className="sr-only" id="blog-activity-description">최근 1년 동안 날짜별 공개 글 수입니다. 월요일부터 일요일 순서이며 진한 초록색일수록 글이 많습니다.</p>
+    <div className="blog-activity-scroll" role="group" aria-label={`${data.from}부터 ${data.to}까지 날짜별 공개 글 수`} aria-describedby="blog-activity-description" tabIndex={0}>
+      <div className="blog-activity-chart">
+        <div className="blog-activity-weekdays" aria-hidden="true">{["월","","수","","금","","일"].map((day,index)=><span key={index}>{day}</span>)}</div>
+        <div className="blog-activity-calendar">
+          <div className="blog-activity-months" aria-hidden="true">{months.map((month,index)=><span key={index} style={{gridColumn:month.week+1}}>{month.label}</span>)}</div>
+          <ol className="blog-activity-grid" aria-label="월요일부터 일요일 순서의 활동 달력">
+            {cells.map((cell,index)=>cell?<li key={cell.date}><span role="img" className={`blog-activity-day activity-${cell.level}`} title={`${cell.date}: 공개 글 ${cell.count}개`} aria-label={`${cell.date}, 공개 글 ${cell.count}개`}/></li>:<li key={`pad-${index}`} aria-hidden="true" className="blog-activity-day is-pad"/>)}
+          </ol>
+        </div>
+      </div>
     </div>
-    <p className="blog-activity-help">최근 1년간 공개한 글을 보여줘요.</p>
+    <div className="blog-activity-footer"><p className="blog-activity-help">최근 1년간 공개한 글</p><div className="blog-activity-legend" aria-label="활동량 범례: 공개 글 없음, 1개, 2~3개, 4~5개, 6개 이상"><span>적음</span>{[0,1,2,3,4].map(level=><span key={level} className={`blog-activity-day activity-${level}`} aria-hidden="true"/>)}<span>많음</span></div></div>
   </section>;
 }
+
 function Stacks({ items }: { items: string[] }) {
   return items.length ? <ul className="blog-tech-list">{items.map(name => { const logo = techLogos[name.normalize("NFKC").toLocaleLowerCase("und")]; return <li key={name}>{logo ? <img className="blog-tech-logo" src={logo} alt="" width={24} height={24} loading="lazy"/> : <span className="blog-tech-mark" aria-hidden="true">{Array.from(name)[0]?.toLocaleUpperCase()}</span>}<span>{name}</span></li>; })}</ul> : <p className="blog-home-empty">아직 공개한 기술 스택이 없어요.</p>;
 }
@@ -49,7 +48,7 @@ function RecentPosts({ posts, postsFailed, handle }: { posts: PostPage | null; p
   return <ul className="blog-home-posts">{posts.content.slice(0, 3).map((post, index) => <li key={post.id}><Link href={`/blogs/${encodeURIComponent(handle)}/posts/${encodeURIComponent(post.urlKey)}`} prefetch={false}>
     <span className="blog-home-post-number" aria-hidden="true">{index + 1}</span>
     <span className="blog-home-post-copy"><strong>{post.title}</strong>{post.summary && <span>{post.summary}</span>}<time dateTime={post.publishedAt??post.createdAt}>{new Intl.DateTimeFormat("ko-KR", { month: "numeric", day: "numeric", timeZone: "Asia/Seoul" }).format(new Date(post.publishedAt??post.createdAt))}</time></span>
-    {post.thumbnailUrl ? <img src={post.thumbnailUrl} alt="" width={160} height={108}/> : <span className="blog-post-placeholder" aria-hidden="true"/>}
+    {post.thumbnailUrl ? <img src={post.thumbnailUrl} alt="" width={240} height={162}/> : <span className="blog-post-placeholder" aria-hidden="true"/>}
   </Link></li>)}</ul>;
 }
 export function BlogHomeView({ handle, settings, activity, projects, projectErrors, hasFeaturedProjects, posts, postsFailed }: { handle: string; settings: BlogHomeSettings; activity: BlogActivity; projects: ProjectDetail[]; projectErrors: number; hasFeaturedProjects: boolean; posts: PostPage | null; postsFailed: boolean }) {
