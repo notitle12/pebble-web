@@ -1,4 +1,5 @@
 import Link from "next/link";
+import {BlogActivityDisplay} from "./blog-activity-display";
 import {activityCalendar} from "../activity-calendar";
 import type { BlogActivity, BlogHomeSettings, HomeSectionKey } from "../api/blog-home";
 import type { ProjectDetail } from "../../project/api/project-list";
@@ -56,7 +57,7 @@ export function BlogHomeView({ handle, settings, activity, projects, projectErro
   const sections = [...visibleSections.filter(section => section.key === "TECH_STACKS"), ...visibleSections.filter(section => section.key !== "TECH_STACKS")];
   return <section className="blog-home-content" aria-label="블로그 홈">
     {sections.map(section => <div className="blog-home-block" key={section.key}>
-      {section.key === "ACTIVITY" && <Activity data={activity}/>}
+      {section.key === "ACTIVITY" && <BlogActivityDisplay handle={handle} defaultDisplay={settings.activityDisplay} grass={<Activity data={activity}/>}/>}
       {section.key === "TECH_STACKS" && <section className="blog-home-section" aria-labelledby="home-tech-title"><h2 id="home-tech-title">{titles.TECH_STACKS}</h2><Stacks items={settings.techStacks}/></section>}
       {section.key === "PROJECTS" && <section className="blog-home-section" aria-labelledby="home-projects-title"><div className="blog-home-section-title"><h2 id="home-projects-title">{titles.PROJECTS}</h2><Link href={`/blogs/${handle}?view=projects`}>전체 프로젝트 보기 →</Link></div><Projects projects={projects} configured={hasFeaturedProjects} failed={projectErrors > 0}/>{projectErrors > 0 && projects.length > 0 && <p className="blog-home-empty" role="alert">일부 대표 프로젝트를 불러오지 못했어요.</p>}</section>}
       {section.key === "RECENT_POSTS" && <section className="blog-home-section" aria-labelledby="home-posts-title"><div className="blog-home-section-title"><h2 id="home-posts-title">{titles.RECENT_POSTS}</h2><Link href={`/blogs/${handle}?view=posts`}>전체 글 보기 →</Link></div><RecentPosts posts={posts} postsFailed={postsFailed} handle={handle}/></section>}
