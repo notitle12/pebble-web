@@ -606,11 +606,3 @@ main.personal-blog-layout{grid-template-columns:216px minmax(0,1fr);min-height:c
 body{min-height:100dvh;display:flex;flex-direction:column}
 body>main{flex:1 0 auto;width:100%}
 body>.site-header,body>.site-footer{flex-shrink:0}
-
-/* Quiet, unevenly shaped stones with broad contact surfaces. */
-.pebble-banner{background:linear-gradient(115deg,#f0f5ef,#e9f0e8 68%,#e3ece4)}
-.pebble-banner h1{color:var(--text)}.banner-link{color:var(--accent)}.banner-eyebrow,.stack-caption{color:var(--muted)}
- .pebble-stack .stone{background:radial-gradient(ellipse at 30% 24%,var(--stone-light),var(--stone-mid) 58%,var(--stone-dark));box-shadow:0 4px 5px -4px #20362a66;transform:translateX(-50%) rotate(var(--stone-tilt));}
-.pebble-stack .stone-one{--stone-light:#a0b6a7;--stone-mid:#88a18f;--stone-dark:#6f8d79;--stone-tilt:-1deg;bottom:30px;left:49%;width:202px;height:49px;border-radius:61% 39% 46% 40% / 75% 68% 29% 25%;z-index:1}
-.pebble-stack .stone-two{--stone-light:#bbb9aa;--stone-mid:#a7a797;--stone-dark:#909784;--stone-tilt:2deg;bottom:73px;left:46%;width:141px;height:47px;border-radius:38% 62% 42% 47% / 77% 66% 29% 27%;z-index:2}
-.pebble-stack .stone-three{--stone-light:#abc1b1;--stone-mid:#92ad99;--stone-dark:#779580;--stone-tilt:-2deg;bottom:114px;left:51%;width:91px;height:38px;border-radius:57% 43% 46% 38% / 69% 76% 28% 31%;z-index:3}

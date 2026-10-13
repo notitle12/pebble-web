@@ -45,4 +45,8 @@ html[data-theme=dark] .intro .page-eyebrow{color:var(--muted)}
 
 html[data-theme=dark] .search-submit{background:var(--accent);color:var(--background)}
 html[data-theme=dark] .projects-shell .intro h1 span{color:var(--muted)}
-html[data-theme=dark] .pebble-stack .stone{background:radial-gradient(ellipse at 30% 24%,var(--stone-light),var(--stone-mid) 58%,var(--stone-dark));box-shadow:0 4px 5px -4px #02080599}
+html[data-theme=dark] .pebble-stack .stone{box-shadow:inset -12px -10px 20px #14261a33,inset 7px 8px 12px #ffffff25,0 10px 12px #02080533}
+html[data-theme=dark] .pebble-stack .stone-one{background:#608573}
+html[data-theme=dark] .pebble-stack .stone-two{background:#98ac99}
+html[data-theme=dark] .pebble-stack .stone-three{background:#78977f}
+html[data-theme=dark] .pebble-stack .stone-four{background:#48735a}
