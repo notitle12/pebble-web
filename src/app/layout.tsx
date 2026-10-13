@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import {SiteFooter} from "../components/site-footer";
 import "./globals.css";
 import "./design.css";
 
@@ -13,7 +14,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="ko">
       <head><link rel="stylesheet" href="/fonts/pretendard/pretendard.css"/></head>
-      <body>{children}</body>
+      <body>{children}<SiteFooter/></body>
     </html>
   );
 }
