@@ -139,7 +139,7 @@ function BoardManagementForMember({ memberId }: { memberId: string }) {
     setDrop(next);
   }
 
-  function pointerMove(event: PointerEvent<HTMLButtonElement>) {
+  function pointerMove(event: PointerEvent<HTMLDivElement>) {
     const start = pointer.current;
     if (!start || disabled || edit) return;
     if (!start.active) {
@@ -148,15 +148,16 @@ function BoardManagementForMember({ memberId }: { memberId: string }) {
       dragRef.current = start.id;
       setDragId(start.id);
     }
-    const row = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>("[data-board-id]");
-    if (!row?.dataset.boardId) {
+    const row = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>(".board-tree-row");
+    const targetId=row?.closest<HTMLElement>("[data-board-id]")?.dataset.boardId;
+    if (!row || !targetId) {
       dropRef.current = null;
       setDrop(null);
       return;
     }
     const rect = row.getBoundingClientRect();
     const ratio = rect.height ? (event.clientY - rect.top) / rect.height : 0.5;
-    chooseDrop(row.dataset.boardId, ratio < 0.25 ? "before" : ratio > 0.75 ? "after" : "inside");
+    chooseDrop(targetId, ratio < 0.25 ? "before" : ratio > 0.75 ? "after" : "inside");
   }
 
   function applyMove() {
@@ -274,28 +275,19 @@ function BoardManagementForMember({ memberId }: { memberId: string }) {
     <div className="board-manager-workspace">
       <section className="board-tree-panel" aria-label="게시판 목록">
         <div className="board-tree-heading"><h2>내 게시판 <span>{flat.length}</span></h2><button className="board-icon-button" type="button" disabled={busy || loading} onClick={() => void load(dirty)} aria-label="게시판 목록 새로고침"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M5.5 8a7 7 0 0 1 11.8-3L20 8M4 16l2.7 3A7 7 0 0 0 18.5 16"/></svg></button></div>
-        <div className="board-default-row"><span className="board-default-drag-space" aria-hidden="true"/><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg><div><strong>전체 게시글</strong><p>모든 글을 모아보는 기본 영역</p></div><span className="board-default-badge">기본</span></div>
+        <div className="board-default-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg><div><strong>전체 게시글</strong><p>모든 글을 모아보는 기본 영역</p></div><span className="board-default-badge">기본</span></div>
         {loading && <div className="list-state" role="status">게시판을 불러오고 있어요.</div>}
         {!loading && loadError && <div className="list-state"><p role="alert">{loadError}</p><button className="button" disabled={busy} onClick={() => void load(uncertain || dirty)}>서버 목록 다시 확인</button></div>}
         {!loading && !loadError && draft.length === 0 && <div className="board-empty"><h3>첫 게시판을 만들어 보세요</h3><p>주제별로 글을 나누고 하위 게시판으로 정리할 수 있어요.</p><button className="button" onClick={addBoard} disabled={disabled || Boolean(edit)}>게시판 추가</button></div>}
         {!loading && !loadError && draft.length > 0 && <ul className="board-tree" aria-label="내 게시판 계층">{visible(draft).map(board => <li key={board.id} className={[edit?.id === board.id ? "is-selected" : "", dragId === board.id ? "is-dragging" : "", drop?.id === board.id ? `drop-${drop.position}` : ""].join(" ")} data-board-id={board.id}>
-          <div className="board-tree-row" style={{ paddingInlineStart: `${16 + board.depth * 24}px` }}>
-            <button className="board-drag-handle" disabled={disabled || Boolean(edit)} aria-label={`${board.name} 순서 이동`} onPointerDown={event => { if (disabled || edit || event.button !== 0) return; event.preventDefault(); event.currentTarget.focus(); event.currentTarget.setPointerCapture(event.pointerId); pointer.current = { id: board.id, x: event.clientX, y: event.clientY, active: false }; }} onPointerMove={pointerMove} onPointerUp={event => { const active = pointer.current?.active; pointer.current = null; if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId); if (active) applyMove(); }} onPointerCancel={clearDrag} onKeyDown={event => {
-              if (event.key === "Escape") { clearDrag(); return; }
-              if (event.key === " " || event.key === "Enter") { event.preventDefault(); if (dragRef.current) applyMove(); else { dragRef.current = board.id; setDragId(board.id); } return; }
-              if (!dragRef.current) return;
-              const rows = visible(draft);
-              const at = rows.findIndex(row => row.id === (dropRef.current?.id ?? board.id));
-              if (event.key === "ArrowUp" || event.key === "ArrowDown") { event.preventDefault(); const next = rows[Math.max(0, Math.min(rows.length - 1, at + (event.key === "ArrowUp" ? -1 : 1)))]; chooseDrop(next.id, event.key === "ArrowUp" ? "before" : "after"); }
-              if (event.key === "ArrowRight" && dropRef.current && dropRef.current.id !== dragRef.current) { event.preventDefault(); chooseDrop(dropRef.current.id, "inside"); }
-            }}><svg viewBox="0 0 16 20" fill="currentColor" aria-hidden="true">{[5, 10, 15].flatMap(y => [5, 11].map(x => <circle key={`${x}-${y}`} cx={x} cy={y} r="1.2"/>))}</svg></button>
+          <div className="board-tree-row" onPointerDown={event=>{if(disabled||edit||event.button!==0||event.pointerType==="touch"||(event.target as Element).closest("button,a,input,select,textarea,form"))return;event.preventDefault();event.currentTarget.setPointerCapture(event.pointerId);pointer.current={id:board.id,x:event.clientX,y:event.clientY,active:false};}} onPointerMove={pointerMove} onPointerUp={event=>{const active=pointer.current?.active;if(active)pointerMove(event);pointer.current=null;if(event.currentTarget.hasPointerCapture(event.pointerId))event.currentTarget.releasePointerCapture(event.pointerId);if(active)applyMove();}} onPointerCancel={clearDrag} style={{ paddingInlineStart: `${16 + board.depth * 24}px` }}>
             {board.children.length ? <button className="board-expand" aria-label={`${board.name} 하위 게시판 ${collapsed.has(board.id) ? "펼치기" : "접기"}`} aria-expanded={!collapsed.has(board.id)} onClick={() => toggle(board.id)}><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true" style={{ transform: collapsed.has(board.id) ? "rotate(-90deg)" : undefined }}><path d="m5 7 5 5 5-5"/></svg></button> : <span className="board-leaf-mark" aria-hidden="true">·</span>}
             {edit?.id === board.id ? <form className="board-inline-name" onSubmit={event => { event.preventDefault(); confirmName(); }}><input ref={nameInput} aria-label="게시판 이름" maxLength={100} disabled={disabled} value={edit.value} onChange={event => setEdit(previous => previous ? { ...previous, value: event.target.value } : previous)} onKeyDown={event => { if (event.key === "Escape") { setEdit(null); setError(""); } }}/><button type="submit" disabled={disabled}>확인</button><button type="button" disabled={busy} onClick={() => { setEdit(null); setError(""); }}>취소</button></form> : <span className="board-name-button"><span>{board.name}</span>{board.children.length > 0 && <small>하위 {board.children.length}</small>}</span>}
             <div className="board-row-actions"><button disabled={disabled || Boolean(edit)} onClick={() => { setEdit({ id: board.id, value: board.name }); setPendingDelete(null); setError(""); }}>수정</button><button className="board-delete-action" disabled={disabled || Boolean(edit) || board.children.length > 0} title={board.children.length ? "하위 게시판을 먼저 이동하거나 삭제해 주세요." : undefined} onClick={() => { setPendingDelete(board.id); setError(""); }}>삭제</button></div>
           </div>
           {pendingDelete === board.id && <div className="board-delete-confirm" role="group" aria-label={`${board.name} 삭제 확인`}><p><strong>{board.name}</strong> 게시판을 삭제할까요? 연결된 글은 전체 게시글에 남습니다.</p><div><button disabled={disabled} onClick={confirmDelete}>삭제 확인</button><button disabled={busy} onClick={() => setPendingDelete(null)}>취소</button></div></div>}
         </li>)}</ul>}
-        <p className="board-drag-help">게시판 위·아래에 놓으면 순서를 바꾸고, 가운데에 놓으면 하위로 넣어요. 키보드: Space → ↑↓ 선택 → → 하위 → Enter 적용, Esc 취소.</p>
+        <p className="board-drag-help">게시판 행을 드래그해 위·아래에 놓으면 순서를 바꾸고, 가운데에 놓으면 하위로 넣어요.</p>
         {error && !loading && !loadError && <p role="alert" className="board-form-error">{error}</p>}
         {message && <p role="status" className="board-form-message">{message}</p>}
         <div className="board-draft-actions" aria-label="게시판 변경 사항 저장">
