@@ -23,6 +23,6 @@ export default async function HomePage({searchParams}:{searchParams:Promise<Reco
         <div className="pebble-stack" aria-hidden="true"><span className="stone stone-one"/><span className="stone stone-two"/><span className="stone stone-three"/><span className="stone stone-four"/><span className="stack-caption">one day, one pebble.</span></div>
       </section>
       {!query?<InvalidPage/>:<Suspense key={JSON.stringify(query)} fallback={<PostListLoading/>}>{filtered?<PostList query={query}/>:<HomeFeed query={query}/>}</Suspense>}
-    </main><footer className="site-footer">Pebble · 작은 기록이 쌓이는 곳</footer>
+    </main>
   </>;
 }
