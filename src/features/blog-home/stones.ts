@@ -25,7 +25,7 @@ export function parseStoneView(value:unknown):StoneView{
 export function stoneSize(count:number){return {width:90*Math.pow(Math.min(100,Math.max(1,count)),.45),height:40*Math.pow(Math.min(100,Math.max(1,count)),.22)};}
 export function moveStone(stone:Stone,x:number,y:number):Stone{
  const {width,height}=stoneSize(stone.postIds.length);
- return {...stone,x:Math.max(width/2,Math.min(1000-width/2,x)),y:Math.max(height*.4,Math.min(342-height*.4,y))};
+ return {...stone,x:Math.max(width/2,Math.min(1000-width/2,x)),y:Math.max(height*.46,Math.min(342-height*.46,y))};
 }
 export function mergeStones(stones:Stone[],selected:string[]):Stone[]{
  const chosen=stones.filter(stone=>selected.includes(stone.id));
@@ -42,15 +42,18 @@ export function splitStone(stones:Stone[],id:string):Stone[]{
 }
 export function unusedPosts(posts:StonePost[],stones:Stone[]){const used=new Set(stones.flatMap(stone=>stone.postIds));return posts.filter(post=>!used.has(post.id));}
 
+// SVG paints later elements in front: a smaller canvas Y means a higher stone.
+export function stonePaintOrder(stones:Stone[]):Stone[]{return [...stones].sort((a,b)=>b.y-a.y||a.id.localeCompare(b.id));}
+
 export function stoneMergeTarget(stones:Stone[],sourceId:string,x:number,y:number):Stone|undefined{
- return [...stones].reverse().find(stone=>{if(stone.id===sourceId)return false;const size=stoneSize(stone.postIds.length),angle=stone.rotation*Math.PI/180,dx=x-stone.x,dy=y-stone.y;return Math.abs(dx*Math.cos(angle)+dy*Math.sin(angle))<=size.width*.36&&Math.abs(-dx*Math.sin(angle)+dy*Math.cos(angle))<=size.height*.4;});
+ return stonePaintOrder(stones).reverse().find(stone=>{if(stone.id===sourceId)return false;const size=stoneSize(stone.postIds.length),angle=stone.rotation*Math.PI/180,dx=x-stone.x,dy=y-stone.y;return Math.abs(dx*Math.cos(angle)+dy*Math.sin(angle))<=size.width*.36&&Math.abs(-dx*Math.sin(angle)+dy*Math.cos(angle))<=size.height*.4;});
 }
 
 export function snapStone(stone:Stone,others:Stone[]):Stone{
  if(Math.abs(stone.rotation)>30)return moveStone(stone,stone.x,stone.y);
  const size=stoneSize(stone.postIds.length);
- const target=others.filter(item=>item.id!==stone.id&&Math.abs(item.rotation)<=30).map(item=>{const otherSize=stoneSize(item.postIds.length);return {item,otherSize,top:item.y-otherSize.height*.38,distance:Math.abs(stone.y+size.height*.4-(item.y-otherSize.height*.38))};}).filter(candidate=>candidate.item.y>stone.y&&candidate.distance<22&&Math.abs(stone.x-candidate.item.x)<(size.width+candidate.otherSize.width)*.36).sort((a,b)=>a.distance-b.distance)[0];
- if(target){const x=Math.abs(stone.x-target.item.x)<18?target.item.x:stone.x;return moveStone(stone,x,target.top-size.height*.4+2);}
- const floor=342-size.height*.4;
+ const target=others.filter(item=>item.id!==stone.id&&Math.abs(item.rotation)<=30).map(item=>{const otherSize=stoneSize(item.postIds.length);return {item,otherSize,top:item.y-otherSize.height*.46,distance:Math.abs(stone.y+size.height*.46-(item.y-otherSize.height*.46))};}).filter(candidate=>candidate.item.y>stone.y&&candidate.distance<22&&Math.abs(stone.x-candidate.item.x)<(size.width+candidate.otherSize.width)*.36).sort((a,b)=>a.distance-b.distance)[0];
+ if(target){const x=Math.abs(stone.x-target.item.x)<18?target.item.x:stone.x;return moveStone(stone,x,target.top-size.height*.46+3);}
+ const floor=342-size.height*.46;
  return moveStone(stone,stone.x,Math.abs(stone.y-floor)<22?floor:stone.y);
 }
