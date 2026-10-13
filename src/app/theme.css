@@ -27,3 +27,26 @@ html[data-theme=dark] .writer-shell .post-editor>footer,html[data-theme=dark] .w
 
 html[data-theme=dark] .writer-identity{background:var(--surface);color:var(--text)}
 html[data-theme=dark] .writer-action-bar :is(.secondary,.writer-exit){color:var(--muted)}
+
+/* Public discovery surfaces share the same palette as their text and inputs. */
+html[data-theme=dark] :is(.keyword-search,.discovery-section,.projects-shell .search-panel,.projects-shell .list-state,.discovery-shell>.list-state){background:var(--surface);border-color:var(--line);box-shadow:none}
+html[data-theme=dark] .keyword-search input{background:transparent}
+html[data-theme=dark] .keyword-search button{color:var(--muted)}
+html[data-theme=dark] .keyword-search button:hover{background:var(--accent-soft);color:var(--accent)}
+html[data-theme=dark] .keyword-search:focus-within{border-color:var(--focus);box-shadow:0 0 0 3px #8dc8a41a}
+html[data-theme=dark] .pebble-banner{background:linear-gradient(115deg,#1c3024,#20352b 66%,#263a30);border-color:var(--line)}
+html[data-theme=dark] .pebble-banner h1{color:var(--text)}
+html[data-theme=dark] :is(.banner-copy>p,.banner-eyebrow,.stack-caption,.section-eyebrow,.page-eyebrow,.discovery-heading p,.discovery-heading>a){color:var(--muted)}
+html[data-theme=dark] .banner-link{color:var(--accent)}
+html[data-theme=dark] :is(.discovery-heading,.discovery-shell .popular-section .post-card,.discovery-shell .post-list>li+li){border-color:var(--line)}
+html[data-theme=dark] :is(.discovery-shell .post-meta,.discovery-shell .post-summary,.discovery-shell .post-author-link,.pagination){color:var(--muted)}
+
+html[data-theme=dark] .intro .page-eyebrow{color:var(--muted)}
+
+html[data-theme=dark] .search-submit{background:var(--accent);color:var(--background)}
+html[data-theme=dark] .projects-shell .intro h1 span{color:var(--muted)}
+html[data-theme=dark] .pebble-stack .stone{box-shadow:inset -12px -10px 20px #14261a33,inset 7px 8px 12px #ffffff25,0 10px 12px #02080533}
+html[data-theme=dark] .pebble-stack .stone-one{background:#608573}
+html[data-theme=dark] .pebble-stack .stone-two{background:#98ac99}
+html[data-theme=dark] .pebble-stack .stone-three{background:#78977f}
+html[data-theme=dark] .pebble-stack .stone-four{background:#48735a}
