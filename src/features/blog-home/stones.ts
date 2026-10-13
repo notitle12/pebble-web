@@ -47,17 +47,25 @@ export function unusedPosts(posts:StonePost[],stones:Stone[]){const used=new Set
 export function stonePaintOrder(stones:Stone[]):Stone[]{return [...stones].sort((a,b)=>b.y-a.y||a.id.localeCompare(b.id));}
 
 export function stoneMergeTarget(stones:Stone[],sourceId:string,x:number,y:number):Stone|undefined{
- return stonePaintOrder(stones).reverse().find(stone=>{if(stone.id===sourceId)return false;const size=stoneSize(stone.postIds.length),angle=stone.rotation*Math.PI/180,dx=x-stone.x,dy=y-stone.y;return Math.abs(dx*Math.cos(angle)+dy*Math.sin(angle))<=size.width*.36&&Math.abs(-dx*Math.sin(angle)+dy*Math.cos(angle))<=size.height*.4;});
-}
-
-export function snapStone(stone:Stone,others:Stone[]):Stone{
- if(Math.abs(stone.rotation)>30)return moveStone(stone,stone.x,stone.y);
- const size=stoneSize(stone.postIds.length);
- const target=others.filter(item=>item.id!==stone.id&&Math.abs(item.rotation)<=30).map(item=>{const otherSize=stoneSize(item.postIds.length);return {item,otherSize,top:item.y-otherSize.height*.46,distance:Math.abs(stone.y+size.height*.46-(item.y-otherSize.height*.46))};}).filter(candidate=>candidate.item.y>stone.y&&candidate.distance<22&&Math.abs(stone.x-candidate.item.x)<(size.width+candidate.otherSize.width)*.36).sort((a,b)=>a.distance-b.distance)[0];
- if(target){const x=Math.abs(stone.x-target.item.x)<18?target.item.x:stone.x;return moveStone(stone,x,target.top-size.height*.46+3);}
- const floor=342-size.height*.46;
- return moveStone(stone,stone.x,Math.abs(stone.y-floor)<22?floor:stone.y);
+ return stonePaintOrder(stones).reverse().find(stone=>{if(stone.id===sourceId)return false;const size=stoneSize(stone.postIds.length),angle=stone.rotation*Math.PI/180,dx=x-stone.x,dy=y-stone.y;return Math.abs(dx*Math.cos(angle)+dy*Math.sin(angle))<=Math.min(18,size.width*.12)&&Math.abs(-dx*Math.sin(angle)+dy*Math.cos(angle))<=Math.min(8,size.height*.14);});
 }
 
 export function stoneRotation(start:number,delta:number,snap=false){const angle=start+delta;const value=snap?Math.round(angle/15)*15:Math.round(angle);return ((value+180)%360+360)%360-180;}
 export function nudgeStone(stone:Stone,key:string,large=false):Stone{const step=large?10:1;const direction:Record<string,[number,number]>={ArrowLeft:[-step,0],ArrowRight:[step,0],ArrowUp:[0,-step],ArrowDown:[0,step]};const change=direction[key];return change?moveStone(stone,stone.x+change[0],stone.y+change[1]):stone;}
+
+function stoneExtents(stone:Stone){const size=stoneSize(stone.postIds.length),angle=stone.rotation*Math.PI/180;return {x:(Math.abs(Math.cos(angle))*size.width+Math.abs(Math.sin(angle))*size.height)/2,y:(Math.abs(Math.sin(angle))*size.width+Math.abs(Math.cos(angle))*size.height)/2};}
+export function moveStoneGroup(stones:Stone[],ids:string[],dx:number,dy:number):Stone[]{
+ const chosen=stones.filter(stone=>ids.includes(stone.id));if(!chosen.length)return stones;
+ // 경계에서도 모든 돌에 같은 이동량을 적용해 묶음 안의 간격을 유지한다.
+ const minX=Math.min(...chosen.map(s=>s.x-stoneExtents(s).x)),maxX=Math.max(...chosen.map(s=>s.x+stoneExtents(s).x));
+ const minY=Math.min(...chosen.map(s=>s.y-stoneExtents(s).y)),maxY=Math.max(...chosen.map(s=>s.y+stoneExtents(s).y));
+ const x=Math.max(-minX,Math.min(1000-maxX,dx)),y=Math.max(-minY,Math.min(344-maxY,dy));
+ return stones.map(stone=>ids.includes(stone.id)?{...stone,x:stone.x+x,y:stone.y+y}:stone);
+}
+export function stonesInBox(stones:Stone[],start:{x:number;y:number},end:{x:number;y:number}):string[]{
+ const left=Math.min(start.x,end.x),right=Math.max(start.x,end.x),top=Math.min(start.y,end.y),bottom=Math.max(start.y,end.y);
+ return stones.filter(stone=>{const e=stoneExtents(stone);return stone.x+e.x>=left&&stone.x-e.x<=right&&stone.y+e.y>=top&&stone.y-e.y<=bottom;}).map(s=>s.id);
+}
+
+export function stoneGroupBounds(stones:Stone[],ids:string[]){const chosen=stones.filter(s=>ids.includes(s.id));if(!chosen.length)return null;const left=Math.min(...chosen.map(s=>s.x-stoneExtents(s).x)),right=Math.max(...chosen.map(s=>s.x+stoneExtents(s).x)),top=Math.min(...chosen.map(s=>s.y-stoneExtents(s).y)),bottom=Math.max(...chosen.map(s=>s.y+stoneExtents(s).y));return {x:(left+right)/2,y:(top+bottom)/2,width:right-left,height:bottom-top};}
+export function rotateStoneGroup(stones:Stone[],ids:string[],degrees:number):Stone[]{const bounds=stoneGroupBounds(stones,ids);if(!bounds)return stones;const angle=degrees*Math.PI/180;return stones.map(stone=>{if(!ids.includes(stone.id))return stone;const x=stone.x-bounds.x,y=stone.y-bounds.y;return {...stone,x:bounds.x+x*Math.cos(angle)-y*Math.sin(angle),y:bounds.y+x*Math.sin(angle)+y*Math.cos(angle),rotation:stoneRotation(stone.rotation,degrees)};});}
