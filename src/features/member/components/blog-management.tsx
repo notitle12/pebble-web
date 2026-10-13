@@ -4,7 +4,6 @@ import { MemberGate } from "@/features/auth/components/member-gate";
 
 const destinations = [
   ["홈 구성", "/settings/blog/home", "공개 블로그 홈의 섹션과 대표 프로젝트를 정합니다."],
-  ["돌 쌓기", "/settings/blog/stones", "기록으로 받은 돌을 쌓고 합쳐 내 블로그를 꾸밉니다."],
   ["외부 링크", "/settings/blog/links", "GitHub와 사이트 링크를 관리합니다."],
   ["게시판 관리", "/me/boards", "블로그의 게시판과 글 분류를 관리합니다."],
   ["게시글 관리", "/me/posts", "공개 글과 비공개 글을 관리합니다."],

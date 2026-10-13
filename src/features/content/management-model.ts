@@ -13,3 +13,11 @@ export function postPosition(value:string,total:number):number {
 export function confirmDeletion(value:unknown):void {
   if(value!==null)throw new MemberApiError(0,"INVALID_RESPONSE","삭제 결과를 확인하지 못했습니다. 목록을 다시 불러와 주세요.");
 }
+
+export function movePostRow<T extends {id:string;displayOrder:number}>(items:T[],source:string,target:string):{items:T[];displayOrder:number}|null {
+ const from=items.findIndex(item=>item.id===source),to=items.findIndex(item=>item.id===target);
+ if(from<0||to<0||from===to)return null;
+ const displayOrder=items[to].displayOrder,next=[...items],orders=items.map(item=>item.displayOrder);
+ const [item]=next.splice(from,1);next.splice(to,0,item);
+ return {items:next.map((row,index)=>({...row,displayOrder:orders[index]})),displayOrder};
+}

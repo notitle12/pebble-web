@@ -1,4 +1,5 @@
 import Link from "next/link";
+import {techStackLogo} from "../tech-stack-logos";
 import {BlogActivityDisplay} from "./blog-activity-display";
 import {activityCalendar} from "../activity-calendar";
 import type { BlogActivity, BlogHomeSettings, HomeSectionKey } from "../api/blog-home";
@@ -7,14 +8,9 @@ import type { PostPage } from "../../post/api/post-list";
 import { safeMediaUrl } from "../../media/model";
 
 const titles: Record<HomeSectionKey, string> = { ACTIVITY: "블로그 활동", TECH_STACKS: "기술 스택", PROJECTS: "대표 프로젝트", RECENT_POSTS: "최근 글" };
-const techLogos: Record<string, string> = {
-  java: "/tech/java.svg", "spring boot": "/tech/spring.svg", springboot: "/tech/spring.svg", spring: "/tech/spring.svg",
-  postgresql: "/tech/postgresql.svg", postgres: "/tech/postgresql.svg", redis: "/tech/redis.svg", react: "/tech/react.svg", typescript: "/tech/typescript.svg",
-};
 function Activity({ data }: { data: BlogActivity }) {
   const {cells,months,total,activeDays}=activityCalendar(data);
-  return <section className="blog-home-section blog-home-activity" aria-labelledby="home-activity-title">
-    <div className="blog-home-section-title"><h2 id="home-activity-title">{titles.ACTIVITY}</h2><span>글 {total}개 · 기록한 날 {activeDays}일</span></div>
+  return <div className="blog-home-activity">
     <p className="sr-only" id="blog-activity-description">최근 1년 동안 날짜별 공개 글 수입니다. 월요일부터 일요일 순서이며 진한 초록색일수록 글이 많습니다.</p>
     <div className="blog-activity-scroll" role="group" aria-label={`${data.from}부터 ${data.to}까지 날짜별 공개 글 수`} aria-describedby="blog-activity-description" tabIndex={0}>
       <div className="blog-activity-chart">
@@ -27,12 +23,12 @@ function Activity({ data }: { data: BlogActivity }) {
         </div>
       </div>
     </div>
-    <div className="blog-activity-footer"><p className="blog-activity-help">최근 1년간 공개한 글</p><div className="blog-activity-legend" aria-label="활동량 범례: 공개 글 없음, 1개, 2~3개, 4~5개, 6개 이상"><span>적음</span>{[0,1,2,3,4].map(level=><span key={level} className={`blog-activity-day activity-${level}`} aria-hidden="true"/>)}<span>많음</span></div></div>
-  </section>;
+    <div className="blog-activity-footer"><p className="blog-activity-help">최근 1년간 공개한 글</p><div className="blog-activity-footer-meta"><p className="blog-activity-summary">글 {total}개 · 기록한 날 {activeDays}일</p><div className="blog-activity-legend" aria-label="활동량 범례: 공개 글 없음, 1개, 2~3개, 4~5개, 6개 이상"><span>적음</span>{[0,1,2,3,4].map(level=><span key={level} className={`blog-activity-day activity-${level}`} aria-hidden="true"/>)}<span>많음</span></div></div></div>
+  </div>;
 }
 
 function Stacks({ items }: { items: string[] }) {
-  return items.length ? <ul className="blog-tech-list">{items.map(name => { const logo = techLogos[name.normalize("NFKC").toLocaleLowerCase("und")]; return <li key={name}>{logo ? <img className="blog-tech-logo" src={logo} alt="" width={24} height={24} loading="lazy"/> : <span className="blog-tech-mark" aria-hidden="true">{Array.from(name)[0]?.toLocaleUpperCase()}</span>}<span>{name}</span></li>; })}</ul> : <p className="blog-home-empty">아직 공개한 기술 스택이 없어요.</p>;
+  return items.length ? <ul className="blog-tech-list">{items.map(name => { const logo = techStackLogo(name); return <li key={name}>{logo ? <img className="blog-tech-logo" src={logo} alt="" width={24} height={24} loading="lazy"/> : <span className="blog-tech-mark" aria-hidden="true">{Array.from(name)[0]?.toLocaleUpperCase()}</span>}<span>{name}</span></li>; })}</ul> : <p className="blog-home-empty">아직 공개한 기술 스택이 없어요.</p>;
 }
 function Projects({ projects, configured, failed }: { projects: ProjectDetail[]; configured: boolean; failed: boolean }) {
   if (!projects.length) return failed ? <p className="blog-home-empty" role="alert">대표 프로젝트를 불러오지 못했어요.</p> : <p className="blog-home-empty">{configured ? "대표 프로젝트가 공개 상태인지 확인해 주세요." : "아직 대표 프로젝트를 설정하지 않았어요."}</p>;
