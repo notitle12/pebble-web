@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {contentPath,postPosition,confirmDeletion} from "../src/features/content/management-model.ts";
+import {contentPath,postPosition,confirmDeletion,movePostRow} from "../src/features/content/management-model.ts";
 test("콘텐츠 관리 경로는 BIGINT와 정확한 종류만 허용한다",()=>{
  assert.equal(contentPath("posts","9007199254740993"),"/posts/9007199254740993");
  for(const [kind,id] of [["posts","0"],["projects","../1"],["members","1"],["projects","9223372036854775808"]])assert.throws(()=>contentPath(kind,id));
@@ -11,4 +11,11 @@ test("사용자 표시 순서는 1 기반이고 API 순서는 0 기반이다",()
 });
 test("삭제는 본문 없는 성공을 확인하며 불확실 응답은 성공 처리하지 않는다",()=>{
  assert.doesNotThrow(()=>confirmDeletion(null));for(const value of [{},undefined,{data:{id:"1"}}])assert.throws(()=>confirmDeletion(value));
+});
+
+test("드래그 순서는 대상의 전역 위치로 이동하고 원본과 다른 페이지 위치는 보존한다",()=>{
+ const rows=[{id:"1",displayOrder:20},{id:"2",displayOrder:21},{id:"3",displayOrder:22}];
+ const down=movePostRow(rows,"1","3");assert.equal(down.displayOrder,22);assert.deepEqual(down.items.map(p=>p.id),["2","3","1"]);assert.deepEqual(down.items.map(p=>p.displayOrder),[20,21,22]);
+ const up=movePostRow(rows,"3","1");assert.equal(up.displayOrder,20);assert.deepEqual(up.items.map(p=>p.id),["3","1","2"]);assert.equal(rows[0].id,"1");
+ assert.equal(movePostRow(rows,"1","1"),null);assert.equal(movePostRow(rows,"missing","1"),null);
 });
