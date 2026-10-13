@@ -7,7 +7,7 @@ import { SiteHeader } from "@/components/site-header";
 import { GuestApiError } from "@/lib/public-api";
 import { parsePage,validId } from "@/lib/list-query";
 import { blogHref, getPublicBlogPosts, getPublicBlogProfile, type PublicBlogProfile } from "@/features/post/api/public-blog";
-import {safeMediaUrl} from "@/features/media/model";
+import {BlogProfileHeader} from "@/features/blog-tools/components/blog-profile-header";
 import {getPublicMemberProjects,type ProjectPage} from "@/features/project/api/project-list";
 import { PostCards } from "@/features/post/components/post-cards";
 import type { PostPage } from "@/features/post/api/post-list";
@@ -72,22 +72,14 @@ export default async function PublicBlogPage({ params, searchParams }: {
 
   if(!author) notFound();
 
-  const photo=safeMediaUrl(author.profileImageUrl);
   return <>
     <a className="skip-link" href="#main-content">본문으로 바로가기</a>
     <SiteHeader />
     <main id="main-content" className="page-shell personal-blog-layout">
-      <BlogSidebar footer={<BlogOwnerActions handle={handle}/>} links={<PublicBlogLinks links={links} failed={linksError}/>} handle={handle} query={q} homeView={homeView} selected={selected} projectView={projectView} boardView={boardView} searched={searched} boards={flattenBoards(boards)} projects={sidebarProjects?.content.slice(0,5)??[]} boardError={boardError} projectError={projectError}>
-        <div className="blog-profile-identity">
-        {photo?<img className="blog-profile-avatar" src={photo} alt={`${author.nickname} 프로필 사진`}/>:<span className="blog-profile-avatar blog-avatar-fallback" aria-hidden="true">{Array.from(author.nickname)[0]}</span>}
-        <h1>{author.blogName}</h1>
-        <p>{author.nickname}</p>
-        <p className="personal-blog-handle">@{author.handle}</p>
-        </div>
-        <BlogVisitCount handle={handle}/>
-      </BlogSidebar>
+      <BlogSidebar footer={<><BlogVisitCount handle={handle}/><BlogOwnerActions handle={handle}/></>} links={<PublicBlogLinks links={links} failed={linksError}/>} handle={handle} homeView={homeView} selected={selected} projectView={projectView} boardView={boardView} searched={searched} boards={flattenBoards(boards)} projects={sidebarProjects?.content.slice(0,5)??[]} boardError={boardError} projectError={projectError}/>
       <section className="personal-blog-content" aria-label={homeView?"블로그 홈":projectView?"블로그 프로젝트":"공개 게시글"}>
-        {homeView ? home ? <BlogHomeView handle={handle} settings={home} activity={home.activity} projects={homeProjects} projectErrors={homeProjectErrors} hasFeaturedProjects={home.featuredProjectIds.length>0} posts={homePosts} postsFailed={homePostsFailed}/> : <div className="blog-home-failure"><h2>블로그 홈을 불러올 수 없어요</h2><p role="alert">{homeError?"활동과 홈 구성을 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.":"블로그 홈 데이터를 불러오지 못했습니다."}</p><a href={`/blogs/${encodeURIComponent(handle)}`}>다시 시도</a></div> : <><div className="personal-blog-heading"><h2>{projectView?"프로젝트":boardView?"게시판":searched?`검색 결과: ${q}`:selected?flattenBoards(boards).find(board=>board.id===selected)?.name:"전체 게시글"}</h2><p>{author.nickname}</p></div>
+        <BlogProfileHeader profile={author} query={q} githubUrl={links?.githubUrl}/>
+        {homeView ? home ? <BlogHomeView handle={handle} settings={home} activity={home.activity} projects={homeProjects} projectErrors={homeProjectErrors} hasFeaturedProjects={home.featuredProjectIds.length>0} posts={homePosts} postsFailed={homePostsFailed}/> : <div className="blog-home-failure"><h2>블로그 홈을 불러올 수 없어요</h2><p role="alert">{homeError?"활동과 홈 구성을 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.":"블로그 홈 데이터를 불러오지 못했습니다."}</p><a href={`/blogs/${encodeURIComponent(handle)}`}>다시 시도</a></div> : <><div className="personal-blog-heading"><h2>{projectView?"프로젝트":boardView?"게시판":searched?`검색 결과: ${q}`:selected?flattenBoards(boards).find(board=>board.id===selected)?.name:"전체 게시글"}</h2></div>
         <div className="blog-content-body">
         {result&&<>
         {!result.content.length ? <section className="list-state"><h2>{searched?"검색 결과가 없어요":page === 0 ? "아직 공개된 글이 없어요" : "이 페이지에는 게시글이 없어요"}</h2>
