@@ -7,7 +7,7 @@ import {callbackMode,withdrawalIntentKey} from "../withdrawal-intent";
 import {MemberApiError} from "@/lib/member-api";
 import {formatSeoulDateTime} from "@/lib/date-time";
 import {userSession} from "../user-session";
-export function LoginPanel(){return <section className="list-state login-panel"><p className="login-eyebrow">PEBBLE BLOG</p><h1>나만의 개발 기록을 시작하세요</h1><p>네이버 계정으로 로그인하면 글을 쓰고 내 블로그를 관리할 수 있어요. 탈퇴 예약 후 7일 안에 같은 계정으로 로그인하면 계정이 복구됩니다.</p><NaverLoginButton/><p><Link href="/">블로그 글 둘러보기</Link></p></section>;}
+export function LoginPanel(){return <section className="list-state login-panel"><p className="login-eyebrow">PEBBLE BLOG</p><h1>나만의 개발 기록을 시작하세요</h1><p>네이버 계정으로 로그인하면 글을 쓰고 내 블로그를 관리할 수 있어요. 탈퇴 예약 후 7일 안에 같은 계정으로 로그인하면 계정이 복구됩니다.</p><NaverLoginButton className="naver-provider-button" providerIcon/><p><Link href="/">블로그 글 둘러보기</Link></p></section>;}
 export function NaverCallback(){
  const started=useRef(false),[error,setError]=useState(""),[scheduledAt,setScheduledAt]=useState<string|null>(null),[withdrawn,setWithdrawn]=useState(false);
  useEffect(()=>{

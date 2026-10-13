@@ -4,7 +4,7 @@ import {loginDestination} from "../login-destination";
 import {withdrawalIntentKey,type NaverMode} from "../withdrawal-intent";
 import {userSession} from "../user-session";
 
-export function NaverLoginButton({label="네이버로 로그인",className="button naver-login",mode="login"}:{label?:string;className?:string;mode?:NaverMode}){
+export function NaverLoginButton({label="네이버로 로그인",className="button naver-login",mode="login",providerIcon=false}:{label?:string;className?:string;mode?:NaverMode;providerIcon?:boolean}){
   const [busy,setBusy]=useState(false),[error,setError]=useState("");
   const starting=useRef(false);
   return <span className="login-action"><button type="button" className={className} disabled={busy} onClick={async()=>{
@@ -19,5 +19,5 @@ export function NaverLoginButton({label="네이버로 로그인",className="butt
       }else {try{sessionStorage.removeItem(withdrawalIntentKey);sessionStorage.setItem("pebble-login-destination",loginDestination(window.location.pathname));}catch{/* Login still works when browser storage is unavailable. */}}
       window.location.assign(href);
     }catch(e){setError(e instanceof Error?e.message:"로그인을 시작하지 못했습니다.");starting.current=false;setBusy(false);}
-  }}>{busy?"네이버로 이동 중…":label}</button>{error&&<span className="login-error" role="alert">{error}</span>}</span>;
+  }}>{providerIcon&&<img src="/auth/naver-login-icon.png" alt="" width={48} height={48}/>}{busy?"네이버로 이동 중…":label}</button>{error&&<span className="login-error" role="alert">{error}</span>}</span>;
 }
