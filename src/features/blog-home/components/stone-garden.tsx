@@ -2,10 +2,10 @@
 import {useId,useState} from 'react';
 import {gardenScene,type GardenStone,type GardenPlant} from '../stone-garden';
 const atlas='/images/stone-garden/natural-parts.png';
-const regions=['31 208 502 235','582 140 410 304','1070 292 434 141','88 782 399 103','543 495 490 465','1103 579 378 352'];
+const regions=['31 208 502 235','582 140 410 304','1070 292 434 141','88 782 399 103','543 495 490 465','1103 579 378 352','23 200 495 218','544 167 456 253','1029 278 485 133','34 624 449 260','525 668 481 212','1046 672 462 206'];
 function Sprite({item,filter}:{item:GardenStone|GardenPlant;filter:string}){
- const flip=('flip' in item&&item.flip)||('count' in item&&item.id.endsWith('-2')),y='count' in item?item.y-item.height/2:item.y-item.height;
- return <g transform={flip?`translate(${item.x*2} 0) scale(-1 1)`:undefined}><svg x={item.x-item.width/2} y={y} width={item.width} height={item.height} viewBox={regions[item.shape]} preserveAspectRatio="none" style={{width:item.width,height:item.height,overflow:"hidden"}}><image href={atlas} width="1536" height="1024" filter={`url(#${filter})`}/></svg></g>;
+ const flip=('flip' in item&&item.flip),y='count' in item?item.y-item.height/2:item.y-item.height;
+ return <g transform={flip?`translate(${item.x*2} 0) scale(-1 1)`:undefined}><svg x={item.x-item.width/2} y={y} width={item.width} height={item.height} viewBox={regions[item.shape]} preserveAspectRatio="none" style={{width:item.width,height:item.height,overflow:"hidden"}}><image href={item.shape>=6?"/images/stone-garden/stone-varieties.png":atlas} width="1536" height="1024" filter={`url(#${filter})`}/></svg></g>;
 }
 export function StoneGarden({publicationCount}:{publicationCount:number}){
  const id=useId().replace(/:/g,''),scene=gardenScene(publicationCount),[hover,setHover]=useState<{text:string;x:number;y:number}|null>(null);
