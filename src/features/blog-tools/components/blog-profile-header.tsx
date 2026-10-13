@@ -1,9 +1,8 @@
 import type {PublicBlogProfile} from '../../post/api/public-blog';
 import {safeMediaUrl} from '../../media/model';
 import {BlogMenuIcon} from './blog-menu-icon';
-import {GithubIcon} from './public-blog-links';
 
-export function BlogProfileHeader({profile,query,githubUrl}:{profile:PublicBlogProfile;query?:string;githubUrl?:string|null}){
+export function BlogProfileHeader({profile,query}:{profile:PublicBlogProfile;query?:string}){
  const photo=safeMediaUrl(profile.profileImageUrl);
  return <header className="blog-profile-header">
   <div className="blog-profile-heading">
@@ -12,7 +11,6 @@ export function BlogProfileHeader({profile,query,githubUrl}:{profile:PublicBlogP
   </div>
   <div className="blog-profile-tools">
    <form className="blog-header-search" action={`/blogs/${encodeURIComponent(profile.handle)}`} method="get" role="search" aria-label="이 블로그에서 검색"><label className="sr-only" htmlFor="blog-search">이 블로그에서 검색</label><div><input key={query??''} id="blog-search" name="q" type="search" maxLength={200} defaultValue={query??''} placeholder="이 블로그에서 검색"/><button type="submit" aria-label="블로그 검색"><BlogMenuIcon name="search"/></button></div></form>
-   {githubUrl&&<a className="blog-header-github" href={githubUrl} target="_blank" rel="noopener noreferrer" aria-label="GitHub (새 창)"><GithubIcon/><span>GitHub</span></a>}
   </div>
  </header>;
 }
