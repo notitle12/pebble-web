@@ -7,7 +7,7 @@ export function StoneShape({seed}:{seed:string;count?:number}){
  const palette=[{h:119,s:13,l:61},{h:94,s:12,l:58},{h:38,s:20,l:68},{h:29,s:16,l:58},{h:45,s:12,l:73},{h:24,s:11,l:64},{h:110,s:8,l:68},{h:43,s:17,l:57}];
  const tone=palette[hash%palette.length],hue=tone.h+(hash>>>8)%7-3,saturation=tone.s,lightness=tone.l+(hash>>>16)%7-3;
  const specks=Array.from({length:20},(_,i)=>({x:20+next()*120,y:24+next()*56,r:.35+next()*.6,light:i%3===0}));
- return <svg viewBox="0 0 160 100" preserveAspectRatio="none" width="100%" height="100%" aria-hidden="true" pointerEvents="none"><defs>
+ return <svg viewBox={`0 ${top-1} 160 ${base-top+4}`} preserveAspectRatio="none" width="100%" height="100%" aria-hidden="true" pointerEvents="none"><defs>
   <linearGradient id={`${id}-body`} x1=".25" y1="0" x2=".6" y2="1"><stop stopColor={`hsl(${hue} ${saturation}% ${lightness+13}%)`}/><stop offset=".52" stopColor={`hsl(${hue} ${saturation}% ${lightness}%)`}/><stop offset="1" stopColor={`hsl(${hue} ${saturation+3}% ${lightness-15}%)`}/></linearGradient>
   <radialGradient id={`${id}-light`} cx=".35" cy=".23" r=".65"><stop stopColor="#fff" stopOpacity=".3"/><stop offset="1" stopColor="#fff" stopOpacity="0"/></radialGradient>
   <clipPath id={`${id}-clip`}><path d={path}/></clipPath>

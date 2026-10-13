@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {parseStoneView,mergeStones,splitStone,moveStone,stoneSize,stoneMergeTarget,snapStone,unusedPosts} from '../src/features/blog-home/stones.ts';
+import {parseStoneView,mergeStones,splitStone,moveStone,stoneSize,stoneMergeTarget,snapStone,stonePaintOrder,unusedPosts} from '../src/features/blog-home/stones.ts';
 import {defaultBlogHomeSettings,parseBlogHomeSettings,saveMyBlogHome} from '../src/features/blog-home/api/blog-home.ts';
 const posts=[1,2,3].map(id=>({id:String(id),title:`글 ${id}`,urlKey:`post-${id}`,publishedAt:'2026-10-13T03:00:00Z'}));
 const stones=posts.slice(0,2).map((post,index)=>({id:`stone-${index}`,postIds:[post.id],x:400+index*80,y:300,rotation:0}));
@@ -40,4 +40,17 @@ test('merged stones keep growing substantially and near-top drops align for stac
  const top={...stones[0],id:'top',x:stones[1].x+5,y:265};
  const aligned=snapStone(top,[stones[1]]);assert.equal(aligned.x,stones[1].x);assert.ok(aligned.y<stones[1].y);
  assert.equal(snapStone({...top,x:100,y:100},[stones[1]]).y,100);
+});
+
+test('stacked stones touch closely and the higher stone is painted and targeted in front',()=>{
+ const lower={...stones[0],id:'lower',y:300};
+ const upper={...stones[1],id:'upper',x:lower.x,y:270};
+ const snapped=snapStone(upper,[lower]);
+ const contactGap=(lower.y-stoneSize(1).height*.46)-(snapped.y+stoneSize(1).height*.46);
+ assert.ok(Math.abs(contactGap+3)<.001);
+ assert.deepEqual(stonePaintOrder([upper,lower]).map(s=>s.id),['lower','upper']);
+ assert.deepEqual(stonePaintOrder([lower,upper]).map(s=>s.id),['lower','upper']);
+ const overlap={...upper,y:lower.y-2};
+ assert.equal(stoneMergeTarget([overlap,lower],'other',lower.x,lower.y)?.id,'upper');
+ assert.equal(lower.y,300);
 });
