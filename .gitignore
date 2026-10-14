@@ -6,7 +6,12 @@ node_modules/
 *.tsbuildinfo
 .DS_Store
 
-# Project documents are local only.
+.open-next/
+.wrangler/
+.dev.vars*
+.worker-build-path
+
+# Project documents are maintained in the local shared documentation folder.
 /docs/
 *.md
 *.mdx
