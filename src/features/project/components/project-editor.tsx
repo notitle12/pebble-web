@@ -34,6 +34,8 @@ export function ProjectEditor({ value, onChange, busy, visibility, blocked, exis
   const currentValue = useRef(value);
   currentValue.current = value;
   const [closed, setClosed] = useState<Set<string>>(new Set());
+  const [toolbarHost,setToolbarHost]=useState<HTMLDivElement|null>(null);
+  const [activeSection,setActiveSection]=useState<ProjectSectionKey|null>("BACKGROUND");
   const [preview, setPreview] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [targetVisibility, setTargetVisibility] = useState<ProjectVisibility>(visibility);
@@ -58,10 +60,12 @@ export function ProjectEditor({ value, onChange, busy, visibility, blocked, exis
     update("document", { ...document, sections: previous ? document.sections.map(section => section.key === key ? { ...section, blocks } : section) : [...document.sections, { key, blocks }] });
   }
   function changeFold(key: string, open: boolean) {
+    if(sections.some(section=>section.key===key)){if(open&&closed.has(key))setActiveSection(key as ProjectSectionKey);else if(!open)setActiveSection(previous=>previous===key?null:previous);}
     setClosed(previous => { const next = new Set(previous); if (open) next.delete(key); else next.add(key); return next; });
   }
   function jump(key: string) {
     setPreview(false);
+    if(sections.some(section=>section.key===key))setActiveSection(key as ProjectSectionKey);
     changeFold(key, true);
     requestAnimationFrame(() => sectionRefs.current[key]?.scrollIntoView({ behavior: "smooth", block: "start" }));
   }
@@ -97,6 +101,7 @@ export function ProjectEditor({ value, onChange, busy, visibility, blocked, exis
         <button type="button" className={styles.primary} disabled={busy} onClick={() => { setTargetVisibility(visibility); setPublishError(""); setPublishing(true); }}>발행하기</button>
       </div>
     </header>
+    {!preview && <div className={styles.sharedBar}><div className={styles.editingSection}>{activeSection ? sections.find(section=>section.key===activeSection)?.label : "서식을 적용할 본문을 선택하세요"}</div><div ref={setToolbarHost} className={styles.sharedHost}/></div>}
     <div className={styles.layout}>
       <nav className={styles.outline} aria-label="프로젝트 작성 목차">
         <p>프로젝트 구성</p>
@@ -104,7 +109,7 @@ export function ProjectEditor({ value, onChange, busy, visibility, blocked, exis
         <button type="button" onClick={() => jump("overview")}>프로젝트 개요</button>
         <button type="button" onClick={() => jump("technologies")}>기술 스택</button>
         {sections.map(section => <button key={section.key} type="button" onClick={() => jump(section.key)}>{section.label}</button>)}
-        <div className={styles.foldActions}><button type="button" onClick={() => setClosed(new Set())}>모두 펼치기</button><button type="button" onClick={() => setClosed(new Set(["overview", "technologies", "execution", ...sections.map(section => section.key)]))}>모두 접기</button></div>
+        <div className={styles.foldActions}><button type="button" onClick={() => setClosed(new Set())}>모두 펼치기</button><button type="button" onClick={() => {setClosed(new Set(["overview", "technologies", "execution", ...sections.map(section => section.key)]));setActiveSection(null);}}>모두 접기</button></div>
       </nav>
       <div className={styles.document}>
         {preview ? <article className={styles.preview} aria-label="프로젝트 미리보기">
@@ -121,7 +126,7 @@ export function ProjectEditor({ value, onChange, busy, visibility, blocked, exis
             <div className={styles.overviewFields}><label>인원<input type="number" min={1} max={10000} placeholder="개인 프로젝트는 1명" value={value.document.teamSize ?? ""} onChange={event => update("document", { ...value.document, teamSize: event.target.value === "" ? null : Number(event.target.value) })} /></label><label>나의 역할<input maxLength={200} placeholder="예: 백엔드 개발, 인프라 구축" value={value.document.role} onChange={event => update("document", { ...value.document, role: event.target.value })} /></label></div>
           </>, "기간 · 인원 · 나의 역할")}
           {details("technologies", "기술 스택", <TechStackSelection selected={value.techStackIds} existing={existingTechStacks} onChange={techStackIds => update("techStackIds", techStackIds)} disabled={busy} />, value.techStackIds.length ? `${value.techStackIds.length}개 선택` : undefined)}
-          {sections.map(section => details(section.key, section.label, <RichBodyEditor toolbarMode="inline" allowRepresentativeImage={false} blocks={value.document.sections.find(item => item.key === section.key)?.blocks ?? []} onChangeBlocks={blocks => updateBlocks(section.key, blocks)} uploadImage={uploadImage} imagePreviews={imagePreviews} disabled={busy} />))}
+          {sections.map(section => details(section.key, section.label, <RichBodyEditor toolbarHost={toolbarHost} toolbarActive={!preview && activeSection===section.key && !closed.has(section.key)} onActivate={()=>setActiveSection(section.key)} toolbarMode="inline" allowRepresentativeImage={false} blocks={value.document.sections.find(item => item.key === section.key)?.blocks ?? []} onChangeBlocks={blocks => updateBlocks(section.key, blocks)} uploadImage={uploadImage} imagePreviews={imagePreviews} disabled={busy} />))}
           {value.executionInstructions && details("execution", "실행 방법", <label>실행 방법<textarea value={value.executionInstructions} rows={5} onChange={event => update("executionInstructions", event.target.value)} /></label>, "기존 내용")}
         </fieldset>}
       </div>
