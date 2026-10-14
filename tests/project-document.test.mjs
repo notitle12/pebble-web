@@ -22,3 +22,10 @@ test('이미지 업로드 후 원래 섹션 순서와 빈 섹션을 보존한다
 test('잘못된 섹션·중복·인원·긴 역할을 거부한다',()=>{
  const base=newProjectDocument();for(const doc of [{...base,version:2},{...base,teamSize:0},{...base,role:'x'.repeat(201)},{...base,sections:[base.sections[0],base.sections[0]]},{...base,sections:[{key:'UNKNOWN',blocks:[]}]}])assert.throws(()=>parseProjectDocument(doc));
 });
+
+test('직군별 인원과 복수 역할을 보존하고 잘못된 인원 합계를 거부한다',()=>{
+ const doc={...newProjectDocument(),teamSize:4,teamComposition:[{role:'FRONTEND',count:1},{role:'BACKEND',count:2},{role:'DESIGN',count:1}],roles:['백엔드','DB 설계']};
+ assert.deepEqual(parseProjectDocument(serializeProjectDocument(doc)).roles,doc.roles);assert.deepEqual(parseProjectDocument(doc).teamComposition,doc.teamComposition);
+ for(const invalid of [{...doc,teamSize:5},{...doc,teamComposition:[{role:'BACKEND',count:-1}]},{...doc,roles:['백엔드','백엔드']},{...doc,roles:['x'.repeat(41)]}])assert.throws(()=>parseProjectDocument(invalid));
+ const legacy=newProjectDocument();assert.equal(parseProjectDocument(legacy).teamComposition,undefined);
+});

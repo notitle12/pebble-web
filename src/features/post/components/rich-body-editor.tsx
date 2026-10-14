@@ -1,5 +1,6 @@
 "use client";
 import {createPortal} from "react-dom";
+import {moveBodyBlock} from "../block-move";
 import {newDatabaseSchema} from "../database-schema";
 
 import {NodeSelection} from "@tiptap/pm/state";
@@ -133,7 +134,7 @@ const EmptyParagraphHint = Extension.create({
   name: "emptyParagraphHint",
   addProseMirrorPlugins() { return [new Plugin({ props: { decorations(state) {
     const decorations: Decoration[] = [];
-    state.doc.descendants((node, pos) => { if (node.type.name === "paragraph" && node.content.size === 0) decorations.push(Decoration.node(pos, pos + node.nodeSize, { "data-placeholder": "내용을 입력하세요.", class: styles.emptyParagraph })); });
+    state.doc.descendants((node, pos) => { if (node.type.name === "paragraph" && node.content.size === 0 && node === state.selection.$from.parent) decorations.push(Decoration.node(pos, pos + node.nodeSize, { "data-placeholder": "내용을 입력하세요.", class: styles.emptyParagraph })); });
     return DecorationSet.create(state.doc, decorations);
   } } })]; },
 });
@@ -215,7 +216,13 @@ export function RichBodyEditor({ blocks, onChangeBlocks, uploadImage, imagePrevi
     content: initialContent,
     immediatelyRender: false,
     editable: !disabled,
-    editorProps:{attributes:{role:"textbox","aria-label":"본문","aria-multiline":"true"}},
+    editorProps:{attributes:{role:"textbox","aria-label":"본문","aria-multiline":"true"},handleDrop(view,event,_slice,moved){
+      const {selection,doc}=view.state,last=doc.lastChild;
+      if(!moved||!(selection instanceof NodeSelection)||selection.$from.depth!==0||selection.node.type.name==="paragraph"||last?.type.name!=="paragraph"||last.content.size!==0)return false;
+      const end=view.nodeDOM(doc.content.size-last.nodeSize);
+      if(!(end instanceof HTMLElement)||event.clientY<end.getBoundingClientRect().top)return false;
+      event.preventDefault();const tr=moveBodyBlock(view.state.tr,selection.from,doc.content.size);if(tr)view.dispatch(tr.scrollIntoView());return true;
+    }},
     onUpdate: ({ editor: current }) => {
       setDraftContent(current.getHTML());
       setFormat("HTML");
