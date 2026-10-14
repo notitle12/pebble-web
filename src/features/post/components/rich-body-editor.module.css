@@ -183,3 +183,5 @@
 .inlineRoot .editor,.inlineRoot .editor :global(.tiptap){min-height:220px}.inlineRoot .editor{padding:16px 8px 24px}.inlineRoot .sourceGrid{min-height:220px;padding-bottom:24px}.inlineRoot .sourceGrid textarea{min-height:260px}
 
 .inlineRoot button[aria-label="추가 삽입 도구"]{width:auto;min-width:66px;white-space:nowrap}
+
+.sharedTools{min-height:0}.sharedTools .sharedToolbar{position:static;inset:auto;z-index:auto;height:auto;min-height:48px;padding:0 10px;border-bottom:0}.sharedToolbar .toolrow{flex-wrap:wrap;overflow:visible;padding:6px 0;white-space:normal}.sharedTools button[aria-label="추가 삽입 도구"]{width:auto;min-width:66px;white-space:nowrap}
