@@ -59,3 +59,7 @@
 :global(html[data-theme=dark]) .dialog footer button:last-child{background:var(--accent);color:var(--background);border-color:var(--accent)}
 
 :global(html[data-theme=dark]) .block.code{background:var(--code-surface)}
+
+:global(html[data-theme=dark]) .tableBlock .table input:not([type=checkbox]){border-color:transparent}
+:global(html[data-theme=dark]) .tableBlock .table input:not([type=checkbox]):hover{border-color:var(--line)}
+:global(html[data-theme=dark]) .block :is(input,select,button):focus-visible{outline-color:var(--focus)}
