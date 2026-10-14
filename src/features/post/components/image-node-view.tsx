@@ -6,6 +6,7 @@ import styles from "./image-node-view.module.css";
 import { selectableRepresentativeImage } from "../post-images";
 
 type RepresentativeContextValue = {
+  enabled?: boolean;
   selectedSrc: string | null;
   disabled: boolean;
   onSelect: (src: string) => void;
@@ -17,8 +18,8 @@ const RepresentativeContext = createContext<RepresentativeContextValue>({
   onSelect: () => {},
 });
 
-export function RepresentativeImageProvider({ selectedSrc, disabled, onSelect, children }: RepresentativeContextValue & { children: React.ReactNode }) {
-  return <RepresentativeContext.Provider value={{ selectedSrc, disabled, onSelect }}>{children}</RepresentativeContext.Provider>;
+export function RepresentativeImageProvider({ enabled = true, selectedSrc, disabled, onSelect, children }: RepresentativeContextValue & { children: React.ReactNode }) {
+  return <RepresentativeContext.Provider value={{ enabled, selectedSrc, disabled, onSelect }}>{children}</RepresentativeContext.Provider>;
 }
 
 const safeImageHref = (value: unknown) => typeof value === "string" && /^(?:https?:|blob:)/i.test(value.trim());
@@ -31,7 +32,7 @@ export function ImageNodeView({ node, selected }: NodeViewProps) {
   const isRepresentative = !!stableSrc && representative.selectedSrc === stableSrc;
   return <NodeViewWrapper as="figure" className={styles.image} data-align={node.attrs.align ?? "left"} data-selected={selected || undefined} contentEditable={false} draggable="true">
     {src && <img src={src} alt={typeof node.attrs.alt === "string" ? node.attrs.alt : ""} draggable="true" />}
-    {selectableRepresentativeImage(stableSrc) && <button
+    {representative.enabled !== false && selectableRepresentativeImage(stableSrc) && <button
       className={styles.representativeButton}
       type="button"
       contentEditable={false}

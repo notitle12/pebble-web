@@ -592,3 +592,5 @@ body:has(.writer-shell){background:#fff}
 
 .post-private-badge{display:inline-flex!important;align-items:center;gap:4px;font-size:11px!important;font-weight:500;color:var(--muted);background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:2px 6px;width:fit-content}
 .post-meta .blog-post-edit{margin-left:auto}.blog-post-edit{font-size:12px;color:var(--accent);white-space:nowrap}.blog-home-posts>li{position:relative}.blog-home-posts>li>.blog-post-edit{position:absolute;right:0;bottom:8px;width:auto;padding:0;display:block}
+
+.project-writer-shell{max-width:1240px}.project-document-overview{display:grid;grid-template-columns:90px 1fr;gap:12px;padding:20px 0}.project-document-overview dt{color:var(--muted)}.project-document-overview dd{margin:0}.project-document-section{padding:24px 0;border-top:1px solid var(--line)}.project-document-section>h2{margin:0 0 22px}

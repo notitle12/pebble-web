@@ -1,6 +1,6 @@
 import {MemberApiError,responseData} from "../../lib/member-api.ts";
 
-export type MediaRole="THUMBNAIL"|"SCREENSHOT";
+export type MediaRole="THUMBNAIL"|"SCREENSHOT"|"BODY";
 export type ProjectMedia={id:string;mediaRole:MediaRole;altText:string|null;displayOrder:number;url:string|null;thumbnailUrl:string|null;createdAt:string};
 export type ContentMedia={postThumbnailUrl:string|null;projectMedia:ProjectMedia[]};
 const invalid=()=>new MemberApiError(0,"INVALID_RESPONSE","콘텐츠 미디어 응답을 확인하지 못했습니다. 다시 조회해 주세요.");
@@ -13,7 +13,7 @@ export function safeMediaUrl(value:string|null):string|null{
   try{const url=new URL(value);return ["https:","http:"].includes(url.protocol)&&!url.username&&!url.password?url.href:null;}catch{return null;}
 }
 export function parseProjectMedia(value:unknown):ProjectMedia{
-  if(!record(value)||!validId(value.id)||!(value.mediaRole==="THUMBNAIL"||value.mediaRole==="SCREENSHOT")||!nullableString(value.altText)||!Number.isInteger(value.displayOrder)||typeof value.displayOrder!=="number"||value.displayOrder<0||value.displayOrder>2147483647||!nullableString(value.url)||!nullableString(value.thumbnailUrl)||!instant(value.createdAt))throw invalid();
+  if(!record(value)||!validId(value.id)||!(value.mediaRole==="THUMBNAIL"||value.mediaRole==="SCREENSHOT"||value.mediaRole==="BODY")||!nullableString(value.altText)||!Number.isInteger(value.displayOrder)||typeof value.displayOrder!=="number"||value.displayOrder<0||value.displayOrder>2147483647||!nullableString(value.url)||!nullableString(value.thumbnailUrl)||!instant(value.createdAt))throw invalid();
   return {id:value.id,mediaRole:value.mediaRole,altText:value.altText,displayOrder:value.displayOrder,url:value.url,thumbnailUrl:value.thumbnailUrl,createdAt:value.createdAt};
 }
 export function mediaFileError(file:File):string|null{
