@@ -114,4 +114,5 @@ html[data-theme=dark] :is(.architecture-canvas-toolbar,.architecture-canvas-stat
 html[data-theme=dark] :is(.architecture-inspector label,.architecture-canvas-help,.architecture-edge-list b){color:var(--muted)}
 html[data-theme=dark] .architecture-connect-button.active{background:var(--accent-soft);color:var(--accent);border-color:var(--accent-border)}
 html[data-theme=dark] .architecture-inspector .architecture-delete{background:#432a2a;color:#e4a19a;border-color:#9d6864}
-html[data-theme=dark] .arch-group-wrap.is-selected .arch-group{stroke:var(--focus)}
+html[data-theme=dark] :is(.arch-group-wrap.is-selected,.arch-group-wrap.is-interactive:hover) .arch-group{stroke:var(--focus)}
+html[data-theme=dark] .arch-group-wrap.is-interactive .arch-group-label:focus-visible{fill:var(--focus)}
