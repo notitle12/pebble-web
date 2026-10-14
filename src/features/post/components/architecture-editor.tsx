@@ -20,7 +20,7 @@ const groupTitle: Record<string, string> = { AWS: "AWS 클라우드", ORACLE_CLO
 const kindTitle: Record<string, string> = { APP: "앱 서버", CLIENT: "클라이언트", DATABASE: "데이터베이스", CACHE: "캐시", STORAGE: "스토리지", PROXY: "프록시", CUSTOM: "사용자 정의" };
 const fresh = (prefix: string, existing: string[]) => { let n = existing.length + 1; while (existing.includes(`${prefix}-${n}`)) n++; return `${prefix}-${n}`; };
 const allIds = (spec: ArchitectureSpec) => [...spec.groups.map((item) => item.id), ...spec.nodes.map((item) => item.id), ...spec.edges.map((item) => item.id)];
-export function ArchitectureEditor({ onChange, initialValue, embedded = false }: { onChange?: (value: ArchitectureSpec | null) => void; initialValue?: ArchitectureSpec; embedded?: boolean }) {
+export function ArchitectureEditor({ onChange, initialValue, embedded = false, onDraftChange }: { onChange?: (value: ArchitectureSpec | null) => void; initialValue?: ArchitectureSpec; embedded?: boolean; onDraftChange?: (value:ArchitectureSpec,valid:boolean)=>void }) {
   const [spec, setSpec] = useState<ArchitectureSpec>(() => initialValue ?? sample);
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
@@ -90,7 +90,7 @@ export function ArchitectureEditor({ onChange, initialValue, embedded = false }:
     if (!item.label.trim()) issues.push(`“${item.id}”의 이름을 입력해 주세요.`);
   }
   const invalid = issues.length > 0;
-  useEffect(() => { onChange?.(invalid ? null : spec); }, [onChange, invalid, spec]);
+  useEffect(() => { onChange?.(invalid ? null : spec); onDraftChange?.(spec,!invalid); }, [onChange,onDraftChange, invalid, spec]);
   const updateEdge = (id: string, patch: Partial<ArchitectureEdge>) => { const currentEdge = spec.edges.find((item) => item.id === id); if (!currentEdge) return; const candidate = { ...currentEdge, ...patch }; if ( candidate.source === candidate.target || spec.edges.some((item) => item.id !== id && item.source === candidate.source && item.target === candidate.target)) { setMessage("자기 연결 또는 중복 연결은 허용되지 않습니다."); return; } update((current) => ({ ...current, edges: current.edges.map((item) => item.id === id ? { ...item, ...patch } : item) })); };
   const updateNode = (field: string, value: unknown) => update((current) => ({ ...current, nodes: current.nodes.map((node) => node.id === selectedNode ? ({ ...node, [field]: value } as typeof node) : node) }));
   const connectPoint = (target: string, side: ArchitectureSide) => {

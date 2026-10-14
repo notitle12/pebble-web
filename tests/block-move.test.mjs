@@ -25,3 +25,16 @@ test('moving first/last blocks uses gap coordinates and rejects nested/unchanged
  assert.equal(moveBodyBlock(state.tr,1,positions[3]),null);
  assert.equal(moveBodyBlock(state.tr,positions[0],1),null);
 });
+
+test('반복해서 맨 아래로 옮겨도 마지막 빈 입력 문단을 재사용한다',()=>{
+ const initial=schema.node('doc',null,[p('앞'),schema.node('tableSpec',{spec}),p()]);
+ let state=EditorState.create({schema,doc:initial});
+ for(let i=0;i<5;i++){
+  const tr=moveBodyBlock(state.tr,3,state.doc.content.size);if(tr)state=state.apply(tr);
+  assert.equal(state.doc.childCount,3);assert.equal(state.doc.lastChild.type.name,'paragraph');assert.equal(state.doc.lastChild.content.size,0);
+ }
+ assert.ok(state.doc.eq(initial));
+ const another=schema.node('doc',null,[schema.node('tableSpec',{spec}),p('뒤'),p()]);
+ state=EditorState.create({schema,doc:another});state=state.apply(moveBodyBlock(state.tr,0,state.doc.content.size));
+ assert.deepEqual(state.doc.content.content.map(node=>node.type.name),['paragraph','tableSpec','paragraph']);
+});

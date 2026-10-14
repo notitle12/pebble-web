@@ -11,6 +11,7 @@ import {GuestApiError} from "@/lib/public-api";
 import {parsePage} from "@/lib/list-query";
 import {getPublicProject,projectHref,safeExternalUrl} from "@/features/project/api/project-list";
 import {ProjectPosts} from "@/features/project/components/project-posts";
+import {ProjectTechnologySummary} from "@/features/project/components/project-technology-summary";
 import {ProjectDocumentView} from "@/features/project/components/project-document-view";
 const readProject=cache(getPublicProject);
 type Props={params:Promise<{id:string}>;searchParams:Promise<Record<string,string|string[]|undefined>>};
@@ -29,7 +30,7 @@ export default async function ProjectDetail({params,searchParams}:Props) {
   const date=project.publishedAt??project.createdAt;
   return <><a className="skip-link" href="#main-content">본문으로 바로가기</a><SiteHeader/><main className="page-shell detail-shell" id="main-content"><Link className="detail-back" href="/projects">← 공개 프로젝트 목록</Link>
     {process.env.NODE_ENV==="development" && process.env.PEBBLE_PREVIEW_MODE==="mock" && <p className="preview-notice">목 데이터 미리보기 · 실제 프로젝트가 아닙니다</p>}
-    <article className="post-detail"><header><div className="post-meta"><span>{project.owner.nickname}</span><time dateTime={date}>{new Intl.DateTimeFormat("ko-KR",{dateStyle:"long",timeZone:"Asia/Seoul"}).format(new Date(date))}</time><span className={`project-status ${project.lifecycleStatus==="COMPLETED"?"completed":""}`}>{project.lifecycleStatus==="COMPLETED"?"완료":"진행 중"}</span></div><h1>{project.name}</h1>{project.summary && <p>{project.summary}</p>}<ul className="tag-list" aria-label="기술 스택">{project.techStacks.map(tag=><li key={tag.id}>{tag.name}</li>)}</ul>
+    <article className="post-detail"><header><div className="post-meta"><span>{project.owner.nickname}</span><time dateTime={date}>{new Intl.DateTimeFormat("ko-KR",{dateStyle:"long",timeZone:"Asia/Seoul"}).format(new Date(date))}</time><span className={`project-status ${project.lifecycleStatus==="COMPLETED"?"completed":""}`}>{project.lifecycleStatus==="COMPLETED"?"완료":"진행 중"}</span></div><h1>{project.name}</h1>{project.summary && <p>{project.summary}</p>}{project.techStacks.length>0&&<section aria-label="프로젝트 기술 스택"><ProjectTechnologySummary selected={project.techStacks.map(item=>item.id)} existing={project.techStacks}/></section>}
       {(project.startedOn || project.completedOn) && <p className="project-period">진행 기간: {project.startedOn??"시작일 미등록"} ~ {project.lifecycleStatus==="IN_PROGRESS"?"진행 중":project.completedOn??"완료일 미등록"}</p>}
     <ProjectOwnerActions ownerId={project.owner.id} projectId={project.id}/></header><div className="post-body">
       <PublicProjectMedia key={project.id} id={project.id} initial={project.media}/>
