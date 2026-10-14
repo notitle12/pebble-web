@@ -1,4 +1,5 @@
 import Link from "next/link";
+import {BlogPosts} from "../../post/components/blog-posts";
 import {techStackLogo} from "../tech-stack-logos";
 import {BlogActivityDisplay} from "./blog-activity-display";
 import {activityCalendar} from "../activity-calendar";
@@ -40,15 +41,7 @@ function Projects({ projects, configured, failed }: { projects: ProjectDetail[];
     </Link></li>;
   })}</ul>;
 }
-function RecentPosts({ posts, postsFailed, handle }: { posts: PostPage | null; postsFailed: boolean; handle: string }) {
-  if (!posts?.content.length) return <p className="blog-home-empty" role={postsFailed ? "alert" : undefined}>{postsFailed ? "최근 글을 불러오지 못했어요." : "아직 공개된 글이 없어요."}</p>;
-  return <ul className="blog-home-posts">{posts.content.slice(0, 3).map((post, index) => <li key={post.id}><Link href={`/blogs/${encodeURIComponent(handle)}/posts/${encodeURIComponent(post.urlKey)}`} prefetch={false}>
-    <span className="blog-home-post-number" aria-hidden="true">{index + 1}</span>
-    <span className="blog-home-post-copy"><strong>{post.title}</strong>{post.summary && <span>{post.summary}</span>}<time dateTime={post.publishedAt??post.createdAt}>{new Intl.DateTimeFormat("ko-KR", { month: "numeric", day: "numeric", timeZone: "Asia/Seoul" }).format(new Date(post.publishedAt??post.createdAt))}</time></span>
-    {post.thumbnailUrl ? <img src={post.thumbnailUrl} alt="" width={240} height={162}/> : <span className="blog-post-placeholder" aria-hidden="true"/>}
-  </Link></li>)}</ul>;
-}
-export function BlogHomeView({ handle, settings, activity, projects, projectErrors, hasFeaturedProjects, posts, postsFailed }: { handle: string; settings: BlogHomeSettings; activity: BlogActivity; projects: ProjectDetail[]; projectErrors: number; hasFeaturedProjects: boolean; posts: PostPage | null; postsFailed: boolean }) {
+export function BlogHomeView({ handle, settings, activity, projects, projectErrors, hasFeaturedProjects, posts, postsFailed, authorId }: { authorId:string; handle: string; settings: BlogHomeSettings; activity: BlogActivity; projects: ProjectDetail[]; projectErrors: number; hasFeaturedProjects: boolean; posts: PostPage | null; postsFailed: boolean }) {
   const visibleSections = settings.sections.filter(section => section.visible);
   const sections = visibleSections;
   return <section className="blog-home-content" aria-label="블로그 홈">
@@ -56,7 +49,7 @@ export function BlogHomeView({ handle, settings, activity, projects, projectErro
       {section.key === "ACTIVITY" && <BlogActivityDisplay handle={handle} defaultDisplay={settings.activityDisplay} grass={<Activity data={activity}/>}/>}
       {section.key === "TECH_STACKS" && <section className="blog-home-section" aria-labelledby="home-tech-title"><h2 id="home-tech-title">{titles.TECH_STACKS}</h2><Stacks items={settings.techStacks}/></section>}
       {section.key === "PROJECTS" && <section className="blog-home-section" aria-labelledby="home-projects-title"><div className="blog-home-section-title"><h2 id="home-projects-title">{titles.PROJECTS}</h2><Link href={`/blogs/${handle}?view=projects`}>전체 프로젝트 보기 →</Link></div><Projects projects={projects} configured={hasFeaturedProjects} failed={projectErrors > 0}/>{projectErrors > 0 && projects.length > 0 && <p className="blog-home-empty" role="alert">일부 대표 프로젝트를 불러오지 못했어요.</p>}</section>}
-      {section.key === "RECENT_POSTS" && <section className="blog-home-section" aria-labelledby="home-posts-title"><div className="blog-home-section-title"><h2 id="home-posts-title">{titles.RECENT_POSTS}</h2><Link href={`/blogs/${handle}?view=posts`}>전체 글 보기 →</Link></div><RecentPosts posts={posts} postsFailed={postsFailed} handle={handle}/></section>}
+      {section.key === "RECENT_POSTS" && <section className="blog-home-section" aria-labelledby="home-posts-title"><div className="blog-home-section-title"><h2 id="home-posts-title">{titles.RECENT_POSTS}</h2><Link href={`/blogs/${handle}?view=posts`}>전체 글 보기 →</Link></div><BlogPosts initial={posts} failed={postsFailed} handle={handle} authorId={authorId} variant="recent"/></section>}
     </div>)}
   </section>;
 }
