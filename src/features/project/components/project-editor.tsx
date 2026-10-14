@@ -92,15 +92,16 @@ export function ProjectEditor({ value, onChange, busy, visibility, blocked, exis
     <div className={styles.sectionBody}>{content}</div>
   </details>;
 
-  return <div className={styles.editor}>
-    <header className={styles.toolbar}>
-      <div className={styles.saveState} role="status">{busy ? "저장 중…" : feedback || "프로젝트를 자유롭게 기록해 보세요."}</div>
+  return <div className={`${styles.editor} writer-composer`}>
+    <footer className={`${styles.toolbar} writer-action-bar`} aria-label="프로젝트 저장 및 발행">
+      <button type="button" className="writer-exit" disabled={busy} onClick={()=>window.location.assign("/me/projects")}>나가기</button>
+      <span className={styles.saveState} role="status">{busy ? "저장 중…" : feedback || "프로젝트를 자유롭게 기록해 보세요."}</span>
       <div className={styles.actions}>
         <button type="button" disabled={busy || !onTemporarySave} onClick={() => void temporarySave()}>임시저장</button>
         <button type="button" disabled={busy} onClick={() => setPreview(previous => !previous)}>{preview ? "편집으로 돌아가기" : "미리보기"}</button>
         <button type="button" className={styles.primary} disabled={busy} onClick={() => { setTargetVisibility(visibility); setPublishError(""); setPublishing(true); }}>발행하기</button>
       </div>
-    </header>
+    </footer>
     {!preview && <div className={styles.sharedBar}><div className={styles.editingSection}>{activeSection ? sections.find(section=>section.key===activeSection)?.label : "서식을 적용할 본문을 선택하세요"}</div><div ref={setToolbarHost} className={styles.sharedHost}/></div>}
     <div className={styles.layout}>
       <nav className={styles.outline} aria-label="프로젝트 작성 목차">
