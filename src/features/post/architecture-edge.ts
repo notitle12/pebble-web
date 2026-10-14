@@ -14,6 +14,13 @@ export function architectureEdgeRoute(edge:ArchitectureEdge,from:ArchBox,to:Arch
  // A coincident pair still has an editable route rather than a zero-length stroke.
  const bend=edge.waypoint ?? (Math.hypot(end.x-start.x,end.y-start.y)<1 ? {x:Math.min(4200,start.x+80),y:Math.max(0,start.y-80)} : automatic);
  const manual=Boolean(edge.waypoint)||Math.hypot(end.x-start.x,end.y-start.y)<1;
- const path=manual ? `M${start.x} ${start.y} C${c1.x} ${c1.y},${bend.x} ${bend.y},${bend.x} ${bend.y} C${bend.x} ${bend.y},${c2.x} ${c2.y},${end.x} ${end.y}` : `M${start.x} ${start.y} C${c1.x} ${c1.y},${c2.x} ${c2.y},${end.x} ${end.y}`;
+ // Both cubic segments share the same non-zero tangent at the dragged point.
+ // Repeating the waypoint as a control point makes their direction discontinuous.
+ const span={x:end.x-start.x,y:end.y-start.y};
+ const magnitude=Math.hypot(span.x,span.y);
+ const tangent=magnitude>1?{x:span.x/magnitude,y:span.y/magnitude}:{x:-a.y,y:a.x};
+ const reach=Math.max(12,Math.min(120,Math.min(Math.hypot(bend.x-start.x,bend.y-start.y),Math.hypot(end.x-bend.x,end.y-bend.y))*.35));
+ const before={x:bend.x-tangent.x*reach,y:bend.y-tangent.y*reach},after={x:bend.x+tangent.x*reach,y:bend.y+tangent.y*reach};
+ const path=manual ? `M${start.x} ${start.y} C${c1.x} ${c1.y},${before.x} ${before.y},${bend.x} ${bend.y} C${after.x} ${after.y},${c2.x} ${c2.y},${end.x} ${end.y}` : `M${start.x} ${start.y} C${c1.x} ${c1.y},${c2.x} ${c2.y},${end.x} ${end.y}`;
  return {path,start,end,bend,label:{x:bend.x,y:bend.y-8}};
 }
