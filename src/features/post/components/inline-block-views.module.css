@@ -47,3 +47,15 @@
   .dialog { max-height: calc(100dvh - 20px); padding: 12px; width: calc(100vw - 20px); }
   .dialog footer { bottom: -12px; }
 }
+
+:global(html[data-theme=dark]) :is(.block,.dialog,.dialog footer){background:var(--surface);color:var(--text);border-color:var(--line)}
+:global(html[data-theme=dark]) .code{background:var(--code-surface)}
+:global(html[data-theme=dark]) .block .codeContent{background:transparent;color:var(--text)}
+:global(html[data-theme=dark]) :is(.heading,.table th){background:var(--block-heading);color:var(--text);border-color:var(--line)}
+:global(html[data-theme=dark]) :is(.block,.dialog) button{background:var(--block-surface);color:var(--text);border-color:var(--line)}
+:global(html[data-theme=dark]) .block :is(input:not([type=checkbox]),select){background:transparent;color:var(--text);border-color:var(--line)}
+:global(html[data-theme=dark]) .tableBlock .table :is(th,td){border-color:var(--line)}
+:global(html[data-theme=dark]) :is(.copyStatus,.tableMeta label,.tableFooter){color:var(--muted)}
+:global(html[data-theme=dark]) .dialog footer button:last-child{background:var(--accent);color:var(--background);border-color:var(--accent)}
+
+:global(html[data-theme=dark]) .block.code{background:var(--code-surface)}
