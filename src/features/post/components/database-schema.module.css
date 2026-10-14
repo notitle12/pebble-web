@@ -24,3 +24,6 @@
 :global(html[data-theme=dark]) :is(.lines,.notationPicker,.shapePicker) circle{fill:var(--diagram-surface)}
 :global(html[data-theme=dark]) .editor :is(.notationPicker,.shapePicker)>button[aria-pressed=true],:global(html[data-theme=dark]) .tabs button[aria-selected=true]{background:var(--accent-soft);color:var(--accent);border-color:var(--accent-border);box-shadow:inset 0 0 0 1px var(--accent-border)}
 :global(html[data-theme=dark]) .card[data-selected=true]{border-color:var(--focus);box-shadow:0 0 0 2px var(--accent-soft)}
+
+:global(html[data-theme=dark]) .card .cardColumn:hover{background:var(--block-heading)}
+:global(html[data-theme=dark]) .editor .rowDelete:not(:disabled):hover{background:#3d2426;color:#e4a19a}
