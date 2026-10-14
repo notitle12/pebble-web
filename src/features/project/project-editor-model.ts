@@ -19,7 +19,8 @@ function linkUrl(v:string) {
 }
 export function validateProject(value:ProjectEditorValue) {
   serializeProjectDocument(value.document);
-  text(value.name,120,"프로젝트 이름",true);text(value.summary,500,"요약");text(value.description,20000,"프로젝트 소개");text(value.architectureDescription,20000,"기술 구성");text(value.executionInstructions,10000,"실행 방법");
+  if(!value.name.trim())throw new Error("프로젝트명을 입력해 주세요.");
+  text(value.name,120,"프로젝트명");text(value.summary,500,"요약");text(value.description,20000,"프로젝트 소개");text(value.architectureDescription,20000,"기술 구성");text(value.executionInstructions,10000,"실행 방법");
   if(!["IN_PROGRESS","COMPLETED"].includes(value.lifecycleStatus))throw new Error("진행 중 또는 완료를 선택해 주세요.");
   date(value.startedOn,"시작일");date(value.completedOn,"완료일");
   if(value.techStackIds.some(id=>!validId(id))||new Set(value.techStackIds).size!==value.techStackIds.length)throw new Error("기술 스택을 중복 없이 선택해 주세요.");

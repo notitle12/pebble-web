@@ -101,3 +101,8 @@ test("링크의 Unicode 경로를 허용하고 잘못된 URI 퍼센트와 문자
  validateProject(editor({links:[{linkType:"OTHER",label:"",url:"https://example.com/문서",displayOrder:0}]}));
  for(const url of ["https://example.com/%ZZ","https://example.com/<script>","https://한글.example/path"])expectInvalid(()=>validateProject(editor({links:[{linkType:"OTHER",label:"",url,displayOrder:0}]})));
 });
+
+test('제목이 비어 있으면 발행 검증에서 간결하게 안내하고 길이 제한은 유지한다',()=>{
+  assert.throws(()=>validateProject(editor({name:''})),/^Error: 프로젝트명을 입력해 주세요\.$/);
+  assert.throws(()=>validateProject(editor({name:'x'.repeat(121)})),/120자/);
+});
