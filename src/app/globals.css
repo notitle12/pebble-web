@@ -628,3 +628,16 @@ body:has(.writer-shell){background:#fff}
 .arch-connect-handle.is-visible,.arch-connect-handle.is-connecting{opacity:1}
 @media(max-width:850px){.architecture-library{grid-template-columns:1fr 1fr}.architecture-library>div:first-child{grid-column:1/-1}}
 @media(max-width:680px){.architecture-editor-layout{grid-template-columns:minmax(0,1fr)}.architecture-canvas-help{max-width:none}.architecture-library{grid-template-columns:1fr}.architecture-library>div:first-child{grid-column:auto}.architecture-canvas-panel .architecture-scroll{height:420px;max-height:none;min-height:0}.architecture-inspector label{flex-basis:135px}}
+
+.architecture-editor-layout:focus{outline:none}
+.architecture-library-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.architecture-library-toolbar [role=tablist],.architecture-custom-actions{display:flex;gap:6px;flex-wrap:wrap}
+.architecture-library-toolbar button{padding:7px 12px;min-height:34px;border:1px solid var(--line);border-radius:7px;background:transparent;color:var(--muted);font:inherit;font-size:12px;cursor:pointer}
+.architecture-library-toolbar [role=tab][aria-selected=true]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent);font-weight:650}
+.architecture-library-panel{margin-top:12px}
+.architecture-library-panel .architecture-tech-grid{display:flex;gap:6px;overflow-x:auto;padding-bottom:5px}
+.architecture-library-panel .architecture-tech-grid button{flex:0 0 auto;min-width:124px;font-size:12px;gap:5px;grid-template-columns:26px auto 12px}
+.architecture-library-panel .architecture-group-buttons{display:flex;flex-wrap:wrap;gap:7px;margin:0}
+.architecture-library-panel .architecture-group-buttons button{width:auto;padding:6px 12px;min-height:36px;font-size:12px}
+.arch-name-editor input{width:100%;height:30px;box-sizing:border-box;padding:4px 6px;border:1.5px solid var(--accent);border-radius:5px;background:var(--surface);color:var(--text);font:inherit;font-size:12px;outline:none}
+.arch-node-label,.arch-group-label{cursor:text}
