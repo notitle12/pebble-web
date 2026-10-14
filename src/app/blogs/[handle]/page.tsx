@@ -1,7 +1,6 @@
 import {BlogSidebar} from "@/features/blog-tools/components/blog-sidebar";
 import {getPublicBoards,getBoardPosts,flattenBoards,type Board} from "@/features/board/api/boards";
 import {BlogOwnerActions} from "@/features/auth/components/blog-owner-actions";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { SiteHeader } from "@/components/site-header";
 import { GuestApiError } from "@/lib/public-api";
@@ -9,7 +8,7 @@ import { parsePage,validId } from "@/lib/list-query";
 import { blogHref, getPublicBlogPosts, getPublicBlogProfile, type PublicBlogProfile } from "@/features/post/api/public-blog";
 import {BlogProfileHeader} from "@/features/blog-tools/components/blog-profile-header";
 import {getPublicMemberProjects,type ProjectPage} from "@/features/project/api/project-list";
-import { PostCards } from "@/features/post/components/post-cards";
+import { BlogPosts } from "@/features/post/components/blog-posts";
 import type { PostPage } from "@/features/post/api/post-list";
 import { BlogVisitCount } from "@/features/blog-tools/components/blog-visit-count";
 import { PublicBlogLinks } from "@/features/blog-tools/components/public-blog-links";
@@ -79,19 +78,9 @@ export default async function PublicBlogPage({ params, searchParams }: {
       <BlogSidebar visitors={<BlogVisitCount handle={handle}/>} footer={<BlogOwnerActions handle={handle}/>} links={<PublicBlogLinks links={links} failed={linksError}/>} handle={handle} homeView={homeView} selected={selected} projectView={projectView} boardView={boardView} searched={searched} boards={flattenBoards(boards)} projects={sidebarProjects?.content.slice(0,5)??[]} boardError={boardError} projectError={projectError}/>
       <section className="personal-blog-content" aria-label={homeView?"블로그 홈":projectView?"블로그 프로젝트":"공개 게시글"}>
         <BlogProfileHeader profile={author} query={q}/>
-        {homeView ? home ? <BlogHomeView handle={handle} settings={home} activity={home.activity} projects={homeProjects} projectErrors={homeProjectErrors} hasFeaturedProjects={home.featuredProjectIds.length>0} posts={homePosts} postsFailed={homePostsFailed}/> : <div className="blog-home-failure"><h2>블로그 홈을 불러올 수 없어요</h2><p role="alert">{homeError?"활동과 홈 구성을 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.":"블로그 홈 데이터를 불러오지 못했습니다."}</p><a href={`/blogs/${encodeURIComponent(handle)}`}>다시 시도</a></div> : <><div className="personal-blog-heading"><h2>{projectView?"프로젝트":boardView?"게시판":searched?`검색 결과: ${q}`:selected?flattenBoards(boards).find(board=>board.id===selected)?.name:"전체 게시글"}</h2></div>
+        {homeView ? home ? <BlogHomeView authorId={author.id} handle={handle} settings={home} activity={home.activity} projects={homeProjects} projectErrors={homeProjectErrors} hasFeaturedProjects={home.featuredProjectIds.length>0} posts={homePosts} postsFailed={homePostsFailed}/> : <div className="blog-home-failure"><h2>블로그 홈을 불러올 수 없어요</h2><p role="alert">{homeError?"활동과 홈 구성을 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.":"블로그 홈 데이터를 불러오지 못했습니다."}</p><a href={`/blogs/${encodeURIComponent(handle)}`}>다시 시도</a></div> : <><div className="personal-blog-heading"><h2>{projectView?"프로젝트":boardView?"게시판":searched?`검색 결과: ${q}`:selected?flattenBoards(boards).find(board=>board.id===selected)?.name:"전체 게시글"}</h2></div>
         <div className="blog-content-body">
-        {result&&<>
-        {!result.content.length ? <section className="list-state"><h2>{searched?"검색 결과가 없어요":page === 0 ? "아직 공개된 글이 없어요" : "이 페이지에는 게시글이 없어요"}</h2>
-          <p>{searched?"다른 검색어로 다시 찾아보세요.":page === 0 ? (selected?"이 폴더에 공개 글이 올라오면 이곳에서 만나볼 수 있어요.":"새로운 글이 올라오면 이곳에서 만나볼 수 있어요.") : "글이 삭제되거나 목록이 변경되었을 수 있습니다."}</p>
-          {page > 0 && <Link className="button" href={blogHref(handle, 0,selected,q,placement)}>첫 페이지로</Link>}
-        </section> : <PostCards posts={result.content} showAuthor={false} />}
-        {result.totalPages > 0 && <nav className="pagination" aria-label="블로그 게시글 페이지">
-          {result.hasPrevious ? <Link className="page-link" href={blogHref(handle, page - 1,selected,q,placement)} prefetch={false}>← 이전</Link> : <span className="page-link disabled" aria-disabled="true">← 이전</span>}
-          <span aria-current="page">{page + 1} / {result.totalPages} 페이지</span>
-          {result.hasNext ? <Link className="page-link" href={blogHref(handle, page + 1,selected,q,placement)} prefetch={false}>다음 →</Link> : <span className="page-link disabled" aria-disabled="true">다음 →</span>}
-        </nav>}
-        </>}
+        {result&&<BlogPosts handle={handle} authorId={author.id} initial={result} page={page} boardId={selected} q={q||undefined} placement={placement}/>}
         </div></>}
       </section>
     </main>

@@ -4,6 +4,7 @@ export { GuestApiError as PostListError } from "../../../lib/public-api.ts";
 export const PAGE_SIZE = 20;
 
 export type PostSummary = {
+  visibilityStatus?: "PUBLIC" | "HIDDEN";
   id: string;
   thumbnailUrl?:string|null;
   likeCount?:number;
