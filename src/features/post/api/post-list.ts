@@ -214,7 +214,10 @@ export function parsePostDetail(value: unknown): PostDetail {
   const data = value.data;
   if(data.likeCount!==undefined && (typeof data.likeCount!=="number" || !Number.isSafeInteger(data.likeCount) || data.likeCount<0) || data.likedByMe!==undefined && typeof data.likedByMe!=="boolean") throw new PostListError("response");
   if (data.projectId !== undefined && data.projectId !== null && (typeof data.projectId !== "string" || !validId(data.projectId))) throw new PostListError("response");
-  if (!Array.isArray(data.blocks) || !data.blocks.every(block => record(block)
+  return {...data,blocks:parsePostBlocks(data.blocks)} as PostDetail;
+}
+export function parsePostBlocks(value:unknown):PostBlock[] {
+  if (!Array.isArray(value) || !value.every(block => record(block)
     && ["TEXT", "CODE", "TABLE", "ARCHITECTURE", "DB_SCHEMA", "HTML", "MARKDOWN"].includes(String(block.type)) && typeof block.content === "string"
     && nullableText(block.title) && count(block.displayOrder)
     && (block.alignment === undefined || ["LEFT", "CENTER", "RIGHT"].includes(String(block.alignment)))
@@ -222,7 +225,7 @@ export function parsePostDetail(value: unknown): PostDetail {
       : block.language === null && textField(block.title ?? "", 100) && pointLength(block.content) <= 50000 && (() => {
         try { const parsed = JSON.parse(block.content); block.type === "DB_SCHEMA" ? parseDatabaseSchema(parsed) : block.type === "TABLE" ? parseTableSpec(parsed) : parseArchitectureSpec(parsed); return true; } catch { return false; }
       })()))) throw new PostListError("response");
-  return { ...data, blocks: data.blocks.map(block => ({ ...block, alignment: block.alignment ?? "LEFT" })) } as PostDetail;
+  return (value as PostBlock[]).map(block=>({...block,alignment:block.alignment??"LEFT"}));
 }
 export async function getPublicPost(handle: string, key: string, baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL, request: typeof fetch = fetch): Promise<PostDetail> {
   const href = postHref(handle, key);
