@@ -13,3 +13,5 @@ export function normalizeArchitectureGroups(spec:ArchitectureSpec):ArchitectureS
     return {...group,type:isArchitectureContainer(group.type)?"CONTAINER":"CLOUD",label:architectureGroupPresentation(group).detail};
   })};
 }
+
+export const architectureGroupLabel = (group:ArchitectureGroup) => { const {category,detail}=architectureGroupPresentation(group); return [category,detail].filter(Boolean).join(" · "); };
