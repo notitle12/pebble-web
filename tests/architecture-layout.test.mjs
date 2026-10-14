@@ -58,3 +58,24 @@ test('그룹 내부의 두 끝점이 함께 이동할 때 수동 화살표 경�
  const moved=moveArchitectureGroup(spec,'g',{x:130,y:140});
  assert.deepEqual(moved.edges[0].waypoint,{x:380,y:340}); assert.equal(moved.edges[0].sourceSide,'BOTTOM'); parseArchitectureSpec(moved);
 });
+
+test('수동 경로는 중앙 조절점 양쪽의 접선이 같아 뾰족한 꺾임이 생기지 않는다',()=>{
+ const from={x:100,y:100,width:160,height:76},to={x:500,y:300,width:160,height:76};
+ for(const waypoint of [{x:320,y:40},{x:300,y:500},{x:100,y:138},{x:580,y:338}]){
+  const route=architectureEdgeRoute({id:'e',source:'a',target:'b',waypoint},from,to);
+  const n=route.path.match(/-?\d+(?:\.\d+)?(?:e[+-]?\d+)?/gi).map(Number);
+  const incoming={x:n[6]-n[4],y:n[7]-n[5]},outgoing={x:n[8]-n[6],y:n[9]-n[7]};
+  assert.ok(Math.hypot(incoming.x,incoming.y)>0);
+  assert.ok(Math.abs(incoming.x-outgoing.x)<1e-8&&Math.abs(incoming.y-outgoing.y)<1e-8);
+  assert.deepEqual(route.bend,waypoint);
+ }
+});
+
+test('사용자 정의 표시 종류는 이전 문서와 호환되고 기본 종류는 덮어쓰지 못한다',()=>{
+ const spec={schemaVersion:1,groups:[{id:'g',type:'CUSTOM',label:'로컬',typeLabel:'개발 환경'}],nodes:[{id:'n',type:'CUSTOM',label:'인증',typeLabel:'인증 서버'}],edges:[]};
+ assert.deepEqual(parseArchitectureSpec(spec),spec);
+ for(const typeLabel of ['', ' ', 'x'.repeat(51), 1])assert.throws(()=>parseArchitectureSpec({...spec,nodes:[{...spec.nodes[0],typeLabel}]}));
+ assert.throws(()=>parseArchitectureSpec({...spec,nodes:[{...spec.nodes[0],type:'APP'}]}));
+ assert.throws(()=>parseArchitectureSpec({...spec,groups:[{...spec.groups[0],type:'AWS'}]}));
+ parseArchitectureSpec({...spec,nodes:[{...spec.nodes[0],type:'APP',typeLabel:null}]});
+});

@@ -641,3 +641,21 @@ body:has(.writer-shell){background:#fff}
 .architecture-library-panel .architecture-group-buttons button{width:auto;padding:6px 12px;min-height:36px;font-size:12px}
 .arch-name-editor input{width:100%;height:30px;box-sizing:border-box;padding:4px 6px;border:1.5px solid var(--accent);border-radius:5px;background:var(--surface);color:var(--text);font:inherit;font-size:12px;outline:none}
 .arch-node-label,.arch-group-label{cursor:text}
+
+.architecture-compact-palette{position:relative;z-index:12}
+.architecture-library-triggers{display:flex;gap:6px}
+.architecture-library-triggers button[aria-expanded=true]{background:var(--accent-soft);color:var(--accent);border-color:var(--accent)}
+.architecture-library-triggers button>span{margin-left:12px}
+.architecture-library-popup{position:absolute;top:calc(100% + 7px);left:0;width:min(560px,100%);box-sizing:border-box;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--text);box-shadow:0 10px 30px #0002;padding:12px}
+.architecture-library-search{display:flex;gap:8px;margin-bottom:10px;align-items:center}
+.architecture-library-search input{width:100%;min-width:0;padding:9px 11px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--text);font:inherit;font-size:13px}
+.architecture-library-search>button{background:transparent;border:0;color:var(--muted);font-size:22px;padding:3px 6px;cursor:pointer}
+.architecture-library-popup .architecture-tech-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));max-height:230px;overflow:auto}
+.architecture-library-popup .architecture-tech-grid button{font-size:12px;grid-template-columns:26px 1fr;gap:5px;min-width:0}
+.architecture-library-popup .architecture-tech-grid button>:last-child{display:none}
+.architecture-library-popup .architecture-tech-grid p,.architecture-library-popup .architecture-group-buttons p{grid-column:1/-1;color:var(--muted);font-size:13px;line-height:1.7}
+.architecture-library-popup .architecture-group-buttons{margin:0;max-height:230px;overflow:auto}
+.architecture-library-popup .architecture-group-buttons button{font-size:12px;min-height:40px}
+.arch-editable-kind{cursor:text}
+.arch-edge{stroke-linejoin:round}
+@media(max-width:540px){.architecture-library-popup .architecture-tech-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.architecture-custom-actions button{padding-inline:8px;font-size:11px}}
