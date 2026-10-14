@@ -38,7 +38,7 @@ test("연결 프로젝트 공개 조회는 Guest 옵션을 사용하고 응답 �
     return Response.json({data:project});
   });
   assert.equal(calls,1);
-  assert.deepEqual(result,{status:"visible",project:{...project,description:null,architectureDescription:null,executionInstructions:null}});
+  assert.deepEqual(result,{status:"visible",project:{...project,description:null,architectureDescription:null,executionInstructions:null,document:null}});
 
   assert.deepEqual(await readLinkedProject(projectId,"https://api.example/api/v1",async()=>new Response(null,{status:404})),{status:"absent"});
   for(const request of [
