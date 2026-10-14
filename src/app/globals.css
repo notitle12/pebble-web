@@ -596,3 +596,7 @@ body:has(.writer-shell){background:#fff}
 .project-writer-shell{max-width:1240px}.project-document-overview{display:grid;grid-template-columns:90px 1fr;gap:12px;padding:20px 0}.project-document-overview dt{color:var(--muted)}.project-document-overview dd{margin:0}.project-document-section{padding:24px 0;border-top:1px solid var(--line)}.project-document-section>h2{margin:0 0 22px}
 
 .page-shell.project-writer-shell{max-width:1440px}
+
+.page-shell.writer-shell.project-writer-shell{max-width:1440px;margin:auto;padding:130px 48px 160px;min-height:100dvh}@media(max-width:720px){.page-shell.writer-shell.project-writer-shell{padding:165px 22px 140px}}
+
+.page-shell.project-writer-shell .writer-composer{max-width:none;color:var(--writer-text)}
