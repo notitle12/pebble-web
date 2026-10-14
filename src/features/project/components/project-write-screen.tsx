@@ -12,6 +12,7 @@ import {buildProjectSaveBody,emptyProject,projectEditorValue,type ProjectEditorV
 import {parseProjectDocument,serializeProjectDocument} from '../project-document';
 import {projectDraft} from '../project-drafts';
 import {projectImageValue,replaceProjectImageBlocks,projectImagePreviews} from '../project-images';
+import {ProjectCoverPicker} from './project-cover-picker';
 import {ProjectEditor} from './project-editor';
 function Writer({member,id}:{member:Member;id?:string}){
  const [project,setProject]=useState<OwnProject|null>(null),[value,setValue]=useState<ProjectEditorValue>(emptyProject),[loading,setLoading]=useState(true),[error,setError]=useState(''),[busy,setBusy]=useState(false),[saved,setSaved]=useState(''),[attempt,setAttempt]=useState(0),[cover,setCover]=useState<File|null>(null),[coverPreview,setCoverPreview]=useState(''),[imagePreviews,setImagePreviews]=useState<Record<string,string>>({});
@@ -62,7 +63,8 @@ function Writer({member,id}:{member:Member;id?:string}){
  if(loading)return <p role="status">프로젝트를 불러오고 있어요.</p>;
  if(id&&!project)return <section className="list-state"><h1>프로젝트를 열지 못했어요</h1><p role="alert">{error}</p><button className="button" onClick={()=>setAttempt(n=>n+1)}>다시 불러오기</button></section>;
  const existingCover=project?.media.find(item=>item.mediaRole==='THUMBNAIL');
- const coverElement=<div><label>대표 이미지 선택<input type="file" accept="image/png,image/jpeg,image/webp" disabled={busy} onChange={event=>{const file=event.target.files?.[0];if(!file)return;const problem=mediaFileError(file);if(problem){setError(problem);return;}setCover(file);dirty.current=true;}}/></label>{(coverPreview||safeMediaUrl(existingCover?.thumbnailUrl??null))&&<img src={coverPreview||safeMediaUrl(existingCover?.thumbnailUrl??null)!} alt="대표 이미지 미리보기" style={{width:180,maxHeight:120,objectFit:'cover'}}/>}{cover&&<button type="button" onClick={()=>setCover(null)}>선택 취소</button>}</div>;
+ const coverElement=<ProjectCoverPicker preview={coverPreview||safeMediaUrl(existingCover?.thumbnailUrl??null)} selected={!!cover} disabled={busy} onChange={file=>{setCover(file);dirty.current=true;}}/>;
+
  return <><div className="writer-identity"><span>{member.nickname}</span><AccountMenu member={member}/></div><h1 className="writer-visually-hidden">프로젝트 작성</h1><div className="writer-status writer-visually-hidden"><Link href="/me/projects">← 내 프로젝트</Link><span>{saved}</span></div>{error&&<p role="alert">{error}</p>}<ProjectEditor value={value} onChange={next=>{setValue(next);dirty.current=true;}} busy={busy} visibility={project?.visibilityStatus??'PUBLIC'} blocked={project?.isBlocked??false} existingTechStacks={project?.techStacks} uploadImage={uploadImage} imagePreviews={imagePreviews} coverElement={coverElement} onTemporarySave={()=>save(project?.visibilityStatus??'HIDDEN',true)} onSave={save}/></>;
 }
 export function ProjectWriteScreen({id}:{id?:string}){return <MemberGate profile preserveOnExpiry>{member=><Writer key={`${member.id}:${id??'new'}`} member={member} id={id}/>}</MemberGate>;}

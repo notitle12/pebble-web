@@ -427,8 +427,7 @@ export function RichBodyEditor({ blocks, onChangeBlocks, uploadImage, imagePrevi
       <button type="button" role="menuitem" onClick={() => openForm("html")}>HTML</button>
       <button type="button" role="menuitem" onClick={() => insertAction(() => insertBlock("CODE"))}>코드</button>
       <button type="button" role="menuitem" onClick={() => insertAction(() => insertBlock("ARCHITECTURE"))}>아키텍처</button>
-      <button type="button" role="menuitem" onClick={() => insertAction(() => insertBlock("DB_SCHEMA"))}>DB 설계 · ERD</button>
-      <button type="button" role="menuitem" onClick={() => insertAction(() => insertBlock("DB_SCHEMA", "SPEC"))}>테이블 명세</button>
+      <button type="button" role="menuitem" onClick={() => insertAction(() => insertBlock("DB_SCHEMA"))}>DB 설계 · ERD · 테이블 명세</button>
       <button type="button" role="menuitem" onClick={() => openForm("toggle")}>접는 글</button>
     </div>}
 
