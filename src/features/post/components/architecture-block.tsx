@@ -1,6 +1,7 @@
 "use client";
-import { useId, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import type { ArchitectureEdge, ArchitectureNode, ArchitectureSide, ArchitectureSpec } from "../api/post-list";
+import { architectureZoom, nearestArchitectureSide } from "../architecture-interaction";
 import { architectureEdgeRoute } from "../architecture-edge";
 import { architectureLayout, ARCH_NODE_WIDTH, ARCH_NODE_HEIGHT, type ArchPoint } from "../architecture-layout";
 export { architectureLayout, type ArchPoint } from "../architecture-layout";
@@ -28,10 +29,12 @@ const clamp = (value: number, min: number, max: number) => Math.max(min, Math.mi
 const sideNames: Record<ArchitectureSide, string> = { TOP: "위쪽", RIGHT: "오른쪽", BOTTOM: "아래쪽", LEFT: "왼쪽" };
 const sides: ArchitectureSide[] = ["TOP", "RIGHT", "BOTTOM", "LEFT"];
 
-export function ArchitectureBlock({ spec, title, interactive = false, selectedNode, selectedGroup, selectedEdge, connecting = false, onSelectNode, onSelectGroup, onSelectEdge, onConnect, onMoveNode, onMoveGroup, onResizeGroup, onMoveEdge, onReconnectEdge, onDeleteEdge, onInteractionStart, onInteractionEnd }: {
+export function ArchitectureBlock({ spec, title, interactive = false, selectedNode, selectedGroup, selectedEdge, connecting = false, onSelectNode, onSelectGroup, onSelectEdge, onConnect, onMoveNode, onMoveGroup, onResizeGroup, onMoveEdge, onReconnectEdge, onDeleteEdge, onInteractionStart, onInteractionEnd, zoom, onZoomChange, onConnectNodes }: {
   spec: ArchitectureSpec; title: string | null; interactive?: boolean; selectedNode?: string | null; selectedGroup?: string | null; selectedEdge?: string | null; connecting?: boolean;
   onSelectNode?: (id: string) => void; onSelectGroup?: (id: string) => void; onSelectEdge?: (id: string) => void;
   onConnect?: (id: string, side: ArchitectureSide) => void;
+  zoom?:number; onZoomChange?:(zoom:number)=>void;
+  onConnectNodes?:(source:string,sourceSide:ArchitectureSide|null,target:string,targetSide:ArchitectureSide|null)=>void;
   onMoveNode?: (id: string, point: ArchPoint, finished?: boolean) => void; onMoveGroup?: (id: string, point: ArchPoint) => void;
   onResizeGroup?: (id: string, size: { width: number; height: number }) => void;
   onMoveEdge?: (id: string, point: ArchPoint) => void; onReconnectEdge?: (id: string, end: "source" | "target", endpointId: string, side: ArchitectureSide) => void;
@@ -39,6 +42,29 @@ export function ArchitectureBlock({ spec, title, interactive = false, selectedNo
 }) {
   const id = `architecture-${useId().replace(/:/g, "")}`;
   const { positions, groups, width, height } = architectureLayout(spec);
+  const [hoveredEndpoint,setHoveredEndpoint]=useState<string|null>(null);
+  const scrollRef=useRef<HTMLDivElement>(null);
+  const zoomAnchor=useRef<{x:number;y:number;ratio:number;left:number;top:number}|null>(null);
+  useEffect(()=>{
+    const viewport=scrollRef.current;
+    if(!interactive || !onZoomChange || !viewport) return;
+    const wheel=(event:WheelEvent)=>{
+      if(!(event.ctrlKey || event.metaKey)) return;
+      event.preventDefault();
+      const current=zoom??1, next=architectureZoom(current,event.deltaY*(event.deltaMode===1?16:event.deltaMode===2?viewport.clientHeight:1));
+      const rect=viewport.getBoundingClientRect();
+      zoomAnchor.current={x:event.clientX-rect.left,y:event.clientY-rect.top,ratio:next/current,left:viewport.scrollLeft,top:viewport.scrollTop};
+      onZoomChange(next);
+    };
+    viewport.addEventListener("wheel",wheel,{passive:false});
+    return ()=>viewport.removeEventListener("wheel",wheel);
+  },[interactive,zoom,onZoomChange]);
+  useLayoutEffect(()=>{
+    const anchor=zoomAnchor.current, viewport=scrollRef.current;
+    if(anchor && viewport){viewport.scrollLeft=(anchor.left+anchor.x)*anchor.ratio-anchor.x;viewport.scrollTop=(anchor.top+anchor.y)*anchor.ratio-anchor.y;zoomAnchor.current=null;}
+  },[zoom]);
+  const connectionDrag=useRef<{source:string;side:ArchitectureSide;pointerId:number;startX:number;startY:number;point:ArchPoint;moved:boolean}|null>(null);
+  const [connectionPreview,setConnectionPreview]=useState<{start:ArchPoint;end:ArchPoint;target:string|null}|null>(null);
   const dragRef = useRef<PointerDrag | null>(null);
   const resizeRef = useRef<ResizeDrag | null>(null);
   const [endpointPreview,setEndpointPreview] = useState<{id:string;end:"source"|"target";point:ArchPoint}|null>(null);
@@ -132,9 +158,7 @@ export function ArchitectureBlock({ spec, title, interactive = false, selectedNo
     if (!hit || !endpointId) return;
     let side = hit.getAttribute("data-architecture-side") as ArchitectureSide | null;
     if (!side) {
-      const rect = hit.getBoundingClientRect();
-      const distances = [event.clientY - rect.top, rect.right - event.clientX, rect.bottom - event.clientY, event.clientX - rect.left];
-      side = sides[distances.indexOf(Math.min(...distances))];
+      side = nearestArchitectureSide(hit.getBoundingClientRect(),event.clientX,event.clientY);
     }
     onReconnectEdge(drag.id, drag.end, endpointId, side);
   }
@@ -143,26 +167,50 @@ export function ArchitectureBlock({ spec, title, interactive = false, selectedNo
     if (!cancelled) reconnectAtPointer(event, drag);
     setEndpointPreview(null); edgeDragRef.current = null; onInteractionEnd?.(); if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
   }
+  function connectionTarget(event:React.PointerEvent<SVGGElement>,source:string) {
+    const hit=document.elementsFromPoint(event.clientX,event.clientY).map(element=>element.closest("[data-architecture-endpoint]")).find(element=>element && event.currentTarget.ownerSVGElement?.contains(element));
+    const target=hit?.getAttribute("data-architecture-endpoint");
+    return hit && target && target!==source ? {id:target,side:(hit.getAttribute("data-architecture-side") as ArchitectureSide|null)??nearestArchitectureSide(hit.getBoundingClientRect(),event.clientX,event.clientY)}:null;
+  }
+  function moveConnection(event:React.PointerEvent<SVGGElement>) {
+    const drag=connectionDrag.current;
+    if(!drag || drag.pointerId!==event.pointerId) return;
+    event.stopPropagation();
+    if(Math.hypot(event.clientX-drag.startX,event.clientY-drag.startY)>4) drag.moved=true;
+    const svg=event.currentTarget.ownerSVGElement, rect=svg?.getBoundingClientRect(), scale=pointerScale(svg);
+    if(!rect || !drag.moved) return;
+    setConnectionPreview({start:drag.point,end:{x:(event.clientX-rect.left)/scale.scaleX,y:(event.clientY-rect.top)/scale.scaleY},target:connectionTarget(event,drag.source)?.id??null});
+  }
+  function endConnection(event:React.PointerEvent<SVGGElement>,cancelled=false) {
+    const drag=connectionDrag.current;
+    if(!drag || drag.pointerId!==event.pointerId) return;
+    event.stopPropagation();
+    connectionDrag.current=null; setConnectionPreview(null);
+    suppressClickRef.current=drag.moved || cancelled;
+    if(!cancelled && drag.moved){const target=connectionTarget(event,drag.source);if(target) onConnectNodes?.(drag.source,drag.side,target.id,target.side);}
+    if(event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+  }
   function connectHandle(endpointId: string, label: string, box: { x: number; y: number; width: number; height: number }) {
     if (!interactive || !onConnect) return null;
     const points: Record<ArchitectureSide, ArchPoint> = { TOP: { x: box.x + box.width / 2, y: box.y }, RIGHT: { x: box.x + box.width, y: box.y + box.height / 2 }, BOTTOM: { x: box.x + box.width / 2, y: box.y + box.height }, LEFT: { x: box.x, y: box.y + box.height / 2 } };
-    return sides.map((side) => <g key={`connect-${endpointId}-${side}`} data-architecture-endpoint={endpointId} data-architecture-side={side} className={`arch-connect-handle${connecting ? " is-connecting" : ""}`} transform={`translate(${points[side].x} ${points[side].y})`} role="button" tabIndex={0} aria-label={`${label} ${sideNames[side]} 연결 포인트`} onPointerDown={(event) => { suppressClickRef.current = false; event.preventDefault(); event.stopPropagation(); event.currentTarget.setPointerCapture(event.pointerId); }} onPointerUp={(event) => { event.stopPropagation(); if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId); }} onClick={(event) => { event.stopPropagation(); if (suppressClickRef.current) { suppressClickRef.current = false; return; } onConnect(endpointId, side); }} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); event.stopPropagation(); onConnect(endpointId, side); } }}><circle className="arch-connect-hit" r="22"/><circle className="arch-connect-dot" r="5"/><title>{`${label} ${sideNames[side]} 연결 포인트`}</title></g>);
+    return sides.map((side) => <g key={`connect-${endpointId}-${side}`} data-architecture-endpoint={endpointId} data-architecture-side={side} className={`arch-connect-handle${connecting || connectionPreview ? " is-connecting" : ""}${selectedNode===endpointId || selectedGroup===endpointId || hoveredEndpoint===endpointId ? " is-visible":""}`} transform={`translate(${points[side].x} ${points[side].y})`} role="button" tabIndex={0} aria-label={`${label} ${sideNames[side]} 연결 포인트`} onPointerDown={(event) => { suppressClickRef.current = false; event.preventDefault(); event.stopPropagation(); event.currentTarget.setPointerCapture(event.pointerId); event.currentTarget.focus(); connectionDrag.current={source:endpointId,side,pointerId:event.pointerId,startX:event.clientX,startY:event.clientY,point:points[side],moved:false}; }} onPointerMove={moveConnection} onPointerUp={event=>endConnection(event)} onPointerCancel={event=>endConnection(event,true)} onLostPointerCapture={event=>endConnection(event,true)} onKeyDownCapture={event=>{if(event.key==="Escape"){connectionDrag.current=null;setConnectionPreview(null);suppressClickRef.current=true;}}} onClick={(event) => { event.stopPropagation(); if (suppressClickRef.current) { suppressClickRef.current = false; return; } onConnect(endpointId, side); }} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); event.stopPropagation(); onConnect(endpointId, side); } }}><circle className="arch-connect-hit" r="22"/><circle className="arch-connect-dot" r="5"/><title>{`${label} ${sideNames[side]} 연결 포인트`}</title></g>);
   }
   const edgeLabel = (edge: ArchitectureEdge) => `${endpointLabel(edge.source)} → ${endpointLabel(edge.target)}`;
   return <section className="architecture-block" aria-label={title ?? "시스템 아키텍처 다이어그램"}>
     {title !== null && <div className="architecture-heading"><h2>{title}</h2><p>구성 요소와 데이터 흐름</p></div>}
-    <div className="architecture-scroll" role="region" tabIndex={0} aria-label="가로 스크롤 가능한 아키텍처 다이어그램">
-      <svg className="architecture-svg" width={width} height={height} viewBox={`0 0 ${width} ${height}`} role="group" aria-label={title ?? "시스템 아키텍처"}>
+    <div ref={scrollRef} className="architecture-scroll" role="region" tabIndex={0} aria-label="가로 스크롤 가능한 아키텍처 다이어그램">
+      <svg className="architecture-svg" style={interactive && zoom!==undefined ? {width:`min(${zoom*100}%, ${width*zoom}px)`,height:"auto",minWidth:0}:undefined} width={width} height={height} viewBox={`0 0 ${width} ${height}`} role="group" aria-label={title ?? "시스템 아키텍처"}>
         <defs><marker id={`${id}-arrow`} markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#78869a" /></marker></defs>
-        {[...spec.groups].sort((a, b) => Number(a.type === "DOCKER") - Number(b.type === "DOCKER")).map((group) => { const box = groups.get(group.id)!; const color = group.type === "DOCKER" ? "arch-group-docker" : group.type === "CUSTOM" ? "arch-group-custom" : ""; const label = `${groupNames[group.type]} · ${group.label}`; const selected = selectedGroup === group.id; return <g key={group.id} className={`arch-group-wrap${interactive && (onMoveGroup || onSelectGroup) ? " is-interactive" : ""}${selected ? " is-selected" : ""}`}>
+        {[...spec.groups].sort((a, b) => Number(a.type === "DOCKER") - Number(b.type === "DOCKER")).map((group) => { const box = groups.get(group.id)!; const color = group.type === "DOCKER" ? "arch-group-docker" : group.type === "CUSTOM" ? "arch-group-custom" : ""; const label = `${groupNames[group.type]} · ${group.label}`; const selected = selectedGroup === group.id || connectionPreview?.target===group.id; return <g key={group.id} onPointerEnter={()=>setHoveredEndpoint(group.id)} onPointerLeave={()=>setHoveredEndpoint(null)} className={`arch-group-wrap${interactive && (onMoveGroup || onSelectGroup) ? " is-interactive" : ""}${selected ? " is-selected" : ""}`}>
           <rect data-architecture-endpoint={group.id} className={`arch-group ${color}`} x={box.x} y={box.y} width={box.width} height={box.height} rx="18" onPointerDown={(event) => beginGroupDrag(event, group.id)} onPointerMove={moveGroupDrag} onPointerUp={(event) => endGroupDrag(event)} onPointerCancel={(event) => endGroupDrag(event, true)} onLostPointerCapture={(event) => endGroupDrag(event, true)} onClick={() => { if (suppressClickRef.current) { suppressClickRef.current = false; return; } if (interactive) onSelectGroup?.(group.id); }} />
           <text data-architecture-endpoint={group.id} className="arch-group-label" x={box.x + 14} y={box.y + 24} tabIndex={interactive ? 0 : undefined} role={interactive ? "button" : undefined} aria-label={interactive ? label : undefined} onPointerDown={(event) => beginGroupDrag(event, group.id)} onPointerMove={moveGroupDrag} onPointerUp={(event) => endGroupDrag(event)} onPointerCancel={(event) => endGroupDrag(event, true)} onLostPointerCapture={(event) => endGroupDrag(event, true)} onClick={() => { if (suppressClickRef.current) { suppressClickRef.current = false; return; } if (interactive) onSelectGroup?.(group.id); }} onKeyDown={(event) => { if (!interactive) return; if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onSelectGroup?.(group.id); return; } const delta = event.shiftKey ? 20 : 5; const vectors: Record<string, ArchPoint> = { ArrowLeft: { x: -delta, y: 0 }, ArrowRight: { x: delta, y: 0 }, ArrowUp: { x: 0, y: -delta }, ArrowDown: { x: 0, y: delta } }; const vector = vectors[event.key]; if (vector && onMoveGroup) { event.preventDefault(); onInteractionStart?.(); onMoveGroup(group.id, { x: clamp(box.x + vector.x, 0, 4000), y: clamp(box.y + vector.y, 0, 4000) }); onInteractionEnd?.(); } }}>{short(label, box.width - 28, 12)}</text><title>{label}</title>
           {connectHandle(group.id, label, box)}
           {interactive && onResizeGroup && <g className="arch-group-resize" transform={`translate(${box.x + box.width} ${box.y + box.height})`} role="button" tabIndex={0} aria-label={`${label} 크기 조절`} onPointerDown={(event) => beginResize(event, group.id)} onPointerMove={moveResize} onPointerUp={endResize} onPointerCancel={endResize} onLostPointerCapture={endResize} onKeyDown={(event) => { const delta = event.shiftKey ? 20 : 5; const vectors: Record<string, { width: number; height: number }> = { ArrowLeft: { width: -delta, height: 0 }, ArrowRight: { width: delta, height: 0 }, ArrowUp: { width: 0, height: -delta }, ArrowDown: { width: 0, height: delta } }; const vector = vectors[event.key]; if (vector && onResizeGroup) { event.preventDefault(); event.stopPropagation(); onInteractionStart?.(); onResizeGroup(group.id, { width: clamp(box.width + vector.width, 200, 4200), height: clamp(box.height + vector.height, 120, 4200) }); onInteractionEnd?.(); } }}><circle className="arch-group-resize-hit" r="12"/><path className="arch-group-resize-mark" d="M-7 7 7-7M0 7 7 0"/><title>{`${label} 크기 조절`}</title></g>}
         </g>; })}
         {spec.edges.map((edge) => { const route = edgeRoutes.get(edge.id); if (!route) return null; const selected = interactive && selectedEdge === edge.id; const accessibleLabel = `연결 ${edgeLabel(edge)}`; return <g key={edge.id} className={`arch-edge-wrap${selected ? " is-selected" : ""}`} role={interactive ? "button" : undefined} tabIndex={interactive ? 0 : undefined} aria-label={interactive ? accessibleLabel : undefined} onClick={() => interactive && onSelectEdge?.(edge.id)} onKeyDown={(event) => { if (interactive && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); onSelectEdge?.(edge.id); } }}><title>{`${edgeLabel(edge)}${edge.label ? ` · ${edge.label}` : ""}`}</title>{interactive && <path className="arch-edge-hit" d={route.path}/>}<path className="arch-edge" markerEnd={`url(#${id}-arrow)`} d={route.path}/>{edge.label && <text className="arch-edge-label" x={route.label.x} y={route.label.y}>{short(edge.label, 112, 10)}</text>}</g>; })}
-        {spec.nodes.map((node) => { const point = positions.get(node.id)!; const selected = selectedNode === node.id; return <g key={node.id} data-architecture-endpoint={node.id} data-node-type={node.type} className={`arch-node-wrap${interactive ? " arch-node-draggable" : ""}${selected ? " is-selected" : ""}`} transform={`translate(${point.x} ${point.y})`} onPointerDown={(event) => beginNodeDrag(event, node)} onPointerMove={moveNodeDrag} onPointerUp={(event) => endNodeDrag(event)} onPointerCancel={(event) => endNodeDrag(event, true)} onLostPointerCapture={(event) => endNodeDrag(event, true)} onClick={() => { if (suppressClickRef.current) { suppressClickRef.current = false; return; } if (interactive) onSelectNode?.(node.id); }} onKeyDown={(event) => { if (!interactive) return; const delta = event.shiftKey ? 20 : 5; if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onSelectNode?.(node.id); return; } const vectors: Record<string, ArchPoint> = { ArrowLeft: { x: -delta, y: 0 }, ArrowRight: { x: delta, y: 0 }, ArrowUp: { x: 0, y: -delta }, ArrowDown: { x: 0, y: delta } }; const vector = vectors[event.key]; if (vector && onMoveNode) { event.preventDefault(); event.stopPropagation(); onInteractionStart?.(); onMoveNode(node.id, { x: clamp(point.x + vector.x, 0, 4000), y: clamp(point.y + vector.y, 0, 4000) }, true); onInteractionEnd?.(); } }} tabIndex={interactive ? 0 : undefined} role={interactive ? "button" : undefined} aria-label={`${node.label}, ${typeNames[node.type]}`}><rect width={ARCH_NODE_WIDTH} height={ARCH_NODE_HEIGHT} rx="15" fill={nodeColors[node.type]} className="arch-node" /><ArchitectureIcon value={node.icon} /><text className="arch-node-type" x="80" y="29">{typeNames[node.type]}</text><text className="arch-node-label" x="80" y="55">{short(node.label, 136, 11)}</text></g>; })}
+        {spec.nodes.map((node) => { const point = positions.get(node.id)!; const selected = selectedNode === node.id || connectionPreview?.target===node.id; return <g key={node.id} onPointerEnter={()=>setHoveredEndpoint(node.id)} onPointerLeave={()=>setHoveredEndpoint(null)} data-architecture-endpoint={node.id} data-node-type={node.type} className={`arch-node-wrap${interactive ? " arch-node-draggable" : ""}${selected ? " is-selected" : ""}`} transform={`translate(${point.x} ${point.y})`} onPointerDown={(event) => beginNodeDrag(event, node)} onPointerMove={moveNodeDrag} onPointerUp={(event) => endNodeDrag(event)} onPointerCancel={(event) => endNodeDrag(event, true)} onLostPointerCapture={(event) => endNodeDrag(event, true)} onClick={() => { if (suppressClickRef.current) { suppressClickRef.current = false; return; } if (interactive) onSelectNode?.(node.id); }} onKeyDown={(event) => { if (!interactive) return; const delta = event.shiftKey ? 20 : 5; if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onSelectNode?.(node.id); return; } const vectors: Record<string, ArchPoint> = { ArrowLeft: { x: -delta, y: 0 }, ArrowRight: { x: delta, y: 0 }, ArrowUp: { x: 0, y: -delta }, ArrowDown: { x: 0, y: delta } }; const vector = vectors[event.key]; if (vector && onMoveNode) { event.preventDefault(); event.stopPropagation(); onInteractionStart?.(); onMoveNode(node.id, { x: clamp(point.x + vector.x, 0, 4000), y: clamp(point.y + vector.y, 0, 4000) }, true); onInteractionEnd?.(); } }} tabIndex={interactive ? 0 : undefined} role={interactive ? "button" : undefined} aria-label={`${node.label}, ${typeNames[node.type]}`}><rect width={ARCH_NODE_WIDTH} height={ARCH_NODE_HEIGHT} rx="15" fill={nodeColors[node.type]} className="arch-node" /><ArchitectureIcon value={node.icon} /><text className="arch-node-type" x="80" y="29">{typeNames[node.type]}</text><text className="arch-node-label" x="80" y="55">{short(node.label, 136, 11)}</text></g>; })}
         {spec.nodes.map((node) => { const point = positions.get(node.id)!; return connectHandle(node.id, node.label, { ...point, width: ARCH_NODE_WIDTH, height: ARCH_NODE_HEIGHT }); })}
+        {connectionPreview && <path className="arch-connection-preview" d={`M${connectionPreview.start.x},${connectionPreview.start.y} L${connectionPreview.end.x},${connectionPreview.end.y}`} markerEnd={`url(#${id}-arrow)`}/>}
         {interactive && selectedEdge && (() => { const edge = spec.edges.find((item) => item.id === selectedEdge), route = edgeRoutes.get(selectedEdge); if (!edge || !route) return null; const sourceBox = endpointBox(edge.source), targetBox = endpointBox(edge.target); if (!sourceBox || !targetBox) return null; const toolbarY = route.bend.y - 43; return <g className="arch-edge-controls">
           <g className="arch-edge-waypoint" transform={`translate(${route.bend.x} ${route.bend.y})`} role="button" tabIndex={0} aria-label={`연결 경로 조절 ${edge.id}`} onPointerDown={(event) => beginEdgeDrag(event, edge, route.bend)} onPointerMove={moveEdgeDrag} onPointerUp={endEdgeDrag} onPointerCancel={(event) => endEdgeDrag(event, true)} onLostPointerCapture={(event) => endEdgeDrag(event, true)} onKeyDown={(event) => { const delta = event.shiftKey ? 20 : 5; const vectors: Record<string, ArchPoint> = { ArrowLeft: { x: -delta, y: 0 }, ArrowRight: { x: delta, y: 0 }, ArrowUp: { x: 0, y: -delta }, ArrowDown: { x: 0, y: delta } }; const vector = vectors[event.key]; if (vector && onMoveEdge) { event.preventDefault(); event.stopPropagation(); onInteractionStart?.(); onMoveEdge(edge.id, { x: clamp(route.bend.x + vector.x, 0, 4200), y: clamp(route.bend.y + vector.y, 0, 4200) }); onInteractionEnd?.(); } }}><circle className="arch-edge-waypoint-hit" r="12"/><circle className="arch-edge-waypoint-dot" r="4"/><title>{`연결 경로 조절 ${edge.id}`}</title></g>
           <g className="arch-edge-toolbar" transform={`translate(${route.bend.x} ${toolbarY})`}><rect x="-54" y="-13" width="108" height="26" rx="8"/><text x="-10" y="4" textAnchor="middle">{short(edge.label || "연결", 54, 10)}</text><g className="arch-edge-delete" transform="translate(36 0)" role="button" tabIndex={0} aria-label={`연결 삭제 ${edge.id}`} onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); onDeleteEdge?.(edge.id); }} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); event.stopPropagation(); onDeleteEdge?.(edge.id); } }}><circle r="9"/><path d="m-3-3 6 6m0-6-6 6"/><title>{`연결 삭제 ${edge.id}`}</title></g></g>
