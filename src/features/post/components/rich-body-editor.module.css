@@ -171,3 +171,9 @@
 :global(html[data-theme=dark]) :is(.editor,.preview,.rendered) :global(pre){background:#1c2b22;color:var(--text)}
 :global(html[data-theme=dark]) :is(.editor,.preview,.rendered) :global(blockquote){border-color:var(--line);color:var(--muted)}
 :global(html[data-theme=dark]) :is(.editor,.preview,.rendered) :is(:global(th),:global(td)){border-color:var(--line)}
+
+:global(html[data-theme=dark]) .toc{background:var(--block-surface);color:var(--text);border-color:var(--line)}
+:global(html[data-theme=dark]) .toc a{color:var(--accent)}
+:global(html[data-theme=dark]) .toc p{color:var(--muted)}
+:global(html[data-theme=dark]) :is(.editor,.preview,.rendered) :global(th){background:var(--block-heading);color:var(--text)}
+:global(html[data-theme=dark]) :is(.editor,.preview,.rendered) :global(td){color:var(--text)}
