@@ -38,6 +38,8 @@ export type RichBodyEditorProps = {
   representativeImageSrc?: string | null;
   onSelectRepresentativeImage?: (src: string) => void;
   disabled?: boolean;
+  toolbarMode?: "fixed" | "inline";
+  allowRepresentativeImage?: boolean;
 };
 
 
@@ -165,7 +167,7 @@ const extensionSet = [
 
 const isSafeHref = (value: string) => /^(https?:|mailto:)/i.test(value.trim());
 
-export function RichBodyEditor({ blocks, onChangeBlocks, uploadImage, imagePreviews = {}, representativeImageSrc = null, onSelectRepresentativeImage = () => {}, disabled = false }: RichBodyEditorProps) {
+export function RichBodyEditor({ blocks, onChangeBlocks, uploadImage, imagePreviews = {}, representativeImageSrc = null, onSelectRepresentativeImage = () => {}, disabled = false, toolbarMode = "fixed", allowRepresentativeImage = true }: RichBodyEditorProps) {
   const first = blocks[0];
   const initialFormat: RichBodyFormat = blocks.length === 1 && first?.type === "MARKDOWN" ? "MARKDOWN" : "HTML";
   const content = blocks.length === 1 && ["TEXT", "HTML", "MARKDOWN"].includes(first?.type) ? first.content : "";
@@ -371,13 +373,13 @@ export function RichBodyEditor({ blocks, onChangeBlocks, uploadImage, imagePrevi
 
   const contentForView = format === "TEXT" ? richContentHtml(draftContent, "TEXT") : draftContent;
 
-  return <section ref={root} inert={disabled} className={styles.root} aria-label="본문 편집기">
+  return <section ref={root} inert={disabled} className={`${styles.root} ${toolbarMode === "inline" ? styles.inlineRoot : ""}`} aria-label="본문 편집기">
     <dialog ref={formatDialog} className={styles.formatDialog} aria-labelledby={formatDialogId} onCancel={()=>setPendingMode(null)}>
       <h2 id={formatDialogId}>작성 형식을 변경할까요?</h2>
       <p>{pendingMode==="MARKDOWN"?"현재 서식은 마크다운 안에 HTML로 보존됩니다.":"지원하는 문단·표·이미지 형식으로 변환합니다. 지원하지 않는 HTML 구조나 위험한 요소는 제거될 수 있습니다."}</p>
       <footer><button type="button" onClick={()=>setPendingMode(null)}>취소</button><button type="button" onClick={()=>{if(pendingMode)applyMode(pendingMode);setPendingMode(null);}}>형식 변경</button></footer>
     </dialog>
-    <div data-writer-popup className={styles.sticky} role="toolbar" aria-label="본문 서식 도구" aria-disabled={disabled}>
+    <div data-writer-popup className={`${styles.sticky} ${toolbarMode === "inline" ? styles.inlineToolbar : ""}`} role="toolbar" aria-label="본문 서식 도구" aria-disabled={disabled}>
       <div className={styles.toolrow}>
         {displayMode === "NORMAL" && <>
           <ToolButton icon="image" label="이미지 삽입" disabled={disabled || busy || !uploadImage} onClick={() => { setForm(null); setFormError(""); setInsertMenuOpen(false); setPalette(null); setTablePicker(false); fileRef.current?.click(); }}/>
@@ -390,8 +392,8 @@ export function RichBodyEditor({ blocks, onChangeBlocks, uploadImage, imagePrevi
           <ToolButton icon="italic" label="기울임" disabled={disabled} pressed={selection?.italic} onClick={() => run(() => editor?.chain().focus().toggleItalic().run())}/>
           <ToolButton icon="underline" label="밑줄" disabled={disabled} pressed={selection?.underline} onClick={() => run(() => editor?.chain().focus().toggleUnderline().run())}/>
           <ToolButton icon="strike" label="취소선" disabled={disabled} pressed={selection?.strike} onClick={() => run(() => editor?.chain().focus().toggleStrike().run())}/>
-          <button type="button" className={`${styles.toolButton} ${styles.colorTool}`} aria-label="글자색" aria-expanded={palette === "text"} aria-haspopup="dialog" disabled={disabled} onClick={event => { setPaletteLeft(Math.min(event.currentTarget.getBoundingClientRect().left, window.innerWidth - 230)); setPalette(palette === "text" ? null : "text"); setTablePicker(false); setInsertMenuOpen(false); }}>A</button>
-          <button type="button" className={`${styles.toolButton} ${styles.colorTool}`} aria-label="글씨 배경색" aria-expanded={palette === "highlight"} aria-haspopup="dialog" disabled={disabled} onClick={event => { setPaletteLeft(Math.min(event.currentTarget.getBoundingClientRect().left, window.innerWidth - 230)); setPalette(palette === "highlight" ? null : "highlight"); setTablePicker(false); setInsertMenuOpen(false); }}>▰</button>
+          <button type="button" className={`${styles.toolButton} ${styles.colorTool}`} aria-label="글자색" aria-expanded={palette === "text"} aria-haspopup="dialog" disabled={disabled} onClick={event => { setPaletteLeft(Math.min(event.currentTarget.getBoundingClientRect().left, window.innerWidth - 230)); anchorPopup(event.currentTarget,230); setPalette(palette === "text" ? null : "text"); setTablePicker(false); setInsertMenuOpen(false); }}>A</button>
+          <button type="button" className={`${styles.toolButton} ${styles.colorTool}`} aria-label="글씨 배경색" aria-expanded={palette === "highlight"} aria-haspopup="dialog" disabled={disabled} onClick={event => { setPaletteLeft(Math.min(event.currentTarget.getBoundingClientRect().left, window.innerWidth - 230)); anchorPopup(event.currentTarget,230); setPalette(palette === "highlight" ? null : "highlight"); setTablePicker(false); setInsertMenuOpen(false); }}>▰</button>
           <ToolButton icon={{left:"alignLeft",center:"alignCenter",right:"alignRight",justify:"alignJustify"}[selection?.align as "left"|"center"|"right"|"justify"] ?? "alignLeft"} label={`${selection?.media ? "블록" : "문단"} 정렬: ${{left:"왼쪽",center:"가운데",right:"오른쪽",justify:"양쪽"}[selection?.align as "left"|"center"|"right"|"justify"] ?? "왼쪽"} (클릭해서 변경)`} disabled={disabled} onClick={() => run(() => { const choices = selection?.media ? ["left","center","right"] : ["left","center","right","justify"]; const align = choices[(choices.indexOf(selection?.align ?? "left") + 1) % choices.length]; if (selection?.media) editor?.chain().focus().updateAttributes(selection.media, { align }).run(); else editor?.chain().focus().setTextAlign(align).run(); })}/>
           <ToolButton icon="quote" label="인용" disabled={disabled} onClick={() => run(() => editor?.chain().focus().toggleBlockquote().run())}/>
           <span onMouseEnter={event => { if (!disabled) { anchorPopup(event.currentTarget,244); setTablePicker(true); setPalette(null); setInsertMenuOpen(false); } }} onClick={event => anchorPopup(event.currentTarget,244)}><ToolButton icon="table" label="표 삽입" disabled={disabled} onClick={() => { setTablePicker(true); setPalette(null); setInsertMenuOpen(false); }}/></span>
@@ -416,9 +418,9 @@ export function RichBodyEditor({ blocks, onChangeBlocks, uploadImage, imagePrevi
       <button type="button" role="menuitem" onClick={() => openForm("toggle")}>접는 글</button>
     </div>}
 
-    {palette && <div data-writer-popup className={styles.palette} style={{ left: Math.max(12, paletteLeft) }} role="dialog" aria-label={palette === "text" ? "글자색 선택" : "글씨 배경색 선택"}><strong>{palette === "text" ? "글자색" : "글씨 배경색"}</strong><div>{(palette === "text" ? textColors : highlightColors).map(color => <button key={color} type="button" title={color} aria-label={`${color} 색상`} style={{ backgroundColor: color }} onClick={() => pickColor(color)}/>)}</div><button type="button" onClick={() => { if (palette === "text") editor?.chain().focus().unsetColor().run(); else editor?.chain().focus().unsetHighlight().run(); setPalette(null); }}>기본색으로 초기화</button></div>}
+    {palette && <div data-writer-popup className={styles.palette} style={{ left: Math.max(12, paletteLeft), ...(toolbarMode === "inline" ? {top:popupAnchor.top} : {}) }} role="dialog" aria-label={palette === "text" ? "글자색 선택" : "글씨 배경색 선택"}><strong>{palette === "text" ? "글자색" : "글씨 배경색"}</strong><div>{(palette === "text" ? textColors : highlightColors).map(color => <button key={color} type="button" title={color} aria-label={`${color} 색상`} style={{ backgroundColor: color }} onClick={() => pickColor(color)}/>)}</div><button type="button" onClick={() => { if (palette === "text") editor?.chain().focus().unsetColor().run(); else editor?.chain().focus().unsetHighlight().run(); setPalette(null); }}>기본색으로 초기화</button></div>}
     {tablePicker && <div data-writer-popup className={styles.tablePicker} style={popupAnchor} onMouseLeave={() => setTablePicker(false)} role="dialog" aria-label="표 크기 선택"><strong>{tableSize.rows}행 × {tableSize.cols}열</strong><div role="grid" aria-label="표 행·열 선택">{Array.from({ length: 8 }, (_, row) => Array.from({ length: 10 }, (_, col) => <button type="button" key={`${row}-${col}`} role="gridcell" data-table-cell={`${row + 1}-${col + 1}`} tabIndex={tableSize.rows === row + 1 && tableSize.cols === col + 1 ? 0 : -1} aria-label={`${row + 1}행 ${col + 1}열 표`} aria-selected={row < tableSize.rows && col < tableSize.cols} onMouseEnter={() => setTableSize({ rows: row + 1, cols: col + 1 })} onClick={() => chooseTable(row + 1, col + 1)} onKeyDown={event => { const direction = { ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] }[event.key]; if (!direction) return; event.preventDefault(); const rows = Math.max(1, Math.min(8, row + 1 + direction[0])), cols = Math.max(1, Math.min(10, col + 1 + direction[1])); setTableSize({ rows, cols }); requestAnimationFrame(() => root.current?.querySelector<HTMLButtonElement>(`[data-table-cell="${rows}-${cols}"]`)?.focus()); }}/>))}</div></div>}
-    {displayMode === "NORMAL" ? <div className={styles.editor}><RepresentativeImageProvider selectedSrc={representativeImageSrc} disabled={disabled} onSelect={onSelectRepresentativeImage}><EditorContent editor={editor}/></RepresentativeImageProvider><BodyBlockHandle editor={editor} disabled={disabled}/></div>
+    {displayMode === "NORMAL" ? <div className={styles.editor}><RepresentativeImageProvider enabled={allowRepresentativeImage} selectedSrc={representativeImageSrc} disabled={disabled} onSelect={onSelectRepresentativeImage}><EditorContent editor={editor}/></RepresentativeImageProvider><BodyBlockHandle editor={editor} disabled={disabled}/></div>
       : displayMode === "HTML" ? <div className={styles.sourceGrid}><label>HTML 원문<textarea aria-label="HTML 원문" value={contentForView} disabled={disabled} onChange={event => publishSource(event.target.value, "HTML")}/></label><section aria-label="안전한 HTML 미리보기"><h3>미리보기</h3><div className={styles.preview}><PostBody blocks={blocks.filter(block => block.valid !== false)}/></div></section></div>
       : <div className={styles.sourceGrid}><label>마크다운 원문<small className={styles.markdownHelp}>제목은 ### 뒤에 공백을 넣어 작성하세요. Enter는 줄바꿈, 빈 줄은 문단 나눔입니다.</small><textarea aria-label="마크다운 원문" value={contentForView} disabled={disabled} onChange={event => publishSource(event.target.value, "MARKDOWN")}/></label><section aria-label="마크다운 미리보기"><h3>미리보기</h3><div className={styles.preview}><PostBody blocks={blocks.filter(block => block.valid !== false)}/></div></section></div>}
 
