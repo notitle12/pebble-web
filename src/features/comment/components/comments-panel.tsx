@@ -1,7 +1,7 @@
 "use client";
 import {useEffect,useRef,useState,useId} from "react";
 import {useUserSession} from "@/features/auth/components/member-gate";
-import {NaverLoginButton} from "@/features/auth/components/naver-login-button";
+import {openLoginDialog} from "@/features/auth/components/login-dialog";
 import {userSession,type SessionState} from "@/features/auth/user-session";
 import {safeMediaUrl} from "@/features/media/model";
 import { commentPageNumbers } from "../page-numbers";
@@ -62,10 +62,19 @@ function Comments({target,contentId,session}:{target:CommentTarget;contentId:str
       <button type="button" aria-label="다음 댓글 페이지" disabled={busy||!data.hasNext} onClick={()=>{setPage(n=>n+1);setEditing(null);setDeleting(null);}}><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m8 5 5 5-5 5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg></button>
     </nav>}
     {notice&&<p role="status">{notice}</p>}
-    {ready?<form className="comment-form comment-composer" onSubmit={e=>{e.preventDefault();void mutate("create");}} aria-busy={busy}>
-      <span className="comment-composer-avatar" aria-hidden="true">{safeMediaUrl(session.member!.profileImageUrl)?<img src={safeMediaUrl(session.member!.profileImageUrl)!} alt="" width={40} height={40}/>:Array.from(session.member!.nickname)[0]}</span>
+    <form className="comment-form comment-composer" onSubmit={e=>{
+      e.preventDefault();
+      if(!ready){
+        if(session.phase==="guest")openLoginDialog();
+        return;
+      }
+      void mutate("create");
+    }} aria-busy={busy}>
+      <span className="comment-composer-avatar" aria-hidden="true">
+        {ready&&safeMediaUrl(session.member!.profileImageUrl)?<img src={safeMediaUrl(session.member!.profileImageUrl)!} alt="" width={40} height={40}/>:ready?Array.from(session.member!.nickname)[0]:<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>}
+      </span>
       <div className="comment-composer-card">
-        <strong className="comment-composer-name">{session.member!.nickname}</strong>
+        <strong className="comment-composer-name">{ready?session.member!.nickname:"방문자"}</strong>
         <label className="sr-only" htmlFor={`${uid}-body`}>댓글 남기기</label>
         <textarea id={`${uid}-body`} aria-describedby={`${uid}-secret-help`} value={body} onChange={e=>setBody(e.target.value)} rows={3} disabled={busy} placeholder="이 기록에 대한 생각을 남겨주세요."/>
       </div>
@@ -79,6 +88,6 @@ function Comments({target,contentId,session}:{target:CommentTarget;contentId:str
         </div>
       </div>
       <p id={`${uid}-secret-help`} className="sr-only">비밀 댓글은 댓글 작성자와 콘텐츠 작성자, 관리자만 볼 수 있어요.</p>
-    </form>:session.phase!=="loading"&&<div className="comment-login"><p>댓글을 남기려면 로그인해 주세요.</p><NaverLoginButton/></div>}
+    </form>
   </section>;
 }
