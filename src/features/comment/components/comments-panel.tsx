@@ -15,7 +15,7 @@ function Comments({target,contentId,ownerId,session}:{target:CommentTarget;conte
   const uid=useId(),[page,setPage]=useState(0),[attempt,setAttempt]=useState(0);
   const [result,setResult]=useState<{scope:string;page:number;data:CommentPage}|null>(null),[loadError,setLoadError]=useState("");
   const [body,setBody]=useState(""),[visibility,setVisibility]=useState<CommentVisibility>("PUBLIC"),[editing,setEditing]=useState<Comment|null>(null);
-  const [guestNickname,setGuestNickname]=useState(""),[guestPassword,setGuestPassword]=useState(""),[guestPrivacyAccepted,setGuestPrivacyAccepted]=useState(false);
+  const [guestNickname,setGuestNickname]=useState(""),[guestPassword,setGuestPassword]=useState("");
   const [guestEditing,setGuestEditing]=useState<Comment|null>(null),[guestEditBody,setGuestEditBody]=useState(""),[guestDelete,setGuestDelete]=useState<Comment|null>(null),[guestActionPassword,setGuestActionPassword]=useState("");
   const [editBody,setEditBody]=useState(""),[editVisibility,setEditVisibility]=useState<CommentVisibility>("PUBLIC"),[deleting,setDeleting]=useState<string|null>(null);
   const [busy,setBusy]=useState(false),[notice,setNotice]=useState("");
@@ -54,14 +54,13 @@ function Comments({target,contentId,ownerId,session}:{target:CommentTarget;conte
   async function createGuest(event:React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if(session.phase!=="guest"||writing.current)return;
-    if(!guestPrivacyAccepted){setNotice("개인정보 수집·이용 안내를 확인하고 동의해 주세요.");return;}
     let input;
     try {input=guestCommentInput(guestNickname,guestPassword,body);}catch(e){setNotice(commentFailure(e));return;}
     writing.current=true;setBusy(true);setNotice("");
     try {
       await createGuestComment(target,contentId,input);
       if(!mounted.current)return;
-      setBody("");setGuestNickname("");setGuestPrivacyAccepted(false);setPage(Math.floor((data?.totalElements??0)/20));setAttempt(n=>n+1);
+      setBody("");setGuestNickname("");setPage(Math.floor((data?.totalElements??0)/20));setAttempt(n=>n+1);
     } catch(e) {if(mounted.current)setNotice(commentFailure(e));}
     finally {writing.current=false;if(mounted.current){setGuestPassword("");setBusy(false);}}
   }
@@ -108,12 +107,10 @@ function Comments({target,contentId,ownerId,session}:{target:CommentTarget;conte
     {notice&&<p role="status">{notice} {ready&&!canComment&&<Link href="/agreements">서비스 이용 동의</Link>}</p>}
     {session.phase==="guest"?<form className="comment-form guest-comment-form" onSubmit={createGuest} aria-busy={busy}>
       <h3>댓글 남기기</h3>
-      <div className="guest-comment-identity"><label htmlFor={`${uid}-guest-nickname`}>닉네임<input id={`${uid}-guest-nickname`} value={guestNickname} onChange={e=>setGuestNickname(e.target.value)} autoComplete="nickname" maxLength={30} disabled={busy}/></label>
-      <label htmlFor={`${uid}-guest-password`}>비밀번호<input id={`${uid}-guest-password`} type="password" autoComplete="new-password" placeholder="4~64자" value={guestPassword} onChange={e=>setGuestPassword(e.target.value)} disabled={busy}/></label></div>
+      <div className="guest-comment-identity"><label htmlFor={`${uid}-guest-nickname`}>닉네임<input id={`${uid}-guest-nickname`} value={guestNickname} onChange={e=>setGuestNickname(e.target.value)} placeholder="조약돌" autoComplete="nickname" maxLength={30} disabled={busy}/></label>
+      <label htmlFor={`${uid}-guest-password`}>비밀번호<input id={`${uid}-guest-password`} type="password" autoComplete="new-password" placeholder="4~10자" maxLength={10} value={guestPassword} onChange={e=>setGuestPassword(e.target.value)} disabled={busy}/></label></div>
       <label className="sr-only" htmlFor={`${uid}-guest-body`}>댓글</label><textarea id={`${uid}-guest-body`} value={body} onChange={e=>setBody(e.target.value)} rows={3} maxLength={2000} disabled={busy} placeholder="댓글을 남겨주세요."/><p className="comment-count">{Array.from(body).length} / 2,000자</p>
-      <details className="guest-comment-consent"><summary>개인정보 수집·이용 내용 보기</summary><p>댓글 작성·수정·삭제를 위해 닉네임·댓글·비밀번호 해시를 댓글 삭제까지, 도배·오남용 방지를 위해 접속 IP를 7일간 보관합니다. 비밀번호 원문과 IP는 공개하지 않습니다. 동의를 거부할 수 있으며, 거부하면 댓글을 등록할 수 없습니다. <Link href="/privacy" target="_blank" rel="noreferrer">개인정보 처리방침</Link></p></details>
-      <div className="guest-comment-consent-options"><label className="agreement-check"><input type="checkbox" required checked={guestPrivacyAccepted} onChange={e=>setGuestPrivacyAccepted(e.target.checked)} disabled={busy}/><span>개인정보 수집·이용 동의 (필수)</span></label></div>
-      <button className="button" type="submit" disabled={busy||!body.trim()||!guestPrivacyAccepted}>{busy?"등록 중…":"공개 댓글 등록"}</button>
+      <button className="button" type="submit" disabled={busy||!body.trim()}>{busy?"등록 중…":"공개 댓글 등록"}</button>
     </form>:session.phase==="ready"&&canComment?<form className="comment-form comment-composer" onSubmit={e=>{e.preventDefault();void mutate("create");}} aria-busy={busy}>
       <span className="comment-composer-avatar" aria-hidden="true">
         {ready&&safeMediaUrl(session.member!.profileImageUrl)?<img src={safeMediaUrl(session.member!.profileImageUrl)!} alt="" width={40} height={40}/>:ready?Array.from(session.member!.nickname)[0]:<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>}
