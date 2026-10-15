@@ -3,7 +3,7 @@ import { getLegalPolicyConfig, legalVersions } from "@/features/legal/policy";
 export const metadata={title:"개인정보 처리방침"};
 export const dynamic="force-dynamic";
 export default function Page(){const config=getLegalPolicyConfig();return <PolicyDocument title="개인정보 처리방침" version={legalVersions.privacyVersion}>
- <section><h2>1. 개인정보 처리 주체와 문의</h2><p>개인정보 처리 주체: {config.operator||"공개 전 확인 중"}<br/>개인정보 보호책임자: {config.officer||"공개 전 확인 중"}<br/>문의 이메일: {config.email?<a href={`mailto:${config.email}`}>{config.email}</a>:"준비 중"}</p><p>열람·정정·삭제·처리정지 및 동의 철회 요청은 위 창구로 접수할 수 있습니다. 요청자의 본인 여부와 관련 법령을 확인한 뒤 처리 결과를 안내합니다. 계정 설정에서도 프로필 수정과 탈퇴를 요청할 수 있습니다.</p></section>
+ <section><h2>1. 개인정보 처리 주체와 문의</h2><p>운영 주체: {config.operator||"공개 전 확인 중"}<br/>개인정보 문의·고충 처리 담당: {config.officer||"공개 전 확인 중"}<br/>문의 이메일: {config.email?<a href={`mailto:${config.email}`}>{config.email}</a>:"준비 중"}</p><p>열람·정정·삭제·처리정지 및 동의 철회 요청은 위 창구로 접수할 수 있습니다. 요청자의 본인 여부와 관련 법령을 확인한 뒤 처리 결과를 안내합니다. 계정 설정에서도 프로필 수정과 탈퇴를 요청할 수 있습니다.</p></section>
  <section id="collection"><h2>2. 회원가입 및 서비스 이용에 필요한 수집·이용</h2><p>동의 화면에서 확인하는 개인정보 수집·이용 내용은 아래와 같습니다. 이 처리방침의 공개와 회원의 수집·이용 동의는 구분됩니다.</p>
  <div className="legal-table-scroll"><table><thead><tr><th>목적</th><th>항목</th><th>보유기간</th></tr></thead><tbody>
  <tr><td>계정 식별·가입·로그인·회원 관리</td><td>네이버가 발급한 이용자 식별자, 서비스 회원 ID, 닉네임, 계정 상태 및 가입·변경 시각</td><td>회원 탈퇴 시 운영 데이터베이스에서 즉시 삭제. 관련 파일은 삭제 작업 큐에서 회수</td></tr>
