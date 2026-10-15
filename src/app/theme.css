@@ -120,7 +120,8 @@ html[data-theme=dark] .arch-group-wrap.is-interactive .arch-group-label:focus-vi
 
 /* Dark theme surfaces for account and project-related content. */
 html[data-theme=dark] .withdrawal-screen{background:var(--surface);color:var(--text);border-color:var(--line)}
-html[data-theme=dark] .project-tile{background:transparent}
+html[data-theme=dark] .project-grid :is(.project-tile,.project-tile-body){background:var(--surface)}
+html[data-theme=dark] .project-grid .project-tile .tag-list li{background:transparent}
 html[data-theme=dark] .project-cover-link{background:#1c2b22}
 html[data-theme=dark] .detail-shell .related-posts{background:var(--surface);color:var(--text);border-color:var(--line);box-shadow:none}
 html[data-theme=dark] .detail-shell .related-posts .post-list{background:transparent;border-color:var(--line)}
