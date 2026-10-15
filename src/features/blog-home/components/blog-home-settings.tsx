@@ -9,7 +9,7 @@ import Link from "next/link";
 import {useRegionDrag} from "./use-region-drag";
 import { TechStackPicker } from "./tech-stack-picker";
 
-const label: Record<HomeSectionKey, string> = { ACTIVITY: "블로그 활동", TECH_STACKS: "기술 스택", PROJECTS: "대표 프로젝트", RECENT_POSTS: "최근 글" };
+const label: Record<HomeSectionKey, string> = { ACTIVITY: "블로그 활동", TECH_STACKS: "기술 스택", PROJECTS: "대표 프로젝트", RECENT_POSTS: "인기 글 (공감순)" };
 function Editor({ member }: { member: Member }) {
   const [saved, setSaved] = useState<BlogHomeSettings | null>(null);
   const [draft, setDraft] = useState<BlogHomeSettings>(defaultBlogHomeSettings());

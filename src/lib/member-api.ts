@@ -1,15 +1,6 @@
-import {isIsoInstant} from "./date-time.ts";
-
 export class MemberApiError extends Error {
   readonly status: number; readonly code: string;
-  readonly withdrawalScheduledAt?: string;
-  constructor(status: number, code: string, message: string, withdrawalScheduledAt?: string) { super(message); this.status=status;this.code=code;this.withdrawalScheduledAt=withdrawalScheduledAt;this.name = "MemberApiError"; }
-}
-function withdrawalScheduledAt(details: unknown, code: string): string | undefined {
-  if (code !== "WITHDRAWAL_PENDING" || !Array.isArray(details) || details.length !== 1) return undefined;
-  const detail = details[0];
-  if (typeof detail !== "object" || detail === null || !("field" in detail) || !("reason" in detail)) return undefined;
-  return detail.field === "withdrawalScheduledAt" && isIsoInstant(detail.reason) ? detail.reason : undefined;
+  constructor(status: number, code: string, message: string) { super(message); this.status=status;this.code=code;this.name = "MemberApiError"; }
 }
 export function apiUrl(path: string, base = process.env.NEXT_PUBLIC_API_BASE_URL): URL {
   try {
@@ -38,7 +29,7 @@ export async function memberJson(path: string, options: { method?: string; body?
   if (!response.ok) {
     const error = typeof value === "object" && value !== null && "error" in value ? (value as {error?: {code?:unknown;message?:unknown;details?:unknown}}).error : undefined;
     const code = typeof error?.code === "string" ? error.code : "RESPONSE";
-    throw new MemberApiError(response.status, code, typeof error?.message === "string" ? error.message : "요청을 처리하지 못했습니다.", withdrawalScheduledAt(error?.details, code));
+    throw new MemberApiError(response.status, code, typeof error?.message === "string" ? error.message : "요청을 처리하지 못했습니다.");
   }
   return value;
 }
