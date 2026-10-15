@@ -1,0 +1,11 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {getLegalPolicyConfig,legalVersions} from '../src/features/legal/policy.ts';
+test('정식 공개 선언과 실제 운영자·문의·처리 정보가 모두 있어야 동의를 받는다',()=>{
+ assert.equal(getLegalPolicyConfig({}).ready,false);
+ const env={PEBBLE_LEGAL_PUBLISHED:'true',PEBBLE_LEGAL_OPERATOR:'테스트 운영자',PEBBLE_LEGAL_PRIVACY_OFFICER:'테스트 담당자',PEBBLE_LEGAL_CONTACT_EMAIL:'privacy@example.test',PEBBLE_LEGAL_PROCESSING_DETAILS:'테스트 인프라 처리 내역',PEBBLE_LEGAL_RETENTION_DETAILS:'테스트 보관 주기'};
+ assert.equal(getLegalPolicyConfig(env).ready,true);
+ for(const key of Object.keys(env))assert.equal(getLegalPolicyConfig({...env,[key]:''}).ready,false,key);
+ assert.equal(getLegalPolicyConfig({...env,PEBBLE_LEGAL_CONTACT_EMAIL:'invalid'}).ready,false);
+ assert.deepEqual(legalVersions,{termsVersion:'2026-10-15',privacyVersion:'2026-10-15'});
+});

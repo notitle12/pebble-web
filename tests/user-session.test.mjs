@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createUserSession,parseMember} from '../src/features/auth/user-session.ts';
+import {createUserSession,memberRequiresAgreement,parseMember} from '../src/features/auth/user-session.ts';
 import {apiUrl,memberJson,MemberApiError} from '../src/lib/member-api.ts';
 const base='http://localhost:8081/api/v1';
 const member={id:'1',nickname:'회원',handle:'member',blogName:'기록',profileImageUrl:null,profileCompleted:true,status:'ACTIVE'};
@@ -11,11 +11,21 @@ const direct=action=>action();
 const deferred=()=>{let resolve;const promise=new Promise(r=>resolve=r);return {promise,resolve};};
 const serial=()=>{let tail=Promise.resolve();return action=>{const next=tail.then(action);tail=next.catch(()=>{});return next;};};
 
+test('member gate policy requires agreement unless the parsed member explicitly accepted',()=>{
+ assert.equal(memberRequiresAgreement({}),true);
+ assert.equal(memberRequiresAgreement({agreementsAccepted:false}),true);
+ assert.equal(memberRequiresAgreement({agreementsAccepted:true}),false);
+});
+
 test('member parser accepts older responses without profile image and preserves nullable image URLs',()=>{
  const older={...member};delete older.profileImageUrl;
  assert.equal(parseMember({data:older}).profileImageUrl,null);
+ assert.equal(parseMember({data:older}).agreementsAccepted,false);
+ assert.equal(parseMember({data:{...older,agreementsAccepted:true}}).agreementsAccepted,true);
  assert.equal(parseMember({data:{...member,profileImageUrl:'https://cdn.example/avatar.webp'}}).profileImageUrl,'https://cdn.example/avatar.webp');
  assert.throws(()=>parseMember({data:{...member,profileImageUrl:42}}),MemberApiError);
+ assert.throws(()=>parseMember({data:{...member,agreementsAccepted:"true"}}),MemberApiError);
+ assert.throws(()=>parseMember({data:{...member,agreementsAccepted:null}}),MemberApiError);
 });
 
 test('member URL preserves queries and rejects external paths',()=>{
@@ -44,6 +54,27 @@ test('401 writes are never automatically replayed and confirmed account changes 
  let writes=0;const session=createUserSession(async url=>url.pathname.endsWith('/refresh')?grant():url.pathname.endsWith('/members/me')?json(member):(writes++,denial(401)),direct,base);
  await session.ensure();await assert.rejects(session.request('/posts',{method:'POST',body:{}}));assert.equal(writes,1);assert.equal(session.snapshot().phase,'guest');assert.equal(session.snapshot().member.id,'1');session.invalidate();assert.equal(session.snapshot().member,null);
 });
+test('accepted agreements refresh the same member session before member functions continue',async()=>{
+ let accepted=false;const paths=[];let submitted;
+ const session=createUserSession(async(url,options)=>{
+  paths.push([url.pathname,options.method??'GET']);
+  if(url.pathname.endsWith('/refresh'))return grant();
+  if(url.pathname.endsWith('/members/me/agreements')){
+   if(options.method==='POST'){submitted=JSON.parse(options.body);accepted=true;}
+   return json({termsVersion:'2026-10-15',privacyVersion:'2026-10-15',accepted,acceptedAt:accepted?'2026-10-15T01:00:00Z':null,available:true});
+  }
+  if(url.pathname.endsWith('/members/me'))return json({...member,agreementsAccepted:accepted});
+  return json({});
+ },direct,base);
+ await session.ensure();assert.equal(session.snapshot().member.agreementsAccepted,false);
+ await session.request('/members/me/agreements');
+ await session.request('/members/me/agreements',{method:'POST',body:{termsVersion:'2026-10-15',privacyVersion:'2026-10-15',termsAccepted:true,privacyAccepted:true,ageConfirmed:true}});
+ await session.reloadMember();
+ assert.deepEqual(submitted,{termsVersion:'2026-10-15',privacyVersion:'2026-10-15',termsAccepted:true,privacyAccepted:true,ageConfirmed:true});
+ assert.equal(session.snapshot().member.agreementsAccepted,true);
+ assert.deepEqual(paths.slice(-3).map(([path,method])=>[path.split('/api/v1').pop(),method]),[['/members/me/agreements','GET'],['/members/me/agreements','POST'],['/members/me','GET']]);
+});
+
 test('member transport surfaces failures without retrying writes',async()=>{
  let calls=0;await assert.rejects(memberJson('/posts',{method:'POST',body:{}},async()=>{calls++;throw new Error('response lost');},base),e=>e instanceof MemberApiError&&e.code==='NETWORK');assert.equal(calls,1);
 });
@@ -72,4 +103,18 @@ test('multipart media uses Bearer and lets the browser create its boundary witho
    throw new Error('lost upload response');
  },direct,base);
  await session.ensure();await assert.rejects(session.request('/posts/1/thumbnail',{method:'PUT',body}));assert.equal(writes,1);
+});
+
+
+test('서버가 현재 동의를 요구하면 세션을 유지하면서 회원 기능을 다시 제한하고 요청을 재전송하지 않는다',async()=>{
+ let writes=0;
+ const session=createUserSession(async url=>{
+  if(url.pathname.endsWith('/refresh'))return grant();
+  if(url.pathname.endsWith('/members/me'))return json({...member,agreementsAccepted:true});
+  writes++;
+  return new Response(JSON.stringify({error:{code:'AGREEMENTS_REQUIRED',message:'약관 동의가 필요합니다.'}}),{status:403,headers:{'Content-Type':'application/json'}});
+ },direct,base);
+ await session.ensure();
+ await assert.rejects(session.request('/posts',{method:'POST',body:{}}),e=>e.code==='AGREEMENTS_REQUIRED');
+ assert.equal(writes,1);assert.equal(session.snapshot().phase,'ready');assert.equal(session.snapshot().member.agreementsAccepted,false);
 });
