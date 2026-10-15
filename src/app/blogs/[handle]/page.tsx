@@ -8,7 +8,9 @@ import { parsePage,validId } from "@/lib/list-query";
 import { blogHref, getPublicBlogPosts, getPublicBlogProfile, type PublicBlogProfile } from "@/features/post/api/public-blog";
 import {BlogProfileHeader} from "@/features/blog-tools/components/blog-profile-header";
 import {getPublicMemberProjects,type ProjectPage} from "@/features/project/api/project-list";
+import { loadPopularPosts } from "@/features/post/api/popular-posts";
 import { BlogPosts } from "@/features/post/components/blog-posts";
+import { BlogProjects } from "@/features/project/components/blog-projects";
 import type { PostPage } from "@/features/post/api/post-list";
 import { BlogVisitCount } from "@/features/blog-tools/components/blog-visit-count";
 import { PublicBlogLinks } from "@/features/blog-tools/components/public-blog-links";
@@ -33,18 +35,17 @@ export default async function PublicBlogPage({ params, searchParams }: {
   const query = await searchParams;
   const page = parsePage(query.page);
   const projectView=query.view==="projects";
-  const boardView=query.view==="boards";
-  const placement=projectView?"projects":boardView?"boards":undefined;
+  const boardView=query.view==="boards"||query.view==="posts";
   const homeView=(query.view===undefined||query.view==="home")&&query.boardId===undefined&&query.q===undefined&&query.page===undefined;
   const selected=typeof query.boardId==="string"?query.boardId:undefined;
   const q=typeof query.q==="string"?query.q.trim():undefined;
   const searched=Boolean(q?.length);
-  const invalidSearch=query.q!==undefined&&(q===undefined||Array.from(q).length>200)||searched&&(Boolean(selected)||projectView||boardView);
-  if (page === null || Object.keys(query).some(key => !["page","boardId","view","q"].includes(key)) || query.boardId!==undefined&&(!selected||!validId(selected)) || query.view!==undefined&&!projectView&&!boardView&&query.view!=="posts"&&query.view!=="home" || (projectView||boardView)&&query.boardId!==undefined || query.view==="home"&&(query.boardId!==undefined||searched||query.page!==undefined) || invalidSearch) {
+  const invalidSearch=query.q!==undefined&&(q===undefined||Array.from(q).length>200)||searched&&(Boolean(selected)||projectView||query.view==="boards");
+  if (page === null || Object.keys(query).some(key => !["page","boardId","view","q"].includes(key)) || query.boardId!==undefined&&(!selected||!validId(selected)) || query.view!==undefined&&!projectView&&!boardView&&query.view!=="home" || (projectView||query.view==="boards")&&query.boardId!==undefined || query.view==="home"&&(query.boardId!==undefined||searched||query.page!==undefined) || invalidSearch) {
     return <><SiteHeader /><main className="page-shell"><InvalidPage search={Boolean(invalidSearch)} /></main></>;
   }
 
-  let result:PostPage|undefined;let sidebarProjects:ProjectPage|undefined;let projectError=false;let author:PublicBlogProfile|undefined;let home:PublicBlogHome|null=null;let homeError=false;let homeProjects:ProjectDetail[]=[];let homeProjectErrors=0;let homePosts:PostPage|null=null;let homePostsFailed=false;let boards:Board[]=[];let boardError=false;let links:BlogLinks|null=null;let linksError=false;
+  let result:PostPage|undefined;let sidebarProjects:ProjectPage|undefined;let projectError=false;let projectsResult:ProjectPage|undefined;let projectsError=false;let author:PublicBlogProfile|undefined;let home:PublicBlogHome|null=null;let homeError=false;let homeProjects:ProjectDetail[]=[];let homeProjectErrors=0;let homePosts:PostPage|null=null;let homePostsFailed=false;let boards:Board[]=[];let boardError=false;let links:BlogLinks|null=null;let linksError=false;
   try {
     author = await getPublicBlogProfile(handle);
     try { links=await getPublicBlogLinks(handle); } catch { linksError=true; }
@@ -55,8 +56,11 @@ export default async function PublicBlogPage({ params, searchParams }: {
     try {
       sidebarProjects=await getPublicMemberProjects(author.id,0);
     } catch {projectError=true;}
-    result = homeView ? undefined : selected ? await getBoardPosts(author.id, selected, page) : await getPublicBlogPosts(handle, page, undefined, fetch, q, placement);
-    if(homeView&&home){ const {recentPosts:showPosts,featuredProjects:showProjects}=visibleHomeDataLoads(home); const [postResults,projectResults]=await Promise.all([Promise.allSettled(showPosts?[getPublicBlogPosts(handle,0)]:[]),Promise.allSettled(showProjects?home.featuredProjectIds.map(id=>getPublicProject(id).then(project=>{if(project.owner.id!==author!.id)throw new GuestApiError("response");return project})):[])]); const postResult=postResults[0]; if(postResult?.status==="fulfilled")homePosts=postResult.value; else if(postResult)homePostsFailed=true; homeProjects=projectResults.flatMap(item=>item.status==="fulfilled"?[item.value]:[]); homeProjectErrors=projectResults.filter(item=>item.status==="rejected").length; }
+    if(projectView){
+      try { projectsResult=await getPublicMemberProjects(author.id,page); } catch { projectsError=true; }
+    }
+    result = homeView || projectView ? undefined : selected ? await getBoardPosts(author.id, selected, page) : await getPublicBlogPosts(handle, page, undefined, fetch, q, undefined);
+    if(homeView&&home){ const {recentPosts:showPosts,featuredProjects:showProjects}=visibleHomeDataLoads(home); const [postResults,projectResults]=await Promise.all([Promise.allSettled(showPosts?[loadPopularPosts(page=>getPublicBlogPosts(handle,page))]:[]),Promise.allSettled(showProjects?home.featuredProjectIds.map(id=>getPublicProject(id).then(project=>{if(project.owner.id!==author!.id)throw new GuestApiError("response");return project})):[])]); const postResult=postResults[0]; if(postResult?.status==="fulfilled")homePosts=postResult.value; else if(postResult)homePostsFailed=true; homeProjects=projectResults.flatMap(item=>item.status==="fulfilled"?[item.value]:[]); homeProjectErrors=projectResults.filter(item=>item.status==="rejected").length; }
   } catch (error) {
     if (error instanceof GuestApiError && error.kind === "not-found") notFound();
     const message = error instanceof GuestApiError && error.kind === "configuration"
@@ -64,7 +68,7 @@ export default async function PublicBlogPage({ params, searchParams }: {
       : "블로그 목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.";
     return <><SiteHeader /><main className="page-shell"><section className="list-state" aria-labelledby="blog-error-title">
       <h1 id="blog-error-title">블로그 목록을 불러올 수 없어요</h1><p role="alert">{message}</p>
-      <a className="button" href={blogHref(handle, page,selected,q,placement)}>다시 시도</a>
+      <a className="button" href={projectView?`/blogs/${handle}?view=projects`:blogHref(handle, page,selected,q)}>다시 시도</a>
     </section></main></>;
   }
 
@@ -75,12 +79,12 @@ export default async function PublicBlogPage({ params, searchParams }: {
     <a className="skip-link" href="#main-content">본문으로 바로가기</a>
     <SiteHeader />
     <main id="main-content" className="page-shell personal-blog-layout">
-      <BlogSidebar visitors={<BlogVisitCount handle={handle}/>} footer={<BlogOwnerActions handle={handle}/>} links={<PublicBlogLinks links={links} failed={linksError}/>} handle={handle} homeView={homeView} selected={selected} projectView={projectView} boardView={boardView} searched={searched} boards={flattenBoards(boards)} projects={sidebarProjects?.content.slice(0,5)??[]} boardError={boardError} projectError={projectError}/>
-      <section className="personal-blog-content" aria-label={homeView?"블로그 홈":projectView?"블로그 프로젝트":"공개 게시글"}>
+      <BlogSidebar visitors={<BlogVisitCount handle={handle}/>} footer={<BlogOwnerActions handle={handle}/>} links={<PublicBlogLinks links={links} failed={linksError}/>} handle={handle} homeView={homeView} selected={selected} projectView={projectView} boardView={boardView} searched={searched} boards={boards} projects={sidebarProjects?.content.slice(0,5)??[]} boardError={boardError} projectError={projectError}/>
+      <section className="personal-blog-content" aria-label={homeView?"블로그 홈":projectView?"블로그 프로젝트":"게시판"}>
         <BlogProfileHeader profile={author} query={q}/>
-        {homeView ? home ? <BlogHomeView authorId={author.id} handle={handle} settings={home} activity={home.activity} projects={homeProjects} projectErrors={homeProjectErrors} hasFeaturedProjects={home.featuredProjectIds.length>0} posts={homePosts} postsFailed={homePostsFailed}/> : <div className="blog-home-failure"><h2>블로그 홈을 불러올 수 없어요</h2><p role="alert">{homeError?"활동과 홈 구성을 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.":"블로그 홈 데이터를 불러오지 못했습니다."}</p><a href={`/blogs/${encodeURIComponent(handle)}`}>다시 시도</a></div> : <><div className="personal-blog-heading"><h2>{projectView?"프로젝트":boardView?"게시판":searched?`검색 결과: ${q}`:selected?flattenBoards(boards).find(board=>board.id===selected)?.name:"전체 게시글"}</h2></div>
+        {homeView ? home ? <BlogHomeView authorId={author.id} handle={handle} settings={home} activity={home.activity} projects={homeProjects} projectErrors={homeProjectErrors} hasFeaturedProjects={home.featuredProjectIds.length>0} posts={homePosts} postsFailed={homePostsFailed}/> : <div className="blog-home-failure"><h2>블로그 홈을 불러올 수 없어요</h2><p role="alert">{homeError?"활동과 홈 구성을 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.":"블로그 홈 데이터를 불러오지 못했습니다."}</p><a href={`/blogs/${encodeURIComponent(handle)}`}>다시 시도</a></div> : <><div className="personal-blog-heading"><h2>{projectView?"프로젝트":selected?flattenBoards(boards).find(board=>board.id===selected)?.name:searched?`검색 결과: ${q}`:"게시판"}</h2></div>
         <div className="blog-content-body">
-        {result&&<BlogPosts handle={handle} authorId={author.id} initial={result} page={page} boardId={selected} q={q||undefined} placement={placement}/>}
+        {projectView ? <BlogProjects handle={handle} initial={projectsResult??null} page={page} failed={projectsError}/> : result&&<BlogPosts handle={handle} authorId={author.id} initial={result} page={page} boardId={selected} q={q||undefined}/>}
         </div></>}
       </section>
     </main>

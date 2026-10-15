@@ -21,7 +21,11 @@
     }
   ],
   "vars": {
-    "NEXT_PUBLIC_API_BASE_URL": "https://api.pebble-log.com/api/v1"
+    "NEXT_PUBLIC_API_BASE_URL": "https://api.pebble-log.com/api/v1",
+    "PEBBLE_LEGAL_TEST_MODE": "true",
+    "PEBBLE_LEGAL_PUBLISHED": "false",
+    "PEBBLE_LEGAL_OPERATOR": "Pebble 운영팀 (개인 운영)",
+    "PEBBLE_LEGAL_CONTACT_EMAIL": "contact@pebble-log.com"
   },
   "routes": [
     {
