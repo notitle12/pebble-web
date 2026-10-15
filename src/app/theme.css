@@ -54,6 +54,7 @@ html[data-theme=dark] .pebble-stack .stone-four{background:#48735a}
 /* Article blocks and their shared editor surfaces. */
 html[data-theme=dark]{--block-surface:#1b2921;--block-heading:#24372b;--code-surface:#101b15;--diagram-surface:#152019;--diagram-dot:#314b3a}
 html[data-theme=dark] :is(.post-rich-content .post-toc,.code-block,.table-block,.architecture-block,.detail-shell .like-panel,.detail-shell .comments-panel,.architecture-palette,.architecture-inspector,.architecture-canvas-panel,.table-spec-json){background:var(--surface);color:var(--text);border-color:var(--line);box-shadow:none}
+html[data-theme=dark] .post-detail .like-panel{background:transparent;border:0;border-top:1px solid var(--line);border-radius:0;box-shadow:none}
 html[data-theme=dark] .post-rich-content .post-toc{background:var(--block-surface);border:1px solid var(--line)}
 html[data-theme=dark] .post-rich-content .post-toc a{color:var(--accent)}
 html[data-theme=dark] :is(.code-heading,.table-block-heading,.table-scroll thead th){background:var(--block-heading);color:var(--text)}

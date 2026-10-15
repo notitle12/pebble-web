@@ -7,7 +7,8 @@ import {userSession} from "../user-session";
 export function NaverLoginButton({label="네이버로 로그인",className="button naver-login",mode="login",providerIcon=false}:{label?:string;className?:string;mode?:NaverMode;providerIcon?:boolean}){
   const [busy,setBusy]=useState(false),[error,setError]=useState("");
   const starting=useRef(false);
-  return <span className="login-action"><button type="button" className={className} disabled={busy} onClick={async()=>{
+  const isLogin = mode === "login";
+  return <span className="login-action"><button type="button" className={isLogin ? undefined : className} style={isLogin ? {padding:0,border:0,background:"transparent",cursor:"pointer",display:"block",width:"100%",maxWidth:340,margin:"0 auto"} : undefined} disabled={busy} onClick={async()=>{
     if(starting.current)return;starting.current=true;setBusy(true);setError("");
     try{
       const href=mode==="withdrawal"?await userSession.startWithdrawal():await userSession.authorization();
@@ -19,5 +20,5 @@ export function NaverLoginButton({label="네이버로 로그인",className="butt
       }else {try{sessionStorage.removeItem(withdrawalIntentKey);sessionStorage.setItem("pebble-login-destination",loginDestination(window.location.pathname));}catch{/* Login still works when browser storage is unavailable. */}}
       window.location.assign(href);
     }catch(e){setError(e instanceof Error?e.message:"로그인을 시작하지 못했습니다.");starting.current=false;setBusy(false);}
-  }}>{providerIcon&&<img src="/auth/naver-login-icon.png" alt="" width={48} height={48}/>}{busy?"네이버로 이동 중…":label}</button>{error&&<span className="login-error" role="alert">{error}</span>}</span>;
+  }} aria-label={isLogin ? "네이버 로그인" : label}>{isLogin ? <img src="/auth/naver-login-btn.png" alt="네이버 로그인" width={1024} height={133} style={{display:"block",width:"100%",height:"auto",borderRadius:6}}/> : <>{providerIcon&&<img src="/auth/naver-login-icon.png" alt="" width={48} height={48}/>}{busy?"네이버로 이동 중…":label}</>}</button>{error&&<span className="login-error" role="alert">{error}</span>}</span>;
 }
