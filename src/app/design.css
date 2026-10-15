@@ -650,3 +650,6 @@ body>.site-header,body>.site-footer{flex-shrink:0}
 @media(max-width:640px){.legal-shell{padding-top:28px}.legal-document h1{font-size:27px}.legal-document{font-size:14px}.legal-document section{margin-top:26px}.legal-document h2{font-size:17px}.legal-draft{padding:16px}.member-agreements h1{font-size:24px}.agreement-check{font-size:14px}}
 
 .personal-blog-content .project-grid{margin-top:24px}
+
+.projects-shell .content-panel>.project-grid{margin-top:24px;gap:40px 32px}
+@media(max-width:680px){.projects-shell .content-panel>.project-grid{row-gap:32px}}
