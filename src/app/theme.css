@@ -117,3 +117,11 @@ html[data-theme=dark] .architecture-connect-button.active{background:var(--accen
 html[data-theme=dark] .architecture-inspector .architecture-delete{background:#432a2a;color:#e4a19a;border-color:#9d6864}
 html[data-theme=dark] :is(.arch-group-wrap.is-selected,.arch-group-wrap.is-interactive:hover) .arch-group{stroke:var(--focus)}
 html[data-theme=dark] .arch-group-wrap.is-interactive .arch-group-label:focus-visible{fill:var(--focus)}
+
+/* Dark theme surfaces for account and project-related content. */
+html[data-theme=dark] .withdrawal-screen{background:var(--surface);color:var(--text);border-color:var(--line)}
+html[data-theme=dark] .project-tile{background:transparent}
+html[data-theme=dark] .project-cover-link{background:#1c2b22}
+html[data-theme=dark] .detail-shell .related-posts{background:var(--surface);color:var(--text);border-color:var(--line);box-shadow:none}
+html[data-theme=dark] .detail-shell .related-posts .post-list{background:transparent;border-color:var(--line)}
+html[data-theme=dark] .detail-shell .related-posts .post-list>li+li{border-color:var(--line)}
