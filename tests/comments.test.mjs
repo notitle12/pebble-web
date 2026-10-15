@@ -70,10 +70,14 @@ test("댓글 실패별 안내 문구를 반환한다",()=>{
 });
 
 test("비회원 댓글 입력은 닉네임·코드포인트·UTF-8 비밀번호와 공개 본문을 검증한다",()=>{
+ assert.deepEqual(guestCommentInput("  ","1234","본문"),{nickname:"조약돌",password:"1234",body:"본문"});
+ assert.equal(guestCommentInput("","1234567890","본문").password,"1234567890");
+ assert.throws(()=>guestCommentInput("","12345678901","본문"));
+ assert.equal("privacyAccepted" in guestCommentInput("","1234","본문"),false);
  assert.equal(guestCommentInput("방문자","1234","본문").password,"1234");
  assert.equal("ageConfirmed" in guestCommentInput("방문자","1234","본문"),false);
- assert.deepEqual(guestCommentInput("  방문자  ","😀1234567","안녕하세요"),{nickname:"방문자",password:"😀1234567",body:"안녕하세요",privacyAccepted:true});
- for(const [nickname,password,body] of [["","12345678","hi"],["이름".repeat(16),"12345678","hi"],["bad\nname","12345678","hi"],["방문자","123","hi"],["방문자","😀".repeat(65),"hi"],["방문자","1234\n5678","hi"],["방문자","1234567\ud800","hi"],["방문자","12345678"," "]])assert.throws(()=>guestCommentInput(nickname,password,body));
+ assert.deepEqual(guestCommentInput("  방문자  ","😀1234567","안녕하세요"),{nickname:"방문자",password:"😀1234567",body:"안녕하세요"});
+ for(const [nickname,password,body] of [["이름".repeat(16),"12345678","hi"],["bad\nname","12345678","hi"],["방문자","123","hi"],["방문자","😀".repeat(11),"hi"],["방문자","1234\n5678","hi"],["방문자","1234567\ud800","hi"],["방문자","12345678"," "]])assert.throws(()=>guestCommentInput(nickname,password,body));
 });
 
 test("비회원 댓글 author는 id null인 공개 author만 허용한다",()=>{
