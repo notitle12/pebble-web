@@ -7,7 +7,7 @@ import {callbackMode,withdrawalIntentKey} from "../withdrawal-intent";
 import {MemberApiError} from "@/lib/member-api";
 import {formatSeoulDateTime} from "@/lib/date-time";
 import {userSession} from "../user-session";
-export function LoginPanel(){return <section className="list-state login-panel"><p className="login-eyebrow">PEBBLE BLOG</p><h1>나만의 개발 기록을 시작하세요</h1><p>네이버 계정으로 로그인하면 글을 쓰고 내 블로그를 관리할 수 있어요. 탈퇴 예약 후 7일 안에 같은 계정으로 로그인하면 계정이 복구됩니다.</p><NaverLoginButton className="naver-provider-button" providerIcon/><p><Link href="/">블로그 글 둘러보기</Link></p></section>;}
+export function LoginPanel(){return <section className="list-state login-panel"><p className="login-eyebrow">PEBBLE BLOG</p><h1>나만의 개발 기록을 시작하세요</h1><p>네이버 계정 정보는 로그인과 회원 관리에 사용됩니다. 로그인하면 <Link href="/terms" target="_blank" rel="noreferrer">이용약관</Link>과 <Link href="/privacy" target="_blank" rel="noreferrer">개인정보 처리방침</Link> 안내를 확인할 수 있습니다. 탈퇴 예약 후 7일 안에 같은 계정으로 로그인하면 계정이 복구됩니다.</p><NaverLoginButton className="naver-provider-button" providerIcon/><p><Link href="/">블로그 글 둘러보기</Link></p></section>;}
 export function NaverCallback(){
  const started=useRef(false),[error,setError]=useState(""),[scheduledAt,setScheduledAt]=useState<string|null>(null),[withdrawn,setWithdrawn]=useState(false);
  useEffect(()=>{
@@ -22,7 +22,7 @@ export function NaverCallback(){
   const action=mode==="withdrawal"?userSession.completeWithdrawal(code,state):userSession.complete(code,state);
   void action.then(result=>{
     if(mode==="withdrawal"){setScheduledAt(result as string);setWithdrawn(true);}
-    else if(userSession.snapshot().phase==="ready")window.location.replace(userSession.snapshot().member?.profileCompleted?destination:"/settings/profile");
+    else if(userSession.snapshot().phase==="ready"){const member=userSession.snapshot().member;if(member&&!member.agreementsAccepted)window.location.replace(`/agreements?returnTo=${encodeURIComponent(destination)}`);else window.location.replace(member?.profileCompleted?destination:`/settings/profile?returnTo=${encodeURIComponent(destination)}`);}
     else setError("로그인 상태가 변경되었습니다. 다시 로그인해 주세요.");
   }).catch(error=>{const isPending=error instanceof MemberApiError&&error.code==="WITHDRAWAL_PENDING";setScheduledAt(isPending?error.withdrawalScheduledAt??null:null);setError(error instanceof Error?error.message:"요청을 완료하지 못했습니다.");});
  },[]);
