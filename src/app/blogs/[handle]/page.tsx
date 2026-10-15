@@ -12,7 +12,7 @@ import { loadPopularPosts } from "@/features/post/api/popular-posts";
 import { BlogPosts } from "@/features/post/components/blog-posts";
 import { BlogProjects } from "@/features/project/components/blog-projects";
 import type { PostPage } from "@/features/post/api/post-list";
-import { LegacyVisitCookieCleanup } from "@/features/blog-tools/components/legacy-visit-cookie-cleanup";
+import { BlogVisitCount } from "@/features/blog-tools/components/blog-visit-count";
 import { PublicBlogLinks } from "@/features/blog-tools/components/public-blog-links";
 import { getPublicBlogLinks, type BlogLinks } from "@/features/blog-tools/api/blog-tools";
 import { getPublicBlogHome, visibleHomeDataLoads, type PublicBlogHome } from "@/features/blog-home/api/blog-home";
@@ -79,7 +79,7 @@ export default async function PublicBlogPage({ params, searchParams }: {
     <a className="skip-link" href="#main-content">본문으로 바로가기</a>
     <SiteHeader />
     <main id="main-content" className="page-shell personal-blog-layout">
-      <LegacyVisitCookieCleanup handle={handle}/><BlogSidebar footer={<BlogOwnerActions handle={handle}/>} links={<PublicBlogLinks links={links} failed={linksError}/>} handle={handle} homeView={homeView} selected={selected} projectView={projectView} boardView={boardView} searched={searched} boards={boards} projects={sidebarProjects?.content.slice(0,5)??[]} boardError={boardError} projectError={projectError}/>
+      <BlogSidebar visitors={<BlogVisitCount handle={handle}/>} footer={<BlogOwnerActions handle={handle}/>} links={<PublicBlogLinks links={links} failed={linksError}/>} handle={handle} homeView={homeView} selected={selected} projectView={projectView} boardView={boardView} searched={searched} boards={boards} projects={sidebarProjects?.content.slice(0,5)??[]} boardError={boardError} projectError={projectError}/>
       <section className="personal-blog-content" aria-label={homeView?"블로그 홈":projectView?"블로그 프로젝트":"게시판"}>
         <BlogProfileHeader profile={author} query={q}/>
         {homeView ? home ? <BlogHomeView authorId={author.id} handle={handle} settings={home} activity={home.activity} projects={homeProjects} projectErrors={homeProjectErrors} hasFeaturedProjects={home.featuredProjectIds.length>0} posts={homePosts} postsFailed={homePostsFailed}/> : <div className="blog-home-failure"><h2>블로그 홈을 불러올 수 없어요</h2><p role="alert">{homeError?"활동과 홈 구성을 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.":"블로그 홈 데이터를 불러오지 못했습니다."}</p><a href={`/blogs/${encodeURIComponent(handle)}`}>다시 시도</a></div> : <><div className="personal-blog-heading"><h2>{projectView?"프로젝트":selected?flattenBoards(boards).find(board=>board.id===selected)?.name:searched?`검색 결과: ${q}`:"게시판"}</h2></div>
