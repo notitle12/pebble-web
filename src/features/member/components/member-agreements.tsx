@@ -9,7 +9,7 @@ import { userSession } from "@/features/auth/user-session";
 import { AgeConfirmationControl } from "./age-confirmation-control";
 import { isCurrentMemberAgreement, memberAgreementAcceptance, memberAgreementVersions, parseMemberAgreementState, type MemberAgreementState } from "../agreements-model";
 
-export function MemberAgreements({ documentsReady = false }: { documentsReady?: boolean }) {
+export function MemberAgreements({ documentsReady = false, testMode = false }: { documentsReady?: boolean; testMode?: boolean }) {
   const session = useUserSession();
   const params = useSearchParams();
   const router = useRouter();
@@ -70,6 +70,7 @@ export function MemberAgreements({ documentsReady = false }: { documentsReady?: 
   return <section className="member-agreements list-state" aria-labelledby="agreements-title">
     <h1 id="agreements-title">서비스 이용 동의</h1>
     <p>서비스를 이용하려면 이용약관과 개인정보 수집·이용에 각각 동의해 주세요.</p>
+    {testMode&&<p className="legal-draft" role="status"><strong>테스트 운영용 동의 화면입니다.</strong> 테스트 계정도 아래 동의 항목을 확인해야 합니다. 정식 공개 전 확정할 사항은 초안 문서에 표시했습니다.</p>}
     <p className="agreement-versions">이용약관 {memberAgreementVersions.termsVersion} · 개인정보 수집·이용 {memberAgreementVersions.privacyVersion}</p>
     <div className="agreement-summary" aria-label="동의 전 확인할 내용"><h2>동의 전에 확인해 주세요</h2><ul><li>네이버가 제공한 출생연도와 생일로 만 14세 이상임을 확인한 경우 회원 가입을 진행합니다. 생년 정보는 연령 확인에만 일시 처리하고 저장하지 않습니다.</li><li>네이버 식별자와 닉네임, 선택한 경우 프로필 이미지를 처리합니다.</li><li>계정과 작성한 콘텐츠는 서비스 제공과 운영에 사용됩니다.</li><li>탈퇴가 완료되면 회원 정보와 콘텐츠를 운영 데이터베이스에서 즉시 삭제하고, 관련 파일은 삭제 작업으로 회수합니다.</li><li>동의하지 않으면 회원 기능을 이용할 수 없지만 공개 콘텐츠는 계속 둘러볼 수 있습니다.</li></ul></div>
     {error && <p className="agreement-error" role="alert">{error}</p>}

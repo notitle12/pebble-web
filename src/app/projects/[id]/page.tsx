@@ -44,5 +44,5 @@ export default async function ProjectDetail({params,searchParams}:Props) {
       <LikePanel target="projects" contentId={project.id} initialCount={project.likeCount}/>
     </div></article>
     {page===null ? <section className="related-posts list-state"><h2>관련 글 페이지를 확인해 주세요</h2><Link className="button" href={projectHref(id)!}>관련 글 첫 페이지로</Link></section> : <Suspense key={page} fallback={<p className="related-posts list-state" role="status">관련 글을 불러오고 있어요.</p>}><ProjectPosts id={id} page={page}/></Suspense>}
-  <CommentsPanel target="projects" contentId={project.id}/></main></>;
+  <CommentsPanel target="projects" contentId={project.id} ownerId={project.owner.id}/></main></>;
 }
