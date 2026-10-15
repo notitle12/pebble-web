@@ -1,5 +1,4 @@
 import { memberJson, MemberApiError, responseData } from "../../lib/member-api.ts";
-import {isIsoInstant} from "../../lib/date-time.ts";
 export type Member = { id: string; nickname: string; handle: string | null; blogName: string | null; profileImageUrl: string | null; profileCompleted: boolean; agreementsAccepted: boolean; status: "ACTIVE" };
 export type SessionState = { phase: "loading" | "ready" | "guest" | "error"; member: Member | null; message: string };
 export const initialSession: SessionState = { phase: "loading", member: null, message: "" };
@@ -12,7 +11,7 @@ export function parseMember(value: unknown): Member {
 type Exclusive = <T>(action:()=>Promise<T>)=>Promise<T>;
 export function createUserSession(request: typeof fetch = fetch, exclusive: Exclusive = browserLock, base?: string, announce: ()=>void = ()=>{}) {
   let state = initialSession, access = "", expiresAt = 0, generation = 0;
-  let restoration: Promise<void> | null = null, completion: Promise<void> | null = null, withdrawalCompletion: Promise<string> | null = null;
+  let restoration: Promise<void> | null = null, completion: Promise<void> | null = null, withdrawalCompletion: Promise<boolean> | null = null;
   const listeners = new Set<()=>void>();
   const publish = (next:SessionState) => {state=next; listeners.forEach(fn=>fn());};
   const clear = () => {generation++; access=""; expiresAt=0;};
@@ -99,11 +98,11 @@ export function createUserSession(request: typeof fetch = fetch, exclusive: Excl
       const epoch=generation;
       withdrawalCompletion=exclusive(async()=>{
         const data=responseData(await raw("/auth/naver/withdrawal",{method:"POST",cookies:true,body:{authorizationCode,state:stateValue}}));
-        if(!isIsoInstant(data.withdrawalScheduledAt))throw new MemberApiError(0,"INVALID_RESPONSE","탈퇴 예약 결과를 확인하지 못했습니다.");
+        if(data.deleted!==true)throw new MemberApiError(0,"INVALID_RESPONSE","탈퇴 결과를 확인하지 못했습니다.");
         if(epoch!==generation)throw new MemberApiError(401,"SESSION_CHANGED","로그인 상태가 변경되었습니다.");
-        clear();publish({phase:"guest",member:null,message:"탈퇴 예약이 완료되었습니다."});announce();
-        return data.withdrawalScheduledAt;
-      }).catch(error=>{if(epoch===generation){clear();publish({phase:"error",member:null,message:error instanceof Error?error.message:"탈퇴 예약 결과를 확인하지 못했습니다."});announce();}throw error;});
+        clear();publish({phase:"guest",member:null,message:"회원 탈퇴가 완료되었습니다."});announce();
+        return data.deleted;
+      }).catch(error=>{if(epoch===generation){clear();publish({phase:"error",member:null,message:error instanceof Error?error.message:"탈퇴 결과를 확인하지 못했습니다."});announce();}throw error;});
       return withdrawalCompletion;
     },
     async reloadMember(){const epoch=generation;const member=parseMember(await this.request("/members/me"));if(epoch===generation)publish({phase:"ready",member,message:""});},
