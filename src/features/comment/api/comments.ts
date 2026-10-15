@@ -29,14 +29,14 @@ export function parseCommentPage(value:unknown,page:number,guest=false):CommentP
   return {content,page,size:20,totalElements:total,totalPages:pages,hasNext:d.hasNext,hasPrevious:d.hasPrevious};
 }
 export function guestCommentInput(nickname:string,password:string,body:string) {
-  const cleanNickname=nickname.trim();
+  const cleanNickname=nickname.trim() || "조약돌";
   const points=Array.from(password).length;
   if(!cleanNickname||Array.from(cleanNickname).length>30||/[\p{Cc}]/u.test(cleanNickname))throw new MemberApiError(400,"VALIDATION_ERROR","닉네임은 공백을 제외하고 1~30자로 입력해 주세요.");
-  if(points<4||points>64||new TextEncoder().encode(password).length>256||/[\p{Cc}]/u.test(password)||/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/u.test(password))throw new MemberApiError(400,"VALIDATION_ERROR","비밀번호는 제어 문자가 없는 4~64자로 입력해 주세요.");
+  if(points<4||points>10||new TextEncoder().encode(password).length>256||/[\p{Cc}]/u.test(password)||/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/u.test(password))throw new MemberApiError(400,"VALIDATION_ERROR","비밀번호는 제어 문자가 없는 4~10자로 입력해 주세요.");
   const content=commentInput(body,"PUBLIC");
-  return {nickname:cleanNickname,password,body:content.body,privacyAccepted:true as const};
+  return {nickname:cleanNickname,password,body:content.body};
 }
-export async function createGuestComment(target:CommentTarget,contentId:string,input:{nickname:string;password:string;body:string;privacyAccepted:true},request:typeof fetch=fetch,base?:string) {
+export async function createGuestComment(target:CommentTarget,contentId:string,input:{nickname:string;password:string;body:string},request:typeof fetch=fetch,base?:string) {
   return parseComment(await memberJson(`${commentPath(target,contentId)}/guest`,{method:"POST",body:input},request,base));
 }
 export async function updateGuestComment(target:CommentTarget,contentId:string,commentId:string,input:{password:string;body:string},request:typeof fetch=fetch,base?:string) {
