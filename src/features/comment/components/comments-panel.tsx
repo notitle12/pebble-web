@@ -1,8 +1,9 @@
 "use client";
 import {useEffect,useRef,useState,useId} from "react";
+import Link from "next/link";
 import {useUserSession} from "@/features/auth/components/member-gate";
 import {openLoginDialog} from "@/features/auth/components/login-dialog";
-import {userSession,type SessionState} from "@/features/auth/user-session";
+import {memberRequiresAgreement,userSession,type SessionState} from "@/features/auth/user-session";
 import {safeMediaUrl} from "@/features/media/model";
 import { commentPageNumbers } from "../page-numbers";
 import {commentFailure,commentInput,commentPath,parseComment,readComments,type Comment,type CommentPage,type CommentTarget,type CommentVisibility} from "../api/comments";
@@ -18,19 +19,21 @@ function Comments({target,contentId,session}:{target:CommentTarget;contentId:str
   const [busy,setBusy]=useState(false),[notice,setNotice]=useState("");
   const writing=useRef(false),mounted=useRef(false);
   const ready=session.phase==="ready"&&session.member!==null;
-  const scope=ready?`member:${session.member!.id}`:session.phase;
+  const canComment=ready&&!memberRequiresAgreement(session.member!);
+  const scope=canComment?`member:${session.member!.id}`:ready?"pending-member":session.phase;
   useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;};},[]);
   useEffect(()=>{
     let live=true;setLoadError("");setResult(null);
     if(session.phase!=="ready"&&session.phase!=="guest")return;
-    const request=ready?(path:string)=>userSession.request(path):undefined;
-    void readComments(target,contentId,page,request,!ready).then(data=>{if(live)setResult({scope,page,data});}).catch(e=>{if(live)setLoadError(commentFailure(e));});
+    const request=canComment?(path:string)=>userSession.request(path):undefined;
+    void readComments(target,contentId,page,request,!canComment).then(data=>{if(live)setResult({scope,page,data});}).catch(e=>{if(live)setLoadError(commentFailure(e));});
     return()=>{live=false;};
-  },[target,contentId,page,attempt,scope,ready,session.phase]);
+  },[target,contentId,page,attempt,scope,canComment,session.phase]);
   const data=result?.scope===scope&&result.page===page?result.data:null;
   function stillSame(memberId:string) {const current=userSession.snapshot();return mounted.current&&current.phase==="ready"&&current.member?.id===memberId;}
   async function mutate(kind:"create"|"edit"|"delete",comment?:Comment) {
-    if(!ready||writing.current)return;
+    if(!ready||!canComment){if(ready)setNotice("댓글을 작성하거나 수정하려면 서비스 이용 동의가 필요합니다.");return;}
+    if(writing.current)return;
     const memberId=session.member!.id;
     let input;
     try {if(kind!=="delete")input=commentInput(kind==="create"?body:editBody,kind==="create"?visibility:editVisibility);}catch(e){setNotice(commentFailure(e));return;}
@@ -50,7 +53,7 @@ function Comments({target,contentId,session}:{target:CommentTarget;contentId:str
   return <section className="comments-panel" aria-label="댓글">
     <div className="list-heading"><h2>댓글{data?` ${data.totalElements}`:""}</h2></div>
     {session.phase==="loading"?<p role="status">로그인 상태를 확인하고 있어요.</p>:session.phase==="error"?<p role="alert">{session.message}</p>:loadError?<div><p role="alert">{loadError}</p><button className="button" onClick={()=>setAttempt(n=>n+1)}>댓글 다시 불러오기</button></div>:!data?<p role="status">댓글을 불러오고 있어요.</p>:!data.content.length?<p>{page>0?"이 페이지에는 댓글이 없어요.":"아직 댓글이 없어요. 첫 의견을 남겨보세요."}</p>:<ul className="comment-list">{data.content.map(comment=>{
-      const own=ready&&comment.author.id===session.member!.id;
+      const own=canComment&&comment.author.id===session.member!.id;
       return <li key={comment.id}><div className="comment-meta"><strong>{comment.author.nickname}</strong><time dateTime={comment.createdAt}>{date(comment.createdAt)}</time>{comment.updatedAt!==comment.createdAt&&<span>수정됨</span>}{comment.visibility==="SECRET"&&<span className="comment-secret-badge"><svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M4.5 7V4.75a3.5 3.5 0 0 1 7 0V7M3.25 7h9.5v7h-9.5z" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M8 9.3v2.4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg><span>비밀 댓글</span><span className="sr-only">자물쇠 표시</span></span>}</div>
         {own&&editing?.id===comment.id?<form onSubmit={e=>{e.preventDefault();void mutate("edit",comment);}}><label htmlFor={`${uid}-edit`}>댓글 수정</label><textarea id={`${uid}-edit`} value={editBody} onChange={e=>setEditBody(e.target.value)} disabled={busy} rows={4}/><p className="comment-count">{Array.from(editBody).length} / 2,000자</p><label className="comment-secret"><input type="checkbox" checked={editVisibility==="SECRET"} onChange={e=>setEditVisibility(e.target.checked?"SECRET":"PUBLIC")} disabled={busy}/>비밀 댓글</label><div className="comment-actions"><button className="button" disabled={busy}>수정 저장</button><button type="button" className="button" disabled={busy} onClick={()=>setEditing(null)}>수정 취소</button></div></form>:<p className="comment-body">{comment.body}</p>}
         {own&&editing?.id!==comment.id&&<div className="comment-actions">{deleting===comment.id?<><span>삭제하면 댓글 내용을 복구할 수 없어요.</span><button className="button" disabled={busy} onClick={()=>void mutate("delete",comment)}>댓글 삭제 확인</button><button className="button" disabled={busy} onClick={()=>setDeleting(null)}>삭제 취소</button></>:<><button className="button" disabled={busy} onClick={()=>{setEditing(comment);setEditBody(comment.body);setEditVisibility(comment.visibility);setDeleting(null);setNotice("");}}>수정</button><button className="button" disabled={busy} onClick={()=>{setDeleting(comment.id);setEditing(null);}}>삭제</button></>}</div>}
@@ -61,13 +64,15 @@ function Comments({target,contentId,session}:{target:CommentTarget;contentId:str
       {commentPageNumbers(page,data.totalPages).map(number=><button type="button" key={number} aria-label={`댓글 ${number+1}페이지`} aria-current={number===page?"page":undefined} disabled={busy} onClick={()=>{setPage(number);setEditing(null);setDeleting(null);}}>{number+1}</button>)}
       <button type="button" aria-label="다음 댓글 페이지" disabled={busy||!data.hasNext} onClick={()=>{setPage(n=>n+1);setEditing(null);setDeleting(null);}}><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m8 5 5 5-5 5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg></button>
     </nav>}
-    {notice&&<p role="status">{notice}</p>}
+    {notice&&<p role="status">{notice} {ready&&!canComment&&<Link href="/agreements">서비스 이용 동의</Link>}</p>}
+    {ready&&!canComment&&<p role="status">공개 댓글을 읽을 수 있습니다. 작성·수정하려면 <Link href="/agreements">서비스 이용 동의</Link>가 필요합니다.</p>}
     <form className="comment-form comment-composer" onSubmit={e=>{
       e.preventDefault();
       if(!ready){
         if(session.phase==="guest")openLoginDialog();
         return;
       }
+      if(!canComment){setNotice("댓글을 작성하려면 서비스 이용 동의가 필요합니다.");return;}
       void mutate("create");
     }} aria-busy={busy}>
       <span className="comment-composer-avatar" aria-hidden="true">
