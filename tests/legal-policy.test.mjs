@@ -13,3 +13,11 @@ test('정식 공개 선언과 실제 운영자·문의·처리 정보가 모두 
  assert.equal(getLegalPolicyConfig({...env,PEBBLE_LEGAL_CONTACT_EMAIL:'invalid'}).ready,false);
  assert.deepEqual(legalVersions,{termsVersion:'2026-10-15',privacyVersion:'2026-10-15'});
 });
+
+test('테스트 모드는 초안 동의 화면을 열지만 정식 공개를 대신하지 않는다',()=>{
+ const draft={PEBBLE_LEGAL_PUBLISHED:'false',PEBBLE_LEGAL_TEST_MODE:'true',PEBBLE_LEGAL_OPERATOR:'테스트 운영자',PEBBLE_LEGAL_CONTACT_EMAIL:'privacy@example.test'};
+ const config=getLegalPolicyConfig(draft);
+ assert.equal(config.ready,true);assert.equal(config.testMode,true);assert.equal(config.processing,'');assert.equal(config.retention,'');
+ assert.equal(getLegalPolicyConfig({...draft,PEBBLE_LEGAL_CONTACT_EMAIL:'invalid'}).ready,false);
+ assert.equal(getLegalPolicyConfig({...draft,PEBBLE_LEGAL_TEST_MODE:'false'}).ready,false);
+});
