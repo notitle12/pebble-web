@@ -2,6 +2,13 @@
 import {useEffect,useRef,useState} from "react";
 import {NaverLoginButton} from "./naver-login-button";
 
+export const OPEN_LOGIN_DIALOG_EVENT = "pebble:open-login-dialog";
+
+export function openLoginDialog(){
+ if(typeof window==="undefined")return;
+ window.dispatchEvent(new CustomEvent(OPEN_LOGIN_DIALOG_EVENT));
+}
+
 export function LoginDialog(){
  const dialog=useRef<HTMLDialogElement>(null);
  const [open,setOpen]=useState(false);
@@ -11,6 +18,16 @@ export function LoginDialog(){
   document.body.style.overflow="hidden";
   return ()=>{document.body.style.overflow=previous;};
  },[open]);
+ useEffect(()=>{
+  const handleOpen=()=>{
+   if(dialog.current&&!dialog.current.open){
+    try{dialog.current.showModal();}catch{/* ignore */}
+   }
+   setOpen(true);
+  };
+  window.addEventListener(OPEN_LOGIN_DIALOG_EVENT,handleOpen);
+  return ()=>window.removeEventListener(OPEN_LOGIN_DIALOG_EVENT,handleOpen);
+ },[]);
  return <>
   <button type="button" className="header-login" aria-haspopup="dialog" onClick={()=>{dialog.current?.showModal();setOpen(true);}}>로그인</button>
   <dialog ref={dialog} className="login-dialog" aria-labelledby="login-dialog-title" aria-describedby="login-dialog-description" onClose={()=>setOpen(false)} onClick={event=>{
