@@ -5,7 +5,11 @@ test('정식 공개 선언과 실제 운영자·문의·처리 정보가 모두 
  assert.equal(getLegalPolicyConfig({}).ready,false);
  const env={PEBBLE_LEGAL_PUBLISHED:'true',PEBBLE_LEGAL_OPERATOR:'테스트 운영자',PEBBLE_LEGAL_PRIVACY_OFFICER:'테스트 담당자',PEBBLE_LEGAL_CONTACT_EMAIL:'privacy@example.test',PEBBLE_LEGAL_PROCESSING_DETAILS:'테스트 인프라 처리 내역',PEBBLE_LEGAL_RETENTION_DETAILS:'테스트 보관 주기'};
  assert.equal(getLegalPolicyConfig(env).ready,true);
- for(const key of Object.keys(env))assert.equal(getLegalPolicyConfig({...env,[key]:''}).ready,false,key);
+ for(const key of ['PEBBLE_LEGAL_PUBLISHED','PEBBLE_LEGAL_CONTACT_EMAIL','PEBBLE_LEGAL_PROCESSING_DETAILS','PEBBLE_LEGAL_RETENTION_DETAILS'])assert.equal(getLegalPolicyConfig({...env,[key]:''}).ready,false,key);
+ const team=getLegalPolicyConfig({...env,PEBBLE_LEGAL_OPERATOR:'',PEBBLE_LEGAL_PRIVACY_OFFICER:''});
+ assert.equal(team.operator,'Pebble 운영팀 (개인 운영)');
+ assert.equal(team.officer,team.operator);
+ assert.equal(team.ready,true);
  assert.equal(getLegalPolicyConfig({...env,PEBBLE_LEGAL_CONTACT_EMAIL:'invalid'}).ready,false);
  assert.deepEqual(legalVersions,{termsVersion:'2026-10-15',privacyVersion:'2026-10-15'});
 });
