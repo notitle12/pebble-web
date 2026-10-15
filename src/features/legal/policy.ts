@@ -7,6 +7,8 @@ export function getLegalPolicyConfig(env: Record<string, string | undefined> = p
   const processing = env.PEBBLE_LEGAL_PROCESSING_DETAILS?.trim() ?? "";
   const retention = env.PEBBLE_LEGAL_RETENTION_DETAILS?.trim() ?? "";
   const validEmail = /^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(email);
-  return { operator, officer, email: validEmail ? email : "", processing, retention,
-    ready: env.PEBBLE_LEGAL_PUBLISHED === "true" && Boolean(operator && officer && validEmail && processing && retention) };
+  const testMode = env.PEBBLE_LEGAL_TEST_MODE === "true" && env.PEBBLE_LEGAL_PUBLISHED !== "true";
+  const publishedReady = env.PEBBLE_LEGAL_PUBLISHED === "true" && Boolean(operator && officer && validEmail && processing && retention);
+  return { operator, officer, email: validEmail ? email : "", processing, retention, testMode,
+    ready: publishedReady || (testMode && Boolean(operator && validEmail)) };
 }
