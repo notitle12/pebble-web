@@ -1,37 +1,19 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { GuestApiError } from "../src/lib/public-api.ts";
-import { getBlogVisits, getPublicBlogLinks, parseBlogLinks, parseBlogVisits, recordBlogVisit, validateBlogLinkDraft } from "../src/features/blog-tools/api/blog-tools.ts";
+import { clearLegacyBlogVisitorCookie, getPublicBlogLinks, parseBlogLinks, validateBlogLinkDraft } from "../src/features/blog-tools/api/blog-tools.ts";
 
-const visits = { data: { totalVisitors: 120, todayVisitors: 8, date: "2026-10-08", timeZone: "Asia/Seoul" } };
-
-test("parses the Korea-day visitor contract and rejects invented or malformed counts", () => {
-  assert.deepEqual(parseBlogVisits(visits), visits.data);
-  for (const invalid of [
-    { data: { ...visits.data, totalVisitors: -1 } },
-    { data: { ...visits.data, todayVisitors: 1.5 } },
-    { data: { ...visits.data, totalVisitors: 7, todayVisitors: 8 } },
-    { data: { ...visits.data, timeZone: "UTC" } },
-    { data: { ...visits.data, date: "today" } },
-    { data: { ...visits.data, date: "2026-02-30" } },
-  ]) assert.throws(() => parseBlogVisits(invalid), GuestApiError);
-});
-
-test("GET visits is guest-only and POST includes the browser visitor cookie without a body", async () => {
+test("legacy visit cleanup sends only a credentialed GET and records no visit", async () => {
   let seen;
-  const get = await getBlogVisits("pebble-dev", "https://api.example/api/v1", async (input, init) => {
-    seen = { url: String(input), init }; return Response.json(visits);
+  await clearLegacyBlogVisitorCookie("pebble-dev", "https://api.example/api/v1", async (input, init) => {
+    seen = { url: String(input), init };
+    return Response.json({ data: { totalVisitors: 120, todayVisitors: 8, date: "2026-10-08", timeZone: "Asia/Seoul" } });
   });
-  assert.deepEqual(get, visits.data);
-  assert.equal(seen.init.credentials, "omit");
   assert.equal(seen.url, "https://api.example/api/v1/blogs/pebble-dev/visits");
-  const posted = await recordBlogVisit("pebble-dev", "https://api.example/api/v1", async (input, init) => {
-    seen = { url: String(input), init }; return Response.json(visits);
-  });
-  assert.deepEqual(posted, visits.data);
-  assert.equal(seen.init.method, "POST");
+  assert.equal(seen.init.method, "GET");
   assert.equal(seen.init.credentials, "include");
   assert.equal("body" in seen.init, false);
+  await assert.rejects(clearLegacyBlogVisitorCookie("invalid", "https://api.example/api/v1", async () => { throw new Error("must not request"); }), GuestApiError);
 });
 
 test("blog links accept only valid GitHub and HTTPS site links with bounded labels", () => {

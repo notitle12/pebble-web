@@ -1,7 +1,6 @@
 import { GuestApiError, guestJson } from "../../../lib/public-api.ts";
 import { validId } from "../../../lib/list-query.ts";
 
-export type BlogVisits = { totalVisitors: number; todayVisitors: number; date: string; timeZone: "Asia/Seoul" };
 export type BlogSiteLink = { id: string; label: string; url: string; logoUrl: string | null };
 export type BlogLinks = { githubUrl: string | null; sites: BlogSiteLink[] };
 export type BlogLinkDraft = { id?: string; label: string; url: string };
@@ -25,23 +24,6 @@ function validSiteLabel(value: unknown): value is string {
   if (typeof value !== "string" || !value.trim()) return false;
   const chars = Array.from(value);
   return chars.length <= 50 && chars.every(char => !/\p{Cc}/u.test(char) && !(char.codePointAt(0)! >= 0xd800 && char.codePointAt(0)! <= 0xdfff));
-}
-
-export function parseBlogVisits(value: unknown): BlogVisits {
-  const data = record(record(value).data);
-  const dateParts = typeof data.date === "string" && /^(\d{4})-(\d{2})-(\d{2})$/.exec(data.date);
-  let validDate = false;
-  if (dateParts) {
-    const year = Number(dateParts[1]), month = Number(dateParts[2]), day = Number(dateParts[3]);
-    const leapYear = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
-    const days = [31, leapYear ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-    validDate = year > 0 && month >= 1 && month <= 12 && day >= 1 && day <= (days[month - 1] ?? 0);
-  }
-  if (!Number.isSafeInteger(data.totalVisitors) || (data.totalVisitors as number) < 0
-    || !Number.isSafeInteger(data.todayVisitors) || (data.todayVisitors as number) < 0
-    || (data.todayVisitors as number) > (data.totalVisitors as number) || !validDate
-    || data.timeZone !== "Asia/Seoul") throw new GuestApiError("response");
-  return { totalVisitors: data.totalVisitors as number, todayVisitors: data.todayVisitors as number, date: data.date as string, timeZone: "Asia/Seoul" };
 }
 
 export function parseBlogLinks(value: unknown): BlogLinks {
@@ -70,12 +52,7 @@ export function validateBlogLinkDraft(githubUrl: string, sites: BlogLinkDraft[])
   return null;
 }
 
-export async function getBlogVisits(handle: string, baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL, request: typeof fetch = fetch): Promise<BlogVisits> {
-  if (!validHandle(handle)) throw new GuestApiError("response");
-  return parseBlogVisits(await guestJson(`blogs/${encodeURIComponent(handle)}/visits`, new URLSearchParams(), baseUrl, request));
-}
-
-export async function recordBlogVisit(handle: string, baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL, request: typeof fetch = fetch): Promise<BlogVisits> {
+export async function clearLegacyBlogVisitorCookie(handle: string, baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL, request: typeof fetch = fetch): Promise<void> {
   if (!validHandle(handle)) throw new GuestApiError("response");
   let url: URL;
   try {
@@ -85,11 +62,10 @@ export async function recordBlogVisit(handle: string, baseUrl = process.env.NEXT
     url.pathname = `${url.pathname.replace(/\/$/, "")}/blogs/${encodeURIComponent(handle)}/visits`;
   } catch { throw new GuestApiError("configuration"); }
   let response: Response;
-  try { response = await request(url, { method: "POST", cache: "no-store", credentials: "include", headers: { Accept: "application/json" }, signal: AbortSignal.timeout(8000) }); }
+  try { response = await request(url, { method: "GET", cache: "no-store", credentials: "include", headers: { Accept: "application/json" }, signal: AbortSignal.timeout(8000) }); }
   catch { throw new GuestApiError("network"); }
   if (response.status === 404) throw new GuestApiError("not-found");
   if (!response.ok) throw new GuestApiError("response");
-  try { return parseBlogVisits(await response.json()); } catch (error) { if (error instanceof GuestApiError) throw error; throw new GuestApiError("response"); }
 }
 
 export async function getPublicBlogLinks(handle: string, baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL, request: typeof fetch = fetch): Promise<BlogLinks> {
