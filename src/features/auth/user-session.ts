@@ -1,12 +1,13 @@
 import { memberJson, MemberApiError, responseData } from "../../lib/member-api.ts";
 import {isIsoInstant} from "../../lib/date-time.ts";
-export type Member = { id: string; nickname: string; handle: string | null; blogName: string | null; profileImageUrl: string | null; profileCompleted: boolean; status: "ACTIVE" };
+export type Member = { id: string; nickname: string; handle: string | null; blogName: string | null; profileImageUrl: string | null; profileCompleted: boolean; agreementsAccepted: boolean; status: "ACTIVE" };
 export type SessionState = { phase: "loading" | "ready" | "guest" | "error"; member: Member | null; message: string };
 export const initialSession: SessionState = { phase: "loading", member: null, message: "" };
+export function memberRequiresAgreement(member: Pick<Member, "agreementsAccepted">): boolean { return member.agreementsAccepted !== true; }
 export function parseMember(value: unknown): Member {
   const d = responseData(value);
-  if (typeof d.id !== "string" || !/^[1-9]\d*$/.test(d.id) || typeof d.nickname !== "string" || d.status !== "ACTIVE" || typeof d.profileCompleted !== "boolean" || !(d.handle === null || typeof d.handle === "string") || !(d.blogName === null || typeof d.blogName === "string") || !(d.profileImageUrl === undefined || d.profileImageUrl === null || typeof d.profileImageUrl === "string")) throw new MemberApiError(0, "INVALID_RESPONSE", "회원 정보를 확인하지 못했습니다.");
-  return {id:d.id,nickname:d.nickname,handle:d.handle,blogName:d.blogName,profileImageUrl:typeof d.profileImageUrl === "string" ? d.profileImageUrl : null,profileCompleted:d.profileCompleted,status:"ACTIVE"};
+  if (typeof d.id !== "string" || !/^[1-9]\d*$/.test(d.id) || typeof d.nickname !== "string" || d.status !== "ACTIVE" || typeof d.profileCompleted !== "boolean" || !(d.handle === null || typeof d.handle === "string") || !(d.blogName === null || typeof d.blogName === "string") || !(d.profileImageUrl === undefined || d.profileImageUrl === null || typeof d.profileImageUrl === "string") || !(d.agreementsAccepted === undefined || typeof d.agreementsAccepted === "boolean")) throw new MemberApiError(0, "INVALID_RESPONSE", "회원 정보를 확인하지 못했습니다.");
+  return {id:d.id,nickname:d.nickname,handle:d.handle,blogName:d.blogName,profileImageUrl:typeof d.profileImageUrl === "string" ? d.profileImageUrl : null,profileCompleted:d.profileCompleted,agreementsAccepted:d.agreementsAccepted===true,status:"ACTIVE"};
 }
 type Exclusive = <T>(action:()=>Promise<T>)=>Promise<T>;
 export function createUserSession(request: typeof fetch = fetch, exclusive: Exclusive = browserLock, base?: string, announce: ()=>void = ()=>{}) {
@@ -58,7 +59,13 @@ export function createUserSession(request: typeof fetch = fetch, exclusive: Excl
       const epoch=generation, bearer=await token();
       if(epoch!==generation)throw new MemberApiError(401,"SESSION_CHANGED","로그인 상태가 변경되었습니다.");
       try {const value=await raw(path,{...options,token:bearer,cookies:false}); if(epoch!==generation)throw new MemberApiError(401,"SESSION_CHANGED","로그인 상태가 변경되었습니다.");return value;}
-      catch(e){if(e instanceof MemberApiError && e.status===401 && epoch===generation){clear();publish({phase:"guest",member:state.member,message:"로그인이 만료되었습니다. 입력 내용을 확인한 뒤 다시 로그인해 주세요."});}throw e;}
+      catch(e){
+        if(e instanceof MemberApiError && e.code==="AGREEMENTS_REQUIRED" && epoch===generation && state.phase==="ready" && state.member){
+          publish({...state,member:{...state.member,agreementsAccepted:false},message:e.message});
+        }
+        if(e instanceof MemberApiError && e.status===401 && epoch===generation){clear();publish({phase:"guest",member:state.member,message:"로그인이 만료되었습니다. 입력 내용을 확인한 뒤 다시 로그인해 주세요."});}
+        throw e;
+      }
     },
     invalidate(){clear();publish({phase:"guest",member:null,message:"다른 탭에서 로그인 상태가 변경되었습니다. 다시 로그인해 주세요."});},
     async authorization(){
