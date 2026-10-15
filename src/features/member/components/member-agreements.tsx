@@ -71,7 +71,7 @@ export function MemberAgreements({ documentsReady = false }: { documentsReady?: 
     <h1 id="agreements-title">서비스 이용 동의</h1>
     <p>서비스를 이용하려면 이용약관과 개인정보 수집·이용에 각각 동의해 주세요.</p>
     <p className="agreement-versions">이용약관 {memberAgreementVersions.termsVersion} · 개인정보 수집·이용 {memberAgreementVersions.privacyVersion}</p>
-    <div className="agreement-summary" aria-label="동의 전 확인할 내용"><h2>동의 전에 확인해 주세요</h2><ul><li>네이버 식별자와 닉네임, 선택한 경우 프로필 이미지를 처리합니다.</li><li>계정과 작성한 콘텐츠는 서비스 제공과 운영에 사용됩니다.</li><li>탈퇴 예약 후 7일이 지나 영구 삭제될 때까지 계정과 콘텐츠가 보관됩니다.</li><li>동의하지 않으면 회원 기능을 이용할 수 없지만 공개 콘텐츠는 계속 둘러볼 수 있습니다.</li></ul></div>
+    <div className="agreement-summary" aria-label="동의 전 확인할 내용"><h2>동의 전에 확인해 주세요</h2><ul><li>네이버 식별자와 닉네임, 선택한 경우 프로필 이미지를 처리합니다.</li><li>계정과 작성한 콘텐츠는 서비스 제공과 운영에 사용됩니다.</li><li>탈퇴가 완료되면 회원 정보와 콘텐츠를 운영 데이터베이스에서 즉시 삭제하고, 관련 파일은 삭제 작업으로 회수합니다.</li><li>동의하지 않으면 회원 기능을 이용할 수 없지만 공개 콘텐츠는 계속 둘러볼 수 있습니다.</li></ul></div>
     {error && <p className="agreement-error" role="alert">{error}</p>}
     {state?.accepted && !isCurrentMemberAgreement(state) && <p role="status">현재 약관 버전의 동의가 필요합니다.</p>}
     {!state ? error ? <p><button type="button" className="button" onClick={() => window.location.reload()}>다시 불러오기</button></p> : <p role="status">약관 상태를 불러오고 있어요.</p> : <form onSubmit={submit} className="agreement-form">
