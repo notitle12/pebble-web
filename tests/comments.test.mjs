@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { MemberApiError } from "../src/lib/member-api.ts";
-import { commentFailure, commentInput, commentPath, parseComment, parseCommentPage, readComments } from "../src/features/comment/api/comments.ts";
+import { commentFailure, commentInput, commentPath, parseComment, parseCommentPage, readComments, guestCommentInput, createGuestComment, updateGuestComment, deleteGuestComment } from "../src/features/comment/api/comments.ts";
 
 const item=(overrides={})=>({id:"1",author:{id:"2",nickname:"N",handle:"writer",blogName:"Blog"},body:"댓글",visibility:"PUBLIC",createdAt:"2026-01-01T00:00:00Z",updatedAt:"2026-01-01T00:00:00Z",...overrides});
+const guestItem=(overrides={})=>item({author:{id:null,nickname:"방문자",handle:null,blogName:null,profileImageUrl:null},...overrides});
 const page=(content=[],overrides={})=>({content,page:0,size:20,totalElements:content.length,totalPages:Math.ceil(content.length/20),hasNext:false,hasPrevious:false,...overrides});
 const expectCode=(fn,code)=>assert.throws(fn,error=>error instanceof MemberApiError&&error.code===code);
 
@@ -66,4 +67,32 @@ test("댓글 실패별 안내 문구를 반환한다",()=>{
   assert.match(commentFailure(new MemberApiError(404,"NOT_FOUND","x")),/댓글 또는 콘텐츠/);
   assert.equal(commentFailure(new Error("custom")),"custom");
   assert.equal(commentFailure("oops"),"댓글을 처리하지 못했습니다.");
+});
+
+test("비회원 댓글 입력은 닉네임·코드포인트·UTF-8 비밀번호와 공개 본문을 검증한다",()=>{
+ assert.deepEqual(guestCommentInput("  방문자  ","😀1234567","안녕하세요"),{nickname:"방문자",password:"😀1234567",body:"안녕하세요",privacyAccepted:true,ageConfirmed:true});
+ for(const [nickname,password,body] of [["","12345678","hi"],["이름".repeat(16),"12345678","hi"],["bad\nname","12345678","hi"],["방문자","short","hi"],["방문자","😀".repeat(65),"hi"],["방문자","short😀","hi"],["방문자","1234\n5678","hi"],["방문자","1234567\ud800","hi"],["방문자","12345678"," "]])assert.throws(()=>guestCommentInput(nickname,password,body));
+});
+
+test("비회원 댓글 author는 id null인 공개 author만 허용한다",()=>{
+ const parsed=parseComment({data:guestItem()});assert.equal(parsed.author.id,null);assert.equal(parsed.author.nickname,"방문자");
+ assert.throws(()=>parseComment({data:guestItem({visibility:"SECRET"})}));
+ assert.throws(()=>parseComment({data:guestItem({author:{id:null,nickname:"방문자",handle:"h",blogName:null,profileImageUrl:null}})}));
+});
+
+test("비회원 댓글 API는 credential/auth 없이 공개 경로와 약속한 body로 요청한다",async()=>{
+ const response=(data)=>new Response(JSON.stringify({data}),{status:200,headers:{"content-type":"application/json"}});
+ const calls=[];const fetcher=async(url,init)=>{calls.push({url:String(url),init});return response(guestItem());};
+ const payload=guestCommentInput("방문자","pass1234","본문");
+ await createGuestComment("posts","1",payload,fetcher,"https://api.example/api/v1");
+ await updateGuestComment("posts","1","3",{password:"pass1234",body:"수정"},fetcher,"https://api.example/api/v1");
+ await deleteGuestComment("projects","2","4","pass1234",async(url,init)=>{calls.push({url:String(url),init});return new Response(null,{status:204});},"https://api.example/api/v1");
+ assert.deepEqual(calls.map(c=>new URL(c.url).pathname),["/api/v1/posts/1/comments/guest","/api/v1/posts/1/comments/3/guest/update","/api/v1/projects/2/comments/4/guest/delete"]);
+ for(const call of calls){assert.equal(call.init.credentials,"omit");assert.equal(call.init.headers.Authorization,undefined);}
+ assert.deepEqual(JSON.parse(calls[0].init.body),payload);assert.deepEqual(JSON.parse(calls[1].init.body),{password:"pass1234",body:"수정"});assert.deepEqual(JSON.parse(calls[2].init.body),{password:"pass1234"});
+});
+
+test("비밀번호와 rate-limit 오류는 사용자 안내를 제공한다",()=>{
+ assert.match(commentFailure(new MemberApiError(403,"INVALID_COMMENT_PASSWORD","bad")),/비밀번호가 맞지 않습니다/);
+ assert.match(commentFailure(new MemberApiError(429,"COMMENT_RATE_LIMITED","slow")),/잠시 후 다시/);
 });
