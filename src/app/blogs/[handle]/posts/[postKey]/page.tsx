@@ -37,8 +37,10 @@ export default async function PostPage({ params }: Props) {
       <article className="post-detail"><header><div className="post-heading-bar"><div className="post-meta"><span>{post.author.nickname}</span><time dateTime={date}>{new Intl.DateTimeFormat("ko-KR",{dateStyle:"long",timeZone:"Asia/Seoul"}).format(new Date(date))}</time></div><OwnPostEdit postId={post.id} authorId={post.author.id}/></div>
         <h1>{post.title}</h1>{post.summary && <p>{post.summary}</p>}
         <ul className="tag-list" aria-label="태그">{post.tags.map(tag=><li key={tag}>#{tag}</li>)}</ul>
-      {safeMediaUrl(post.thumbnailUrl??null)&&<img className="content-thumbnail" src={safeMediaUrl(post.thumbnailUrl??null)!} alt="글 대표 이미지"/>}</header><PostBody blocks={post.blocks} /></article>
-    <LikePanel target="posts" contentId={post.id} initialCount={post.likeCount}/>
-    {post.projectId&&<Suspense fallback={<section className="linked-project" role="status">연결 프로젝트를 불러오는 중…</section>}><LinkedProject id={post.projectId}/></Suspense>}
-    <CommentsPanel target="posts" contentId={post.id}/></main></>;
+      {safeMediaUrl(post.thumbnailUrl??null)&&<img className="content-thumbnail" src={safeMediaUrl(post.thumbnailUrl??null)!} alt="글 대표 이미지"/>}</header>
+        <PostBody blocks={post.blocks} />
+        <LikePanel target="posts" contentId={post.id} initialCount={post.likeCount}/>
+      </article>
+      {post.projectId&&<Suspense fallback={<section className="linked-project" role="status">연결 프로젝트를 불러오는 중…</section>}><LinkedProject id={post.projectId}/></Suspense>}
+      <CommentsPanel target="posts" contentId={post.id} ownerId={post.author.id}/></main></>;
 }
