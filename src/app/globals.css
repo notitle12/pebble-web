@@ -336,6 +336,7 @@ input:focus-visible, select:focus-visible, button:focus-visible { outline: 3px s
 .writer-status { display:flex; flex-wrap:wrap; gap:16px; justify-content:space-between; margin-bottom:24px; }
 .naver-login { background:#03c75a; color:white; border:0; }
 fieldset { min-width:0; }
+
 @media(max-width:600px){ .header-inner {flex-wrap:wrap;} .header-nav { gap:8px; } .header-label {margin-left:auto;} }
 
 .post-editor .table-editor-layout {display:block;}
@@ -495,15 +496,15 @@ fieldset { min-width:0; }
 .linked-project > a { font-size: 1.1rem; font-weight: 600; }
 .linked-project > p { margin: 0; font-size: .9rem; line-height: 1.6; }
 
-.like-panel { margin-block: 2rem; padding-block: 1rem; border-block: 1px solid var(--line); }
-.like-actions, .like-login { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; }
+.like-panel { margin-top: 2.5rem; margin-bottom: 1rem; padding-top: 1.5rem; text-align: center; }
+.like-actions, .like-login { display: flex; justify-content: center; align-items: center; gap: .75rem; }
 .like-actions .button, .like-login .button { margin-top: 0; }
 .like-button[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); }
-.like-button {display:inline-grid;place-items:center;width:44px;height:44px;padding:0;}
+.like-button {display:inline-grid;place-items:center;width:44px;height:44px;padding:0;border-radius:50%;}
 .like-button svg,.like-guest-icon svg {width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
 .like-button[aria-pressed="true"] svg {fill:currentColor;}
 .like-guest-icon {display:inline-grid;place-items:center;width:44px;height:44px;}
-.like-error {display:flex;align-items:center;flex-wrap:wrap;gap:12px;}
+.like-error {display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:12px;}
 .like-error p {margin:0;}
 .like-panel > p, .like-login { margin-top: .75rem; }
 .post-owner-actions {display:flex;gap:10px;margin-top:20px;}
