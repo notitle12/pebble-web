@@ -8,6 +8,7 @@ import type { Board } from "@/features/board/api/boards";
 
 type ProjectItem = { id: string; name: string };
 type Props = {
+  visitors: ReactNode;
   footer: ReactNode;
   links: ReactNode;
   handle: string;
@@ -45,6 +46,7 @@ function findFolderAncestors(items: Board[], targetId: string, currentPath: stri
 }
 
 export function BlogSidebar({
+  visitors,
   footer,
   links,
   handle,
@@ -151,6 +153,7 @@ export function BlogSidebar({
     <aside id="blog-sidebar" className="personal-blog-profile" aria-label="블로그 탐색" data-collapsed={collapsed}>
       <SidebarToggle collapsed={collapsed} onToggle={() => setCollapsed((value) => !value)} />
       <div id="blog-sidebar-content" className="blog-sidebar-content" hidden={collapsed} inert={collapsed}>
+        <div className="blog-sidebar-visitors">{visitors}</div>
         <nav className="blog-tree-nav" aria-label="블로그 메뉴">
           <Link className="blog-menu-row" href={homeHref} aria-current={homeView ? "page" : undefined}>
             <BlogMenuIcon name="home" />
