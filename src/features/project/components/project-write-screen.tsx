@@ -1,6 +1,7 @@
 'use client';
 import {useEffect,useRef,useState} from 'react';
 import Link from 'next/link';
+import {WriterLogoutBoundary} from '@/features/auth/components/writer-logout-boundary';
 import {AccountMenu} from '@/features/auth/components/account-menu';
 import {MemberGate} from '@/features/auth/components/member-gate';
 import {userSession,type Member} from '@/features/auth/user-session';
@@ -14,7 +15,7 @@ import {projectDraft} from '../project-drafts';
 import {projectImageValue,replaceProjectImageBlocks,projectImagePreviews} from '../project-images';
 import {ProjectCoverPicker} from './project-cover-picker';
 import {ProjectEditor} from './project-editor';
-function Writer({member,id}:{member:Member;id?:string}){
+function Writer({member,id,onLogout}:{member:Member;id?:string;onLogout:(hasChanges:boolean,memberId:string)=>void}){
  const [project,setProject]=useState<OwnProject|null>(null),[value,setValue]=useState<ProjectEditorValue>(emptyProject),[loading,setLoading]=useState(true),[error,setError]=useState(''),[busy,setBusy]=useState(false),[saved,setSaved]=useState(''),[attempt,setAttempt]=useState(0),[cover,setCover]=useState<File|null>(null),[coverPreview,setCoverPreview]=useState(''),[imagePreviews,setImagePreviews]=useState<Record<string,string>>({});
  const saving=useRef(false),mounted=useRef(false),pending=useRef(createPendingImages()),dirty=useRef(false),projectRef=useRef<OwnProject|null>(null),draftSlot=useRef(id);
  const current=()=>mounted.current&&userSession.snapshot().phase==='ready'&&userSession.snapshot().member?.id===member.id;
@@ -65,6 +66,6 @@ function Writer({member,id}:{member:Member;id?:string}){
  const existingCover=project?.media.find(item=>item.mediaRole==='THUMBNAIL');
  const coverElement=<ProjectCoverPicker preview={coverPreview||safeMediaUrl(existingCover?.thumbnailUrl??null)} selected={!!cover} disabled={busy} onChange={file=>{setCover(file);dirty.current=true;}}/>;
 
- return <><div className="writer-identity"><span>{member.nickname}</span><AccountMenu member={member}/></div><h1 className="writer-visually-hidden">프로젝트 작성</h1><div className="writer-status writer-visually-hidden"><Link href="/me/projects">← 내 프로젝트</Link><span>{saved}</span></div>{error&&<p role="alert">{error}</p>}<ProjectEditor value={value} onChange={next=>{setValue(next);setError('');dirty.current=true;}} busy={busy} visibility={project?.visibilityStatus??'PUBLIC'} blocked={project?.isBlocked??false} existingTechStacks={project?.techStacks} uploadImage={uploadImage} imagePreviews={imagePreviews} coverElement={coverElement} onTemporarySave={()=>save(project?.visibilityStatus??'HIDDEN',true)} onSave={save}/></>;
+ return <><div className="writer-identity"><span>{member.nickname}</span><AccountMenu member={member} logoutDisabled={busy} onLogout={()=>onLogout(dirty.current,member.id)}/></div><h1 className="writer-visually-hidden">프로젝트 작성</h1><div className="writer-status writer-visually-hidden"><Link href="/me/projects">← 내 프로젝트</Link><span>{saved}</span></div>{error&&<p role="alert">{error}</p>}<ProjectEditor value={value} onChange={next=>{setValue(next);setError('');dirty.current=true;}} busy={busy} visibility={project?.visibilityStatus??'PUBLIC'} blocked={project?.isBlocked??false} existingTechStacks={project?.techStacks} uploadImage={uploadImage} imagePreviews={imagePreviews} coverElement={coverElement} onTemporarySave={()=>save(project?.visibilityStatus??'HIDDEN',true)} onSave={save}/></>;
 }
-export function ProjectWriteScreen({id}:{id?:string}){return <MemberGate profile preserveOnExpiry>{member=><Writer key={`${member.id}:${id??'new'}`} member={member} id={id}/>}</MemberGate>;}
+export function ProjectWriteScreen({id}:{id?:string}){return <WriterLogoutBoundary>{onLogout=><MemberGate profile preserveOnExpiry>{member=><Writer key={`${member.id}:${id??'new'}`} member={member} id={id} onLogout={onLogout}/>}</MemberGate>}</WriterLogoutBoundary>;}
