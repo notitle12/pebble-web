@@ -23,3 +23,14 @@ export function movePostRow<T extends {id:string;displayOrder:number;boardDispla
  const [item]=next.splice(from,1);next.splice(to,0,item);
  return {items:next.map((row,index)=>({...row,...(inBoard?{boardDisplayOrder:orders[index]}:{displayOrder:orders[index]} )})),displayOrder};
 }
+
+/** Remove one row without discarding the page; only real deletions shift order slots. */
+export function removeManagedRow<P extends {content:{id:string;displayOrder:number;boardDisplayOrder?:number;boardId?:string|null}[];page:number;size:number;totalElements:number;totalPages:number;hasNext:boolean;hasPrevious:boolean}>(page:P,id:string,deleted=true):P {
+ const removed=page.content.find(row=>row.id===id);if(!removed)return page;
+ const totalElements=Math.max(0,page.totalElements-1),totalPages=Math.ceil(totalElements/page.size);
+ const content=page.content.filter(row=>row.id!==id).map(row=>({...row,
+  displayOrder:deleted&&row.displayOrder>removed.displayOrder?row.displayOrder-1:row.displayOrder,
+  ...(deleted&&removed.boardId!==undefined&&row.boardId===removed.boardId&&removed.boardDisplayOrder!==undefined&&row.boardDisplayOrder!==undefined&&row.boardDisplayOrder>removed.boardDisplayOrder?{boardDisplayOrder:row.boardDisplayOrder-1}:{}),
+ }));
+ return {...page,content,totalElements,totalPages,hasNext:page.page+1<totalPages,hasPrevious:page.page>0};
+}
