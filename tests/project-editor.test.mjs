@@ -9,7 +9,7 @@ const ownData=(overrides={})=>({
   id:"10",name:"Pebble",summary:"A project",owner:{id:"7",nickname:"Owner"},techStacks:[{id:"3",name:"TypeScript",status:"ACTIVE"},{id:"4",name:"Legacy",status:"INACTIVE"}],
   lifecycleStatus:"IN_PROGRESS",publishedAt:null,createdAt:"2026-01-01T00:00:00Z",description:"Description",architectureDescription:"Architecture",executionInstructions:"Run it",
   startedOn:"2026-01-02",completedOn:null,features:[{id:"20",title:"Search",description:"Find items",displayOrder:0}],
-  links:[{id:"30",linkType:"GITHUB",label:"Source",url:"https://example.com/repo",displayOrder:0}],visibilityStatus:"HIDDEN",isBlocked:false,...overrides,
+  links:[{id:"30",linkType:"GITHUB",label:"Source",url:"https://example.com/repo",displayOrder:0}],displayOrder:0,visibilityStatus:"HIDDEN",isBlocked:false,...overrides,
 });
 const ownResponse=(overrides={})=>({data:ownData(overrides)});
 const expectInvalid=fn=>assert.throws(fn,error=>error instanceof Error);
@@ -89,12 +89,13 @@ test("본인 프로젝트 상세는 owner·visibility·isBlocked·expected ID와
 });
 
 test("본인 프로젝트 목록은 각 항목 owner와 isBlocked 및 중복 ID를 검증한다",()=>{
-  const summary={id:"10",name:"Pebble",summary:"A project",owner:{id:"7",nickname:"Owner"},techStacks:[{id:"3",name:"TypeScript"}],lifecycleStatus:"IN_PROGRESS",publishedAt:null,createdAt:"2026-01-01T00:00:00Z",visibilityStatus:"HIDDEN",isBlocked:false};
+  const summary={displayOrder:0,id:"10",name:"Pebble",summary:"A project",owner:{id:"7",nickname:"Owner"},techStacks:[{id:"3",name:"TypeScript"}],lifecycleStatus:"IN_PROGRESS",publishedAt:null,createdAt:"2026-01-01T00:00:00Z",visibilityStatus:"HIDDEN",isBlocked:false};
   const response=data=>({data:{content:data,page:0,size:20,totalElements:data.length,totalPages:data.length?1:0,hasNext:false,hasPrevious:false}});
   assert.equal(parseOwnProjects(response([summary]),0,"7").content.length,1);
   expectResponseError(()=>parseOwnProjects(response([{...summary,owner:{...summary.owner,id:"8"}}]),0,"7"));
   expectResponseError(()=>parseOwnProjects(response([{...summary,isBlocked:0}]),0,"7"));
   expectResponseError(()=>parseOwnProjects(response([summary,{...summary}]),0,"7"));
+  for(const displayOrder of [undefined,-1,1.5,"0"])expectResponseError(()=>parseOwnProjects(response([{...summary,displayOrder}]),0,"7"));
 });
 
 test("링크의 Unicode 경로를 허용하고 잘못된 URI 퍼센트와 문자를 거부한다",()=>{
