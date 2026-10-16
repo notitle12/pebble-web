@@ -1,11 +1,10 @@
+import {LoadingIndicator} from "@/components/loading-state";
 import { PostCards } from "./post-cards";
 import Link from "next/link";
 import { getPublicPosts, pageHref, PostListError, type PostQuery } from "../api/post-list";
 
 export function PostListLoading() {
-  return <section className="list-state" role="status" aria-live="polite">
-    <span className="loading-dot" aria-hidden="true" />게시글을 불러오고 있어요.
-  </section>;
+  return <LoadingIndicator label="게시글을 불러오는 중"/>;
 }
 export function InvalidPage() {
   return <section className="list-state"><h2>검색 조건을 확인해 주세요</h2>
