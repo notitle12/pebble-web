@@ -38,7 +38,6 @@ function Posts({member}:{member:Member}){
   try{
    const result=parseOwnPost(await userSession.request(`/posts/${post.id}`,{method:"PATCH",body:{visibilityStatus:next}}));
    if(result.id!==post.id||result.author.id!==member.id||result.visibilityStatus!==next)throw new MemberApiError(0,"INVALID_RESPONSE","공개 상태 저장 결과를 확인하지 못했어요.");
-   if(current())setNotice(next==="PUBLIC"?"글을 공개했어요.":"글을 비공개로 바꿨어요.");
   }catch(e){if(current()){setData(before);const unknown=!(e instanceof MemberApiError)||e.status===0||e.status>=500;setUncertain(unknown);setNotice(unknown?"저장 결과를 확인하지 못했어요. 목록을 다시 불러와 주세요.":e instanceof Error?e.message:"공개 상태를 바꾸지 못했어요.");}}
   finally{lock.current=false;if(mounted.current)setBusy(false);}
  }
