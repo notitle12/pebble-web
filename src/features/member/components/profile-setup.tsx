@@ -1,7 +1,6 @@
 "use client";
 import {useEffect,useRef,useState,type FormEvent} from "react";
 import {useRouter,useSearchParams} from "next/navigation";
-import Link from "next/link";
 import {MemberGate,useUserSession} from "@/features/auth/components/member-gate";
 import {userSession,type Member} from "@/features/auth/user-session";
 import {MemberApiError,responseData} from "@/lib/member-api";
@@ -72,7 +71,7 @@ function Setup({member}:{member:Member}){
  const active=busy||session.phase!=="ready"||session.member?.id!==member.id||nicknameSuggesting;
  if(completed&&(!editor||editor.id!==member.id))return <section className="list-state" aria-live="polite"><h2>프로필을 불러오고 있어요</h2>{error&&<p role="alert">{error}</p>}{error&&<button className="button" type="button" onClick={()=>{setError("");void loadProfile(member.id);}}>다시 불러오기</button>}</section>;
  return <section className="profile-screen">
-  <header className="profile-heading"><div><p className="profile-eyebrow">Pebble 계정</p><h1>{completed?"프로필":"블로그 생성"}</h1></div>{completed&&<Link className="profile-account-link" href="/settings/account">설정</Link>}</header>
+  <header className="profile-heading"><div><p className="profile-eyebrow">Pebble 계정</p><h1>{completed?"프로필":"블로그 생성"}</h1></div></header>
   <form className="search-panel profile-form" onSubmit={submit}>
    <fieldset disabled={active||uncertain}><legend>{completed?"프로필 정보":"블로그 기본 정보"}</legend>
     <section className="profile-photo-field" aria-label="프로필 사진"><div className="profile-avatar-frame">{visibleImage?<img src={visibleImage} alt="프로필 미리보기"/>:<span aria-hidden="true">{(completed?editor?.nicknameDraft??"":nickname).slice(0,1)||"Pebble"}</span>}</div><div className="profile-photo-actions"><label className="button profile-file-button" htmlFor="profile-image">이미지 불러오기</label><input ref={fileInput} className="sr-only" id="profile-image" type="file" accept="image/png,image/jpeg,image/webp" onChange={e=>setDraftFile(e.target.files?.[0]??null)}/><button className="button" type="button" onClick={()=>{setDraftFile(null);if(fileInput.current)fileInput.current.value="";setRemoveImage(true);}}>초기화</button><p>PNG, JPEG, WebP · 10MiB 이하. 저장을 눌렀을 때 업로드합니다.</p></div></section>

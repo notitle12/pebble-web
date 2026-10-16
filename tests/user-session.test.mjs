@@ -118,3 +118,11 @@ test('서버가 현재 동의를 요구하면 세션을 유지하면서 회원 �
  await assert.rejects(session.request('/posts',{method:'POST',body:{}}),e=>e.code==='AGREEMENTS_REQUIRED');
  assert.equal(writes,1);assert.equal(session.snapshot().phase,'ready');assert.equal(session.snapshot().member.agreementsAccepted,false);
 });
+
+test('로그인 완료 뒤 여러 화면의 세션 확인은 refresh나 회원 조회를 반복하지 않는다',async()=>{
+ const paths=[];const session=createUserSession(async url=>{paths.push(url.pathname);return url.pathname.endsWith('/login')?grant():json(member);},direct,base);
+ await session.complete('one-use-code','state');
+ await Promise.all(Array.from({length:8},()=>session.ensure()));
+ assert.deepEqual(paths,['/api/v1/auth/naver/login','/api/v1/members/me']);
+ assert.equal(session.snapshot().phase,'ready');
+});
