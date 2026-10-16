@@ -4,7 +4,7 @@ import {parseProjectDetail,parseProjectPage,type ProjectDetail,type ProjectPage,
 import {validId} from "../../../lib/list-query.ts";
 export type ProjectTechStack={id:string;name:string;status:"ACTIVE"|"INACTIVE"};
 export type OwnProject=ProjectDetail&{visibilityStatus:"PUBLIC"|"HIDDEN";isBlocked:boolean;techStacks:ProjectTechStack[]};
-export type OwnProjectSummary=ProjectSummary&{visibilityStatus:"PUBLIC"|"HIDDEN";isBlocked:boolean};
+export type OwnProjectSummary=ProjectSummary&{displayOrder:number;visibilityStatus:"PUBLIC"|"HIDDEN";isBlocked:boolean};
 export type OwnProjectPage=Omit<ProjectPage,"content">&{content:OwnProjectSummary[]};
 const invalid=()=>new MemberApiError(0,"INVALID_RESPONSE","본인 프로젝트 응답을 확인하지 못했습니다.");
 export function projectId(value:string) {if(!validId(value))throw new MemberApiError(400,"INVALID_REQUEST","프로젝트 주소를 확인해 주세요.");return value;}
@@ -19,7 +19,10 @@ export function parseOwnProject(value:unknown,memberId:string,expectedId?:string
 }
 export function parseOwnProjects(value:unknown,page:number,memberId:string):OwnProjectPage {
   const parsed=parseProjectPage(value,page);
-  for(const project of parsed.content)own(project as unknown as Record<string,unknown>,memberId);
+  for(const project of parsed.content){
+    const row=project as unknown as Record<string,unknown>;own(row,memberId);
+    if(typeof row.displayOrder!=="number"||!Number.isSafeInteger(row.displayOrder)||row.displayOrder<0)throw invalid();
+  }
   if(new Set(parsed.content.map(p=>p.id)).size!==parsed.content.length)throw invalid();
   return parsed as OwnProjectPage;
 }
