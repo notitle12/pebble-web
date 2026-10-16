@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import {withdrawalConfirmation} from '../src/features/member/withdrawal-confirmation.ts';
 import {callbackMode} from "../src/features/auth/withdrawal-intent.ts";
 import {createUserSession} from "../src/features/auth/user-session.ts";
 import {memberJson,MemberApiError} from "../src/lib/member-api.ts";
@@ -36,4 +37,49 @@ test("late withdrawal callback cannot clear a newer login session",async()=>{
  finishWithdrawal(json({deleted:true}));
  await assert.rejects(withdrawing,error=>error instanceof MemberApiError&&error.code==='SESSION_CHANGED');
  assert.equal(session.snapshot().phase,'ready');assert.equal(session.snapshot().member?.id,'1');
+});
+
+
+test("직접 입력 탈퇴는 인증된 본인 요청만 보내고 완료 시 모든 화면의 세션을 비운다",async()=>{
+ let announced=0;const calls=[];
+ const session=createUserSession(async(url,init)=>{
+  calls.push([url.pathname,init]);
+  if(url.pathname.endsWith('/refresh'))return grant();
+  if(url.pathname.endsWith('/members/me'))return json(member);
+  assert.equal(url.pathname,'/api/v1/members/me/withdrawal');
+  assert.equal(init.method,'POST');assert.equal(init.credentials,'include');assert.equal(init.headers.Authorization,'Bearer temporary');
+  assert.deepEqual(JSON.parse(init.body),{confirmation:'Pebble를 삭제하는데 동의합니다.'});
+  return new Response(JSON.stringify({data:{deleted:true}}),{status:200,headers:{'Content-Type':'application/json'}});
+ },action=>action(),base,()=>announced++);
+ await session.ensure();await session.withdraw('Pebble를 삭제하는데 동의합니다.','1');
+ assert.equal(session.snapshot().phase,'guest');assert.equal(session.snapshot().member,null);assert.equal(announced,1);
+ assert.equal(calls.filter(([p])=>p.includes('naver')).length,0);
+});
+
+test("확인 문구는 블로그명 또는 미생성 계정 문구를 사용한다",()=>{
+ assert.equal(withdrawalConfirmation('Pebble'),'Pebble를 삭제하는데 동의합니다.');
+ assert.equal(withdrawalConfirmation(null),'내 계정을 삭제하는데 동의합니다.');
+ assert.equal(withdrawalConfirmation('  '),'내 계정을 삭제하는데 동의합니다.');
+});
+
+test("잘못된 확인 문구는 계정을 유지하고 요청을 자동 재시도하지 않는다",async()=>{
+ let attempts=0;
+ const session=createUserSession(async(url)=>{
+  if(url.pathname.endsWith('/refresh'))return grant();
+  if(url.pathname.endsWith('/members/me'))return json(member);
+  attempts++;return new Response(JSON.stringify({error:{code:'VALIDATION_ERROR',message:'문구를 확인해 주세요.'}}),{status:400});
+ },action=>action(),base);
+ await session.ensure();await assert.rejects(session.withdraw('wrong','1'));assert.equal(attempts,1);assert.equal(session.snapshot().phase,'ready');
+ await assert.rejects(session.withdraw('wrong','2'),error=>error.code==='SESSION_CHANGED');assert.equal(attempts,1);
+});
+
+test("늦은 직접 탈퇴 응답이 다른 탭의 변경된 세션을 지우지 않는다",async()=>{
+ let release;
+ const pending=new Promise(resolve=>{release=resolve;});
+ const session=createUserSession(async url=>url.pathname.endsWith('/refresh')?grant():url.pathname.endsWith('/members/me')?json(member):pending,action=>action(),base);
+ await session.ensure();const deleting=session.withdraw('기록를 삭제하는데 동의합니다.','1');
+ // 인증과 잠금 진입을 마친 뒤 서버 응답을 기다리는 상태를 재현한다.
+ await Promise.resolve();await Promise.resolve();session.invalidate();
+ release(json({deleted:true}));await assert.rejects(deleting,error=>error.code==='SESSION_CHANGED');
+ assert.equal(session.snapshot().member,null);assert.match(session.snapshot().message,/다른 탭/);
 });
