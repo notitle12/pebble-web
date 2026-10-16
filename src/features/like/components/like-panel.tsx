@@ -29,13 +29,13 @@ function Likes({target,contentId,initialCount,session}:{target:LikeTarget;conten
   async function toggle(){
     if(!ready||!canLike){if(ready)setNeedsAgreement(true);return;}
     if(!data||loading||writing.current)return;
-    const before=data,memberId=session.member!.id;const liked=!before.likedByMe;setData({...before,likedByMe:liked,likeCount:Math.max(0,before.likeCount+(liked?1:-1))});writing.current=true;revision.current++;setBusy(true);setError("");
+    const before=data,memberId=session.member!.id;const liked=!before.likedByMe;setData({...before,likedByMe:liked,likeCount:Math.max(0,before.likeCount+(liked?1:-1))});writing.current=true;revision.current++;setBusy(true);setError("");let saved=false;
     try{
-      await writeLike(target,contentId,liked,(path,options)=>userSession.request(path,options));
+      await writeLike(target,contentId,liked,(path,options)=>userSession.request(path,options));saved=true;
       if(!sameMember(memberId))return;
       const next=await readLikes(target,contentId,(path)=>userSession.request(path));
       if(sameMember(memberId))setData(next);
-    }catch(e){if(sameMember(memberId)){setData(e instanceof MemberApiError&&e.status>=400&&e.status<500?before:null);setError(likeFailure(e));}}
+    }catch(e){if(sameMember(memberId)){setData(!saved&&e instanceof MemberApiError&&e.status>=400&&e.status<500?before:null);setError(likeFailure(e));}}
     finally{writing.current=false;if(mounted.current)setBusy(false);}
   }
   function handleLikeClick(){
