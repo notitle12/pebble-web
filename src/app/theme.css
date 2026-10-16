@@ -129,3 +129,7 @@ html[data-theme=dark] .detail-shell .related-posts .post-list>li+li{border-color
 
 html[data-theme=dark] .guest-comment-identity input,html[data-theme=dark] .guest-secret-read input{background:var(--background);color:var(--text);border-color:var(--line)}
 html[data-theme=dark] .guest-comment-identity input::placeholder{color:var(--muted)}
+
+html[data-theme=dark] .comment-composer-card,html[data-theme=dark] .comment-composer-card:focus-within{background:transparent}
+html[data-theme=dark] .comment-composer-buttons .comment-composer-toggle{background:transparent;color:var(--muted)}
+html[data-theme=dark] .comment-composer-toggle[aria-pressed=true]{color:var(--accent)}
