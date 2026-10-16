@@ -5,8 +5,8 @@ import {userSession} from "@/features/auth/user-session";
 import {parseOwnPost} from "@/features/post/api/member-posts";
 import {MemberApiError} from "@/lib/member-api";
 import {contentPath,postPosition,confirmDeletion} from "../management-model";
-type Props={kind:"posts"|"projects";id:string;title:string;memberId:string;position?:number;total?:number;onChanged:()=>void};
-export function ContentManagement({kind,id,title,memberId,position,total,onChanged}:Props) {
+type Props={kind:"posts"|"projects";id:string;title:string;memberId:string;position?:number;total?:number;onChanged:()=>void;onDelete?:()=>Promise<void>};
+export function ContentManagement({kind,id,title,memberId,position,total,onChanged,onDelete}:Props) {
   const [confirm,setConfirm]=useState(false),[order,setOrder]=useState(String((position??0)+1)),[busy,setBusy]=useState(false),[uncertain,setUncertain]=useState(false),[message,setMessage]=useState("");
   const lock=useRef(false),mounted=useRef(false),dialog=useRef<HTMLDialogElement>(null),titleId=useId();
   useEffect(()=>{const node=dialog.current;if(confirm)node?.showModal();else if(node?.open)node.close();},[confirm]);
@@ -17,6 +17,7 @@ export function ContentManagement({kind,id,title,memberId,position,total,onChang
     lock.current=true;setBusy(true);setMessage("");
     try {
       const path=contentPath(kind,id);
+      if(remove&&onDelete){await onDelete();return;}
       if(remove)confirmDeletion(await userSession.request(path,{method:"DELETE"}));
       else {
         const displayOrder=postPosition(order,total??0);

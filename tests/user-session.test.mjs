@@ -126,3 +126,15 @@ test('로그인 완료 뒤 여러 화면의 세션 확인은 refresh나 회원 �
  assert.deepEqual(paths,['/api/v1/auth/naver/login','/api/v1/members/me']);
  assert.equal(session.snapshot().phase,'ready');
 });
+
+test('토큰 갱신 중 회원이 바뀌면 이전 회원의 대기 중 쓰기를 보내지 않는다',async()=>{
+ let refreshes=0,writes=0;
+ const session=createUserSession(async(url)=>{
+  if(url.pathname.endsWith('/refresh')){refreshes++;return json({accessToken:'token-'+refreshes,tokenType:'Bearer',accessTokenExpiresIn:refreshes===1?1:900});}
+  if(url.pathname.endsWith('/members/me'))return json({...member,id:refreshes===1?'1':'2'});
+  writes++;return new Response(null,{status:204});
+ },direct,base);
+ await session.ensure();assert.equal(session.snapshot().member.id,'1');
+ await assert.rejects(session.request('/posts/10',{method:'DELETE'}),e=>e instanceof MemberApiError&&e.code==='SESSION_CHANGED');
+ assert.equal(writes,0);assert.equal(session.snapshot().phase,'ready');assert.equal(session.snapshot().member.id,'2');
+});
