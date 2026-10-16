@@ -7,28 +7,46 @@ import {ProtectedActionLink} from "@/features/auth/components/protected-action-l
 import {userSession,type Member} from "@/features/auth/user-session";
 import {parseBoards,flattenBoards,type Board} from "@/features/board/api/boards";
 import {MemberApiError} from "@/lib/member-api";
-import {movePostRow} from "@/features/content/management-model";
+import {movePostRow,removeManagedRow,confirmDeletion} from "@/features/content/management-model";
 import {parseOwnPost,parseOwnPosts,type OwnPostPage} from "../api/member-posts";
 function Posts({member}:{member:Member}){
  const [page,setPage]=useState(0),[data,setData]=useState<OwnPostPage|null>(null),[error,setError]=useState(""),[attempt,setAttempt]=useState(0),[busy,setBusy]=useState(false),[uncertain,setUncertain]=useState(false),[notice,setNotice]=useState(""),[drag,setDrag]=useState<{source:string;target:string}|null>(null);
  const [boardId,setBoardId]=useState(""),[boards,setBoards]=useState<Board[]>([]),[boardError,setBoardError]=useState(""),[boardAttempt,setBoardAttempt]=useState(0);
- const lock=useRef(false),mounted=useRef(false),dragging=useRef<{source:string;target:string;x:number;y:number;active:boolean}|null>(null);
+ const syncedPage=useRef<number|null>(null),lock=useRef(false),mounted=useRef(false),dragging=useRef<{source:string;target:string;x:number;y:number;active:boolean}|null>(null);
  useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;};},[]);
  const current=()=>mounted.current&&userSession.snapshot().phase==="ready"&&userSession.snapshot().member?.id===member.id;
- function refresh(){setData(null);setAttempt(n=>n+1);}
+ function refresh(){setData(null);setNotice("");if(data&&page>=data.totalPages)setPage(Math.max(0,data.totalPages-1));setAttempt(n=>n+1);}
  useEffect(()=>{let live=true;setBoardError("");void userSession.request("/members/me/boards").then(value=>{if(live)setBoards(parseBoards(value,true));}).catch(e=>{if(live)setBoardError(e instanceof Error?e.message:"게시판을 불러오지 못했어요.");});return()=>{live=false;};},[member.id,boardAttempt]);
- useEffect(()=>{let live=true;setData(null);setError("");void userSession.request(`/members/me/posts?page=${page}&size=20${boardId?`&boardId=${encodeURIComponent(boardId)}`:""}`).then(value=>{if(live){setData(parseOwnPosts(value,page,member.id,boardId||undefined));setUncertain(false);}}).catch(e=>{if(live)setError(e instanceof Error?e.message:"목록을 불러오지 못했습니다.");});return()=>{live=false;};},[page,attempt,member.id,boardId]);
+ useEffect(()=>{if(syncedPage.current===page){syncedPage.current=null;return;}let live=true;setData(null);setError("");void userSession.request(`/members/me/posts?page=${page}&size=20${boardId?`&boardId=${encodeURIComponent(boardId)}`:""}`).then(value=>{if(live){setData(parseOwnPosts(value,page,member.id,boardId||undefined));setUncertain(false);}}).catch(e=>{if(live)setError(e instanceof Error?e.message:"목록을 불러오지 못했습니다.");});return()=>{live=false;};},[page,attempt,member.id,boardId]);
+
+ async function synchronize(targetPage=page){
+  const value=await userSession.request(`/members/me/posts?page=${targetPage}&size=20${boardId?`&boardId=${encodeURIComponent(boardId)}`:""}`),next=parseOwnPosts(value,targetPage,member.id,boardId||undefined);
+  if(current()){setData(next);if(targetPage!==page){syncedPage.current=targetPage;setPage(targetPage);}}
+ }
+ async function removeRow(row:OwnPostPage['content'][number]){
+  if(!data||lock.current||uncertain||!current())return;
+  const before=data,next=removeManagedRow(data,row.id);let saved=false;
+  lock.current=true;setBusy(true);setNotice("");setData(next);
+  try{
+   confirmDeletion(await userSession.request(`/posts/${row.id}`,{method:"DELETE"}));saved=true;
+   if(current()&&(before.hasNext||!next.content.length&&page>0))await synchronize(Math.max(0,Math.min(page,next.totalPages-1)));
+  }catch(e){if(current()){
+   if(!saved)setData(before);
+   const unknown=saved||!(e instanceof MemberApiError)||e.status===0||e.status>=500;setUncertain(unknown);
+   setNotice(saved?"삭제는 완료됐지만 목록을 확인하지 못했어요. 목록을 다시 불러와 주세요.":unknown?"삭제 결과를 확인하지 못했어요. 목록을 다시 불러와 주세요.":e instanceof Error?e.message:"삭제하지 못했어요.");
+  }}finally{lock.current=false;if(mounted.current)setBusy(false);}
+ }
  async function move(source:string,target:string){
   if(!data||lock.current||uncertain||!current())return;
   const change=movePostRow(data.content,source,target,!!boardId);if(!change)return;
-  const before=data;lock.current=true;setBusy(true);setNotice("");setData({...data,content:change.items});
+  const before=data;let saved=false;lock.current=true;setBusy(true);setNotice("");setData({...data,content:change.items});
   try{
    const result=parseOwnPost(await userSession.request(`/posts/${source}`,{method:"PATCH",body:boardId?{boardDisplayOrder:change.displayOrder}:{displayOrder:change.displayOrder}}));
    if(result.id!==source||result.author.id!==member.id)throw new MemberApiError(0,"INVALID_RESPONSE","순서 저장 결과를 확인하지 못했어요.");
-   if(current()){setNotice("글 순서를 저장했어요.");refresh();}
+   saved=true;if(current())await synchronize();
   }catch(e){if(current()){
-   setData(before);const unknown=!(e instanceof MemberApiError)||e.status===0||e.status>=500;setUncertain(unknown);
-   setNotice(unknown?"저장 결과를 확인하지 못했어요. 목록을 다시 불러와 주세요.":e instanceof Error?e.message:"순서를 저장하지 못했어요.");
+   if(!saved)setData(before);const unknown=saved||!(e instanceof MemberApiError)||e.status===0||e.status>=500;setUncertain(unknown);
+   setNotice(saved?"변경은 저장됐지만 목록을 확인하지 못했어요. 목록을 다시 불러와 주세요.":unknown?"저장 결과를 확인하지 못했어요. 목록을 다시 불러와 주세요.":e instanceof Error?e.message:"순서를 저장하지 못했어요.");
   }}finally{lock.current=false;if(mounted.current)setBusy(false);}
  }
  async function toggleVisibility(post:OwnPostPage["content"][number]){
@@ -50,9 +68,9 @@ function Posts({member}:{member:Member}){
  {data.content.map((post,index)=><li className="own-post-row" key={post.id} tabIndex={0} aria-label={`${post.title}, Alt와 위·아래 방향키로 순서 변경`} onKeyDown={event=>{if(event.target!==event.currentTarget||!event.altKey||!["ArrowUp","ArrowDown"].includes(event.key))return;const target=data.content[index+(event.key==="ArrowUp"?-1:1)];if(target){event.preventDefault();void move(post.id,target.id);}}} data-post-id={post.id} onPointerDown={event=>{if(event.button!==0||event.pointerType==="touch"||busy||uncertain||(event.target as Element).closest("button,a,input,select,textarea,form,[role=group]"))return;event.preventDefault();event.currentTarget.setPointerCapture(event.pointerId);dragging.current={source:post.id,target:post.id,x:event.clientX,y:event.clientY,active:false};}} onPointerMove={event=>{const start=dragging.current;if(!start)return;if(!start.active){if(Math.hypot(event.clientX-start.x,event.clientY-start.y)<5)return;start.active=true;}const target=document.elementFromPoint(event.clientX,event.clientY)?.closest<HTMLElement>('[data-post-id]')?.dataset.postId;start.target=target??start.source;setDrag({source:start.source,target:start.target});}} onPointerUp={endDrag} onPointerCancel={()=>{dragging.current=null;setDrag(null);}} data-dragging={drag?.source===post.id} data-drop={drag&&drag.source!==post.id&&drag.target===post.id?(data.content.findIndex(p=>p.id===drag.source)<index?"after":"before"):undefined}>
  <span className="own-post-order">{(boardId?post.boardDisplayOrder!:post.displayOrder)+1}</span><button type="button" className="own-post-visibility" disabled={busy||uncertain||post.isBlocked||post.draft===true} title={post.draft?"임시저장 글은 수정 화면에서 발행해 주세요.":post.isBlocked?"차단된 글은 공개 범위를 변경할 수 없어요.":"클릭하여 공개 범위 변경"} aria-label={`${post.title}: ${post.visibilityStatus==="PUBLIC"?"공개, 비공개로 변경":"비공개, 공개로 변경"}`} onClick={()=>void toggleVisibility(post)}>{post.draft?"임시저장":post.visibilityStatus==="HIDDEN"?"비공개":"공개"}{post.isBlocked?" · 차단":""}</button><span className="own-post-title"><Link className="own-content-link" href={post.visibilityStatus==="PUBLIC"&&!post.isBlocked?`/blogs/${post.author.handle}/posts/${post.urlKey}`:`/posts/${post.id}/view`}>{post.title}</Link></span>
  <time className="own-post-date" dateTime={post.createdAt}>{new Intl.DateTimeFormat("ko-KR",{year:"numeric",month:"2-digit",day:"2-digit",timeZone:"Asia/Seoul"}).format(new Date(post.createdAt))}</time>
- <fieldset className="own-post-actions" disabled={busy}><Link href={`/posts/${post.id}/edit`}>수정</Link><Link href={post.visibilityStatus==="PUBLIC"&&!post.isBlocked?`/blogs/${post.author.handle}/posts/${post.urlKey}`:`/posts/${post.id}/view`}>보기</Link><ContentManagement kind="posts" id={post.id} title={post.title} memberId={member.id} onChanged={refresh}/></fieldset>
+ <fieldset className="own-post-actions" disabled={busy||uncertain}><Link href={`/posts/${post.id}/edit`}>수정</Link><Link href={post.visibilityStatus==="PUBLIC"&&!post.isBlocked?`/blogs/${post.author.handle}/posts/${post.urlKey}`:`/posts/${post.id}/view`}>보기</Link><ContentManagement kind="posts" id={post.id} title={post.title} memberId={member.id} onChanged={refresh} onDelete={()=>removeRow(post)}/></fieldset>
  </li>)}</ul>}
- {data&&<nav className="pagination" aria-label="내 글 페이지"><button className="button" disabled={busy||!data.hasPrevious} onClick={()=>{setNotice("");setPage(n=>n-1);}}>이전</button><span>{page+1} / {Math.max(1,data.totalPages)}</span><button className="button" disabled={busy||!data.hasNext} onClick={()=>{setNotice("");setPage(n=>n+1);}}>다음</button></nav>}
+ {data&&<nav className="pagination" aria-label="내 글 페이지"><button className="button" disabled={busy||!data.hasPrevious} onClick={()=>{setNotice("");setPage(n=>n-1);}}>이전</button><span>{Math.min(page+1,Math.max(1,data.totalPages))} / {Math.max(1,data.totalPages)}</span><button className="button" disabled={busy||!data.hasNext} onClick={()=>{setNotice("");setPage(n=>n+1);}}>다음</button></nav>}
  </section>;
 }
-export function MyPosts(){return <MemberGate>{member=><Posts key={member.id} member={member}/>}</MemberGate>;}
+export function MyPosts(){return <MemberGate preserveOnRefresh>{member=><Posts key={member.id} member={member}/>}</MemberGate>;}

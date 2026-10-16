@@ -1,4 +1,5 @@
 "use client";
+import {MemberApiError} from "@/lib/member-api";
 import {useEffect,useRef,useState} from "react";
 import Link from "next/link";
 import {useUserSession} from "@/features/auth/components/member-gate";
@@ -8,7 +9,7 @@ import {readLikes,writeLike,likeFailure,type LikeState,type LikeTarget} from "..
 
 export function LikePanel({target,contentId,initialCount}:{target:LikeTarget;contentId:string;initialCount?:number}){
   const session=useUserSession();
-  const scope=session.phase==="ready"?`member:${session.member?.id}`:session.phase;
+  const scope=(session.phase==="ready"||session.phase==="loading"&&session.member)?`member:${session.member?.id}`:session.phase;
   return <Likes key={`${target}:${contentId}:${scope}`} target={target} contentId={contentId} initialCount={initialCount} session={session}/>;
 }
 function Likes({target,contentId,initialCount,session}:{target:LikeTarget;contentId:string;initialCount?:number;session:SessionState}){
@@ -19,7 +20,7 @@ function Likes({target,contentId,initialCount,session}:{target:LikeTarget;conten
   const [needsAgreement,setNeedsAgreement]=useState(false);
   useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;revision.current++;};},[]);
   useEffect(()=>{
-    if(session.phase!=="ready"&&session.phase!=="guest")return;
+    if(writing.current||session.phase!=="ready"&&session.phase!=="guest")return;
     let live=true;const current=++revision.current;setLoading(true);setError("");
     void readLikes(target,contentId,canLike?(path)=>userSession.request(path):undefined).then(next=>{if(live&&current===revision.current)setData(next);}).catch(e=>{if(live&&current===revision.current){setData(null);setError(likeFailure(e));}}).finally(()=>{if(live&&current===revision.current)setLoading(false);});
     return()=>{live=false;};
@@ -28,13 +29,13 @@ function Likes({target,contentId,initialCount,session}:{target:LikeTarget;conten
   async function toggle(){
     if(!ready||!canLike){if(ready)setNeedsAgreement(true);return;}
     if(!data||loading||writing.current)return;
-    const memberId=session.member!.id;const liked=!data.likedByMe;writing.current=true;revision.current++;setBusy(true);setError("");
+    const before=data,memberId=session.member!.id;const liked=!before.likedByMe;setData({...before,likedByMe:liked,likeCount:Math.max(0,before.likeCount+(liked?1:-1))});writing.current=true;revision.current++;setBusy(true);setError("");let saved=false;
     try{
-      await writeLike(target,contentId,liked,(path,options)=>userSession.request(path,options));
+      await writeLike(target,contentId,liked,(path,options)=>userSession.request(path,options));saved=true;
       if(!sameMember(memberId))return;
       const next=await readLikes(target,contentId,(path)=>userSession.request(path));
       if(sameMember(memberId))setData(next);
-    }catch(e){if(sameMember(memberId)){setData(null);setError(likeFailure(e));}}
+    }catch(e){if(sameMember(memberId)){setData(!saved&&e instanceof MemberApiError&&e.status>=400&&e.status<500?before:null);setError(likeFailure(e));}}
     finally{writing.current=false;if(mounted.current)setBusy(false);}
   }
   function handleLikeClick(){
@@ -42,10 +43,11 @@ function Likes({target,contentId,initialCount,session}:{target:LikeTarget;conten
     if(!ready){openLoginDialog();return;}
     void toggle();
   }
-  const count=error?undefined:data?.likeCount??initialCount;
+  const showPersonalState=canLike||session.phase==="loading"&&session.member!==null&&!memberRequiresAgreement(session.member);
+  const count=data?.likeCount??(error?undefined:initialCount);
   return <section className="like-panel" aria-label="좋아요">
     <div className="like-actions">
-      <button type="button" className="button like-button" aria-label={canLike&&data?.likedByMe?"좋아요 취소":"좋아요"} aria-pressed={canLike?(data?.likedByMe??false):false} disabled={session.phase==="loading"||session.phase==="error"||canLike&&(busy||loading||!data)} onClick={handleLikeClick}><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M7 10H3v11h4V10Zm0 0 5-7a2 2 0 0 1 2 2l-1 5h6a2 2 0 0 1 2 2l-2 7a2 2 0 0 1-2 2H7V10Z"/></svg><span className="sr-only">{canLike&&data?.likedByMe?"좋아요 취소":"좋아요"}</span></button>
+      <button type="button" className="button like-button" aria-label={showPersonalState&&data?.likedByMe?"좋아요 취소":"좋아요"} aria-pressed={showPersonalState?(data?.likedByMe??false):false} disabled={session.phase==="loading"||session.phase==="error"||canLike&&(busy||loading||!data||!!error)} onClick={handleLikeClick}><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M7 10H3v11h4V10Zm0 0 5-7a2 2 0 0 1 2 2l-1 5h6a2 2 0 0 1 2 2l-2 7a2 2 0 0 1-2 2H7V10Z"/></svg><span className="sr-only">{showPersonalState&&data?.likedByMe?"좋아요 취소":"좋아요"}</span></button>
       <span aria-live="polite" aria-label="좋아요 수">{count===undefined?"—":count.toLocaleString("ko-KR")}</span>
     </div>
     {ready&&!canLike&&<p role="status">좋아요를 사용하려면 <Link href="/agreements">서비스 이용 동의</Link>가 필요합니다.{needsAgreement&&" 동의 화면으로 이동해 주세요."}</p>}
