@@ -78,7 +78,7 @@ export function MemberAgreements({ documentsReady = false, termsContent, privacy
     <h1 id="agreements-title">서비스 이용 동의</h1>
     <p>서비스를 이용하려면 이용약관과 개인정보 수집·이용에 각각 동의해 주세요.</p>
     <p className="agreement-versions">이용약관 {memberAgreementVersions.termsVersion} · 개인정보 수집·이용 {memberAgreementVersions.privacyVersion}</p>
-    <div className="agreement-summary" aria-label="동의 전 확인할 내용"><h2>동의 전에 확인해 주세요</h2><ul><li>네이버가 제공한 출생연도와 생일로 만 14세 이상임을 확인한 경우 회원 가입을 진행합니다. 생년 정보는 연령 확인에만 일시 처리하고 저장하지 않습니다.</li><li>네이버에서는 이용자 식별자와 닉네임을 받습니다. 프로필 사진은 원할 때 직접 등록할 수 있습니다.</li><li>계정과 작성한 콘텐츠는 서비스 제공과 운영에 사용됩니다.</li><li>탈퇴가 완료되면 회원 정보와 콘텐츠를 운영 데이터베이스에서 즉시 삭제하고, 관련 파일은 삭제 작업으로 회수합니다.</li><li>동의하지 않으면 회원 기능을 이용할 수 없지만 공개 콘텐츠는 계속 둘러볼 수 있습니다.</li></ul></div>
+    <div className="agreement-summary" aria-label="동의 전 확인할 내용"><h2>동의 전에 확인해 주세요</h2><ul><li>네이버가 제공한 출생연도와 생일로 만 14세 이상인지 확인합니다. 나이 확인에 사용한 생년 정보는 저장하지 않습니다.</li><li>네이버에서는 계정을 구분하는 회원번호와 닉네임을 받습니다. 프로필 사진은 원할 때 직접 등록할 수 있습니다.</li><li>계정 정보와 직접 작성한 글·프로젝트·사진 등은 서비스 제공에 사용됩니다.</li><li>탈퇴가 완료되면 회원 정보와 작성한 내용을 사용 중인 서비스에서 즉시 삭제합니다. 관련 사진 파일도 순차적으로 삭제합니다.</li><li>동의하지 않으면 회원 기능을 이용할 수 없지만 공개 콘텐츠는 계속 둘러볼 수 있습니다.</li></ul></div>
     {error && <p className="agreement-error" role="alert">{error}</p>}
     {state?.accepted && !isCurrentMemberAgreement(state) && <p role="status">현재 약관 버전의 동의가 필요합니다.</p>}
     {!state ? error ? <p><button type="button" className="button" onClick={() => window.location.reload()}>다시 불러오기</button></p> : <p role="status">약관 상태를 불러오고 있어요.</p> : <form onSubmit={submit} className="agreement-form">
