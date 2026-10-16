@@ -1,17 +1,19 @@
 "use client";
 import {useEffect,useRef,useState} from "react";
 import {NaverLoginButton} from "./naver-login-button";
+import {loginDestination} from "../login-destination";
 
 export const OPEN_LOGIN_DIALOG_EVENT = "pebble:open-login-dialog";
 
-export function openLoginDialog(){
+export function openLoginDialog(destination?:string){
  if(typeof window==="undefined")return;
- window.dispatchEvent(new CustomEvent(OPEN_LOGIN_DIALOG_EVENT));
+ window.dispatchEvent(new CustomEvent(OPEN_LOGIN_DIALOG_EVENT,{detail:{destination:destination===undefined?undefined:loginDestination(destination)}}));
 }
 
-export function LoginDialog(){
+export function LoginDialog({showTrigger=true}:{showTrigger?:boolean}){
  const dialog=useRef<HTMLDialogElement>(null);
  const [open,setOpen]=useState(false);
+ const [destination,setDestination]=useState<string|null>(null);
  useEffect(()=>{
   if(!open)return;
   const previous=document.body.style.overflow;
@@ -19,7 +21,9 @@ export function LoginDialog(){
   return ()=>{document.body.style.overflow=previous;};
  },[open]);
  useEffect(()=>{
-  const handleOpen=()=>{
+  const handleOpen=(event:Event)=>{
+   const requested=(event as CustomEvent<{destination?:unknown}>).detail?.destination;
+   setDestination(typeof requested==="string"?loginDestination(requested):null);
    if(dialog.current&&!dialog.current.open){
     try{dialog.current.showModal();}catch{/* ignore */}
    }
@@ -29,8 +33,8 @@ export function LoginDialog(){
   return ()=>window.removeEventListener(OPEN_LOGIN_DIALOG_EVENT,handleOpen);
  },[]);
  return <>
-  <button type="button" className="header-login" aria-haspopup="dialog" onClick={()=>{dialog.current?.showModal();setOpen(true);}}>로그인</button>
-  <dialog ref={dialog} className="login-dialog" aria-labelledby="login-dialog-title" aria-describedby="login-dialog-description" onClose={()=>setOpen(false)} onClick={event=>{
+  {showTrigger&&<button type="button" className="header-login" aria-haspopup="dialog" onClick={()=>{setDestination(null);dialog.current?.showModal();setOpen(true);}}>로그인</button>}
+  <dialog ref={dialog} className="login-dialog" aria-labelledby="login-dialog-title" aria-describedby="login-dialog-description" onClose={()=>{setOpen(false);setDestination(null);}} onClick={event=>{
    if(event.target!==event.currentTarget)return;
    const bounds=event.currentTarget.getBoundingClientRect();
    if(event.clientX<bounds.left||event.clientX>bounds.right||event.clientY<bounds.top||event.clientY>bounds.bottom)event.currentTarget.close();
@@ -39,7 +43,7 @@ export function LoginDialog(){
    <div className="login-dialog-brand"><img src="/pebble-logo.svg" alt="" width={56} height={56}/><span>Pebble</span></div>
    <h2 id="login-dialog-title">로그인</h2>
    <p id="login-dialog-description">로그인에 필요한 네이버 계정 정보를 처리합니다. <a href="/terms" target="_blank" rel="noreferrer">이용약관</a>과 <a href="/privacy" target="_blank" rel="noreferrer">개인정보 처리방침</a>을 확인해 주세요.</p>
-   {open&&<NaverLoginButton label="네이버로 로그인" className="naver-provider-button" providerIcon/>}
+   {open&&<NaverLoginButton label="네이버로 로그인" className="naver-provider-button" providerIcon destination={destination??undefined}/>}
   </dialog>
  </>;
 }

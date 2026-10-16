@@ -11,3 +11,10 @@ export function loginDestination(value: string | null): string {
   if(post&&post[1].length<=200&&post[1]!=="search"&&(!/^\d+$/.test(post[1])||positiveId(post[1])))return value;
   return "/me/posts";
 }
+
+export function memberActionDestination(destination:string,member:{agreementsAccepted:boolean;profileCompleted:boolean}):string {
+  const safe=loginDestination(destination);
+  if(!member.agreementsAccepted)return `/agreements?returnTo=${encodeURIComponent(safe)}`;
+  if(!member.profileCompleted)return `/settings/profile?returnTo=${encodeURIComponent(safe)}`;
+  return safe;
+}
