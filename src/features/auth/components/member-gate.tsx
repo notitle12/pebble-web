@@ -1,6 +1,7 @@
 "use client";
 import {useEffect,useSyncExternalStore,type ReactNode} from "react";
 import Link from "next/link";
+import {LoadingIndicator} from "@/components/loading-state";
 import {NaverLoginButton} from "./naver-login-button";
 import {initialSession,listenSessionChanges,memberRequiresAgreement,userSession,type Member} from "../user-session";
 export function useUserSession(){
@@ -10,7 +11,7 @@ export function useUserSession(){
 }
 export function MemberGate({children,profile=false,preserveOnExpiry=false,requireAgreements=true,fallback}:{children:(member:Member)=>ReactNode;profile?:boolean;preserveOnExpiry?:boolean;requireAgreements?:boolean;fallback?:ReactNode}){
   const session=useUserSession();
-  if(session.phase==="loading" && !(preserveOnExpiry && session.member))return fallback !== undefined ? <>{fallback}</> : <div className="list-state" role="status">로그인 상태를 확인하고 있어요.</div>;
+  if(session.phase==="loading" && !(preserveOnExpiry && session.member))return fallback !== undefined ? <>{fallback}</> : <LoadingIndicator label="로그인 상태를 확인하는 중" section/>;
   const expired=preserveOnExpiry && session.phase!=="ready" && session.member!==null;
   if((session.phase==="ready" || expired) && session.member){
     if(requireAgreements && memberRequiresAgreement(session.member))return <div className="list-state"><h2>이용 동의를 확인해 주세요</h2><p>서비스 기능을 이용하려면 약관과 개인정보 수집·이용에 동의해야 합니다.</p><Link className="button" href="/agreements">약관 동의하기</Link><p><Link href="/settings/account">계정 탈퇴</Link></p></div>;
