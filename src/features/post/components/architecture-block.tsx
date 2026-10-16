@@ -1,4 +1,5 @@
 "use client";
+import {DiagramLightbox} from "./diagram-lightbox";
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import type { ArchitectureEdge, ArchitectureNode, ArchitectureGroup, ArchitectureSide, ArchitectureSpec } from "../api/post-list";
 import { isArchitectureContainer, architectureGroupPresentation, architectureGroupLabel } from "../architecture-groups";
@@ -37,8 +38,8 @@ const clamp = (value: number, min: number, max: number) => Math.max(min, Math.mi
 const sideNames: Record<ArchitectureSide, string> = { TOP: "위쪽", RIGHT: "오른쪽", BOTTOM: "아래쪽", LEFT: "왼쪽" };
 const sides: ArchitectureSide[] = ["TOP", "RIGHT", "BOTTOM", "LEFT"];
 
-export function ArchitectureBlock({ spec, title, interactive = false, selectedNode, selectedGroup, selectedEdge, connecting = false, onSelectNode, onSelectGroup, onSelectEdge, onConnect, onMoveNode, onMoveGroup, onResizeGroup, onMoveEdge, onReconnectEdge, onDeleteEdge, onResetEdgeWaypoint, onInteractionStart, onInteractionEnd, zoom, onZoomChange, onConnectNodes, onClearSelection, onRenameNode, onRenameGroup, onRenameNodeType, onRenameGroupType }: {
-  spec: ArchitectureSpec; title: string | null; interactive?: boolean; selectedNode?: string | null; selectedGroup?: string | null; selectedEdge?: string | null; connecting?: boolean;
+export function ArchitectureBlock({ spec, title, expanded = false, interactive = false, selectedNode, selectedGroup, selectedEdge, connecting = false, onSelectNode, onSelectGroup, onSelectEdge, onConnect, onMoveNode, onMoveGroup, onResizeGroup, onMoveEdge, onReconnectEdge, onDeleteEdge, onResetEdgeWaypoint, onInteractionStart, onInteractionEnd, zoom, onZoomChange, onConnectNodes, onClearSelection, onRenameNode, onRenameGroup, onRenameNodeType, onRenameGroupType }: {
+  spec: ArchitectureSpec; title: string | null; expanded?: boolean; interactive?: boolean; selectedNode?: string | null; selectedGroup?: string | null; selectedEdge?: string | null; connecting?: boolean;
   onSelectNode?: (id: string) => void; onSelectGroup?: (id: string) => void; onSelectEdge?: (id: string) => void;
   onConnect?: (id: string, side: ArchitectureSide) => void;
   onClearSelection?:()=>void;
@@ -54,6 +55,7 @@ export function ArchitectureBlock({ spec, title, interactive = false, selectedNo
   const id = `architecture-${useId().replace(/:/g, "")}`;
   const { positions, groups, width, height } = architectureLayout(spec);
   const [editingName,setEditingName]=useState<{kind:"node"|"group"|"nodeType"|"groupType";id:string;label:string}|null>(null);
+  const [viewerOpen,setViewerOpen]=useState(false);
   const [hiddenWaypoint,setHiddenWaypoint]=useState<string|null>(null);
   const nameInput=useRef<HTMLInputElement>(null);
   useEffect(()=>{if(editingName){nameInput.current?.focus({preventScroll:true});nameInput.current?.select();}},[editingName?.id,editingName?.kind]);
@@ -69,9 +71,16 @@ export function ArchitectureBlock({ spec, title, interactive = false, selectedNo
   const zoomAnchor=useRef<{x:number;y:number;ratio:number;left:number;top:number}|null>(null);
   useEffect(()=>{
     const viewport=scrollRef.current;
-    if(!interactive || !onZoomChange || !viewport) return;
+    if(!viewport) return;
     const wheel=(event:WheelEvent)=>{
-      if(!(event.ctrlKey || event.metaKey)) return;
+      if(!interactive){
+        if(!event.ctrlKey&&!event.metaKey&&viewport.scrollWidth>viewport.clientWidth&&viewport.scrollHeight<=viewport.clientHeight&&!event.deltaX){
+          const delta=event.deltaY*(event.deltaMode===1?16:event.deltaMode===2?viewport.clientWidth:1);
+          const before=viewport.scrollLeft;viewport.scrollLeft+=delta;if(viewport.scrollLeft!==before)event.preventDefault();
+        }
+        return;
+      }
+      if(!onZoomChange || !(event.ctrlKey || event.metaKey)) return;
       event.preventDefault();
       const current=zoom??1, next=architectureZoom(current,event.deltaY*(event.deltaMode===1?16:event.deltaMode===2?viewport.clientHeight:1));
       const rect=viewport.getBoundingClientRect();
@@ -218,9 +227,10 @@ export function ArchitectureBlock({ spec, title, interactive = false, selectedNo
     return sides.map((side) => <g key={`connect-${endpointId}-${side}`} data-architecture-endpoint={endpointId} data-architecture-side={side} className={`arch-connect-handle${connecting || connectionPreview ? " is-connecting" : ""}${selectedNode===endpointId || selectedGroup===endpointId || hoveredEndpoint===endpointId ? " is-visible":""}`} transform={`translate(${points[side].x} ${points[side].y})`} role="button" tabIndex={0} aria-label={`${label} ${sideNames[side]} 연결 포인트`} onPointerDown={(event) => { suppressClickRef.current = false; event.preventDefault(); event.stopPropagation(); event.currentTarget.setPointerCapture(event.pointerId); event.currentTarget.focus({preventScroll:true}); connectionDrag.current={source:endpointId,side,pointerId:event.pointerId,startX:event.clientX,startY:event.clientY,point:points[side],moved:false}; }} onPointerMove={moveConnection} onPointerUp={event=>endConnection(event)} onPointerCancel={event=>endConnection(event,true)} onLostPointerCapture={event=>endConnection(event,true)} onKeyDownCapture={event=>{if(event.key==="Escape"){connectionDrag.current=null;setConnectionPreview(null);suppressClickRef.current=true;}}} onClick={(event) => { event.stopPropagation(); if (suppressClickRef.current) { suppressClickRef.current = false; return; } onConnect(endpointId, side); }} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); event.stopPropagation(); onConnect(endpointId, side); } }}><circle className="arch-connect-hit" r="22"/><circle className="arch-connect-dot" r="5"/><title>{`${label} ${sideNames[side]} 연결 포인트`}</title></g>);
   }
   const edgeLabel = (edge: ArchitectureEdge) => `${endpointLabel(edge.source)} → ${endpointLabel(edge.target)}`;
-  return <section className="architecture-block" aria-label={title ?? "시스템 아키텍처 다이어그램"}>
+  return <section className={`architecture-block${!interactive?" architecture-reader":""}`} aria-label={title ?? "시스템 아키텍처 다이어그램"}>
     {title !== null && <div className="architecture-heading"><h2>{title}</h2><p>구성 요소와 데이터 흐름</p></div>}
-    <div ref={scrollRef} className="architecture-scroll" onPointerDown={event=>{if(interactive && event.target===event.currentTarget){setEditingName(null);onClearSelection?.();}}} role="region" tabIndex={0} aria-label="가로 스크롤 가능한 아키텍처 다이어그램">
+    {!interactive&&!expanded&&<DiagramLightbox label="아키텍처" open={viewerOpen} onOpenChange={setViewerOpen}>{()=> <ArchitectureBlock spec={spec} title={title} expanded/>}</DiagramLightbox>}
+    <div ref={scrollRef} className="architecture-scroll" onClick={!interactive&&!expanded?()=>setViewerOpen(true):undefined} onPointerDown={event=>{if(interactive && event.target===event.currentTarget){setEditingName(null);onClearSelection?.();}}} role="region" tabIndex={0} aria-label="가로 스크롤 가능한 아키텍처 다이어그램">
       <svg className="architecture-svg" onPointerDown={event=>{if(interactive && event.target===event.currentTarget){setEditingName(null);onClearSelection?.();scrollRef.current?.focus({preventScroll:true});}}} style={interactive && zoom!==undefined ? {width:`min(${zoom*100}%, ${width*zoom}px)`,height:"auto",minWidth:0}:undefined} width={width} height={height} viewBox={`0 0 ${width} ${height}`} role="group" aria-label={title ?? "시스템 아키텍처"}>
         <defs><marker id={`${id}-arrow`} markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#78869a" /></marker></defs>
         {[...spec.groups].sort((a, b) => Number(isArchitectureContainer(a.type)) - Number(isArchitectureContainer(b.type))).map((group) => { const box = groups.get(group.id)!; const color = isArchitectureContainer(group.type) ? "arch-group-docker" : group.type === "CUSTOM" ? "arch-group-custom" : ""; const label = architectureGroupLabel(group); const kindWidth=Math.min(120,Array.from(groupKind(group)).reduce((sum,char)=>sum+(char.codePointAt(0)!>255?12:12*.58),0)); const selected = selectedGroup === group.id || connectionPreview?.target===group.id; return <g key={group.id} onDoubleClick={event=>{if(interactive && onRenameGroup){event.stopPropagation();setEditingName({kind:"group",id:group.id,label:group.label});}}} onPointerEnter={()=>setHoveredEndpoint(group.id)} onPointerLeave={()=>setHoveredEndpoint(null)} className={`arch-group-wrap${interactive && (onMoveGroup || onSelectGroup) ? " is-interactive" : ""}${selected ? " is-selected" : ""}`}>
