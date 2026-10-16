@@ -1,4 +1,5 @@
 "use client";
+import {useDiagramFit} from "./use-diagram-fit";
 import {DiagramLightbox} from "./diagram-lightbox";
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import type { ArchitectureEdge, ArchitectureNode, ArchitectureGroup, ArchitectureSide, ArchitectureSpec } from "../api/post-list";
@@ -68,18 +69,12 @@ export function ArchitectureBlock({ spec, title, expanded = false, interactive =
   }
   const [hoveredEndpoint,setHoveredEndpoint]=useState<string|null>(null);
   const scrollRef=useRef<HTMLDivElement>(null);
+  const fit=useDiagramFit(scrollRef,width,height,expanded,!interactive);
   const zoomAnchor=useRef<{x:number;y:number;ratio:number;left:number;top:number}|null>(null);
   useEffect(()=>{
     const viewport=scrollRef.current;
-    if(!viewport) return;
+    if(!interactive || !viewport) return;
     const wheel=(event:WheelEvent)=>{
-      if(!interactive){
-        if(!event.ctrlKey&&!event.metaKey&&viewport.scrollWidth>viewport.clientWidth&&viewport.scrollHeight<=viewport.clientHeight&&!event.deltaX){
-          const delta=event.deltaY*(event.deltaMode===1?16:event.deltaMode===2?viewport.clientWidth:1);
-          const before=viewport.scrollLeft;viewport.scrollLeft+=delta;if(viewport.scrollLeft!==before)event.preventDefault();
-        }
-        return;
-      }
       if(!onZoomChange || !(event.ctrlKey || event.metaKey)) return;
       event.preventDefault();
       const current=zoom??1, next=architectureZoom(current,event.deltaY*(event.deltaMode===1?16:event.deltaMode===2?viewport.clientHeight:1));
@@ -231,7 +226,7 @@ export function ArchitectureBlock({ spec, title, expanded = false, interactive =
     {title !== null && <div className="architecture-heading"><h2>{title}</h2><p>구성 요소와 데이터 흐름</p></div>}
     {!interactive&&!expanded&&<DiagramLightbox label="아키텍처" open={viewerOpen} onOpenChange={setViewerOpen}>{()=> <ArchitectureBlock spec={spec} title={title} expanded/>}</DiagramLightbox>}
     <div ref={scrollRef} className="architecture-scroll" onClick={!interactive&&!expanded?()=>setViewerOpen(true):undefined} onPointerDown={event=>{if(interactive && event.target===event.currentTarget){setEditingName(null);onClearSelection?.();}}} role="region" tabIndex={0} aria-label="가로 스크롤 가능한 아키텍처 다이어그램">
-      <svg className="architecture-svg" onPointerDown={event=>{if(interactive && event.target===event.currentTarget){setEditingName(null);onClearSelection?.();scrollRef.current?.focus({preventScroll:true});}}} style={interactive && zoom!==undefined ? {width:`min(${zoom*100}%, ${width*zoom}px)`,height:"auto",minWidth:0}:undefined} width={width} height={height} viewBox={`0 0 ${width} ${height}`} role="group" aria-label={title ?? "시스템 아키텍처"}>
+      <svg className="architecture-svg" onPointerDown={event=>{if(interactive && event.target===event.currentTarget){setEditingName(null);onClearSelection?.();scrollRef.current?.focus({preventScroll:true});}}} style={interactive && zoom!==undefined ? {width:`min(${zoom*100}%, ${width*zoom}px)`,height:"auto",minWidth:0} : !interactive ? {width:width*fit,height:height*fit,minWidth:0,maxWidth:"100%"}:undefined} width={width} height={height} viewBox={`0 0 ${width} ${height}`} role="group" aria-label={title ?? "시스템 아키텍처"}>
         <defs><marker id={`${id}-arrow`} markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#78869a" /></marker></defs>
         {[...spec.groups].sort((a, b) => Number(isArchitectureContainer(a.type)) - Number(isArchitectureContainer(b.type))).map((group) => { const box = groups.get(group.id)!; const color = isArchitectureContainer(group.type) ? "arch-group-docker" : group.type === "CUSTOM" ? "arch-group-custom" : ""; const label = architectureGroupLabel(group); const kindWidth=Math.min(120,Array.from(groupKind(group)).reduce((sum,char)=>sum+(char.codePointAt(0)!>255?12:12*.58),0)); const selected = selectedGroup === group.id || connectionPreview?.target===group.id; return <g key={group.id} onDoubleClick={event=>{if(interactive && onRenameGroup){event.stopPropagation();setEditingName({kind:"group",id:group.id,label:group.label});}}} onPointerEnter={()=>setHoveredEndpoint(group.id)} onPointerLeave={()=>setHoveredEndpoint(null)} className={`arch-group-wrap${interactive && (onMoveGroup || onSelectGroup) ? " is-interactive" : ""}${selected ? " is-selected" : ""}`}>
           <rect data-architecture-endpoint={group.id} className={`arch-group ${color}`} x={box.x} y={box.y} width={box.width} height={box.height} rx="18" onPointerDown={(event) => beginGroupDrag(event, group.id)} onPointerMove={moveGroupDrag} onPointerUp={(event) => endGroupDrag(event)} onPointerCancel={(event) => endGroupDrag(event, true)} onLostPointerCapture={(event) => endGroupDrag(event, true)} onClick={() => { if (suppressClickRef.current) { suppressClickRef.current = false; return; } if (interactive) onSelectGroup?.(group.id); }} />
