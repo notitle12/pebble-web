@@ -144,7 +144,7 @@ function Comments({target,contentId,ownerId,session}:{target:CommentTarget;conte
       <div className="comment-composer-tools">
         <span className="comment-composer-meta" aria-live="polite">{guestVisibility==="SECRET"?"비밀 댓글":"공개 댓글"}{body.length>0&&<span>{Array.from(body).length.toLocaleString()} / 2,000자</span>}</span>
         <div className="comment-composer-buttons">
-          <button type="button" className="comment-composer-toggle" aria-label="비밀 댓글" aria-pressed={guestVisibility==="SECRET"} aria-describedby={`${uid}-guest-secret-help`} title={guestVisibility==="SECRET"?"비밀 댓글 해제":"비밀 댓글로 작성"} disabled={busy} onClick={()=>setGuestVisibility(value=>value==="SECRET"?"PUBLIC":"SECRET")}>비밀 댓글</button>
+          <button type="button" className="comment-composer-toggle" aria-label="비밀 댓글" aria-pressed={guestVisibility==="SECRET"} aria-describedby={`${uid}-guest-secret-help`} title={guestVisibility==="SECRET"?"비밀 댓글 해제":"비밀 댓글로 작성"} disabled={busy} onClick={()=>setGuestVisibility(value=>value==="SECRET"?"PUBLIC":"SECRET")}><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="3"/>{guestVisibility==="SECRET"?<path d="M8 10V7a4 4 0 0 1 8 0v3"/>:<path d="M8 10V7a4 4 0 0 1 7.5-2"/>}<circle cx="12" cy="15" r="1"/></svg>비밀 댓글</button>
           <button type="submit" className="comment-composer-send" aria-label={busy?"댓글 등록 중":"댓글 등록"} title="댓글 등록" disabled={busy||!body.trim()}>{busy?"등록 중…":"댓글 등록"}</button>
         </div>
       </div>
@@ -161,7 +161,7 @@ function Comments({target,contentId,ownerId,session}:{target:CommentTarget;conte
       <div className="comment-composer-tools">
         <span className="comment-composer-meta" aria-live="polite">{visibility==="SECRET"?"비밀 댓글":"공개 댓글"}{body.length>0&&<span>{Array.from(body).length.toLocaleString()} / 2,000자</span>}</span>
         <div className="comment-composer-buttons">
-          <button type="button" className="comment-composer-toggle" aria-label="비밀 댓글" aria-pressed={visibility==="SECRET"} aria-describedby={`${uid}-secret-help`} title={visibility==="SECRET"?"비밀 댓글 해제":"비밀 댓글로 작성"} disabled={busy} onClick={()=>setVisibility(v=>v==="SECRET"?"PUBLIC":"SECRET")}>비밀 댓글</button>
+          <button type="button" className="comment-composer-toggle" aria-label="비밀 댓글" aria-pressed={visibility==="SECRET"} aria-describedby={`${uid}-secret-help`} title={visibility==="SECRET"?"비밀 댓글 해제":"비밀 댓글로 작성"} disabled={busy} onClick={()=>setVisibility(v=>v==="SECRET"?"PUBLIC":"SECRET")}><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="3"/>{visibility==="SECRET"?<path d="M8 10V7a4 4 0 0 1 8 0v3"/>:<path d="M8 10V7a4 4 0 0 1 7.5-2"/>}<circle cx="12" cy="15" r="1"/></svg>비밀 댓글</button>
           <button type="submit" className="comment-composer-send" aria-label={busy?"댓글 등록 중":"댓글 등록"} title="댓글 등록" disabled={busy||!body.trim()}>{busy?"등록 중…":"댓글 등록"}</button>
         </div>
       </div>
