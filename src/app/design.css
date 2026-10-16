@@ -707,3 +707,16 @@ html[data-theme=dark] .diagram-lightbox{background:var(--bg)}
 html[data-theme=dark] .comment-composer-card,html[data-theme=dark] .comment-composer-card:focus-within{background:transparent}
 
 .own-post-title{white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;font-size:12px}
+
+.blog-owner-actions .content-management{margin:0;padding:0;border:0;border-radius:0;align-items:center}
+.blog-owner-actions .content-management>.button{display:inline-block;min-height:0;padding:6px 0;border:0;border-bottom:1px solid var(--line);border-radius:0;background:transparent;box-shadow:none;color:var(--text);font:inherit;font-size:11px;text-decoration:none;line-height:normal;cursor:pointer}
+.comment-composer-toggle::before,.comment-composer-toggle[aria-pressed=true]::before{content:none}
+.comment-composer-toggle svg{width:16px;height:16px;margin-right:5px;fill:none;stroke:currentColor;stroke-width:1.7}
+.architecture-reader .architecture-scroll{overflow:hidden;max-height:none;overscroll-behavior:auto;display:grid;place-items:center;cursor:zoom-in}
+.diagram-lightbox .architecture-reader .architecture-scroll{cursor:default}
+.architecture-reader{position:relative}
+.architecture-reader>.diagram-expand{position:static;display:block;margin:8px 10px 8px auto;padding:5px 9px;min-height:0;background:var(--surface,#fff)}
+.post-body h2:has(+section[aria-label="DB 설계"]){margin-bottom:10px}
+
+.project-document-section:has([aria-label="DB 설계"])>h2,.project-document-section:has(.architecture-reader)>h2{margin-bottom:12px}
+.project-document-section:has([aria-label="DB 설계"])>.post-body,.project-document-section:has(.architecture-reader)>.post-body{padding-top:0}
