@@ -27,3 +27,5 @@
 
 :global(html[data-theme=dark]) .card .cardColumn:hover{background:var(--block-heading)}
 :global(html[data-theme=dark]) .editor .rowDelete:not(:disabled):hover{background:#3d2426;color:#e4a19a}
+
+.inspectTable{display:block;width:100%;padding:0;border:0;background:transparent;color:inherit;font:inherit;font-weight:600;text-align:left;cursor:pointer}.inspectTable:focus-visible{outline:2px solid var(--focus);outline-offset:3px}.card[data-selected=true]{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}.inspectHint{margin:0 0 10px;font-size:13px;color:var(--muted)}.selectedSpecification{position:relative;margin-top:18px;padding:18px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--text)}.closeSpecification{display:block;margin-left:auto;padding:6px 10px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--text);cursor:pointer}
