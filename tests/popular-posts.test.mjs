@@ -31,3 +31,19 @@ test('소유자 세션이 교체되면 후속 비공개 페이지 요청을 중�
  await assert.rejects(loadPopularPosts(async()=>{calls++;return page([post(1,5)],0,40);},()=>false),/취소/);
  assert.equal(calls,1);
 });
+
+test('인기 글은 후속 페이지를 최대 세 개씩 병렬 조회하고 전체 상위 결과를 유지한다',async()=>{
+ const releases=new Map(),seen=[];let running=0,max=0;
+ const pending=loadPopularPosts(async n=>{
+  seen.push(n);
+  if(n){running++;max=Math.max(max,running);await new Promise(resolve=>releases.set(n,resolve));running--;}
+  return page([post(n+1,n)],n,121);
+ });
+ for(let tick=0;tick<8;tick++)await Promise.resolve();
+ assert.deepEqual(seen,[0,1,2,3]);assert.equal(max,3);
+ for(const n of [3,1,2])releases.get(n)();
+ for(let tick=0;tick<12;tick++)await Promise.resolve();
+ assert.deepEqual(seen,[0,1,2,3,4,5,6]);
+ for(const n of [6,4,5])releases.get(n)();
+ assert.deepEqual((await pending).content.map(row=>row.id),['7','6','5']);assert.equal(max,3);
+});

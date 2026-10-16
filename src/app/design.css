@@ -671,3 +671,6 @@ body>.site-header,body>.site-footer{flex-shrink:0}
 
 .legal-document-footer .legal-return-link{margin-inline-start:auto;white-space:nowrap}
 @media(max-width:480px){.legal-document-footer{gap:12px;font-size:12px}}
+
+.own-project-row{cursor:default;user-select:text}.own-project-title{display:flex;align-items:center;gap:10px;min-width:0}.own-project-title .own-post-title{cursor:default}.own-project-lifecycle{flex-shrink:0;font-size:11px;color:var(--muted)}.own-project-row .own-post-actions .content-management [role=alert]{background:var(--surface)}
+@media(max-width:680px){.own-project-title{align-items:flex-start;flex-direction:column;gap:3px}.own-project-title .own-post-title{max-width:100%}.own-project-lifecycle{font-size:10px}}
