@@ -666,3 +666,5 @@ body>.site-header,body>.site-footer{flex-shrink:0}
 .guest-comment-composer .comment-composer-tools{grid-column:2}
 .guest-secret-read{max-width:520px}
 @media(max-width:480px){.guest-comment-composer{grid-template-columns:32px minmax(0,1fr)}.guest-comment-composer .guest-comment-header{gap:8px}.guest-comment-composer .guest-comment-identity{gap:6px}.guest-comment-composer .guest-comment-identity input{padding-inline:7px;font-size:13px}}
+
+.withdrawal-confirmation{display:grid;gap:12px;margin-top:24px}.withdrawal-confirmation label{font-size:14px;color:var(--muted)}.withdrawal-confirmation-phrase{margin:0;padding:14px 16px;border:1px solid var(--line);border-radius:8px;background:var(--accent-soft);color:var(--text);font-weight:600;overflow-wrap:anywhere}.withdrawal-confirmation input{width:100%;box-sizing:border-box;min-height:44px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--text);font:inherit}.withdrawal-confirmation input:focus{outline:2px solid var(--accent);outline-offset:2px}.withdrawal-confirmation .withdrawal-actions{margin-top:8px}
