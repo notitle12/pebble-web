@@ -26,5 +26,5 @@ export function NaverCallback(){
     else setError("로그인 상태가 변경되었습니다. 다시 로그인해 주세요.");
   }).catch(error=>{setError(error instanceof Error?error.message:"요청을 완료하지 못했습니다.");});
  },[router]);
- return <section className="list-state">{withdrawn?<><h1>회원 탈퇴가 완료되었어요</h1><p>회원 정보와 콘텐츠를 운영 데이터베이스에서 삭제했습니다. 관련 이미지 파일은 삭제 작업으로 회수됩니다.</p><Link href="/">블로그 둘러보기</Link></>:error?<><h1>요청을 완료하지 못했어요</h1><p role="alert">{error}</p><NaverLoginButton label="다시 로그인"/><Link href="/settings/account">계정 설정으로 돌아가기</Link></>:<p role="status">인증 요청을 처리하고 있어요.</p>}</section>;
+ return <section className="list-state">{withdrawn?<><h1>회원 탈퇴가 완료되었어요</h1><p>회원 정보와 작성한 내용을 사용 중인 서비스에서 삭제했습니다. 관련 사진 파일도 순차적으로 삭제합니다.</p><Link href="/">블로그 둘러보기</Link></>:error?<><h1>요청을 완료하지 못했어요</h1><p role="alert">{error}</p><NaverLoginButton label="다시 로그인"/><Link href="/settings/account">계정 설정으로 돌아가기</Link></>:<p role="status">인증 요청을 처리하고 있어요.</p>}</section>;
 }
