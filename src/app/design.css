@@ -679,7 +679,7 @@ body>.site-header,body>.site-footer{flex-shrink:0}
 
 .post-body>.related-posts{margin:28px 0;padding:0;border:0;background:transparent}.project-related-list{list-style:none;padding:0;margin:16px 0}.project-related-list li{display:flex;align-items:center;gap:20px;padding:12px 0;border-bottom:1px solid var(--line)}.project-related-list a{min-width:0;flex:1;overflow-wrap:anywhere}.project-related-list time{flex-shrink:0;font-size:12px;color:var(--muted)}
 
-.post-heading-bar .blog-owner-actions{margin:0;flex-shrink:0;white-space:nowrap}.post-detail>header h1,.project-tile h3,.post-card h3,.blog-popular-title{display:block;min-width:0;white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;-webkit-line-clamp:unset}.post-card h3 a,.project-tile h3 a{display:block;overflow:visible;text-overflow:clip;white-space:normal}.post-detail>header h1{font-size:clamp(20px,2.1vw,28px)}.project-tile h3,.post-card h3,.home-shell .post-card h3,.personal-blog-content .post-card h3{font-size:20px}.own-post-row:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.post-heading-bar .blog-owner-actions{margin:0;flex-shrink:0;white-space:nowrap;align-items:center}.post-detail>header h1,.project-tile h3,.post-card h3,.blog-popular-title{display:block;min-width:0;white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;-webkit-line-clamp:unset}.post-card h3 a,.project-tile h3 a{display:block;overflow:visible;text-overflow:clip;white-space:normal}.post-detail>header h1{font-size:clamp(20px,2.1vw,28px)}.project-tile h3,.post-card h3,.home-shell .post-card h3,.personal-blog-content .post-card h3{font-size:20px}.own-post-row:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
 
 /* Pebble comment composer: a single outlined writing surface and text actions. */
 .comment-composer,.comment-composer.guest-comment-composer{display:flex;flex-wrap:wrap;gap:0;border:1px solid var(--line);border-radius:8px;padding:16px;background:transparent}
@@ -709,7 +709,7 @@ html[data-theme=dark] .comment-composer-card,html[data-theme=dark] .comment-comp
 .own-post-title{white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;font-size:12px}
 
 .blog-owner-actions .content-management{margin:0;padding:0;border:0;border-radius:0;align-items:center}
-.blog-owner-actions .content-management>.button{display:inline-block;min-height:0;padding:6px 0;border:0;border-bottom:1px solid var(--line);border-radius:0;background:transparent;box-shadow:none;color:var(--text);font:inherit;font-size:11px;text-decoration:none;line-height:normal;cursor:pointer}
+.blog-owner-actions .content-management>.button{display:inline-block;min-height:0;margin:0;padding:6px 0;border:0;border-bottom:1px solid var(--line);border-radius:0;background:transparent;box-shadow:none;color:var(--text);font:inherit;font-size:11px;text-decoration:none;line-height:1.6;cursor:pointer}
 .comment-composer-toggle::before,.comment-composer-toggle[aria-pressed=true]::before{content:none}
 .comment-composer-toggle svg{width:16px;height:16px;margin-right:5px;fill:none;stroke:currentColor;stroke-width:1.7}
 .architecture-reader .architecture-scroll{overflow:hidden;max-height:none;overscroll-behavior:auto;display:grid;place-items:center;cursor:zoom-in}
@@ -718,5 +718,8 @@ html[data-theme=dark] .comment-composer-card,html[data-theme=dark] .comment-comp
 .architecture-reader>.diagram-expand{position:static;display:block;margin:8px 10px 8px auto;padding:5px 9px;min-height:0;background:var(--surface,#fff)}
 .post-body h2:has(+section[aria-label="DB 설계"]){margin-bottom:10px}
 
-.project-document-section:has([aria-label="DB 설계"])>h2,.project-document-section:has(.architecture-reader)>h2{margin-bottom:12px}
-.project-document-section:has([aria-label="DB 설계"])>.post-body,.project-document-section:has(.architecture-reader)>.post-body{padding-top:0}
+.project-document-section>h2,.project-document-section>div>h3{margin:0 0 20px}
+.project-document-section .post-body{padding-top:0}
+.project-document-section .post-body>[data-block-alignment]:first-child>*{margin-top:0}
+.project-document-section .text-block>:first-child,.project-document-section .post-rich-content>div>:first-child{margin-top:0}
+.project-document-overview{padding:0;margin:0 0 20px}
