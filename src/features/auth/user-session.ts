@@ -55,8 +55,8 @@ export function createUserSession(request: typeof fetch = fetch, exclusive: Excl
     snapshot:()=>state,
     async ensure(){if(state.phase==="loading" || (state.phase==="ready" && Date.now()>=expiresAt-30000))await refresh();},
     async request(path:string,options:Parameters<typeof memberJson>[1]={}) {
-      const epoch=generation, bearer=await token();
-      if(epoch!==generation)throw new MemberApiError(401,"SESSION_CHANGED","로그인 상태가 변경되었습니다.");
+      const epoch=generation, expectedMember=state.member?.id, bearer=await token();
+      if(epoch!==generation || expectedMember!==undefined&&state.member?.id!==expectedMember)throw new MemberApiError(401,"SESSION_CHANGED","로그인 상태가 변경되었습니다.");
       try {const value=await raw(path,{...options,token:bearer,cookies:false}); if(epoch!==generation)throw new MemberApiError(401,"SESSION_CHANGED","로그인 상태가 변경되었습니다.");return value;}
       catch(e){
         if(e instanceof MemberApiError && e.code==="AGREEMENTS_REQUIRED" && epoch===generation && state.phase==="ready" && state.member){
