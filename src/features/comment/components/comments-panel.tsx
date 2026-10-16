@@ -6,7 +6,7 @@ import {memberRequiresAgreement,userSession,type SessionState} from "@/features/
 import {safeMediaUrl} from "@/features/media/model";
 import {memberJson} from "@/lib/member-api";
 import { commentPageNumbers } from "../page-numbers";
-import {commentFailure,commentInput,commentPath,parseComment,readComments,guestCommentInput,createGuestComment,updateGuestComment,deleteGuestComment,type Comment,type CommentPage,type CommentTarget,type CommentVisibility} from "../api/comments";
+import {commentFailure,commentInput,commentPath,parseComment,readComments,guestCommentInput,createGuestComment,updateGuestComment,deleteGuestComment,readGuestComment,type Comment,type CommentPage,type CommentTarget,type CommentVisibility} from "../api/comments";
 export function CommentsPanel({target,contentId,ownerId}:{target:CommentTarget;contentId:string;ownerId?:string}) {
   const session=useUserSession();
   return <Comments key={`${target}:${contentId}:${session.member?.id??"guest"}`} target={target} contentId={contentId} ownerId={ownerId} session={session}/>;
@@ -16,12 +16,15 @@ function Comments({target,contentId,ownerId,session}:{target:CommentTarget;conte
   const [result,setResult]=useState<{scope:string;page:number;data:CommentPage}|null>(null),[loadError,setLoadError]=useState("");
   const [body,setBody]=useState(""),[visibility,setVisibility]=useState<CommentVisibility>("PUBLIC"),[editing,setEditing]=useState<Comment|null>(null);
   const [guestNickname,setGuestNickname]=useState(""),[guestPassword,setGuestPassword]=useState("");
+  const [guestVisibility,setGuestVisibility]=useState<CommentVisibility>("PUBLIC"),[guestSecretReading,setGuestSecretReading]=useState<Comment|null>(null),[guestReadPassword,setGuestReadPassword]=useState("");
+  const [unlockedGuestSecrets,setUnlockedGuestSecrets]=useState<Record<string,{updatedAt:string;body:string}>>({});
   const [guestEditing,setGuestEditing]=useState<Comment|null>(null),[guestEditBody,setGuestEditBody]=useState(""),[guestDelete,setGuestDelete]=useState<Comment|null>(null),[guestActionPassword,setGuestActionPassword]=useState("");
   const [editBody,setEditBody]=useState(""),[editVisibility,setEditVisibility]=useState<CommentVisibility>("PUBLIC"),[deleting,setDeleting]=useState<string|null>(null);
   const [busy,setBusy]=useState(false),[notice,setNotice]=useState("");
   const writing=useRef(false),mounted=useRef(false);
   const ready=session.phase==="ready"&&session.member!==null;
   const canComment=ready&&!memberRequiresAgreement(session.member!);
+  const canUseGuestCommentActions=session.phase==="guest"||canComment;
   const scope=canComment?`member:${session.member!.id}`:ready?"pending-member":session.phase;
   useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;};},[]);
   useEffect(()=>{
@@ -55,12 +58,13 @@ function Comments({target,contentId,ownerId,session}:{target:CommentTarget;conte
     event.preventDefault();
     if(session.phase!=="guest"||writing.current)return;
     let input;
-    try {input=guestCommentInput(guestNickname,guestPassword,body);}catch(e){setNotice(commentFailure(e));return;}
+    try {input=guestCommentInput(guestNickname,guestPassword,body,guestVisibility);}catch(e){setNotice(commentFailure(e));return;}
     writing.current=true;setBusy(true);setNotice("");
     try {
-      await createGuestComment(target,contentId,input);
+      const created=await createGuestComment(target,contentId,input);
       if(!mounted.current)return;
-      setBody("");setGuestNickname("");setPage(Math.floor((data?.totalElements??0)/20));setAttempt(n=>n+1);
+      if(input.visibility==="SECRET")setUnlockedGuestSecrets(previous=>({...previous,[created.id]:{updatedAt:created.updatedAt,body:input.body}}));
+      setBody("");setGuestNickname("");setGuestVisibility("PUBLIC");setPage(Math.floor((data?.totalElements??0)/20));setAttempt(n=>n+1);
     } catch(e) {if(mounted.current)setNotice(commentFailure(e));}
     finally {writing.current=false;if(mounted.current){setGuestPassword("");setBusy(false);}}
   }
@@ -72,14 +76,32 @@ function Comments({target,contentId,ownerId,session}:{target:CommentTarget;conte
     if(!inputPassword){setNotice("댓글 작성 때 사용한 비밀번호를 입력해 주세요.");return;}
     writing.current=true;setBusy(true);setNotice("");
     try {
-      if(kind==="edit")await updateGuestComment(target,contentId,comment.id,{password:inputPassword,body:validatedBody});
-      else await deleteGuestComment(target,contentId,comment.id,inputPassword);
+      if(kind==="edit"){
+        const updated=await updateGuestComment(target,contentId,comment.id,{password:inputPassword,body:validatedBody});
+        if(updated.visibility==="SECRET")setUnlockedGuestSecrets(previous=>({...previous,[updated.id]:{updatedAt:updated.updatedAt,body:validatedBody}}));
+      } else {
+        await deleteGuestComment(target,contentId,comment.id,inputPassword);
+        setUnlockedGuestSecrets(previous=>{const next={...previous};delete next[comment.id];return next;});
+      }
       if(!mounted.current)return;
       setGuestEditing(null);setGuestDelete(null);setGuestEditBody("");setGuestActionPassword("");setAttempt(n=>n+1);
       if(kind==="delete"&&data?.content.length===1&&page>0)setPage(n=>n-1);
       setNotice(kind==="edit"?"댓글을 수정했습니다.":"댓글을 삭제했습니다.");
     } catch(e) {if(mounted.current)setNotice(commentFailure(e));}
     finally {writing.current=false;if(mounted.current){setGuestActionPassword("");setBusy(false);}}
+  }
+  async function revealGuestSecret(event:React.FormEvent<HTMLFormElement>,comment:Comment) {
+    event.preventDefault();
+    if(!canUseGuestCommentActions||writing.current)return;
+    if(!guestReadPassword){setNotice("댓글 작성 때 사용한 비밀번호를 입력해 주세요.");return;}
+    writing.current=true;setBusy(true);setNotice("");
+    try {
+      const revealed=await readGuestComment(target,contentId,comment.id,guestReadPassword);
+      if(!mounted.current)return;
+      setUnlockedGuestSecrets(previous=>({...previous,[revealed.id]:{updatedAt:revealed.updatedAt,body:revealed.body}}));
+      setGuestSecretReading(null);setGuestReadPassword("");
+    } catch(e) {if(mounted.current)setNotice(commentFailure(e));}
+    finally {writing.current=false;if(mounted.current){setGuestReadPassword("");setBusy(false);}}
   }
   const date=(value:string)=>new Intl.DateTimeFormat("ko-KR",{dateStyle:"medium",timeStyle:"short"}).format(new Date(value));
   return <section className="comments-panel" aria-label="댓글">
@@ -88,14 +110,19 @@ function Comments({target,contentId,ownerId,session}:{target:CommentTarget;conte
       const own=canComment&&comment.author.id===session.member!.id;
       const guestComment=comment.author.id===null;
       const ownerOfGuest=canComment&&guestComment&&session.member!.id===ownerId;
-      const guestActionsAllowed=session.phase==="guest"||canComment;
+      const guestActionsAllowed=canUseGuestCommentActions;
+      const cachedSecret=unlockedGuestSecrets[comment.id];
+      const commentBody=comment.locked&&cachedSecret?.updatedAt===comment.updatedAt?cachedSecret.body:comment.body;
+      const guestBodyAvailable=!comment.locked||cachedSecret?.updatedAt===comment.updatedAt;
       return <li key={comment.id}><div className="comment-meta"><strong>{comment.author.nickname}</strong>{guestComment&&<span className="comment-guest-badge">비회원</span>}<time dateTime={comment.createdAt}>{date(comment.createdAt)}</time>{comment.updatedAt!==comment.createdAt&&<span>수정됨</span>}{comment.visibility==="SECRET"&&<span className="comment-secret-badge"><svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M4.5 7V4.75a3.5 3.5 0 0 1 7 0V7M3.25 7h9.5v7h-9.5z" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M8 9.3v2.4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg><span>비밀 댓글</span><span className="sr-only">자물쇠 표시</span></span>}</div>
-        {own&&editing?.id===comment.id?<form onSubmit={e=>{e.preventDefault();void mutate("edit",comment);}}><label htmlFor={`${uid}-edit`}>댓글 수정</label><textarea id={`${uid}-edit`} value={editBody} onChange={e=>setEditBody(e.target.value)} disabled={busy} rows={4}/><p className="comment-count">{Array.from(editBody).length} / 2,000자</p><label className="comment-secret"><input type="checkbox" checked={editVisibility==="SECRET"} onChange={e=>setEditVisibility(e.target.checked?"SECRET":"PUBLIC")} disabled={busy}/>비밀 댓글</label><div className="comment-actions"><button className="button" disabled={busy}>수정 저장</button><button type="button" className="button" disabled={busy} onClick={()=>setEditing(null)}>수정 취소</button></div></form>:<p className="comment-body">{comment.body}</p>}
+        {comment.locked&&guestComment&&guestActionsAllowed&&!guestBodyAvailable&&guestSecretReading?.id===comment.id?<form className="guest-secret-read" onSubmit={e=>void revealGuestSecret(e,comment)}><label htmlFor={`${uid}-guest-read-password-${comment.id}`}>비밀 댓글 비밀번호</label><input id={`${uid}-guest-read-password-${comment.id}`} type="password" autoComplete="current-password" value={guestReadPassword} onChange={e=>setGuestReadPassword(e.target.value)} disabled={busy}/><div className="comment-actions"><button className="button" disabled={busy||!guestReadPassword}>비밀 댓글 보기</button><button type="button" className="button" disabled={busy} onClick={()=>{setGuestSecretReading(null);setGuestReadPassword("");}}>취소</button></div></form>:null}
+        {own&&editing?.id===comment.id?<form onSubmit={e=>{e.preventDefault();void mutate("edit",comment);}}><label htmlFor={`${uid}-edit`}>댓글 수정</label><textarea id={`${uid}-edit`} value={editBody} onChange={e=>setEditBody(e.target.value)} disabled={busy} rows={4}/><p className="comment-count">{Array.from(editBody).length} / 2,000자</p><label className="comment-secret"><input type="checkbox" checked={editVisibility==="SECRET"} onChange={e=>setEditVisibility(e.target.checked?"SECRET":"PUBLIC")} disabled={busy}/>비밀 댓글</label><div className="comment-actions"><button className="button" disabled={busy}>수정 저장</button><button type="button" className="button" disabled={busy} onClick={()=>setEditing(null)}>수정 취소</button></div></form>:<p className="comment-body">{commentBody}</p>}
         {guestComment&&guestActionsAllowed&&guestEditing?.id===comment.id?<form className="guest-comment-action" onSubmit={e=>{e.preventDefault();void mutateGuest("edit",comment);}}><label htmlFor={`${uid}-guest-edit-${comment.id}`}>댓글 수정</label><textarea id={`${uid}-guest-edit-${comment.id}`} value={guestEditBody} onChange={e=>setGuestEditBody(e.target.value)} disabled={busy} rows={4}/><label htmlFor={`${uid}-guest-edit-password-${comment.id}`}>댓글 비밀번호</label><input id={`${uid}-guest-edit-password-${comment.id}`} type="password" autoComplete="current-password" value={guestActionPassword} onChange={e=>setGuestActionPassword(e.target.value)} disabled={busy}/><div className="comment-actions"><button className="button" disabled={busy}>수정 저장</button><button type="button" className="button" disabled={busy} onClick={()=>{setGuestEditing(null);setGuestActionPassword("");}}>취소</button></div></form>:null}
         {guestComment&&guestActionsAllowed&&guestDelete?.id===comment.id?<form className="guest-comment-action" onSubmit={e=>{e.preventDefault();void mutateGuest("delete",comment);}}><p>삭제하면 댓글 내용을 복구할 수 없어요.</p><label htmlFor={`${uid}-guest-delete-password-${comment.id}`}>댓글 비밀번호</label><input id={`${uid}-guest-delete-password-${comment.id}`} type="password" autoComplete="current-password" value={guestActionPassword} onChange={e=>setGuestActionPassword(e.target.value)} disabled={busy}/><div className="comment-actions"><button className="button" disabled={busy}>댓글 삭제 확인</button><button type="button" className="button" disabled={busy} onClick={()=>{setGuestDelete(null);setGuestActionPassword("");}}>취소</button></div></form>:null}
         {ownerOfGuest&&deleting===comment.id&&<div className="comment-actions"><span>삭제하면 댓글 내용을 복구할 수 없어요.</span><button className="button" disabled={busy} onClick={()=>void mutate("delete",comment)}>댓글 삭제 확인</button><button className="button" disabled={busy} onClick={()=>setDeleting(null)}>삭제 취소</button></div>}
         {ownerOfGuest&&deleting!==comment.id&&<div className="comment-actions"><button className="button" disabled={busy} onClick={()=>setDeleting(comment.id)}>콘텐츠 작성자 삭제</button></div>}
-        {guestComment&&guestActionsAllowed&&!ownerOfGuest&&!guestEditing&&!guestDelete&&<div className="comment-actions"><button className="button" disabled={busy} onClick={()=>{setGuestEditing(comment);setGuestDelete(null);setGuestEditBody(comment.body);setGuestActionPassword("");setNotice("");}}>수정</button><button className="button" disabled={busy} onClick={()=>{setGuestDelete(comment);setGuestEditing(null);setGuestActionPassword("");setNotice("");}}>삭제</button></div>}
+        {guestComment&&comment.visibility==="SECRET"&&comment.locked&&!guestBodyAvailable&&guestActionsAllowed&&!guestSecretReading&&<div className="comment-actions"><button className="button" disabled={busy} onClick={()=>{setGuestSecretReading(comment);setGuestReadPassword("");setNotice("");}}>비밀 댓글 보기</button></div>}
+        {guestComment&&guestBodyAvailable&&guestActionsAllowed&&!ownerOfGuest&&!guestEditing&&!guestDelete&&<div className="comment-actions"><button className="button" disabled={busy} onClick={()=>{setGuestEditing(comment);setGuestDelete(null);setGuestEditBody(commentBody);setGuestActionPassword("");setNotice("");}}>수정</button><button className="button" disabled={busy} onClick={()=>{setGuestDelete(comment);setGuestEditing(null);setGuestActionPassword("");setNotice("");}}>삭제</button></div>}
         {own&&editing?.id!==comment.id&&<div className="comment-actions">{deleting===comment.id?<><span>삭제하면 댓글 내용을 복구할 수 없어요.</span><button className="button" disabled={busy} onClick={()=>void mutate("delete",comment)}>댓글 삭제 확인</button><button className="button" disabled={busy} onClick={()=>setDeleting(null)}>삭제 취소</button></>:<><button className="button" disabled={busy} onClick={()=>{setEditing(comment);setEditBody(comment.body);setEditVisibility(comment.visibility);setDeleting(null);setNotice("");}}>수정</button><button className="button" disabled={busy} onClick={()=>{setDeleting(comment.id);setEditing(null);}}>삭제</button></>}</div>}
       </li>;
     })}</ul>}
@@ -105,18 +132,31 @@ function Comments({target,contentId,ownerId,session}:{target:CommentTarget;conte
       <button type="button" aria-label="다음 댓글 페이지" disabled={busy||!data.hasNext} onClick={()=>{setPage(n=>n+1);setEditing(null);setDeleting(null);}}><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m8 5 5 5-5 5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg></button>
     </nav>}
     {notice&&<p role="status">{notice} {ready&&!canComment&&<Link href="/agreements">서비스 이용 동의</Link>}</p>}
-    {session.phase==="guest"?<form className="comment-form guest-comment-form" onSubmit={createGuest} aria-busy={busy}>
-      <h3>댓글 남기기</h3>
-      <div className="guest-comment-identity"><label htmlFor={`${uid}-guest-nickname`}>닉네임<input id={`${uid}-guest-nickname`} value={guestNickname} onChange={e=>setGuestNickname(e.target.value)} placeholder="조약돌" autoComplete="nickname" maxLength={30} disabled={busy}/></label>
-      <label htmlFor={`${uid}-guest-password`}>비밀번호<input id={`${uid}-guest-password`} type="password" autoComplete="new-password" placeholder="4~10자" maxLength={10} value={guestPassword} onChange={e=>setGuestPassword(e.target.value)} disabled={busy}/></label></div>
-      <label className="sr-only" htmlFor={`${uid}-guest-body`}>댓글</label><textarea id={`${uid}-guest-body`} value={body} onChange={e=>setBody(e.target.value)} rows={3} maxLength={2000} disabled={busy} placeholder="댓글을 남겨주세요."/><p className="comment-count">{Array.from(body).length} / 2,000자</p>
-      <button className="button" type="submit" disabled={busy||!body.trim()}>{busy?"등록 중…":"공개 댓글 등록"}</button>
+    {session.phase==="guest"?<form className="comment-form comment-composer guest-comment-form guest-comment-composer" onSubmit={createGuest} aria-busy={busy}>
+      <span className="comment-composer-avatar" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg></span>
+      <div className="comment-composer-card">
+        <div className="guest-comment-header"><strong className="comment-composer-name">댓글 남기기</strong><div className="guest-comment-identity">
+          <label htmlFor={`${uid}-guest-nickname`}><span className="sr-only">닉네임</span><input id={`${uid}-guest-nickname`} value={guestNickname} onChange={e=>setGuestNickname(e.target.value)} placeholder="조약돌" autoComplete="nickname" disabled={busy}/></label>
+          <label htmlFor={`${uid}-guest-password`}><span className="sr-only">댓글 비밀번호</span><input id={`${uid}-guest-password`} type="password" autoComplete="new-password" placeholder="4~10자" value={guestPassword} onChange={e=>setGuestPassword(e.target.value)} disabled={busy}/></label>
+        </div></div>
+        <label className="sr-only" htmlFor={`${uid}-guest-body`}>댓글 남기기</label><textarea id={`${uid}-guest-body`} aria-describedby={`${uid}-guest-secret-help`} value={body} onChange={e=>setBody(e.target.value)} rows={3} disabled={busy} placeholder="이 기록에 대한 생각을 남겨주세요."/>
+      </div>
+      <div className="comment-composer-tools">
+        <span className="comment-composer-meta" aria-live="polite">{guestVisibility==="SECRET"?"비밀 댓글":"공개 댓글"}{body.length>0&&<span>{Array.from(body).length.toLocaleString()} / 2,000자</span>}</span>
+        <div className="comment-composer-buttons">
+          <button type="button" className="comment-composer-toggle" aria-label="비밀 댓글" aria-pressed={guestVisibility==="SECRET"} aria-describedby={`${uid}-guest-secret-help`} title={guestVisibility==="SECRET"?"비밀 댓글 해제":"비밀 댓글로 작성"} disabled={busy} onClick={()=>setGuestVisibility(value=>value==="SECRET"?"PUBLIC":"SECRET")}>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="3" fill="none" stroke="currentColor" strokeWidth="1.7"/>{guestVisibility==="SECRET"?<path d="M8 10V7a4 4 0 0 1 8 0v3"/>:<path d="M8 10V7a4 4 0 0 1 7.5-2"/>}<circle cx="12" cy="15" r="1" fill="currentColor"/></svg>
+          </button>
+          <button type="submit" className="comment-composer-send" aria-label={busy?"댓글 등록 중":"댓글 등록"} title="댓글 등록" disabled={busy||!body.trim()}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m20 4-6.7 16-3.6-6-6-3.6L20 4Z"/><path d="m9.7 14 5.8-5.5"/></svg></button>
+        </div>
+      </div>
+      <p id={`${uid}-guest-secret-help`} className="sr-only">비밀 댓글은 댓글 작성 때 사용한 비밀번호로 열 수 있으며 콘텐츠 작성자도 볼 수 있어요.</p>
     </form>:session.phase==="ready"&&canComment?<form className="comment-form comment-composer" onSubmit={e=>{e.preventDefault();void mutate("create");}} aria-busy={busy}>
       <span className="comment-composer-avatar" aria-hidden="true">
         {ready&&safeMediaUrl(session.member!.profileImageUrl)?<img src={safeMediaUrl(session.member!.profileImageUrl)!} alt="" width={40} height={40}/>:ready?Array.from(session.member!.nickname)[0]:<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>}
       </span>
       <div className="comment-composer-card">
-        <strong className="comment-composer-name">{ready?session.member!.nickname:"방문자"}</strong>
+        <strong className="comment-composer-name">댓글 남기기</strong>
         <label className="sr-only" htmlFor={`${uid}-body`}>댓글 남기기</label>
         <textarea id={`${uid}-body`} aria-describedby={`${uid}-secret-help`} value={body} onChange={e=>setBody(e.target.value)} rows={3} disabled={busy} placeholder="이 기록에 대한 생각을 남겨주세요."/>
       </div>

@@ -1,7 +1,7 @@
 import {MemberApiError, memberJson, responseData} from "../../../lib/member-api.ts";
 export type CommentTarget = "posts" | "projects";
 export type CommentVisibility = "PUBLIC" | "SECRET";
-export type Comment = {id:string;author:{id:string|null;nickname:string;handle:string|null;blogName:string|null;profileImageUrl:string|null};body:string;visibility:CommentVisibility;createdAt:string;updatedAt:string};
+export type Comment = {id:string;author:{id:string|null;nickname:string;handle:string|null;blogName:string|null;profileImageUrl:string|null};body:string;visibility:CommentVisibility;locked:boolean;createdAt:string;updatedAt:string};
 export type CommentPage = {content:Comment[];page:number;size:number;totalElements:number;totalPages:number;hasNext:boolean;hasPrevious:boolean};
 const invalid = () => new MemberApiError(0,"INVALID_RESPONSE","댓글 응답을 확인하지 못했습니다.");
 function id(value:unknown):value is string {return typeof value === "string" && /^[1-9]\d{0,18}$/.test(value) && BigInt(value)<=9223372036854775807n;}
@@ -16,32 +16,38 @@ export function commentInput(body:string,visibility:CommentVisibility) {
 }
 function object(value:unknown):Record<string,unknown> {if(typeof value!=="object"||value===null||Array.isArray(value))throw invalid();return value as Record<string,unknown>;}
 function parseItem(value:unknown):Comment {
-  const d=object(value),a=object(d.author);
-  if(!id(d.id)||!(a.id===null||id(a.id))||typeof a.nickname!=="string"||!a.nickname.trim()||!(a.handle===null||typeof a.handle==="string")||!(a.blogName===null||typeof a.blogName==="string")||!(a.profileImageUrl===undefined||a.profileImageUrl===null||typeof a.profileImageUrl==="string")||typeof d.body!=="string"||!Array.from(d.body).length||Array.from(d.body).length>2000||!["PUBLIC","SECRET"].includes(String(d.visibility))||(a.id===null&&(d.visibility!=="PUBLIC"||a.handle!==null||a.blogName!==null||a.profileImageUrl!=null))||typeof d.createdAt!=="string"||!Number.isFinite(Date.parse(d.createdAt))||typeof d.updatedAt!=="string"||!Number.isFinite(Date.parse(d.updatedAt)))throw invalid();
-  return {id:d.id,author:{id:a.id,nickname:a.nickname,handle:a.handle,blogName:a.blogName,profileImageUrl:typeof a.profileImageUrl==="string"?a.profileImageUrl:null},body:d.body,visibility:d.visibility as CommentVisibility,createdAt:d.createdAt,updatedAt:d.updatedAt};
+  const d=object(value),a=object(d.author),visibility=d.visibility,locked=d.locked;
+  if(!id(d.id)||!(a.id===null||id(a.id))||typeof a.nickname!=="string"||!a.nickname.trim()||!(a.handle===null||typeof a.handle==="string")||!(a.blogName===null||typeof a.blogName==="string")||!(a.profileImageUrl===undefined||a.profileImageUrl===null||typeof a.profileImageUrl==="string")||typeof d.body!=="string"||!Array.from(d.body).length||Array.from(d.body).length>2000||!["PUBLIC","SECRET"].includes(String(visibility))||typeof locked!=="boolean"||(locked&&(a.id!==null||visibility!=="SECRET"||d.body!=="비밀 댓글입니다."))||(visibility==="PUBLIC"&&locked)||(a.id===null&&(a.handle!==null||a.blogName!==null||a.profileImageUrl!=null))||typeof d.createdAt!=="string"||!Number.isFinite(Date.parse(d.createdAt))||typeof d.updatedAt!=="string"||!Number.isFinite(Date.parse(d.updatedAt)))throw invalid();
+  return {id:d.id,author:{id:a.id,nickname:a.nickname,handle:a.handle,blogName:a.blogName,profileImageUrl:typeof a.profileImageUrl==="string"?a.profileImageUrl:null},body:d.body,visibility:visibility as CommentVisibility,locked,createdAt:d.createdAt,updatedAt:d.updatedAt};
 }
 export function parseComment(value:unknown):Comment {return parseItem(responseData(value));}
 export function parseCommentPage(value:unknown,page:number,guest=false):CommentPage {
   const d=responseData(value);
   if(!Array.isArray(d.content)||d.page!==page||d.size!==20||!Number.isSafeInteger(d.totalElements)||Number(d.totalElements)<0||!Number.isSafeInteger(d.totalPages)||Number(d.totalPages)<0||typeof d.hasNext!=="boolean"||typeof d.hasPrevious!=="boolean")throw invalid();
   const content=d.content.map(parseItem),total=Number(d.totalElements),pages=Number(d.totalPages);
-  if(content.length>20||new Set(content.map(c=>c.id)).size!==content.length||total<content.length||pages!==Math.ceil(total/20)||d.hasPrevious!==(page>0)||d.hasNext!==(page+1<pages)||(guest&&content.some(c=>c.visibility!=="PUBLIC")))throw invalid();
+  if(content.length>20||new Set(content.map(c=>c.id)).size!==content.length||total<content.length||pages!==Math.ceil(total/20)||d.hasPrevious!==(page>0)||d.hasNext!==(page+1<pages)||(guest&&content.some(c=>c.visibility==="SECRET"&&!c.locked)))throw invalid();
   return {content,page,size:20,totalElements:total,totalPages:pages,hasNext:d.hasNext,hasPrevious:d.hasPrevious};
 }
-export function guestCommentInput(nickname:string,password:string,body:string) {
+export function guestCommentInput(nickname:string,password:string,body:string,visibility:CommentVisibility="PUBLIC") {
   const cleanNickname=nickname.trim() || "조약돌";
   const points=Array.from(password).length;
   if(!cleanNickname||Array.from(cleanNickname).length>30||/[\p{Cc}]/u.test(cleanNickname))throw new MemberApiError(400,"VALIDATION_ERROR","닉네임은 공백을 제외하고 1~30자로 입력해 주세요.");
   if(points<4||points>10||new TextEncoder().encode(password).length>256||/[\p{Cc}]/u.test(password)||/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/u.test(password))throw new MemberApiError(400,"VALIDATION_ERROR","비밀번호는 제어 문자가 없는 4~10자로 입력해 주세요.");
-  const content=commentInput(body,"PUBLIC");
-  return {nickname:cleanNickname,password,body:content.body};
+  const content=commentInput(body,visibility);
+  return {nickname:cleanNickname,password,body:content.body,visibility:content.visibility};
 }
-export async function createGuestComment(target:CommentTarget,contentId:string,input:{nickname:string;password:string;body:string},request:typeof fetch=fetch,base?:string) {
-  return parseComment(await memberJson(`${commentPath(target,contentId)}/guest`,{method:"POST",body:input},request,base));
+export async function createGuestComment(target:CommentTarget,contentId:string,input:{nickname:string;password:string;body:string;visibility?:CommentVisibility},request:typeof fetch=fetch,base?:string) {
+  const body={nickname:input.nickname,password:input.password,body:input.body,...(input.visibility==="SECRET"?{visibility:"SECRET" as const}:{})};
+  return parseComment(await memberJson(`${commentPath(target,contentId)}/guest`,{method:"POST",body},request,base));
 }
-export async function updateGuestComment(target:CommentTarget,contentId:string,commentId:string,input:{password:string;body:string},request:typeof fetch=fetch,base?:string) {
-  const body=commentInput(input.body,"PUBLIC").body;
-  return parseComment(await memberJson(`${commentPath(target,contentId,commentId)}/guest/update`,{method:"POST",body:{password:input.password,body}},request,base));
+export async function updateGuestComment(target:CommentTarget,contentId:string,commentId:string,input:{password:string;body:string;visibility?:CommentVisibility},request:typeof fetch=fetch,base?:string) {
+  const body=commentInput(input.body,input.visibility??"PUBLIC").body;
+  return parseComment(await memberJson(`${commentPath(target,contentId,commentId)}/guest/update`,{method:"POST",body:{password:input.password,body,...(input.visibility?{visibility:input.visibility}:{})}},request,base));
+}
+export async function readGuestComment(target:CommentTarget,contentId:string,commentId:string,password:string,request:typeof fetch=fetch,base?:string) {
+  const result=parseComment(await memberJson(`${commentPath(target,contentId,commentId)}/guest/read`,{method:"POST",body:{password}},request,base));
+  if(result.id!==commentId||result.author.id!==null||result.visibility!=="SECRET"||result.locked)throw invalid();
+  return result;
 }
 export async function deleteGuestComment(target:CommentTarget,contentId:string,commentId:string,password:string,request:typeof fetch=fetch,base?:string) {
   await memberJson(`${commentPath(target,contentId,commentId)}/guest/delete`,{method:"POST",body:{password}},request,base);
