@@ -110,7 +110,7 @@ export function ProjectEditor({ value, onChange, busy, visibility, blocked, exis
         <button type="button" className={styles.primary} disabled={busy} onClick={() => { setTargetVisibility(visibility); setPublishError(""); setPublishing(true); }}>발행하기</button>
       </div>
     </footer>
-    {!preview && <div className={styles.sharedBar}><div className={styles.editingSection}>{activeSection ? PROJECT_SECTIONS.find(section=>section.key===activeSection)?.label : "서식을 적용할 본문을 선택하세요"}</div><div ref={setToolbarHost} className={styles.sharedHost}/></div>}
+    {!preview && <div className={styles.sharedBar}><div ref={setToolbarHost} className={styles.sharedHost}/></div>}
     <div className={styles.layout}>
       <nav className={styles.outline} aria-label="프로젝트 작성 목차">
         <p>프로젝트 구성</p>

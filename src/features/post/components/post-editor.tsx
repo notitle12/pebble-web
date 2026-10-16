@@ -15,7 +15,7 @@ type ImageUpload={src:string;previewUrl:string};
 
 const initial = (): PostEditorValue => ({ title: "", summary: "", categoryId:null,projectId:null,boardId:null,tags:[],blocks: [createEditorBlock("HTML")] });
 
-export function PostEditor({ memberId, initialValue, onSave, busy = false, visibility = "HIDDEN", blocked = false, existingCategory, existingPost, uploadImage, initialNotice }: { memberId:string; initialValue?: PostEditorValue; onSave: (value: PostEditorValue, action:PostSaveAction) => Promise<"server"|"local">; busy?:boolean; visibility?:PostVisibility; blocked?:boolean;existingCategory?:Classification|null;existingPost?:{draft:boolean;urlKey:string;id:string};uploadImage?:(file:File,value:PostEditorValue)=>Promise<ImageUpload>;initialNotice?:string }) {
+export function PostEditor({ memberId, initialValue, onSave, busy = false, visibility = "HIDDEN", blocked = false, existingCategory, existingPost, uploadImage, initialNotice, onDirtyChange }: { memberId:string; initialValue?: PostEditorValue; onSave: (value: PostEditorValue, action:PostSaveAction) => Promise<"server"|"local">; busy?:boolean; visibility?:PostVisibility; blocked?:boolean;existingCategory?:Classification|null;existingPost?:{draft:boolean;urlKey:string;id:string};uploadImage?:(file:File,value:PostEditorValue)=>Promise<ImageUpload>;initialNotice?:string;onDirtyChange?:(dirty:boolean)=>void }) {
   const startingValue = useRef<PostEditorValue>(initialValue ?? initial());
   const [value, setValue] = useState<PostEditorValue>(() => startingValue.current);
   const [publishRevision,setPublishRevision]=useState(0);
@@ -33,6 +33,7 @@ export function PostEditor({ memberId, initialValue, onSave, busy = false, visib
   const imagePreviews = useMemo(() => Object.assign({}, ...value.blocks.map(block => block.imagePreviews ?? {})), [value.blocks]);
   const updateDocument = useCallback((blocks: PostEditorValue["blocks"]) => setValue(current => ({ ...current, blocks, thumbnailImageSrc: representativeImageSrc(blocks, current.thumbnailImageSrc) })), []);
 
+  useEffect(()=>{onDirtyChange?.(dirty);return()=>onDirtyChange?.(false);},[dirty,onDirtyChange]);
   useEffect(() => {
     const warn = (event: BeforeUnloadEvent) => { if (dirty) { event.preventDefault(); event.returnValue = ""; } };
     window.addEventListener("beforeunload", warn);
