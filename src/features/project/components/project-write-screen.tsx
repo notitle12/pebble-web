@@ -1,6 +1,7 @@
 'use client';
 import {useEffect,useRef,useState} from 'react';
 import Link from 'next/link';
+import {useRouter} from 'next/navigation';
 import {WriterLogoutBoundary} from '@/features/auth/components/writer-logout-boundary';
 import {AccountMenu} from '@/features/auth/components/account-menu';
 import {MemberGate} from '@/features/auth/components/member-gate';
@@ -16,6 +17,7 @@ import {projectImageValue,replaceProjectImageBlocks,projectImagePreviews} from '
 import {ProjectCoverPicker} from './project-cover-picker';
 import {ProjectEditor} from './project-editor';
 function Writer({member,id,onLogout}:{member:Member;id?:string;onLogout:(hasChanges:boolean,memberId:string)=>void}){
+ const router=useRouter();
  const [project,setProject]=useState<OwnProject|null>(null),[value,setValue]=useState<ProjectEditorValue>(emptyProject),[loading,setLoading]=useState(true),[error,setError]=useState(''),[busy,setBusy]=useState(false),[saved,setSaved]=useState(''),[attempt,setAttempt]=useState(0),[cover,setCover]=useState<File|null>(null),[coverPreview,setCoverPreview]=useState(''),[imagePreviews,setImagePreviews]=useState<Record<string,string>>({});
  const saving=useRef(false),mounted=useRef(false),pending=useRef(createPendingImages()),dirty=useRef(false),projectRef=useRef<OwnProject|null>(null),draftSlot=useRef(id);
  const current=()=>mounted.current&&userSession.snapshot().phase==='ready'&&userSession.snapshot().member?.id===member.id;
@@ -58,7 +60,8 @@ function Writer({member,id,onLogout}:{member:Member;id?:string;onLogout:(hasChan
    const next=Object.keys(body).length?parseOwnProject(await userSession.request(`/projects/${target.id}`,{method:'PATCH',body}),member.id,target.id):parseOwnProject(await userSession.request(`/projects/${target.id}`),member.id,target.id);
    if(!current())return;
    projectRef.current=next;setProject(next);setValue(projectEditorValue(next));setCover(null);setImagePreviews(projectImagePreviews(next.id,next.media));dirty.current=false;setSaved(visibility==='PUBLIC'?'프로젝트를 발행했어요.':'비공개로 발행했어요.');
-   await projectDraft('remove',member.id,draftSlot.current).catch(()=>{});draftSlot.current=next.id;if(!id)window.history.replaceState(null,'',`/projects/${next.id}/edit`);
+   await projectDraft('remove',member.id,draftSlot.current).catch(()=>{});draftSlot.current=next.id;
+   if(current())router.replace(next.visibilityStatus==='PUBLIC'&&!next.isBlocked?`/projects/${next.id}`:`/projects/${next.id}/view`);
   }catch(e){if(current())setError(projectWriteFailure(e));throw e;}finally{saving.current=false;if(mounted.current)setBusy(false);}
  }
  if(loading)return <p role="status">프로젝트를 불러오고 있어요.</p>;
