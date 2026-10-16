@@ -1,21 +1,22 @@
+import {loadBlogPageData} from "@/features/blog-tools/api/blog-page";
 import {BlogSidebar} from "@/features/blog-tools/components/blog-sidebar";
-import {getPublicBoards,getBoardPosts,flattenBoards,type Board} from "@/features/board/api/boards";
+import {flattenBoards,type Board} from "@/features/board/api/boards";
 import {BlogOwnerActions} from "@/features/auth/components/blog-owner-actions";
 import { notFound } from "next/navigation";
 import { SiteHeader } from "@/components/site-header";
 import { GuestApiError } from "@/lib/public-api";
 import { parsePage,validId } from "@/lib/list-query";
-import { blogHref, getPublicBlogPosts, getPublicBlogProfile, type PublicBlogProfile } from "@/features/post/api/public-blog";
+import { blogHref, getPublicBlogPosts, type PublicBlogProfile } from "@/features/post/api/public-blog";
 import {BlogProfileHeader} from "@/features/blog-tools/components/blog-profile-header";
-import {getPublicMemberProjects,type ProjectPage} from "@/features/project/api/project-list";
+import {type ProjectPage} from "@/features/project/api/project-list";
 import { loadPopularPosts } from "@/features/post/api/popular-posts";
 import { BlogPosts } from "@/features/post/components/blog-posts";
 import { BlogProjects } from "@/features/project/components/blog-projects";
 import type { PostPage } from "@/features/post/api/post-list";
 import { BlogVisitCount } from "@/features/blog-tools/components/blog-visit-count";
 import { PublicBlogLinks } from "@/features/blog-tools/components/public-blog-links";
-import { getPublicBlogLinks, type BlogLinks } from "@/features/blog-tools/api/blog-tools";
-import { getPublicBlogHome, visibleHomeDataLoads, type PublicBlogHome } from "@/features/blog-home/api/blog-home";
+import { type BlogLinks } from "@/features/blog-tools/api/blog-tools";
+import { visibleHomeDataLoads, type PublicBlogHome } from "@/features/blog-home/api/blog-home";
 import { BlogHomeView } from "@/features/blog-home/components/blog-home-view";
 import { getPublicProject, type ProjectDetail } from "@/features/project/api/project-list";
 
@@ -47,19 +48,7 @@ export default async function PublicBlogPage({ params, searchParams }: {
 
   let result:PostPage|undefined;let sidebarProjects:ProjectPage|undefined;let projectError=false;let projectsResult:ProjectPage|undefined;let projectsError=false;let author:PublicBlogProfile|undefined;let home:PublicBlogHome|null=null;let homeError=false;let homeProjects:ProjectDetail[]=[];let homeProjectErrors=0;let homePosts:PostPage|null=null;let homePostsFailed=false;let boards:Board[]=[];let boardError=false;let links:BlogLinks|null=null;let linksError=false;
   try {
-    author = await getPublicBlogProfile(handle);
-    try { links=await getPublicBlogLinks(handle); } catch { linksError=true; }
-    if(homeView){try { home=await getPublicBlogHome(handle); } catch { homeError=true; }}
-    try { boards = await getPublicBoards(author.id); }
-    catch (error) { if (selected) throw error; boardError = true; }
-    if (selected && !flattenBoards(boards).some(board => board.id === selected)) throw new GuestApiError("not-found");
-    try {
-      sidebarProjects=await getPublicMemberProjects(author.id,0);
-    } catch {projectError=true;}
-    if(projectView){
-      try { projectsResult=await getPublicMemberProjects(author.id,page); } catch { projectsError=true; }
-    }
-    result = homeView || projectView ? undefined : selected ? await getBoardPosts(author.id, selected, page) : await getPublicBlogPosts(handle, page, undefined, fetch, q, undefined);
+    ({author,links,linksError,boards,boardError,sidebarProjects,projectError,home,homeError,projectsResult,projectsError,result}=await loadBlogPageData({handle,page,homeView,projectView,selected,q}));
     if(homeView&&home){ const {recentPosts:showPosts,featuredProjects:showProjects}=visibleHomeDataLoads(home); const [postResults,projectResults]=await Promise.all([Promise.allSettled(showPosts?[loadPopularPosts(page=>getPublicBlogPosts(handle,page))]:[]),Promise.allSettled(showProjects?home.featuredProjectIds.map(id=>getPublicProject(id).then(project=>{if(project.owner.id!==author!.id)throw new GuestApiError("response");return project})):[])]); const postResult=postResults[0]; if(postResult?.status==="fulfilled")homePosts=postResult.value; else if(postResult)homePostsFailed=true; homeProjects=projectResults.flatMap(item=>item.status==="fulfilled"?[item.value]:[]); homeProjectErrors=projectResults.filter(item=>item.status==="rejected").length; }
   } catch (error) {
     if (error instanceof GuestApiError && error.kind === "not-found") notFound();
