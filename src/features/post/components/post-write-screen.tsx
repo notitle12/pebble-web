@@ -2,6 +2,7 @@
 import {useCallback,useEffect,useRef,useState} from "react";
 import {useRouter} from "next/navigation";
 import Link from "next/link";
+import {WriterLogoutBoundary} from "@/features/auth/components/writer-logout-boundary";
 import {AccountMenu} from "@/features/auth/components/account-menu";
 import {MemberGate} from "@/features/auth/components/member-gate";
 import {userSession,type Member} from "@/features/auth/user-session";
@@ -38,10 +39,11 @@ function parseImageUpload(value:unknown,postIdValue:string):{id:string;src:strin
   return {id:data.id,src:imageEndpoint(postIdValue,data.id),url:safeMediaUrl(data.url)!};
 }
 
-function Writer({member,id}:{member:Member;id?:string}){
+function Writer({member,id,onLogout}:{member:Member;id?:string;onLogout:(hasChanges:boolean,memberId:string)=>void}){
   const router=useRouter();
   const[post,setPost]=useState<OwnPost|null>(null),[loading,setLoading]=useState(!!id),[error,setError]=useState(""),[busy,setBusy]=useState(false),[saved,setSaved]=useState(""),[restoredValue,setRestoredValue]=useState<PostEditorValue|null>(null),[restoreNotice,setRestoreNotice]=useState(""),[imagePreviews,setImagePreviews]=useState<Record<string,string>>({});
-  const saving=useRef(false),restored=useRef(false);
+  const saving=useRef(false),restored=useRef(false),unsaved=useRef(false);
+  const onDirtyChange=useCallback((dirty:boolean)=>{unsaved.current=dirty;},[]);
   const pendingImages=useRef(createPendingImages());
   useEffect(()=>()=>pendingImages.current.dispose(),[]);
   useEffect(()=>{if(!id)return;let live=true;setLoading(true);void Promise.resolve().then(()=>userSession.request(`/posts/${postId(id)}`)).then(async value=>{if(!live)return;const next=parseOwnPost(value);if(next.author.id!==member.id)throw new Error("본인 글만 수정할 수 있습니다.");setPost(next);
@@ -101,8 +103,8 @@ function Writer({member,id}:{member:Member;id?:string}){
   if(id&&!post)return <section className="list-state"><h2>글을 열지 못했어요</h2><p role="alert">{error}</p><Link className="button" href="/me/posts">내 글로 돌아가기</Link></section>;
   const baseline=post?editorValueFromPost({...post,imagePreviews}):undefined;
   const editorValue=restoredValue?{...restoredValue,blocks:restoredValue.blocks.map(block=>({...block,imagePreviews:{...block.imagePreviews,...imagePreviews}}))}:baseline;
-  return <><div className="writer-identity"><span>{member.nickname}</span><AccountMenu member={member}/></div><h1 className="writer-screen-heading writer-visually-hidden">{post?(post.draft?"임시 글 수정":"게시글 수정"):"새 게시글"}</h1><div className="writer-status writer-visually-hidden"><Link href="/me/posts">← 내 글</Link><p>{post?.draft?"비공개 임시 글을 작성하고 있습니다.":post?.visibilityStatus==="PUBLIC"?"공개 글을 수정하고 있습니다. 임시저장은 이 브라우저에 보관됩니다.":"글 제목과 본문을 작성하세요."}</p>{post?.isBlocked&&<p role="alert">관리자에 의해 차단된 글입니다. 작성자가 차단을 해제할 수 없습니다.</p>}</div>{error&&<p className="table-editor-error" role="alert">{error}</p>}{saved&&<p className="writer-visually-hidden" role="status">{saved}</p>}{post?.visibilityStatus==="PUBLIC"&&!post.isBlocked&&<Link className="button writer-public-link" href={`/blogs/${post.author.handle}/posts/${post.urlKey}`} prefetch={false}>공개 글 확인</Link>}
-    <PostEditor key={`${member.id}:${id??"new"}`} memberId={member.id} initialValue={editorValue} initialNotice={restoreNotice} busy={busy} existingCategory={post?.category} existingPost={post?{id:post.id,draft:post.draft,urlKey:post.urlKey}:undefined} visibility={post?.visibilityStatus??"HIDDEN"} blocked={post?.isBlocked??false} uploadImage={uploadImage} onSave={onSave}/>
+  return <><div className="writer-identity"><span>{member.nickname}</span><AccountMenu member={member} logoutDisabled={busy} onLogout={()=>onLogout(unsaved.current,member.id)}/></div><h1 className="writer-screen-heading writer-visually-hidden">{post?(post.draft?"임시 글 수정":"게시글 수정"):"새 게시글"}</h1><div className="writer-status writer-visually-hidden"><Link href="/me/posts">← 내 글</Link><p>{post?.draft?"비공개 임시 글을 작성하고 있습니다.":post?.visibilityStatus==="PUBLIC"?"공개 글을 수정하고 있습니다. 임시저장은 이 브라우저에 보관됩니다.":"글 제목과 본문을 작성하세요."}</p>{post?.isBlocked&&<p role="alert">관리자에 의해 차단된 글입니다. 작성자가 차단을 해제할 수 없습니다.</p>}</div>{error&&<p className="table-editor-error" role="alert">{error}</p>}{saved&&<p className="writer-visually-hidden" role="status">{saved}</p>}{post?.visibilityStatus==="PUBLIC"&&!post.isBlocked&&<Link className="button writer-public-link" href={`/blogs/${post.author.handle}/posts/${post.urlKey}`} prefetch={false}>공개 글 확인</Link>}
+    <PostEditor key={`${member.id}:${id??"new"}`} memberId={member.id} initialValue={editorValue} initialNotice={restoreNotice} onDirtyChange={onDirtyChange} busy={busy} existingCategory={post?.category} existingPost={post?{id:post.id,draft:post.draft,urlKey:post.urlKey}:undefined} visibility={post?.visibilityStatus??"HIDDEN"} blocked={post?.isBlocked??false} uploadImage={uploadImage} onSave={onSave}/>
   </>;
 }
-export function PostWriteScreen({id}:{id?:string}){return <MemberGate profile preserveOnExpiry>{member=><Writer key={`${member.id}:${id??"new"}`} member={member} id={id}/>}</MemberGate>;}
+export function PostWriteScreen({id}:{id?:string}){return <WriterLogoutBoundary>{onLogout=><MemberGate profile preserveOnExpiry>{member=><Writer key={`${member.id}:${id??"new"}`} member={member} id={id} onLogout={onLogout}/>}</MemberGate>}</WriterLogoutBoundary>;}
