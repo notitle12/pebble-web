@@ -48,16 +48,16 @@ test("직접 입력 탈퇴는 인증된 본인 요청만 보내고 완료 시 �
   if(url.pathname.endsWith('/members/me'))return json(member);
   assert.equal(url.pathname,'/api/v1/members/me/withdrawal');
   assert.equal(init.method,'POST');assert.equal(init.credentials,'include');assert.equal(init.headers.Authorization,'Bearer temporary');
-  assert.deepEqual(JSON.parse(init.body),{confirmation:'Pebble를 삭제하는데 동의합니다.'});
+  assert.deepEqual(JSON.parse(init.body),{confirmation:'블로그를 삭제하는데 동의합니다.'});
   return new Response(JSON.stringify({data:{deleted:true}}),{status:200,headers:{'Content-Type':'application/json'}});
  },action=>action(),base,()=>announced++);
- await session.ensure();await session.withdraw('Pebble를 삭제하는데 동의합니다.','1');
+ await session.ensure();await session.withdraw('블로그를 삭제하는데 동의합니다.','1');
  assert.equal(session.snapshot().phase,'guest');assert.equal(session.snapshot().member,null);assert.equal(announced,1);
  assert.equal(calls.filter(([p])=>p.includes('naver')).length,0);
 });
 
-test("확인 문구는 블로그명 또는 미생성 계정 문구를 사용한다",()=>{
- assert.equal(withdrawalConfirmation('Pebble'),'Pebble를 삭제하는데 동의합니다.');
+test("확인 문구는 블로그 유무에 따라 고정 문구를 사용한다",()=>{
+ assert.equal(withdrawalConfirmation('Pebble'),'블로그를 삭제하는데 동의합니다.');
  assert.equal(withdrawalConfirmation(null),'내 계정을 삭제하는데 동의합니다.');
  assert.equal(withdrawalConfirmation('  '),'내 계정을 삭제하는데 동의합니다.');
 });
@@ -77,7 +77,7 @@ test("늦은 직접 탈퇴 응답이 다른 탭의 변경된 세션을 지우지
  let release;
  const pending=new Promise(resolve=>{release=resolve;});
  const session=createUserSession(async url=>url.pathname.endsWith('/refresh')?grant():url.pathname.endsWith('/members/me')?json(member):pending,action=>action(),base);
- await session.ensure();const deleting=session.withdraw('기록를 삭제하는데 동의합니다.','1');
+ await session.ensure();const deleting=session.withdraw('블로그를 삭제하는데 동의합니다.','1');
  // 인증과 잠금 진입을 마친 뒤 서버 응답을 기다리는 상태를 재현한다.
  await Promise.resolve();await Promise.resolve();session.invalidate();
  release(json({deleted:true}));await assert.rejects(deleting,error=>error.code==='SESSION_CHANGED');
