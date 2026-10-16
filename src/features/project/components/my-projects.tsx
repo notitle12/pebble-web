@@ -33,7 +33,7 @@ function Projects({member}:{member:Member}) {
    const result=parseOwnProject(await userSession.request(`/projects/${project.id}`,{method:"PATCH",body:{visibilityStatus:next}}),member.id,project.id);
    if(result.visibilityStatus!==next)throw new MemberApiError(0,"INVALID_RESPONSE","공개 상태 저장 결과를 확인하지 못했어요.");
    if(current()){
-    setNotice(next==="PUBLIC"?"프로젝트를 공개했어요.":"프로젝트를 비공개로 바꿨어요.");
+
     if(visibility)refresh();
    }
   } catch(e) {
