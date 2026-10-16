@@ -33,9 +33,9 @@ export function ContentManagement({kind,id,title,memberId,position,total,onChang
     {kind==="posts"&&position!==undefined&&total!==undefined&&<form onSubmit={e=>{e.preventDefault();void change(false);}}><label>글 순서 (1~{total})<input type="number" min="1" max={total} step="1" value={order} onChange={e=>setOrder(e.target.value)} disabled={busy||uncertain}/></label><button className="button" disabled={busy||uncertain||order===String(position+1)}>순서 저장</button><p>공개·비공개를 포함한 내 전체 글의 순서입니다.</p></form>}
     <button className="button" disabled={busy||uncertain} onClick={()=>setConfirm(true)}>삭제</button>
     <dialog ref={dialog} className={styles.dialog} aria-labelledby={titleId} onCancel={e=>{if(busy)e.preventDefault();else setConfirm(false);}} onClose={()=>setConfirm(false)}>
-     <h2 id={titleId}>삭제하시겠어요?</h2><p>“{title}”을 삭제할까요? 삭제한 콘텐츠는 복구할 수 없습니다.{kind==="projects"&&" 연결된 글은 유지되며 프로젝트 연결만 해제됩니다."}</p>
+     <h2 id={titleId}>삭제하시겠습니까?</h2><p>“{title}”을 삭제합니다. 삭제한 콘텐츠는 복구할 수 없습니다.{kind==="projects"&&" 연결된 글은 유지되며 프로젝트 연결만 해제됩니다."}</p>
      {message&&<p role="alert">{message}</p>}{uncertain&&<button className="button" onClick={()=>{setConfirm(false);onChanged();}}>목록 새로 불러오기</button>}
-     <div className={styles.actions}><button className="button" autoFocus disabled={busy} onClick={()=>setConfirm(false)}>취소</button><button className="button" disabled={busy||uncertain} onClick={()=>void change(true)}>{busy?"처리 중…":"삭제 확정"}</button></div>
+     <div className={styles.actions}><button className="button" autoFocus disabled={busy} onClick={()=>setConfirm(false)}>취소</button><button className="button" disabled={busy||uncertain} onClick={()=>void change(true)}>{busy?"처리 중…":"삭제"}</button></div>
     </dialog>
     {!confirm&&message&&<p role="alert">{message}</p>}{!confirm&&uncertain&&<button className="button" onClick={onChanged}>목록 새로 불러오기</button>}
   </div>;
