@@ -1,8 +1,9 @@
+import {LoadingIndicator} from "@/components/loading-state";
 import {LikeCount} from "@/features/like/components/like-count";
 import Link from "next/link";
 import { ProjectCover } from "./project-cover";
 import { getPublicProjects, projectPageHref, projectHref, type ProjectQuery } from "../api/project-list";
-export function ProjectsLoading() { return <section className="list-state" role="status">프로젝트를 불러오고 있어요.</section>; }
+export function ProjectsLoading() { return <LoadingIndicator label="프로젝트를 불러오는 중"/>; }
 const format = new Intl.DateTimeFormat("ko-KR",{dateStyle:"long",timeZone:"Asia/Seoul"});
 export async function ProjectList({query}: {query:ProjectQuery}) {
   let result;

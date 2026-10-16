@@ -126,3 +126,6 @@ html[data-theme=dark] .project-cover-link{background:#1c2b22}
 html[data-theme=dark] .detail-shell .related-posts{background:var(--surface);color:var(--text);border-color:var(--line);box-shadow:none}
 html[data-theme=dark] .detail-shell .related-posts .post-list{background:transparent;border-color:var(--line)}
 html[data-theme=dark] .detail-shell .related-posts .post-list>li+li{border-color:var(--line)}
+
+html[data-theme=dark] .guest-comment-identity input,html[data-theme=dark] .guest-secret-read input{background:var(--background);color:var(--text);border-color:var(--line)}
+html[data-theme=dark] .guest-comment-identity input::placeholder{color:var(--muted)}
