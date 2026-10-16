@@ -1,5 +1,5 @@
 "use client";
-import Link from "next/link";
+import {IntentLink as Link} from "@/components/intent-link";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { SidebarToggle } from "../../blog-home/components/sidebar-toggle";
 import { BlogMenuIcon } from "./blog-menu-icon";

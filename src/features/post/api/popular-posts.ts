@@ -11,10 +11,14 @@ export function comparePopularPosts(a: PostSummary, b: PostSummary): number {
 export async function loadPopularPosts<P extends PostPage>(loadPage: (page: number) => Promise<P>, active = () => true): Promise<P> {
   const first = await loadPage(0);
   let top = [...first.content].sort(comparePopularPosts).slice(0, 3);
-  for (let page = 1; page < first.totalPages; page += 1) {
+  for (let page = 1; page < first.totalPages; page += 3) {
     if (!active()) throw new Error("인기 글 조회가 취소됐어요.");
-    const next = await loadPage(page);
-    top = [...new Map([...top, ...next.content].map(post => [post.id, post])).values()].sort(comparePopularPosts).slice(0, 3);
+    const pages=await Promise.all(Array.from({length:Math.min(3,first.totalPages-page)},(_,offset)=>{
+      if (!active()) throw new Error("인기 글 조회가 취소됐어요.");
+      return loadPage(page+offset);
+    }));
+    if (!active()) throw new Error("인기 글 조회가 취소됐어요.");
+    top = [...new Map([...top, ...pages.flatMap(result=>result.content)].map(post => [post.id, post])).values()].sort(comparePopularPosts).slice(0, 3);
   }
   return { ...first, content: top };
 }
