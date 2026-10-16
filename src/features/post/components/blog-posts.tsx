@@ -26,8 +26,8 @@ export function BlogPosts({handle,authorId,initial,page=0,boardId,q,placement,va
   return()=>{live=false;};
  },[owner,session,path,authorId,handle,page,boardId,q,placement,attempt,popular]);
  const current=matchesOwnerBlogSnapshot(snapshot,session,path,authorId,handle);
- const data=owner?(current?snapshot!.data:null):initial;
- if(owner&&!current)return <p role="status">내 블로그 글을 불러오고 있어요.</p>;
+ const data=owner?(current?snapshot!.data:initial):initial;
+ if(owner&&!current&&!initial)return <p role="status">내 블로그 글을 불러오고 있어요.</p>;
  if(owner&&snapshot?.error)return <div className="list-state"><p role="alert">{snapshot.error}</p><button className="button" onClick={()=>{setSnapshot(null);setAttempt(n=>n+1);}}>다시 불러오기</button></div>;
  const href=(next:number)=>blogHref(handle,next,boardId,q,placement);
  if(variant==='recent'||variant==='popular'){
