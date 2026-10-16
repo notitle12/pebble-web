@@ -105,6 +105,20 @@ export function createUserSession(request: typeof fetch = fetch, exclusive: Excl
       }).catch(error=>{if(epoch===generation){clear();publish({phase:"error",member:null,message:error instanceof Error?error.message:"탈퇴 결과를 확인하지 못했습니다."});announce();}throw error;});
       return withdrawalCompletion;
     },
+    async withdraw(confirmation:string,memberId:string){
+      const epoch=generation;
+      const same=()=>epoch===generation&&state.phase==="ready"&&state.member?.id===memberId;
+      if(!same())throw new MemberApiError(401,"SESSION_CHANGED","로그인 상태가 변경되었습니다.");
+      const bearer=await token();
+      return exclusive(async()=>{
+        if(!same())throw new MemberApiError(401,"SESSION_CHANGED","로그인 상태가 변경되었습니다.");
+        const data=responseData(await raw("/members/me/withdrawal",{method:"POST",token:bearer,cookies:true,body:{confirmation}}));
+        if(!same())throw new MemberApiError(401,"SESSION_CHANGED","로그인 상태가 변경되었습니다.");
+        if(data.deleted!==true)throw new MemberApiError(0,"INVALID_RESPONSE","탈퇴 결과를 확인하지 못했습니다. 새로고침해 계정 상태를 확인해 주세요.");
+        clear();publish({phase:"guest",member:null,message:"회원 탈퇴가 완료되었습니다."});announce();
+        return true;
+      });
+    },
     async reloadMember(){const epoch=generation;const member=parseMember(await this.request("/members/me"));if(epoch===generation)publish({phase:"ready",member,message:""});},
     async logout(){clear();publish({phase:"loading",member:null,message:""});announce();const epoch=generation;
       try{await exclusive(()=>raw("/auth/logout",{method:"POST",cookies:true}));if(epoch===generation)publish({phase:"guest",member:null,message:"로그아웃했습니다."});}

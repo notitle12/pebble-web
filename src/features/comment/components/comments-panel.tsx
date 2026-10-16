@@ -137,7 +137,7 @@ function Comments({target,contentId,ownerId,session}:{target:CommentTarget;conte
       <div className="comment-composer-card">
         <div className="guest-comment-header"><strong className="comment-composer-name">댓글 남기기</strong><div className="guest-comment-identity">
           <label htmlFor={`${uid}-guest-nickname`}><span className="sr-only">닉네임</span><input id={`${uid}-guest-nickname`} value={guestNickname} onChange={e=>setGuestNickname(e.target.value)} placeholder="조약돌" autoComplete="nickname" disabled={busy}/></label>
-          <label htmlFor={`${uid}-guest-password`}><span className="sr-only">댓글 비밀번호</span><input id={`${uid}-guest-password`} type="password" autoComplete="new-password" placeholder="4~10자" value={guestPassword} onChange={e=>setGuestPassword(e.target.value)} disabled={busy}/></label>
+          <label htmlFor={`${uid}-guest-password`}><span className="sr-only">댓글 비밀번호</span><input id={`${uid}-guest-password`} type="password" autoComplete="new-password" placeholder="비밀번호" value={guestPassword} onChange={e=>setGuestPassword(e.target.value)} disabled={busy}/></label>
         </div></div>
         <label className="sr-only" htmlFor={`${uid}-guest-body`}>댓글 남기기</label><textarea id={`${uid}-guest-body`} aria-describedby={`${uid}-guest-secret-help`} value={body} onChange={e=>setBody(e.target.value)} rows={3} disabled={busy} placeholder="이 기록에 대한 생각을 남겨주세요."/>
       </div>
