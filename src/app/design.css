@@ -642,6 +642,9 @@ body>.site-header,body>.site-footer{flex-shrink:0}
 .blog-home-post-copy .blog-home-tags>span{white-space:normal;overflow-wrap:anywhere}
 .blog-home-post-copy>.blog-home-post-meta{display:flex;flex-wrap:wrap;align-items:baseline;margin-top:auto;line-height:1.2}
 .blog-home-post-meta time{margin:0;line-height:inherit}
+.blog-home-post-meta time,.blog-home-post-likes{white-space:nowrap}
+.blog-home-post-meta .blog-home-tags{gap:4px 6px;min-width:0;align-items:baseline}
+.blog-home-post-meta .blog-home-tags>span{padding:0;background:transparent;color:var(--muted);font:inherit;border-radius:0;line-height:inherit}
 @media(max-width:640px){.blog-home-post-copy{gap:12px}.blog-home-posts a{grid-template-columns:minmax(0,1fr) min(38%,144px)}.blog-home-posts a>img,.blog-home-posts .blog-post-placeholder{min-height:114px}}
 @media(max-width:760px){.detail-shell .post-detail .like-panel{padding:28px 0 8px;border-radius:0}}
 
@@ -653,3 +656,13 @@ body>.site-header,body>.site-footer{flex-shrink:0}
 
 .projects-shell .content-panel>.project-grid{margin-top:24px;gap:40px 32px}
 @media(max-width:680px){.projects-shell .content-panel>.project-grid{row-gap:32px}}
+
+
+/* Guest comments use the member composer layout with a compact identity row. */
+.comment-composer.guest-comment-composer{padding:0;border:0;background:transparent}
+.guest-comment-composer .comment-composer-card{min-width:0}
+.guest-comment-composer .guest-comment-header{margin-bottom:9px}
+.guest-comment-composer .comment-composer-card textarea{margin-top:0}
+.guest-comment-composer .comment-composer-tools{grid-column:2}
+.guest-secret-read{max-width:520px}
+@media(max-width:480px){.guest-comment-composer{grid-template-columns:32px minmax(0,1fr)}.guest-comment-composer .guest-comment-header{gap:8px}.guest-comment-composer .guest-comment-identity{gap:6px}.guest-comment-composer .guest-comment-identity input{padding-inline:7px;font-size:13px}}

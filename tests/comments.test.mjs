@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { MemberApiError } from "../src/lib/member-api.ts";
-import { commentFailure, commentInput, commentPath, parseComment, parseCommentPage, readComments, guestCommentInput, createGuestComment, updateGuestComment, deleteGuestComment } from "../src/features/comment/api/comments.ts";
+import { commentFailure, commentInput, commentPath, parseComment, parseCommentPage, readComments, guestCommentInput, createGuestComment, updateGuestComment, deleteGuestComment, readGuestComment } from "../src/features/comment/api/comments.ts";
 
-const item=(overrides={})=>({id:"1",author:{id:"2",nickname:"N",handle:"writer",blogName:"Blog"},body:"댓글",visibility:"PUBLIC",createdAt:"2026-01-01T00:00:00Z",updatedAt:"2026-01-01T00:00:00Z",...overrides});
+const item=(overrides={})=>({id:"1",author:{id:"2",nickname:"N",handle:"writer",blogName:"Blog"},body:"댓글",visibility:"PUBLIC",locked:false,createdAt:"2026-01-01T00:00:00Z",updatedAt:"2026-01-01T00:00:00Z",...overrides});
 const guestItem=(overrides={})=>item({author:{id:null,nickname:"방문자",handle:null,blogName:null,profileImageUrl:null},...overrides});
 const page=(content=[],overrides={})=>({content,page:0,size:20,totalElements:content.length,totalPages:Math.ceil(content.length/20),hasNext:false,hasPrevious:false,...overrides});
 const expectCode=(fn,code)=>assert.throws(fn,error=>error instanceof MemberApiError&&error.code===code);
@@ -22,12 +22,17 @@ test("댓글 입력은 Unicode 코드포인트 2,000자 경계와 빈 값·NUL·
   expectCode(()=>commentInput("text","PRIVATE"),"VALIDATION_ERROR");
 });
 
-test("댓글 응답은 공개 범위, nullable author handle, Guest 비밀글 차단을 검증한다",()=>{
+test("댓글 응답은 공개 범위, 잠금 상태, nullable author handle을 검증한다",()=>{
   assert.equal(parseComment({data:item({visibility:"SECRET",author:{...item().author,handle:null}})}).author.handle,null);
   assert.equal(parseComment({data:item({visibility:"PUBLIC"})}).visibility,"PUBLIC");
-  assert.equal(parseComment({data:item({visibility:"SECRET"})}).visibility,"SECRET");
+  assert.equal(parseComment({data:item({visibility:"SECRET"})}).locked,false);
+  assert.equal(parseComment({data:guestItem({visibility:"SECRET",locked:true,body:"비밀 댓글입니다."})}).locked,true);
+  assert.throws(()=>parseComment({data:item({locked:undefined})}));
+  assert.throws(()=>parseComment({data:item({visibility:"PUBLIC",locked:true,body:"비밀 댓글입니다."})}));
+  assert.throws(()=>parseComment({data:item({visibility:"SECRET",locked:true,body:"유출된 비밀 내용"})}));
   assert.throws(()=>parseComment({data:item({visibility:"PRIVATE"})}));
   expectCode(()=>parseCommentPage({data:page([item({visibility:"SECRET"})])},0,true),"INVALID_RESPONSE");
+  assert.equal(parseCommentPage({data:page([item({author:{id:null,nickname:"비회원",handle:null,blogName:null,profileImageUrl:null},visibility:"SECRET",locked:true,body:"비밀 댓글입니다."})])},0,true).content[0].locked,true);
   assert.equal(parseCommentPage({data:page([item()])},0,true).content.length,1);
 });
 
@@ -70,19 +75,22 @@ test("댓글 실패별 안내 문구를 반환한다",()=>{
 });
 
 test("비회원 댓글 입력은 닉네임·코드포인트·UTF-8 비밀번호와 공개 본문을 검증한다",()=>{
- assert.deepEqual(guestCommentInput("  ","1234","본문"),{nickname:"조약돌",password:"1234",body:"본문"});
+ assert.deepEqual(guestCommentInput("  ","1234","본문"),{nickname:"조약돌",password:"1234",body:"본문",visibility:"PUBLIC"});
  assert.equal(guestCommentInput("","1234567890","본문").password,"1234567890");
  assert.throws(()=>guestCommentInput("","12345678901","본문"));
  assert.equal("privacyAccepted" in guestCommentInput("","1234","본문"),false);
  assert.equal(guestCommentInput("방문자","1234","본문").password,"1234");
  assert.equal("ageConfirmed" in guestCommentInput("방문자","1234","본문"),false);
- assert.deepEqual(guestCommentInput("  방문자  ","😀1234567","안녕하세요"),{nickname:"방문자",password:"😀1234567",body:"안녕하세요"});
+ assert.deepEqual(guestCommentInput("  방문자  ","😀1234567","안녕하세요"),{nickname:"방문자",password:"😀1234567",body:"안녕하세요",visibility:"PUBLIC"});
+ assert.equal(guestCommentInput("","pass","비밀","SECRET").visibility,"SECRET");
  for(const [nickname,password,body] of [["이름".repeat(16),"12345678","hi"],["bad\nname","12345678","hi"],["방문자","123","hi"],["방문자","😀".repeat(11),"hi"],["방문자","1234\n5678","hi"],["방문자","1234567\ud800","hi"],["방문자","12345678"," "]])assert.throws(()=>guestCommentInput(nickname,password,body));
 });
 
-test("비회원 댓글 author는 id null인 공개 author만 허용한다",()=>{
+test("비회원 author는 id null이며 비밀 댓글 목록은 잠금 placeholder만 허용한다",()=>{
  const parsed=parseComment({data:guestItem()});assert.equal(parsed.author.id,null);assert.equal(parsed.author.nickname,"방문자");
- assert.throws(()=>parseComment({data:guestItem({visibility:"SECRET"})}));
+ assert.equal(parseComment({data:guestItem({visibility:"SECRET",locked:true,body:"비밀 댓글입니다."})}).locked,true);
+ assert.equal(parseComment({data:guestItem({visibility:"SECRET",body:"나만 아는 비밀"})}).body,"나만 아는 비밀");
+ assert.throws(()=>parseComment({data:guestItem({visibility:"SECRET",locked:true,body:"비밀이 새어나옴"})}));
  assert.throws(()=>parseComment({data:guestItem({author:{id:null,nickname:"방문자",handle:"h",blogName:null,profileImageUrl:null}})}));
 });
 
@@ -95,10 +103,29 @@ test("비회원 댓글 API는 credential/auth 없이 공개 경로와 약속한 
  await deleteGuestComment("projects","2","4","pass1234",async(url,init)=>{calls.push({url:String(url),init});return new Response(null,{status:204});},"https://api.example/api/v1");
  assert.deepEqual(calls.map(c=>new URL(c.url).pathname),["/api/v1/posts/1/comments/guest","/api/v1/posts/1/comments/3/guest/update","/api/v1/projects/2/comments/4/guest/delete"]);
  for(const call of calls){assert.equal(call.init.credentials,"omit");assert.equal(call.init.headers.Authorization,undefined);}
- assert.deepEqual(JSON.parse(calls[0].init.body),payload);assert.deepEqual(JSON.parse(calls[1].init.body),{password:"pass1234",body:"수정"});assert.deepEqual(JSON.parse(calls[2].init.body),{password:"pass1234"});
+ assert.deepEqual(JSON.parse(calls[0].init.body),{nickname:payload.nickname,password:payload.password,body:payload.body});assert.deepEqual(JSON.parse(calls[1].init.body),{password:"pass1234",body:"수정"});assert.deepEqual(JSON.parse(calls[2].init.body),{password:"pass1234"});
+});
+
+test("비회원 비밀 댓글은 공개 생성 기본값, 선택적 SECRET, 수정 시 공개 범위 생략, password read를 보낸다",async()=>{
+ const response=(data)=>new Response(JSON.stringify({data}),{status:200,headers:{"content-type":"application/json"}});
+ const secret=guestItem({visibility:"SECRET",locked:false,body:"내 비밀 댓글"});const calls=[];
+ const fetcher=async(url,init)=>{calls.push({url:String(url),init});return response(secret);};
+ await createGuestComment("posts","1",guestCommentInput("","1234","내 비밀 댓글","SECRET"),fetcher,"https://api.example/api/v1");
+ await updateGuestComment("posts","1","1",{password:"1234",body:"수정 내용"},fetcher,"https://api.example/api/v1");
+ await readGuestComment("posts","1","1","1234",fetcher,"https://api.example/api/v1");
+ assert.deepEqual(calls.map(c=>new URL(c.url).pathname),["/api/v1/posts/1/comments/guest","/api/v1/posts/1/comments/1/guest/update","/api/v1/posts/1/comments/1/guest/read"]);
+ assert.deepEqual(JSON.parse(calls[0].init.body),{nickname:"조약돌",password:"1234",body:"내 비밀 댓글",visibility:"SECRET"});
+ assert.deepEqual(JSON.parse(calls[1].init.body),{password:"1234",body:"수정 내용"});
+ assert.deepEqual(JSON.parse(calls[2].init.body),{password:"1234"});
+ for(const call of calls){assert.equal(call.init.credentials,"omit");assert.equal(call.init.headers.Authorization,undefined);}
+ await assert.rejects(readGuestComment("posts","1","1","wrong",async()=>response(guestItem({visibility:"SECRET",locked:true,body:"비밀 댓글입니다."})),"https://api.example/api/v1"),e=>e.code==="INVALID_RESPONSE");
 });
 
 test("비밀번호와 rate-limit 오류는 사용자 안내를 제공한다",()=>{
  assert.match(commentFailure(new MemberApiError(403,"INVALID_COMMENT_PASSWORD","bad")),/비밀번호가 맞지 않습니다/);
  assert.match(commentFailure(new MemberApiError(429,"COMMENT_RATE_LIMITED","slow")),/잠시 후 다시/);
+});
+
+test("회원 비밀 댓글을 잠금 방문자 항목으로 위장한 응답은 거절한다",()=>{
+ assert.throws(()=>parseComment({data:guestItem({author:{id:"2",nickname:"회원",handle:null,blogName:null,profileImageUrl:null},visibility:"SECRET",locked:true,body:"비밀 댓글입니다."})}));
 });
