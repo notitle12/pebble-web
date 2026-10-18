@@ -9,10 +9,11 @@ test('1:1 and required relation labels follow UNIQUE and NULL, and survive renam
  l=databaseLinks(s)[0];assert.equal(l.many,false);assert.equal(l.targetRequired,true);assert.equal(l.sourceRequired,true);assert.equal(l.notation,'IE');
  s=updateDbColumn(s,'users','id',{name:'member_id'});assert.match(databaseLinks(s)[0].label,/users.member_id/);
 });
-test('horizontal ports use actual measured card centers and follow movement',()=>{
- const s=schema(),sizes={users:{width:660,height:180},posts:{width:660,height:240}};
- let l=databaseLinks(s,true,sizes)[0];assert.equal(l.source.x,372*2.5);assert.equal(l.target.x,32*2.5+660);assert.equal(l.source.y,32*2.5+120);assert.equal(l.target.y,32*2.5+90);assert.equal(l.source.angle,180);assert.equal(l.target.angle,0);
- s.tables[1].position={x:32,y:240};l=databaseLinks(s,true,sizes)[0];assert.equal(l.source.y,240*2.5);assert.equal(l.target.y,32*2.5+180);assert.equal(l.source.angle,270);assert.equal(l.target.angle,90);
+test('column ports use compact table coordinates and follow movement',()=>{
+ const s=schema(),sizes={users:{width:280,height:74},posts:{width:280,height:74}};
+ let l=databaseLinks(s,true,sizes)[0];assert.equal(l.source.x,372);assert.equal(l.target.x,312);assert.equal(l.source.y,88);assert.equal(l.target.y,88);assert.equal(l.source.angle,180);assert.equal(l.target.angle,0);
+ s.tables[1].position={x:32,y:240};l=databaseLinks(s,true,sizes)[0];assert.equal(l.source.y,296);assert.equal(l.target.y,88);
+ for(let i=1;i<l.points.length;i++)for(const t of s.tables)assert.equal(segmentHitsRect(l.points[i-1],l.points[i],{x:t.position.x,y:t.position.y,width:280,height:74}),false);
 });
 test('vertical, reversed, diagonal, close and obstacle routes avoid card interiors',()=>{
  for(const [a,b,other] of [
@@ -36,4 +37,12 @@ test('self-table FK has two separate right-side ports and optional IE markers',(
 });
 test('a single PK remains one-to-one without an explicit UNIQUE checkbox',()=>{
  const s=schema();const t=s.tables[1],c={...t.columns[0],primaryKey:true,nullable:false};t.columns[0]=c;assert.equal(relationCardinality(t,c).many,false);
+});
+
+test('parallel foreign keys anchor to distinct rows and take separate routes',()=>{
+ const s=schema();s.tables[1].columns.push({...s.tables[1].columns[0],id:'reviewer-id',name:'reviewer_id'});
+ const links=databaseLinks(s);assert.equal(links.length,2);assert.notEqual(links[0].d,links[1].d);assert.notEqual(links[0].source.y,links[1].source.y);
+ assert.equal(links[0].targetColumnId,'id');assert.equal(links[1].targetColumnId,'id');
+ assert.deepEqual(databaseLinks(s).map(l=>l.d),links.map(l=>l.d));
+ for(const l of links)for(let i=1;i<l.points.length;i++)for(const t of s.tables)assert.equal(segmentHitsRect(l.points[i-1],l.points[i],{x:t.position.x,y:t.position.y,width:280,height:42+t.columns.length*32}),false);
 });
