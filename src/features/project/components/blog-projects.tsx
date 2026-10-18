@@ -42,7 +42,7 @@ export function BlogProjects({ handle, initial, page = 0, failed = false }: Prop
             <li key={project.id}>
               <article className="project-tile">
                 <Link className="project-cover-link" href={`/projects/${project.id}`} prefetch={false} aria-label={`${project.name} 프로젝트 보기`}>
-                  <ProjectCover title={project.name} techStacks={project.techStacks.map((tag) => tag.name)} index={page * 20 + idx + 1} />
+                  <ProjectCover title={project.name} techStacks={project.techStacks.map((tag) => tag.name)} index={page * 20 + idx + 1} imageUrl={project.thumbnailUrl} />
                 </Link>
                 <div className="project-tile-body">
                   <div className="post-meta">
