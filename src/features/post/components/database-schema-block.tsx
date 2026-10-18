@@ -62,7 +62,9 @@ export function DatabaseDiagram({
   top: number;
  } | null>(null);
  const typeListId = useId();
- const [namingMode, setNamingMode] = useState<'physical' | 'logical' | 'both'>('both');
+ const [namingMode, setNamingMode] = useState<'physical' | 'logical' | 'both'>(() =>
+  schema.tables.some(table => table.columns.some(column => column.logicalName?.trim())) ? 'both' : 'physical'
+ );
  const [zoom, setZoom] = useState(1);
  const [moving, setMoving] = useState<{ id: string; x: number; y: number } | null>(null);
  const [editingTitleTableId, setEditingTitleTableId] = useState<string | null>(null);
