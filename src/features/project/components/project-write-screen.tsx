@@ -12,14 +12,16 @@ import {createPendingImages} from '@/features/post/pending-images';
 import {parseOwnProject,projectId,projectWriteFailure,type OwnProject} from '../api/member-projects';
 import {buildProjectSaveBody,emptyProject,projectEditorValue,type ProjectEditorValue,type ProjectVisibility} from '../project-editor-model';
 import {parseProjectDocument,serializeProjectDocument} from '../project-document';
+import {postImageSources} from '@/features/post/post-images';
 import {projectDraft} from '../project-drafts';
 import {projectImageValue,replaceProjectImageBlocks,projectImagePreviews} from '../project-images';
+import {projectCoverFile} from '../project-cover-file';
 import {ProjectCoverPicker} from './project-cover-picker';
 import {ProjectEditor} from './project-editor';
 function Writer({member,id,onLogout}:{member:Member;id?:string;onLogout:(hasChanges:boolean,memberId:string)=>void}){
  const router=useRouter();
- const [project,setProject]=useState<OwnProject|null>(null),[value,setValue]=useState<ProjectEditorValue>(emptyProject),[loading,setLoading]=useState(true),[error,setError]=useState(''),[busy,setBusy]=useState(false),[saved,setSaved]=useState(''),[attempt,setAttempt]=useState(0),[cover,setCover]=useState<File|null>(null),[coverPreview,setCoverPreview]=useState(''),[imagePreviews,setImagePreviews]=useState<Record<string,string>>({});
- const saving=useRef(false),mounted=useRef(false),pending=useRef(createPendingImages()),dirty=useRef(false),projectRef=useRef<OwnProject|null>(null),draftSlot=useRef(id);
+ const [project,setProject]=useState<OwnProject|null>(null),[value,setValue]=useState<ProjectEditorValue>(emptyProject),[loading,setLoading]=useState(true),[error,setError]=useState(''),[busy,setBusy]=useState(false),[saved,setSaved]=useState(''),[attempt,setAttempt]=useState(0),[cover,setCover]=useState<File|null>(null),[coverPreview,setCoverPreview]=useState(''),[coverLoading,setCoverLoading]=useState(false),[selectedImageSrc,setSelectedImageSrc]=useState<string|null>(null),[imagePreviews,setImagePreviews]=useState<Record<string,string>>({});
+ const selectingCover=useRef(false),saving=useRef(false),mounted=useRef(false),pending=useRef(createPendingImages()),dirty=useRef(false),projectRef=useRef<OwnProject|null>(null),draftSlot=useRef(id);
  const current=()=>mounted.current&&userSession.snapshot().phase==='ready'&&userSession.snapshot().member?.id===member.id;
  useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;pending.current.dispose();};},[]);
  useEffect(()=>{if(!cover){setCoverPreview('');return;}const url=URL.createObjectURL(cover);setCoverPreview(url);return()=>URL.revokeObjectURL(url);},[cover]);
@@ -35,8 +37,20 @@ function Writer({member,id,onLogout}:{member:Member;id?:string;onLogout:(hasChan
   if(live){projectRef.current=next;setProject(next);setValue(nextValue);setCover(nextCover);setImagePreviews(next?projectImagePreviews(next.id,next.media):{});dirty.current=false;}
  }catch(e){if(live)setError(projectWriteFailure(e));}finally{if(live)setLoading(false);}}void load();return()=>{live=false;};},[id,member.id,attempt]);
  async function uploadImage(file:File){const message=mediaFileError(file);if(message)throw new Error(message);const image=pending.current.stage(new File([await file.arrayBuffer()],file.name,{type:file.type}));setImagePreviews(before=>({...before,[image.src]:image.previewUrl}));dirty.current=true;return image;}
+ async function selectCandidateCover(candidate:{src:string;previewUrl:string}){
+  if(selectingCover.current||saving.current||!current())return;
+  selectingCover.current=true;setCoverLoading(true);setError('');
+  try{
+   const file=pending.current.getFile(candidate.src)??await projectCoverFile(candidate.previewUrl);
+   if(!current())return;
+   setCover(file);setSelectedImageSrc(candidate.src);dirty.current=true;
+  }catch{
+   if(current())setError('대표 이미지를 설정하지 못했습니다. 다시 시도해 주세요.');
+  }finally{selectingCover.current=false;if(mounted.current)setCoverLoading(false);}
+ }
+
  async function save(visibility:ProjectVisibility,temporary=false){
-  if(saving.current||!current())return;saving.current=true;setBusy(true);setError('');setSaved('');
+  if(saving.current||selectingCover.current||!current())return;saving.current=true;setBusy(true);setError('');setSaved('');
   try{
    let target=projectRef.current;let resolved=value;
    if(!temporary)buildProjectSaveBody(value,target??undefined,visibility);
@@ -67,8 +81,27 @@ function Writer({member,id,onLogout}:{member:Member;id?:string;onLogout:(hasChan
  if(loading)return <p role="status">프로젝트를 불러오고 있어요.</p>;
  if(id&&!project)return <section className="list-state"><h1>프로젝트를 열지 못했어요</h1><p role="alert">{error}</p><button className="button" onClick={()=>setAttempt(n=>n+1)}>다시 불러오기</button></section>;
  const existingCover=project?.media.find(item=>item.mediaRole==='THUMBNAIL');
- const coverElement=<ProjectCoverPicker preview={coverPreview||safeMediaUrl(existingCover?.thumbnailUrl??null)} selected={!!cover} disabled={busy} onChange={file=>{setCover(file);dirty.current=true;}}/>;
+ const documentBlocks=value.document.sections.flatMap(section=>section.blocks);
+ const candidateSources=postImageSources(documentBlocks);
+ const candidateImages:{src:string;previewUrl:string}[]=[];
+ for(const src of candidateSources){
+  const previewUrl=imagePreviews[src]||src;
+  if(previewUrl&&!candidateImages.some(item=>item.previewUrl===previewUrl)){
+   candidateImages.push({src,previewUrl});
+  }
+ }
+ if(project?.media){
+  for(const m of project.media){
+   if(m.url&&m.mediaRole!=='THUMBNAIL'){
+    const previewUrl=safeMediaUrl(m.url);
+    if(previewUrl&&!candidateImages.some(item=>item.previewUrl===previewUrl)){
+     candidateImages.push({src:m.url,previewUrl});
+    }
+   }
+  }
+ }
+ const coverElement=<ProjectCoverPicker preview={coverPreview||safeMediaUrl(existingCover?.thumbnailUrl??existingCover?.url??null)} selected={!!cover} selectedSrc={selectedImageSrc} disabled={busy||coverLoading} onChange={file=>{setCover(file);setSelectedImageSrc(null);dirty.current=true;}} candidateImages={candidateImages} onSelectCandidate={selectCandidateCover}/>;
 
- return <><div className="writer-identity"><span>{member.nickname}</span><AccountMenu member={member} logoutDisabled={busy} onLogout={()=>onLogout(dirty.current,member.id)}/></div><h1 className="writer-visually-hidden">프로젝트 작성</h1><div className="writer-status writer-visually-hidden"><Link href="/me/projects">← 내 프로젝트</Link><span>{saved}</span></div>{error&&<p role="alert">{error}</p>}<ProjectEditor value={value} onChange={next=>{setValue(next);setError('');dirty.current=true;}} busy={busy} visibility={project?.visibilityStatus??'PUBLIC'} blocked={project?.isBlocked??false} existingTechStacks={project?.techStacks} uploadImage={uploadImage} imagePreviews={imagePreviews} coverElement={coverElement} onTemporarySave={()=>save(project?.visibilityStatus??'HIDDEN',true)} onSave={save}/></>;
+ return <><div className="writer-identity"><span>{member.nickname}</span><AccountMenu member={member} logoutDisabled={busy||coverLoading} onLogout={()=>onLogout(dirty.current,member.id)}/></div><h1 className="writer-visually-hidden">프로젝트 작성</h1><div className="writer-status writer-visually-hidden"><Link href="/me/projects">← 내 프로젝트</Link><span>{saved}</span></div>{error&&<p role="alert">{error}</p>}<ProjectEditor value={value} onChange={next=>{setValue(next);setError('');dirty.current=true;}} busy={busy||coverLoading} visibility={project?.visibilityStatus??'PUBLIC'} blocked={project?.isBlocked??false} existingTechStacks={project?.techStacks} uploadImage={uploadImage} imagePreviews={imagePreviews} coverElement={coverElement} representativeImageSrc={selectedImageSrc} onSelectRepresentativeImage={src=>void selectCandidateCover({src,previewUrl:imagePreviews[src]||src})} onTemporarySave={()=>save(project?.visibilityStatus??'HIDDEN',true)} onSave={save}/></>;
 }
 export function ProjectWriteScreen({id}:{id?:string}){return <WriterLogoutBoundary>{onLogout=><MemberGate profile preserveOnExpiry>{member=><Writer key={`${member.id}:${id??'new'}`} member={member} id={id} onLogout={onLogout}/>}</MemberGate>}</WriterLogoutBoundary>;}

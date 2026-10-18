@@ -24,6 +24,8 @@ type Props = {
   uploadImage?: (file: File) => Promise<{src: string; previewUrl: string}>;
   imagePreviews?: Record<string, string>;
   coverElement?: ReactNode;
+  representativeImageSrc?: string | null;
+  onSelectRepresentativeImage?: (src: string) => void;
 };
 const linkTypes: { value: LinkInput["linkType"]; label: string }[] = [
   { value: "GITHUB", label: "GitHub" }, { value: "DEPLOYMENT", label: "배포" },
@@ -31,7 +33,7 @@ const linkTypes: { value: LinkInput["linkType"]; label: string }[] = [
 ];
 const hasContent = (blocks: EditorBlock[]) => blocks.some(block => (block.type !== "HTML" && block.type !== "TEXT" && block.type !== "MARKDOWN") || block.content.replace(/<[^>]+>/g, "").replace(/&nbsp;/g, "").trim() || /<(img|table|iframe)\b|data-pebble-type|data-(table|architecture|database)/i.test(block.content));
 
-export function ProjectEditor({ value, onChange, busy, visibility, blocked, existingTechStacks = [], onSave, onTemporarySave, uploadImage, imagePreviews = {}, coverElement }: Props) {
+export function ProjectEditor({ value, onChange, busy, visibility, blocked, existingTechStacks = [], onSave, onTemporarySave, uploadImage, imagePreviews = {}, coverElement, representativeImageSrc, onSelectRepresentativeImage }: Props) {
   const id = useId();
   const currentValue = useRef(value);
   currentValue.current = value;
@@ -51,7 +53,7 @@ export function ProjectEditor({ value, onChange, busy, visibility, blocked, exis
   function changeTeam(rows:{role:string;count:number}[]){
     update('document',{...value.document,teamComposition:rows,teamSize:rows.reduce((sum,item)=>sum+item.count,0)||null});
   }
-  const backgroundEditor=<RichBodyEditor toolbarHost={toolbarHost} toolbarActive={!preview&&activeSection==="BACKGROUND"} onActivate={()=>activate("BACKGROUND")} toolbarMode="inline" allowRepresentativeImage={false} blocks={value.document.sections.find(section=>section.key==="BACKGROUND")?.blocks??[]} onChangeBlocks={blocks=>updateBlocks("BACKGROUND",blocks)} uploadImage={uploadImage} imagePreviews={imagePreviews} disabled={busy}/>;
+  const backgroundEditor=<RichBodyEditor toolbarHost={toolbarHost} toolbarActive={!preview&&activeSection==="BACKGROUND"} onActivate={()=>activate("BACKGROUND")} toolbarMode="inline" allowRepresentativeImage={true} representativeImageSrc={representativeImageSrc} onSelectRepresentativeImage={onSelectRepresentativeImage} blocks={value.document.sections.find(section=>section.key==="BACKGROUND")?.blocks??[]} onChangeBlocks={blocks=>updateBlocks("BACKGROUND",blocks)} uploadImage={uploadImage} imagePreviews={imagePreviews} disabled={busy}/>;
 
   useEffect(() => {
     if (publishing) dialogRef.current?.showModal();
@@ -115,10 +117,11 @@ export function ProjectEditor({ value, onChange, busy, visibility, blocked, exis
       <nav className={styles.outline} aria-label="프로젝트 작성 목차">
         <p>프로젝트 구성</p>
         <a href={`#${id}-name`}>프로젝트명</a>
+        {coverElement && <button type="button" onClick={() => jump("cover")}>대표 이미지</button>}
         <button type="button" onClick={() => jump("overview")}>프로젝트 개요</button>
         <button type="button" onClick={() => jump("technologies")}>기술 스택</button>
         {sections.map(section => <button key={section.key} type="button" onClick={() => jump(section.key)}>{section.label}</button>)}
-        <div className={styles.foldActions}><button type="button" onClick={() => setClosed(new Set())}>모두 펼치기</button><button type="button" onClick={() => {setClosed(new Set(["overview", "technologies", "execution", ...sections.map(section => section.key)]));}}>모두 접기</button></div>
+        <div className={styles.foldActions}><button type="button" onClick={() => setClosed(new Set())}>모두 펼치기</button><button type="button" onClick={() => {setClosed(new Set(["overview", "technologies", "execution", ...(coverElement?["cover"]:[]), ...sections.map(section => section.key)]));}}>모두 접기</button></div>
       </nav>
       <div className={styles.document}>
         {preview ? <article className={styles.preview} aria-label="프로젝트 미리보기">
@@ -131,6 +134,7 @@ export function ProjectEditor({ value, onChange, busy, visibility, blocked, exis
         </article> : <fieldset disabled={busy} className={styles.fields}>
           <label className={styles.nameLabel} htmlFor={`${id}-name`}>프로젝트명</label>
           <input className={styles.name} id={`${id}-name`} value={value.name} maxLength={120} placeholder="어떤 프로젝트를 만들었나요?" onChange={event => update("name", event.target.value)} />
+          {coverElement && details("cover", "대표 이미지", coverElement, "목록 썸네일로 사용할 이미지")}
           {details("overview", "프로젝트 개요", <>
             <div className={styles.dateRow}><label htmlFor={`${id}-started`}>진행 기간</label><input aria-label="시작일" id={`${id}-started`} type="date" min="0001-01-01" max="9999-12-31" value={value.startedOn} onChange={event => checkedDate(event.currentTarget, "startedOn")} /><span aria-hidden="true">—</span>{value.lifecycleStatus === "IN_PROGRESS" ? <span className={styles.ongoing}>진행 중</span> : <input aria-label="종료일" type="date" min={value.startedOn || "0001-01-01"} max="9999-12-31" value={value.completedOn} onChange={event => checkedDate(event.currentTarget, "completedOn")} />}<label className={styles.check}><input type="checkbox" checked={value.lifecycleStatus === "IN_PROGRESS"} onChange={event => onChange({ ...currentValue.current, lifecycleStatus: event.target.checked ? "IN_PROGRESS" : "COMPLETED", completedOn: event.target.checked ? "" : currentValue.current.completedOn })} />진행 중</label></div>
             <fieldset className={styles.teamFields}><legend>참여 인원{value.document.teamSize?` · 총 ${value.document.teamSize}명`:''}</legend><div className={styles.compactTeam}>{teamRows.map((job,index)=><div className={styles.teamRow} key={index}><input aria-label={`직군 ${index+1} 이름`} maxLength={40} placeholder="직군 이름" value={PROJECT_TEAM_ROLES.find(item=>item.key===job.role)?.label??job.role} onChange={event=>changeTeam(teamRows.map((item,i)=>i===index?{...item,role:event.target.value}:item))}/><input aria-label={`직군 ${index+1} 인원`} type="number" min={0} max={10000} step={1} placeholder="0" value={job.count||''} onChange={event=>changeTeam(teamRows.map((item,i)=>i===index?{...item,count:Number(event.target.value)}:item))}/><span>명</span><button type="button" aria-label={`직군 ${index+1} 삭제`} onClick={()=>changeTeam(teamRows.filter((_,i)=>i!==index))}>×</button></div>)}<button type="button" className={styles.addTeam} aria-label="참여 직군 추가" disabled={teamRows.length>=20} onClick={()=>changeTeam([...teamRows,{role:'',count:0}])}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>직군 추가</button></div>{value.document.teamComposition===undefined&&value.document.teamSize&&<small>기존 총 인원입니다. 직군별 인원을 수정하면 합계로 바뀝니다.</small>}</fieldset>
@@ -138,7 +142,7 @@ export function ProjectEditor({ value, onChange, busy, visibility, blocked, exis
             <section className={styles.background}><h3>배경 및 목적</h3>{backgroundEditor}</section>
           </>, "기간 · 인원 · 역할 · 배경 및 목적")}
           {details("technologies", "기술 스택", <TechStackSelection selected={value.techStackIds} existing={existingTechStacks} onChange={techStackIds => update("techStackIds", techStackIds)} disabled={busy} />, value.techStackIds.length ? `${value.techStackIds.length}개 선택` : undefined)}
-          {sections.map(section => details(section.key, section.label, section.key==="ARCHITECTURE"||section.key==="DATABASE"?<ProjectDiagramSection key={section.key} kind={section.key} blocks={value.document.sections.find(item=>item.key===section.key)?.blocks??[]} onChangeBlocks={blocks=>updateBlocks(section.key,blocks)} toolbarHost={toolbarHost} toolbarActive={!preview&&activeSection===section.key} onActivate={()=>activate(section.key)} uploadImage={uploadImage} imagePreviews={imagePreviews} disabled={busy}/>:<RichBodyEditor toolbarHost={toolbarHost} toolbarActive={!preview && activeSection===section.key} onActivate={()=>activate(section.key)} toolbarMode="inline" allowRepresentativeImage={false} blocks={value.document.sections.find(item => item.key === section.key)?.blocks ?? []} onChangeBlocks={blocks => updateBlocks(section.key, blocks)} uploadImage={uploadImage} imagePreviews={imagePreviews} disabled={busy} />))}
+          {sections.map(section => details(section.key, section.label, section.key==="ARCHITECTURE"||section.key==="DATABASE"?<ProjectDiagramSection key={section.key} kind={section.key} blocks={value.document.sections.find(item=>item.key===section.key)?.blocks??[]} onChangeBlocks={blocks=>updateBlocks(section.key,blocks)} toolbarHost={toolbarHost} toolbarActive={!preview&&activeSection===section.key} onActivate={()=>activate(section.key)} uploadImage={uploadImage} imagePreviews={imagePreviews} disabled={busy}/>:<RichBodyEditor toolbarHost={toolbarHost} toolbarActive={!preview && activeSection===section.key} onActivate={()=>activate(section.key)} toolbarMode="inline" allowRepresentativeImage={true} representativeImageSrc={representativeImageSrc} onSelectRepresentativeImage={onSelectRepresentativeImage} blocks={value.document.sections.find(item => item.key === section.key)?.blocks ?? []} onChangeBlocks={blocks => updateBlocks(section.key, blocks)} uploadImage={uploadImage} imagePreviews={imagePreviews} disabled={busy} />))}
           {value.executionInstructions && details("execution", "실행 방법", <label>실행 방법<textarea value={value.executionInstructions} rows={5} onChange={event => update("executionInstructions", event.target.value)} /></label>, "기존 내용")}
         </fieldset>}
       </div>
@@ -150,7 +154,6 @@ export function ProjectEditor({ value, onChange, busy, visibility, blocked, exis
           <label>한 줄 요약<textarea rows={3} maxLength={500} value={value.summary} placeholder="목록에 보여줄 프로젝트 소개" onChange={event => update("summary", event.target.value)} /></label>
           <div><span className={styles.fieldTitle}>공개 설정</span><div className={styles.visibility}><label><input type="radio" name={`${id}-visibility`} checked={targetVisibility === "PUBLIC"} disabled={blocked && visibility !== "PUBLIC"} onChange={() => setTargetVisibility("PUBLIC")} />공개</label><label><input type="radio" name={`${id}-visibility`} checked={targetVisibility === "HIDDEN"} onChange={() => setTargetVisibility("HIDDEN")} />비공개</label></div></div>
           {blocked && <p className={styles.saveState}>차단된 프로젝트의 공개 전환은 제한돼요.</p>}
-          {coverElement && <section><h3>대표 이미지</h3>{coverElement}</section>}
           <section><div className={styles.linkHeading}><h3>외부 링크</h3><button type="button" onClick={() => update("links", [...value.links, {linkType:"OTHER",label:"",url:"",displayOrder:value.links.length}])}>링크 추가</button></div>{value.links.map((link, index) => <div className={styles.linkRow} key={index}><select aria-label={`${index + 1}번째 링크 종류`} value={link.linkType} onChange={event => update("links", value.links.map((item, i) => i === index ? {...item, linkType:event.target.value as LinkInput["linkType"]} : item))}>{linkTypes.map(type => <option key={type.value} value={type.value}>{type.label}</option>)}</select><input aria-label={`${index + 1}번째 링크 이름`} maxLength={100} placeholder="이름" value={link.label} onChange={event => update("links", value.links.map((item,i) => i === index ? {...item,label:event.target.value} : item))} /><input aria-label={`${index + 1}번째 링크 주소`} type="url" required placeholder="https://" value={link.url} onChange={event => update("links", value.links.map((item,i) => i === index ? {...item,url:event.target.value} : item))} /><button type="button" aria-label={`${index + 1}번째 링크 삭제`} onClick={() => update("links", value.links.filter((_,i) => i !== index).map((item, displayOrder) => ({...item,displayOrder})))}>삭제</button></div>)}</section>
         </fieldset>
         {feedback && <p role="status">{feedback}</p>}{publishError && <p role="alert" className={styles.error}>{publishError}</p>}

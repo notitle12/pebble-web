@@ -33,7 +33,7 @@ export const mockProjects = Array.from({length:21},(_,i)=>({
   name:["Pebble 개발 기록 플랫폼","작은 팀을 위한 일정 관리","R2 이미지 아카이브"][i%3]+(i>2 ? ` (${i+1})` : ""),
   summary:["개발자의 글과 프로젝트를 한곳에 모아 공유하는 서비스입니다.","함께 작업할 때 필요한 일정과 기록을 간결하게 정리했습니다.","이미지를 저장하고 만료되는 URL을 안전하게 관리합니다."][i%3],
   likeCount:0,likedByMe:false,description:"목 프로젝트 상세 소개",lifecycleStatus:i%2 ? "COMPLETED" : "IN_PROGRESS",
-  techStacks:[mockTags[i%mockTags.length]],publishedAt:new Date(Date.UTC(2026,9,3-i,3)).toISOString(),createdAt:new Date(Date.UTC(2026,9,3-i,3)).toISOString()
+  techStacks:[mockTags[i%mockTags.length]],thumbnailUrl:i===0?"http://127.0.0.1:3100/images/stone-garden/natural-parts.png":i===1?"http://127.0.0.1:3100/images/stone-garden/stone-varieties.png":null,publishedAt:new Date(Date.UTC(2026,9,3-i,3)).toISOString(),createdAt:new Date(Date.UTC(2026,9,3-i,3)).toISOString()
 }));
 
 export function createMockApi(state = "normal") {
@@ -61,7 +61,11 @@ export function createMockApi(state = "normal") {
       response.end(JSON.stringify({data:{...project,description:"개발 기록을 글과 프로젝트 단위로 정리하는 서비스입니다.\n\n이 소개는 목 데이터이며 <script>alert('example')</script>도 실행하지 않고 문자로 표시합니다.",
         architectureDescription:"사용자 web → API → 데이터베이스\n파일은 R2에 저장하고 인증은 API에서 처리합니다.",executionInstructions:"저장소를 준비한 뒤 환경변수를 설정합니다.\nNode 22에서 npm install, npm run dev를 실행합니다.",startedOn:"2026-09-01",completedOn:project.lifecycleStatus==="COMPLETED"?"2026-10-01":null,
         features:[{id:"1",title:"개발 기록 정리",description:"태그로 글과 프로젝트를 찾아볼 수 있습니다.",displayOrder:0},{id:"2",title:"공개 프로젝트 소개",description:"진행 상태와 주요 기능을 공유합니다.",displayOrder:1}],
-        links:[{id:"1",linkType:"OTHER",label:"예시 링크",url:"https://example.com",displayOrder:0}]
+        links:[{id:"1",linkType:"OTHER",label:"예시 링크",url:"https://example.com",displayOrder:0}],
+        media:[
+          {id:"1",mediaRole:"THUMBNAIL",altText:"대표 썸네일",displayOrder:0,url:project.thumbnailUrl,thumbnailUrl:project.thumbnailUrl,createdAt:project.createdAt},
+          {id:"2",mediaRole:"SCREENSHOT",altText:"서비스 아키텍처 스크린샷",displayOrder:1,url:"http://127.0.0.1:3100/images/stone-garden/natural-parts.png",thumbnailUrl:null,createdAt:project.createdAt}
+        ]
       }}));return;
     }
     if (detail || numericPost) {

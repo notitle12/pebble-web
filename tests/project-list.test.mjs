@@ -47,3 +47,26 @@ test("블로그 프로젝트는 작성자 API와 페이지를 사용하고 다�
  }finally{await new Promise(resolve=>server.close(resolve));}
  await assert.rejects(getPublicMemberProjects("../me"),error=>error.kind==="response");
 });
+
+test("프로젝트 목록의 thumbnailUrl은 문자열이나 null을 허용하고 잘못된 타입을 거부한다",()=>{
+  const validProject = {
+    id: "721389012345680000",
+    name: "Pebble",
+    summary: null,
+    owner: { id: "721389012345679000", nickname: "수민" },
+    techStacks: [{ id: "1", name: "TypeScript" }],
+    lifecycleStatus: "IN_PROGRESS",
+    thumbnailUrl: "https://example.com/thumb.webp",
+    publishedAt: "2026-10-03T00:00:00Z",
+    createdAt: "2026-10-03T00:00:00Z"
+  };
+  const page = parseProjectPage({data: {content: [validProject], page: 0, size: 20, totalElements: 1, totalPages: 1, hasNext: false, hasPrevious: false}}, 0);
+  assert.equal(page.content[0].thumbnailUrl, "https://example.com/thumb.webp");
+
+  const nullThumbProject = { ...validProject, thumbnailUrl: null };
+  const nullThumbPage = parseProjectPage({data: {content: [nullThumbProject], page: 0, size: 20, totalElements: 1, totalPages: 1, hasNext: false, hasPrevious: false}}, 0);
+  assert.equal(nullThumbPage.content[0].thumbnailUrl, null);
+
+  const badThumbProject = { ...validProject, thumbnailUrl: 12345 };
+  assert.throws(() => parseProjectPage({data: {content: [badThumbProject], page: 0, size: 20, totalElements: 1, totalPages: 1, hasNext: false, hasPrevious: false}}, 0));
+});
