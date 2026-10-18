@@ -17,7 +17,7 @@ test('자동 배치는 최대 요소와 여러 Docker 경계를 겹치지 않게
   for(const point of architectureLayout(dockerOnly).positions.values()) assert.ok(point.y<=4000);
 });
 
-import { materializeArchitecture, moveArchitectureNode, moveArchitectureGroup, resizeArchitectureGroup, settleArchitectureHierarchy } from '../src/features/post/architecture-editing.ts';
+import { materializeArchitecture, moveArchitectureNode, moveArchitectureGroup, resizeArchitectureGroup, settleArchitectureHierarchy, moveArchitectureSelection } from '../src/features/post/architecture-editing.ts';
 import { parseArchitectureSpec } from '../src/features/post/api/post-list.ts';
 test('경계 드롭으로 가장 안쪽 그룹을 선택하고 부모 이동 시 자식 경계와 카드도 같은 거리 이동한다',()=>{
  const spec={schemaVersion:1,groups:[{id:'cloud',type:'AWS',label:'Cloud',bounds:{x:100,y:100,width:600,height:500}},{id:'docker',type:'DOCKER',label:'Docker',parentId:'cloud',bounds:{x:150,y:170,width:400,height:300}}],nodes:[{id:'a',type:'APP',label:'A',position:{x:0,y:0}},{id:'b',type:'APP',label:'B',position:{x:800,y:100}}],edges:[]};
@@ -316,4 +316,81 @@ test('자동 정렬은 긴 라벨이 있는 루트·직접 그룹·컨테이너 
   parseArchitectureSpec(materializeArchitecture(maximum));
   const nestedMaximum = { ...maximum, groups: [{ id: "cloud", type: "CLOUD", label: "Cloud" }, ...Array.from({ length: 9 }, (_, i) => ({ id: `d${i}`, type: "CONTAINER", label: "Container", parentId: "cloud" }))], nodes: maximum.nodes.map(node => ({ ...node, groupId: "d8" })) };
   parseArchitectureSpec(materializeArchitecture(nestedMaximum));
+});
+
+test('아이콘을 그룹의 상단·중단·하단 어느 위치에 드롭해도 정상적으로 그룹에 포함된다', () => {
+  const spec = {
+    schemaVersion: 1,
+    groups: [
+      { id: 'cluster', type: 'CUSTOM', label: 'Cluster', bounds: { x: 100, y: 100, width: 400, height: 350 } }
+    ],
+    nodes: [
+      { id: 'node1', type: 'APP', label: 'App', groupId: null, position: { x: 800, y: 800 } }
+    ],
+    edges: []
+  };
+
+  // 1. 그룹 상단 영역 (y = box.y + 8, 과거 box.y + 32 미만으로 잡히지 않던 영역)에 드롭
+  const droppedAtTop = moveArchitectureNode(spec, 'node1', { x: 150, y: 108 }, true);
+  assert.equal(droppedAtTop.nodes.find(n => n.id === 'node1').groupId, 'cluster');
+
+  // 그룹을 이동하면 상단에 들어간 노드도 함께 이동한다
+  const groupMoved = moveArchitectureGroup(droppedAtTop, 'cluster', { x: 200, y: 200 }, true);
+  assert.equal(groupMoved.nodes.find(n => n.id === 'node1').position.x, 250);
+  assert.equal(groupMoved.nodes.find(n => n.id === 'node1').position.y, 208);
+
+  // 2. 그룹 중단 영역에 드롭
+  const droppedAtMid = moveArchitectureNode(spec, 'node1', { x: 150, y: 250 }, true);
+  assert.equal(droppedAtMid.nodes.find(n => n.id === 'node1').groupId, 'cluster');
+
+  // 3. 그룹 바깥으로 드롭하면 그룹 해제
+  const droppedOutside = moveArchitectureNode(droppedAtTop, 'node1', { x: 800, y: 800 }, true);
+  assert.equal(droppedOutside.nodes.find(n => n.id === 'node1').groupId, null);
+});
+
+test('그룹에 속했던 아이콘이 그룹 바깥에 위치할 때 그룹을 이동해도 바깥 아이콘은 따라 움직이지 않고 연결이 해제된다', () => {
+  const spec = {
+    schemaVersion: 1,
+    groups: [
+      { id: 'group1', type: 'CUSTOM', label: 'My Group', bounds: { x: 100, y: 100, width: 300, height: 250 } }
+    ],
+    nodes: [
+      { id: 'insideNode', type: 'APP', label: 'Inside', groupId: 'group1', position: { x: 150, y: 150 } },
+      // 바깥으로 옮겼으나 포인터 캡처 유실/비정상 종료 등으로 groupId가 여전히 남아있는 비정상 상태 가정
+      { id: 'outsideNode', type: 'APP', label: 'Outside', groupId: 'group1', position: { x: 800, y: 800 } }
+    ],
+    edges: []
+  };
+
+  // 1. 그룹 드래그 중 (finished=false): 바깥에 있는 아이콘은 절대 이동하지 않아야 함
+  const dragProgress = moveArchitectureGroup(spec, 'group1', { x: 200, y: 150 }, false);
+  const insideDrag = dragProgress.nodes.find(n => n.id === 'insideNode');
+  const outsideDrag = dragProgress.nodes.find(n => n.id === 'outsideNode');
+
+  // 내부 노드는 그룹과 함께 +100, +50 이동
+  assert.deepEqual(insideDrag.position, { x: 250, y: 200 });
+  assert.equal(insideDrag.groupId, 'group1');
+  // 바깥 노드는 원래 좌표(800, 800) 유지 및 stale groupId 즉시 해제
+  assert.deepEqual(outsideDrag.position, { x: 800, y: 800 });
+  assert.equal(outsideDrag.groupId, null);
+
+  // 2. 그룹 드롭 완료 (finished=true): 바깥 노드는 여전히 원래 좌표 유지
+  const dropped = moveArchitectureGroup(spec, 'group1', { x: 200, y: 150 }, true);
+  const insideDrop = dropped.nodes.find(n => n.id === 'insideNode');
+  const outsideDrop = dropped.nodes.find(n => n.id === 'outsideNode');
+
+  assert.deepEqual(insideDrop.position, { x: 250, y: 200 });
+  assert.equal(insideDrop.groupId, 'group1');
+  assert.deepEqual(outsideDrop.position, { x: 800, y: 800 });
+  assert.equal(outsideDrop.groupId, null);
+
+  // 3. 다중 선택 이동(moveArchitectureSelection)에서도 동일하게 바깥 아이콘은 그룹과 함께 움직이지 않음
+  const selectionMoved = moveArchitectureSelection(spec, [], ['group1'], { x: 50, y: 50 }, true);
+  const insideSel = selectionMoved.nodes.find(n => n.id === 'insideNode');
+  const outsideSel = selectionMoved.nodes.find(n => n.id === 'outsideNode');
+
+  assert.deepEqual(insideSel.position, { x: 200, y: 200 });
+  assert.equal(insideSel.groupId, 'group1');
+  assert.deepEqual(outsideSel.position, { x: 800, y: 800 });
+  assert.equal(outsideSel.groupId, null);
 });

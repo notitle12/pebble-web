@@ -28,11 +28,33 @@ export function materializeArchitecture(spec: ArchitectureSpec): ArchitectureSpe
 export const canBeChildGroup = (_type: string) => true;
 export const canBeParentGroup = (type: string) => !isArchitectureContainer(type);
 
-export const containsNode = (box: ArchBox, point: ArchPoint, width = ARCH_NODE_WIDTH) =>
-  point.x >= box.x - 8 &&
-  point.y >= box.y + 32 &&
-  point.x + width <= box.x + box.width + 8 &&
-  point.y + ARCH_NODE_HEIGHT <= box.y + box.height + 8;
+export const containsNode = (box: ArchBox, point: ArchPoint, width = ARCH_NODE_WIDTH) => {
+  const nodeCenterX = point.x + width / 2;
+  const nodeCenterY = point.y + ARCH_NODE_HEIGHT / 2;
+  const centerInside =
+    nodeCenterX >= box.x &&
+    nodeCenterX <= box.x + box.width &&
+    nodeCenterY >= box.y &&
+    nodeCenterY <= box.y + box.height;
+
+  const ix1 = Math.max(box.x, point.x);
+  const iy1 = Math.max(box.y, point.y);
+  const ix2 = Math.min(box.x + box.width, point.x + width);
+  const iy2 = Math.min(box.y + box.height, point.y + ARCH_NODE_HEIGHT);
+  const iw = Math.max(0, ix2 - ix1);
+  const ih = Math.max(0, iy2 - iy1);
+  const intersectionArea = iw * ih;
+  const nodeArea = width * ARCH_NODE_HEIGHT;
+
+  if (centerInside && intersectionArea >= nodeArea * 0.5) return true;
+
+  return (
+    point.x >= box.x - 8 &&
+    point.y >= box.y - 8 &&
+    point.x + width <= box.x + box.width + 8 &&
+    point.y + ARCH_NODE_HEIGHT <= box.y + box.height + 8
+  );
+};
 
 export const containsGroup = (parentBox: ArchBox, childBox: ArchBox) => {
   if (parentBox.width * parentBox.height <= childBox.width * childBox.height) return false;
@@ -100,7 +122,12 @@ export function settleArchitectureHierarchy(spec: ArchitectureSpec): Architectur
 
     if (prevGroupStillEncloses) {
       // Check if an explicit child group inside prevGroup specifically encloses this node:
-      const childGroup = enclosingGroups.find(g => g.parentId === prevGroupId);
+      const childGroup = enclosingGroups.find(g => {
+        if (g.parentId !== prevGroupId) return false;
+        if (isArchitectureContainer(g.type)) return true;
+        const childBox = layout.groups.get(g.id)!;
+        return nodePos.y >= childBox.y + 32;
+      });
       if (childGroup) {
         return { ...node, groupId: childGroup.id };
       }
@@ -161,9 +188,28 @@ export function moveArchitectureGroup(spec: ArchitectureSpec, id: string, point:
   if (!target?.bounds) return spec;
   const descendantIds = getAllDescendantGroupIds(current.groups, id);
   const ids = new Set([id, ...descendantIds]);
+  const layout = architectureLayout(current);
+
+  // A node only moves with the group if it is ACTUALLY physically enclosed by this group or its descendants
+  const movingNodes = current.nodes.filter(node => {
+    if (!ids.has(node.groupId ?? '')) return false;
+    const groupBox = layout.groups.get(node.groupId!);
+    if (!groupBox) return false;
+    const nodePos = node.position ?? layout.positions.get(node.id)!;
+    const nodeWidth = architectureNodeWidth(node.label);
+    return containsNode(groupBox, nodePos, nodeWidth);
+  });
+  const movingNodeIds = new Set(movingNodes.map(node => node.id));
+
+  // Any node that claims to belong to this group or its descendants but is NOT physically inside is unlinked
+  const unlinkedNodeIds = new Set(
+    current.nodes
+      .filter(node => ids.has(node.groupId ?? '') && !movingNodeIds.has(node.id))
+      .map(node => node.id)
+  );
+
   const movingGroups = current.groups.filter(group => ids.has(group.id));
-  const movingNodes = current.nodes.filter(node => ids.has(node.groupId ?? ''));
-  const movingEndpoints = new Set([...ids, ...movingNodes.map(node => node.id)]);
+  const movingEndpoints = new Set([...ids, ...movingNodeIds]);
   const movingEdges = current.edges.filter(edge => movingEndpoints.has(edge.source) && movingEndpoints.has(edge.target) && edge.waypoint);
   let minX = -Math.min(...movingGroups.map(g => g.bounds!.x), ...(movingNodes.length ? movingNodes.map(n => n.position!.x) : [Infinity]));
   let minY = -Math.min(...movingGroups.map(g => g.bounds!.y), ...(movingNodes.length ? movingNodes.map(n => n.position!.y) : [Infinity]));
@@ -181,7 +227,15 @@ export function moveArchitectureGroup(spec: ArchitectureSpec, id: string, point:
     ...current,
     edges: current.edges.map(edge => movingEdges.includes(edge) ? { ...edge, waypoint: { x: edge.waypoint!.x + dx, y: edge.waypoint!.y + dy } } : edge),
     groups: current.groups.map(group => ids.has(group.id) ? { ...group, bounds: { ...group.bounds!, x: group.bounds!.x + dx, y: group.bounds!.y + dy } } : group),
-    nodes: current.nodes.map(node => ids.has(node.groupId ?? '') ? { ...node, position: { x: node.position!.x + dx, y: node.position!.y + dy } } : node)
+    nodes: current.nodes.map(node => {
+      if (movingNodeIds.has(node.id)) {
+        return { ...node, position: { x: node.position!.x + dx, y: node.position!.y + dy } };
+      }
+      if (unlinkedNodeIds.has(node.id)) {
+        return { ...node, groupId: null };
+      }
+      return node;
+    })
   };
   return finished ? settleArchitectureHierarchy(next) : next;
 }
@@ -267,10 +321,22 @@ export function moveArchitectureSelection(
     }
   }
 
+  const layout = architectureLayout(current);
   const movingNodeIds = new Set<string>();
+  const unlinkedNodeIds = new Set<string>();
+
   for (const node of current.nodes) {
-    if (selectedNodesSet.has(node.id) || (node.groupId && allMovingGroupIds.has(node.groupId))) {
+    if (selectedNodesSet.has(node.id)) {
       movingNodeIds.add(node.id);
+    } else if (node.groupId && allMovingGroupIds.has(node.groupId)) {
+      const groupBox = layout.groups.get(node.groupId);
+      const nodePos = node.position ?? layout.positions.get(node.id)!;
+      const nodeWidth = architectureNodeWidth(node.label);
+      if (groupBox && containsNode(groupBox, nodePos, nodeWidth)) {
+        movingNodeIds.add(node.id);
+      } else {
+        unlinkedNodeIds.add(node.id);
+      }
     }
   }
 
@@ -321,10 +387,18 @@ export function moveArchitectureSelection(
       ...group,
       bounds: { ...group.bounds!, x: group.bounds!.x + dx, y: group.bounds!.y + dy }
     } : group),
-    nodes: current.nodes.map(node => movingNodeIds.has(node.id) ? {
-      ...node,
-      position: { x: node.position!.x + dx, y: node.position!.y + dy }
-    } : node)
+    nodes: current.nodes.map(node => {
+      if (movingNodeIds.has(node.id)) {
+        return {
+          ...node,
+          position: { x: node.position!.x + dx, y: node.position!.y + dy }
+        };
+      }
+      if (unlinkedNodeIds.has(node.id)) {
+        return { ...node, groupId: null };
+      }
+      return node;
+    })
   };
 
   return finished ? settleArchitectureHierarchy(next) : next;

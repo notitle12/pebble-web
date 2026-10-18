@@ -293,10 +293,10 @@ function ArchitectureBlockInner({ spec, title, expanded = false, interactive = f
       }
     }
   }
-  function endNodeDrag(event: React.PointerEvent<SVGGElement>, cancelled = false) {
+  function endNodeDrag(event: React.PointerEvent<SVGGElement>, _cancelled = false) {
     const drag = dragRef.current;
     if (!drag || drag.pointerId !== event.pointerId) return;
-    if (!cancelled && (onMoveNode || onMoveSelection) && drag.moved) {
+    if ((onMoveNode || onMoveSelection) && drag.moved) {
       const dx = Math.round((event.clientX - drag.start.x) / (drag.scaleX || 1));
       const dy = Math.round((event.clientY - drag.start.y) / (drag.scaleY || 1));
       if (drag.isMulti && onMoveSelection) {
@@ -336,10 +336,10 @@ function ArchitectureBlockInner({ spec, title, expanded = false, interactive = f
       }
     }
   }
-  function endGroupDrag(event: React.PointerEvent<SVGElement>, cancelled = false) {
+  function endGroupDrag(event: React.PointerEvent<SVGElement>, _cancelled = false) {
     const drag = dragRef.current;
     if (!drag || drag.pointerId !== event.pointerId) return;
-    if (!cancelled && (onMoveGroup || onMoveSelection) && drag.moved) {
+    if ((onMoveGroup || onMoveSelection) && drag.moved) {
       const dx = Math.round((event.clientX - drag.start.x) / (drag.scaleX || 1));
       const dy = Math.round((event.clientY - drag.start.y) / (drag.scaleY || 1));
       if (drag.isMulti && onMoveSelection) {
@@ -348,7 +348,7 @@ function ArchitectureBlockInner({ spec, title, expanded = false, interactive = f
         onMoveGroup(drag.id, { x: clamp(drag.point.x + dx, 0, 4000), y: clamp(drag.point.y + dy, 0, 4000) }, true);
       }
     }
-    suppressClickRef.current = !cancelled && drag.moved; dragRef.current = null; onInteractionEnd?.();
+    suppressClickRef.current = drag.moved; dragRef.current = null; onInteractionEnd?.();
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
   }
   function beginResize(event: React.PointerEvent<SVGGElement>, groupId: string) {

@@ -46,3 +46,72 @@ test('parallel foreign keys anchor to distinct rows and take separate routes',()
  assert.deepEqual(databaseLinks(s).map(l=>l.d),links.map(l=>l.d));
  for(const l of links)for(let i=1;i<l.points.length;i++)for(const t of s.tables)assert.equal(segmentHitsRect(l.points[i-1],l.points[i],{x:t.position.x,y:t.position.y,width:280,height:42+t.columns.length*32}),false);
 });
+
+test('corridor multi-channel routing keeps stacked target connections parallel without jumping to card edges',()=>{
+ const s={
+  schemaVersion:1,display:'BOTH',
+  tables:[
+   {id:'users',name:'users',description:'',position:{x:60,y:50},columns:[{id:'id',name:'id',dataType:'BIGINT',nullable:false,primaryKey:true,unique:false,description:'',reference:null}]},
+   {id:'order',name:'order',description:'',position:{x:640,y:50},columns:[{id:'uid',name:'user_id',dataType:'BIGINT',nullable:true,primaryKey:false,unique:false,description:'',reference:{tableId:'users',columnId:'id'}}]},
+   {id:'bookmark',name:'bookmark',description:'',position:{x:640,y:180},columns:[{id:'uid',name:'user_id',dataType:'BIGINT',nullable:true,primaryKey:false,unique:false,description:'',reference:{tableId:'users',columnId:'id'}}]},
+   {id:'cart',name:'cart',description:'',position:{x:640,y:310},columns:[{id:'uid',name:'user_id',dataType:'BIGINT',nullable:true,primaryKey:false,unique:false,description:'',reference:{tableId:'users',columnId:'id'}}]}
+  ]
+ };
+ const links=databaseLinks(s);
+ assert.equal(links.length,3);
+ // All routes must avoid card interiors
+ for(const l of links)for(let i=1;i<l.points.length;i++)for(const t of s.tables)assert.equal(segmentHitsRect(l.points[i-1],l.points[i],{x:t.position.x,y:t.position.y,width:280,height:100}),false);
+ // Bookmark and cart links should route in the central corridor between users (right ~340) and targets (left ~640), not jump to 608 (card edge)
+ const bookmarkBend=links.find(l=>l.id==='bookmark-uid')?.bend;
+ const cartBend=links.find(l=>l.id==='cart-uid')?.bend;
+ assert.ok(bookmarkBend);
+ assert.ok(cartBend);
+ assert.equal(bookmarkBend.axis,'x');
+ assert.equal(cartBend.axis,'x');
+ // Both bends must stay comfortably away from card edges (e.g. users right 340 + 20 and target left 640 - 20)
+ assert.ok(bookmarkBend.value>360&&bookmarkBend.value<600);
+ assert.ok(cartBend.value>360&&cartBend.value<600);
+});
+
+test('custom bend moves orthogonal line bend and clamps within clear corridor',()=>{
+ const s={
+  schemaVersion:1,display:'BOTH',
+  tables:[
+   {id:'users',name:'users',description:'',position:{x:60,y:50},columns:[{id:'id',name:'id',dataType:'BIGINT',nullable:false,primaryKey:true,unique:false,description:'',reference:null}]},
+   {id:'posts',name:'posts',description:'',position:{x:640,y:200},columns:[{id:'uid',name:'user_id',dataType:'BIGINT',nullable:true,primaryKey:false,unique:false,description:'',reference:{tableId:'users',columnId:'id'}}]}
+  ]
+ };
+ const normalLinks=databaseLinks(s);
+ const origBend=normalLinks[0].bend;
+ assert.ok(origBend);
+ // Custom bend at 420 and near-edge at 620
+ const customLinks=databaseLinks(s,false,{},{},{'posts-uid':{axis:'x',value:420}});
+ assert.equal(customLinks[0].hasCustomBend,true);
+ assert.equal(customLinks[0].bend?.value,420);
+ for(let i=1;i<customLinks[0].points.length;i++){
+  const a=customLinks[0].points[i-1],b=customLinks[0].points[i];
+  assert.ok(a.x===b.x||a.y===b.y); // Strictly orthogonal
+ }
+ const edgeLinks=databaseLinks(s,false,{},{},{'posts-uid':{axis:'x',value:620}});
+ assert.equal(edgeLinks[0].bend?.value,620);
+ assert.equal(edgeLinks[0].bend?.axis,'x');
+});
+
+test('detectBend detects bend on vertical stack and Y-axis custom bend routes strictly orthogonally', () => {
+ const s = {
+  schemaVersion: 1, display: 'BOTH',
+  tables: [
+   { id: 't1', name: 'table1', description: '', position: { x: 100, y: 50 }, columns: [{ id: 'id', name: 'id', dataType: 'BIGINT', nullable: false, primaryKey: true, unique: false, description: '', reference: null }] },
+   { id: 't2', name: 'table2', description: '', position: { x: 100, y: 350 }, columns: [{ id: 'fk', name: 't1_id', dataType: 'BIGINT', nullable: true, primaryKey: false, unique: false, description: '', reference: { tableId: 't1', columnId: 'id' } }] }
+  ]
+ };
+ const normalLinks = databaseLinks(s);
+ assert.equal(normalLinks.length, 1);
+ assert.ok(normalLinks[0].bend);
+ const customY = databaseLinks(s, false, {}, {}, { 't2-fk': { axis: 'y', value: 200 } });
+ assert.equal(customY[0].hasCustomBend, true);
+ for (let i = 1; i < customY[0].points.length; i++) {
+  const a = customY[0].points[i - 1], b = customY[0].points[i];
+  assert.ok(a.x === b.x || a.y === b.y, `Segment ${i} must be orthogonal`);
+ }
+});

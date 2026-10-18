@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {parseDatabaseSchema,updateDbColumn,removeDbTable,removeDbColumn,newDatabaseSchema,schemaTableSpec} from '../src/features/post/database-schema.ts';
+import {parseDatabaseSchema,updateDbColumn,removeDbTable,removeDbColumn,newDatabaseSchema,schemaTableSpec,newDbPresetColumn,moveDbColumnOrder,autoLayoutDbTables,getDatabaseContentBounds,sortDbColumns,reorderDbColumns} from '../src/features/post/database-schema.ts';
 import {blocksToDocument,documentToBlocks,blocksSignature} from '../src/features/post/writer-document.ts';
 import {richContentHtml} from '../src/features/post/rich-content.ts';
 import {validateEditorValue,buildPostBody} from '../src/features/post/post-editor-model.ts';
@@ -57,5 +57,112 @@ test('relation settings stay backward compatible and persist through writer seri
  }
  for(const patch of [{notation:'OTHER'},{notation:null},{sourceRequired:'false'},{sourceRequired:null}]){
   const s=schema();Object.assign(s.tables[1].columns[1].reference,patch);assert.throws(()=>parseDatabaseSchema(s));
+ }
+});
+
+test('preset columns, column reordering, auto-layout, and content bounds produce valid schemas',()=>{
+ let s=schema();
+ const created=newDbPresetColumn('created_at',s.tables[0].columns);
+ const updated=newDbPresetColumn('updated_at',[...s.tables[0].columns,created]);
+ const dupId=newDbPresetColumn('id',s.tables[0].columns);
+ assert.equal(created.name,'created_at');
+ assert.equal(created.dataType,'TIMESTAMP');
+ assert.equal(updated.name,'updated_at');
+ assert.equal(dupId.name,'id_2');
+ assert.equal(dupId.primaryKey,false);
+ assert.equal(dupId.unique,true);
+
+ s.tables[0].columns.push(created,updated);
+ s=moveDbColumnOrder(s,'users',updated.id,'UP');
+ assert.equal(s.tables[0].columns[1].id,updated.id);
+ assert.equal(s.tables[0].columns[2].id,created.id);
+
+ s=autoLayoutDbTables(s);
+ parseDatabaseSchema(s);
+ const bounds=getDatabaseContentBounds(s);
+ assert.ok(bounds.width>=280&&bounds.height>0);
+});
+
+test('column ordering enforces PK-top and FK-middle with drag-drop reordering, default values, and auto-increment',()=>{
+ const pk1 = { id: 'pk-1', name: 'id', dataType: 'BIGINT', nullable: false, primaryKey: true, unique: true, description: 'PK 1', reference: null, defaultValue: '', autoIncrement: true };
+ const pk2 = { id: 'pk-2', name: 'tenant_id', dataType: 'BIGINT', nullable: false, primaryKey: true, unique: true, description: 'PK 2', reference: null, defaultValue: '1', autoIncrement: false };
+ const fk1 = { id: 'fk-1', name: 'parent_id', dataType: 'BIGINT', nullable: true, primaryKey: false, unique: false, description: 'FK 1', reference: { tableId: 'users', columnId: 'pk-1' } };
+ const col1 = { id: 'c-1', name: 'name', dataType: 'VARCHAR(100)', nullable: true, primaryKey: false, unique: false, description: '이름', reference: null, defaultValue: '익명' };
+ const col2 = { id: 'c-2', name: 'age', dataType: 'INT', nullable: true, primaryKey: false, unique: false, description: '나이', reference: null, defaultValue: '0' };
+
+ const cols = [col1, fk1, pk2, col2, pk1];
+ const sorted = sortDbColumns(cols);
+ assert.deepEqual(sorted.map(c => c.id), ['pk-2', 'pk-1', 'fk-1', 'c-1', 'c-2']);
+
+ const reorderedCols = reorderDbColumns(sorted, 'c-2', 'c-1');
+ assert.deepEqual(reorderedCols.map(c => c.id), ['pk-2', 'pk-1', 'fk-1', 'c-2', 'c-1']);
+
+ const reorderedPks = reorderDbColumns(sorted, 'pk-1', 'pk-2');
+ assert.deepEqual(reorderedPks.map(c => c.id), ['pk-1', 'pk-2', 'fk-1', 'c-1', 'c-2']);
+
+ const s = {
+  schemaVersion: 1,
+  display: 'BOTH',
+  tables: [
+   {
+    id: 'users',
+    name: 'users',
+    description: '',
+    position: { x: 32, y: 32 },
+    columns: [pk1, fk1, col1],
+   },
+  ],
+ };
+ const parsed = parseDatabaseSchema(s);
+ assert.equal(parsed.tables[0].columns[0].autoIncrement, true);
+ assert.equal(parsed.tables[0].columns[2].defaultValue, '익명');
+
+ const spec = schemaTableSpec(parsed, parsed.tables[0]);
+ assert.equal(spec.columns[0].autoIncrement, true);
+ assert.equal(spec.columns[2].defaultValue, '익명');
+});
+
+test('logicalName (속성명) is validated, stored on presets, and preserved in schema parsing', () => {
+ const idCol = newDbPresetColumn('id');
+ const created = newDbPresetColumn('created_at');
+ const updated = newDbPresetColumn('updated_at');
+ assert.equal(idCol.logicalName, '식별자');
+ assert.equal(created.logicalName, '생성일시');
+ assert.equal(updated.logicalName, '수정일시');
+
+ const s = {
+  schemaVersion: 1,
+  display: 'BOTH',
+  tables: [
+   {
+    id: 'users',
+    name: 'users',
+    description: '',
+    position: { x: 32, y: 32 },
+    columns: [
+     { ...idCol, logicalName: '회원 번호' },
+     { id: 'c-1', name: 'email', logicalName: '이메일 주소', dataType: 'VARCHAR(255)', nullable: false, primaryKey: false, unique: true, description: '', reference: null },
+    ],
+   },
+  ],
+ };
+ const parsed = parseDatabaseSchema(s);
+ assert.equal(parsed.tables[0].columns[0].logicalName, '회원 번호');
+ assert.equal(parsed.tables[0].columns[1].logicalName, '이메일 주소');
+
+ // Over 100 chars should throw
+ s.tables[0].columns[1].logicalName = 'a'.repeat(101);
+ assert.throws(() => parseDatabaseSchema(s));
+});
+
+
+test('optional column metadata survives writer reload and rejects invalid API values',()=>{
+ const s=schema();Object.assign(s.tables[0].columns[0],{logicalName:'회원 번호',defaultValue:'1',autoIncrement:true});
+ const block={key:'metadata',type:'DB_SCHEMA',content:JSON.stringify(s),title:null,language:null,valid:true};
+ const restored=documentToBlocks(blocksToDocument([block],()=>({type:'doc'})),()=>'<p></p>');
+ assert.deepEqual(JSON.parse(restored[0].content),s);
+ assert.equal(schemaTableSpec(s,s.tables[0]).columns[0].logicalName,'회원 번호');
+ for(const patch of [{logicalName:null},{defaultValue:null},{defaultValue:1},{defaultValue:'😀'.repeat(101)},{autoIncrement:'true'},{autoIncrement:null}]){
+  const invalid=structuredClone(s);Object.assign(invalid.tables[0].columns[0],patch);assert.throws(()=>parseDatabaseSchema(invalid));
  }
 });
