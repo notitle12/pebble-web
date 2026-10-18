@@ -9,7 +9,7 @@ export type DatabaseEditActions = {
  changeTable:(id:string,patch:Partial<DbTable>)=>void;
  changeColumn:(tableId:string,columnId:string,patch:Partial<DbColumn>)=>void;
  addColumn:(id:string)=>void;removeColumn:(tableId:string,columnId:string)=>void;removeTable:(id:string)=>void;
- connect?:(reference:DbReference)=>void;connecting?:boolean;
+ connect?:(reference:DbReference)=>void;connectPair?:(source:DbReference,target:DbReference)=>void;connecting?:boolean;
 };
 export function DatabaseColumnTable({schema,table,actions}:{schema:DatabaseSchema;table:DbTable;actions:DatabaseEditActions}){
  const targets=schema.tables.flatMap(t=>t.columns.filter(c=>c.unique||c.primaryKey&&t.columns.filter(k=>k.primaryKey).length===1).map(c=>({table:t,column:c})));
