@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {representativeImageSrc,postImageSources,bodyImageId} from '../src/features/post/post-images.ts';
+import {representativeImageSrc,postImageSources,bodyImageId,projectBodyImageId} from '../src/features/post/post-images.ts';
 const a='https://api.pebble-log.com/api/v1/posts/1/images/2/content';
 const b='https://api.pebble-log.com/api/v1/posts/1/images/3/content';
 const blocks=[{type:'HTML',content:`<img src="${a}"><img src="${b}">`}];
@@ -24,4 +24,13 @@ test('save sends chosen body image ID and restore preserves selection from serve
   assert.equal(buildPostBody({title:'글',summary:'',blocks,thumbnailImageSrc:b}).thumbnailImageId,'3');
   const restored=editorValueFromPost({title:'글',summary:null,urlKey:'1',thumbnailImageId:'3',tags:[],blocks:[{...blocks[0],displayOrder:0,language:null,title:null}],imagePreviews:undefined});
   assert.equal(restored.thumbnailImageSrc,b);
+});
+
+test('project media image URLs are recognized as body images',()=>{
+  const projectMedia='https://api.pebble-log.com/api/v1/projects/10/media/25/content';
+  assert.equal(projectBodyImageId(projectMedia),'25');
+  assert.equal(bodyImageId(projectMedia),null);
+  assert.equal(projectBodyImageId(a),null);
+  assert.equal(projectBodyImageId(projectMedia.replace('/media/','/images/')),null);
+  assert.equal(representativeImageSrc([{type:'HTML',content:`<img src="${projectMedia}">`}]),projectMedia);
 });

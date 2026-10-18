@@ -13,6 +13,7 @@ export const ARCHITECTURE_TECHNOLOGIES = [
   {"id":"DART","title":"Dart","group":"language","type":"APP"},
   {"id":"PHP","title":"PHP","group":"language","type":"APP"},
   {"id":"RUBY","title":"Ruby","group":"language","type":"APP"},
+  {"id":"REDUX","title":"Redux","group":"frontend","type":"CLIENT"},
   {"id":"REACT","title":"React","group":"frontend","type":"CLIENT"},
   {"id":"NEXTJS","title":"Next.js","group":"frontend","type":"CLIENT"},
   {"id":"VUEJS","title":"Vue.js","group":"frontend","type":"CLIENT"},
@@ -90,3 +91,12 @@ export const ARCHITECTURE_TECHNOLOGIES = [
 ] as const;
 
 export const architectureTechnology = (id:string) => ARCHITECTURE_TECHNOLOGIES.find(item=>item.id===id);
+
+export type ArchitectureIconKind = "PERSON"|"SERVER"|"DATABASE"|"CACHE"|"STORAGE"|"CLIENT"|"CLOUD"|"CONTAINER"|"PROXY"|"CUSTOM";
+export function architectureIconKind(value?:string|null,fallback?:string):ArchitectureIconKind {
+  if(["PERSON","SERVER","DATABASE","CACHE","STORAGE","CLIENT","CLOUD","CONTAINER","PROXY","CUSTOM"].includes(value??""))return value as ArchitectureIconKind;
+  if(["DOCKER","DOCKER_COMPOSE","KUBERNETES"].includes(value??""))return "CONTAINER";
+  if(["AWS","GOOGLE_CLOUD","AZURE","ORACLE_CLOUD","NAVER_CLOUD","CLOUDFLARE","WORKERS","VERCEL","NETLIFY"].includes(value??""))return "CLOUD";
+  const kind=architectureTechnology(value??"")?.type??fallback;
+  return ["DATABASE","CACHE","STORAGE","CLIENT","PROXY","CUSTOM"].includes(kind??"")?kind as ArchitectureIconKind:"SERVER";
+}

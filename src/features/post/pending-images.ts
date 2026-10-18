@@ -13,6 +13,7 @@ export function createPendingImages(createUrl:(file:File)=>string=file=>URL.crea
       if(images.size>=50)throw new Error("한 번의 편집에서 이미지는 최대 50개까지 첨부할 수 있어요.");
       const src=pendingImagePrefix+crypto.randomUUID(),previewUrl=createUrl(file);images.set(src,{file,previewUrl});return {src,previewUrl};
     },
+    getFile(src:string):File|undefined {return images.get(src)?.file;},
     has(value:PostEditorValue){return value.blocks.some(block=>block.content.includes(pendingImagePrefix));},
     withoutPending(value:PostEditorValue):PostEditorValue {
       return {...value,thumbnailImageSrc:null,blocks:value.blocks.map(block=>({...block,content:block.content.replace(/<img\b[^>]*https:\/\/pebble\.local\.invalid\/images\/[^>]*>/gi,"").replace(/!\[[^\]]*\]\(https:\/\/pebble\.local\.invalid\/images\/[^)]*\)/g,""),imagePreviews:undefined}))};

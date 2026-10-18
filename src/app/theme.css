@@ -23,6 +23,11 @@ html[data-theme=dark] .blog-activity-switch button[aria-pressed=true]{background
 html[data-theme=dark] .blog-activity-chart .blog-activity-day{box-shadow:inset 0 0 0 1px #314237}
 html[data-theme=dark] .blog-activity-day.activity-0{background:#1c2b22}html[data-theme=dark] .blog-activity-day.activity-1{background:#304f3b}html[data-theme=dark] .blog-activity-day.activity-2{background:#47765a}html[data-theme=dark] .blog-activity-day.activity-3{background:#699d7b}html[data-theme=dark] .blog-activity-day.activity-4{background:#8fc7a2}
 
+html[data-theme=dark] :is(.blog-menu-row,.blog-folder-items a,.blog-external-links>a,.personal-blog-layout .blog-owner-actions a,.blog-menu-disclosure,.blog-icon-rail>a,.blog-icon-rail>button){color:var(--muted)}
+html[data-theme=dark] :is(.blog-menu-row:hover,.blog-folder-items a:hover,.blog-external-links>a:hover,.blog-menu-disclosure:hover,.personal-blog-layout .blog-owner-actions a:hover,.blog-icon-rail>a:hover,.blog-icon-rail>button:hover){background:var(--accent-soft);color:var(--accent)}
+html[data-theme=dark] .blog-link-fallback{background:var(--block-heading);color:var(--muted)}
+html[data-theme=dark] .blog-board-branch{border-color:var(--line)}
+
 html[data-theme=dark] .writer-shell .post-editor>footer,html[data-theme=dark] .writer-action-bar{background:var(--surface);color:var(--text);border-color:var(--line)}
 
 html[data-theme=dark] .writer-identity{background:var(--surface);color:var(--text)}
@@ -69,6 +74,17 @@ html[data-theme=dark] .architecture-scroll{background-color:var(--diagram-surfac
 html[data-theme=dark] .arch-group{fill:#263c303d;stroke:#688e75}
 html[data-theme=dark] .arch-group-docker{fill:#29493666;stroke:#75a384}
 html[data-theme=dark] .arch-group-custom{fill:#43374e55;stroke:#9a87ad}
+html[data-theme=dark] .arch-group-color-BLUE { fill: #24354a55; stroke: #6b8bb8; }
+html[data-theme=dark] .arch-group-color-GREEN { fill: #263c3055; stroke: #688e75; }
+html[data-theme=dark] .arch-group-color-PURPLE { fill: #3e325055; stroke: #9b81b8; }
+html[data-theme=dark] .arch-group-color-AMBER { fill: #483d2555; stroke: #b09556; }
+html[data-theme=dark] .arch-group-color-ROSE { fill: #4a282855; stroke: #b86b6b; }
+html[data-theme=dark] .arch-group-color-PEACH { fill: #48332555; stroke: #b87f58; }
+html[data-theme=dark] .arch-group-color-TEAL { fill: #223c3c55; stroke: #5ea1a1; }
+html[data-theme=dark] .arch-group-color-INDIGO { fill: #2c335555; stroke: #7b85c2; }
+html[data-theme=dark] .arch-group-color-PINK { fill: #472b3f55; stroke: #b86d9f; }
+html[data-theme=dark] .arch-group-color-GRAY { fill: #33394255; stroke: #7a8696; }
+html[data-theme=dark] .architecture-color-swatch.is-selected { box-shadow: 0 0 0 2px #1e222a, 0 0 0 4px #5e87f5; }
 html[data-theme=dark] :is(.arch-node-label,.arch-group-label){fill:var(--text)}
 html[data-theme=dark] .arch-node-type{fill:var(--muted)}
 html[data-theme=dark] .arch-node{fill:#29372f;stroke:#607a68;filter:drop-shadow(0 2px 3px #0003)}
@@ -115,6 +131,15 @@ html[data-theme=dark] :is(.architecture-canvas-toolbar,.architecture-canvas-stat
 html[data-theme=dark] :is(.architecture-inspector label,.architecture-canvas-help,.architecture-edge-list b){color:var(--muted)}
 html[data-theme=dark] .architecture-connect-button.active{background:var(--accent-soft);color:var(--accent);border-color:var(--accent-border)}
 html[data-theme=dark] .architecture-inspector .architecture-delete{background:#432a2a;color:#e4a19a;border-color:#9d6864}
+html[data-theme=dark] .architecture-inspector.architecture-inspector-sidebar{background:var(--surface);border-color:var(--line);box-shadow:0 12px 36px rgba(0,0,0,0.5),0 2px 8px rgba(0,0,0,0.3)}
+html[data-theme=dark] .architecture-inspector-sidebar .architecture-panel-title{border-color:var(--line)}
+html[data-theme=dark] .architecture-inspector-close{background:var(--block-surface);border-color:var(--line);color:var(--muted)}
+html[data-theme=dark] .architecture-inspector-close:hover{background:var(--accent-soft);border-color:var(--accent-border);color:var(--accent)}
+html[data-theme=dark] .architecture-inspector-sidebar :is(input,select){background:var(--block-surface);border-color:var(--line);color:var(--text)}
+html[data-theme=dark] .architecture-inspector-sidebar :is(input:focus,select:focus){border-color:var(--accent)}
+html[data-theme=dark] .architecture-multi-summary{background:var(--block-heading);color:var(--text)}
+html[data-theme=dark] .architecture-multi-summary .text-muted{color:var(--muted)}
+html[data-theme=dark] .architecture-inspector-sidebar .architecture-delete:hover{background:#523333}
 html[data-theme=dark] :is(.arch-group-wrap.is-selected,.arch-group-wrap.is-interactive:hover) .arch-group{stroke:var(--focus)}
 html[data-theme=dark] .arch-group-wrap.is-interactive .arch-group-label:focus-visible{fill:var(--focus)}
 
