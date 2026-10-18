@@ -18,3 +18,14 @@ test('카드 어느 위치에 놓아도 가장 가까운 변에 연결한다',()
   assert.equal(nearestArchitectureSide(box,200,145),'BOTTOM');
   assert.equal(nearestArchitectureSide({left:50,right:150,top:25,bottom:75},145,50),'RIGHT');
 });
+
+test('연결점 선택 범위(hit radius)가 원 근처(<=10px)로 제한되어 카드 이동을 방해하지 않는다', async () => {
+  const fs = await import('node:fs');
+  const path = await import('node:path');
+  const blockFile = fs.readFileSync(new URL('../src/features/post/components/architecture-block.tsx',import.meta.url), 'utf-8');
+  const match = blockFile.match(/className="arch-connect-hit"\s+r="(\d+)"/);
+  assert.ok(match, 'arch-connect-hit circle must be defined');
+  const radius = Number(match[1]);
+  assert.ok(radius <= 10, `Hit radius ${radius} must be <= 10 to prevent accidental connection drags when moving cards`);
+  assert.ok(radius >= 5, `Hit radius ${radius} must be >= visible dot radius 5`);
+});

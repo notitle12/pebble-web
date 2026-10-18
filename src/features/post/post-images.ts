@@ -10,8 +10,11 @@ export function bodyImageId(src:string):string|null {
     return /^\/api\/v1\/posts\/[1-9]\d{0,18}\/images\/([1-9]\d{0,18})\/content$/.exec(url.pathname)?.[1]??null;
   } catch {return null;}
 }
+export function projectBodyImageId(src:string):string|null {
+  try { const url=new URL(src);return ["http:","https:"].includes(url.protocol)?/^\/api\/v1\/projects\/[1-9]\d{0,18}\/media\/([1-9]\d{0,18})\/content$/.exec(url.pathname)?.[1]??null:null; } catch {return null;}
+}
 export function selectableRepresentativeImage(src:string):boolean {
-  return /^https:\/\/pebble\.local\.invalid\/images\/[\w-]+$/.test(src)||bodyImageId(src)!==null;
+  return /^https:\/\/pebble\.local\.invalid\/images\/[\w-]+$/.test(src)||bodyImageId(src)!==null||projectBodyImageId(src)!==null;
 }
 /** Inspect rendered images, never strings inside code, comments, or unsafe HTML. */
 export function postImageSources(blocks:readonly ImageBlock[]):string[] {

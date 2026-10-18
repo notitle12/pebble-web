@@ -1,10 +1,22 @@
+import { safeMediaUrl } from "@/features/media/model";
+
 type ProjectCoverProps = {
   title: string;
   techStacks?: string[];
   index: number;
+  imageUrl?: string | null;
 };
 
-export function ProjectCover({ title, techStacks = [], index }: ProjectCoverProps) {
+export function ProjectCover({ title, techStacks = [], index, imageUrl }: ProjectCoverProps) {
+  const safeUrl = safeMediaUrl(imageUrl ?? null);
+  if (safeUrl) {
+    return (
+      <div className="project-cover project-cover-image-wrap" aria-hidden="true">
+        <img src={safeUrl} alt="" className="project-cover-image" loading="lazy" />
+      </div>
+    );
+  }
+
   const firstTechStack = techStacks[0];
   const isFrontend = techStacks.some((tag) => /react|frontend|front-end/i.test(tag));
   const number = String(index).padStart(2, "0");

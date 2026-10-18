@@ -1,6 +1,6 @@
 import type { ArchitectureEdge, ArchitectureSide } from './api/post-list.ts';
 import type { ArchBox, ArchPoint } from './architecture-layout.ts';
-export const architectureAnchor = (box: ArchBox,side: ArchitectureSide):ArchPoint => side==='TOP' ? {x:box.x+box.width/2,y:box.y} : side==='BOTTOM' ? {x:box.x+box.width/2,y:box.y+box.height} : side==='LEFT' ? {x:box.x,y:box.y+box.height/2} : {x:box.x+box.width,y:box.y+box.height/2};
+export const architectureAnchor = (box: ArchBox,side: ArchitectureSide):ArchPoint => side==='TOP' ? {x:box.x+box.width/2,y:box.y} : side==='BOTTOM' ? {x:box.x+box.width/2,y:box.y+box.height} : side==='LEFT' ? {x:box.x,y:box.y+(box.anchorY??box.height/2)} : {x:box.x+box.width,y:box.y+(box.anchorY??box.height/2)};
 const normal = (side:ArchitectureSide) => side==='TOP'?{x:0,y:-1}:side==='BOTTOM'?{x:0,y:1}:side==='LEFT'?{x:-1,y:0}:{x:1,y:0};
 export function architectureEdgeRoute(edge:ArchitectureEdge,from:ArchBox,to:ArchBox) {
  const dx=to.x+to.width/2-from.x-from.width/2, dy=to.y+to.height/2-from.y-from.height/2;
