@@ -1,18 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ARCHITECTURE_TECHNOLOGIES } from '../src/features/post/architecture-catalog.ts';
+import { ARCHITECTURE_TECHNOLOGIES, architectureIconKind } from '../src/features/post/architecture-catalog.ts';
 import { architectureGroupLabel, architectureGroupPresentation, normalizeArchitectureGroups } from '../src/features/post/architecture-groups.ts';
 import { architectureLayout } from '../src/features/post/architecture-layout.ts';
 import { parseArchitectureSpec } from '../src/features/post/api/post-list.ts';
-import { techStackLogo } from '../src/features/blog-home/tech-stack-logos.ts';
-import { existsSync } from 'node:fs';
 const base={schemaVersion:1,groups:[],nodes:[{id:'n',type:'APP',label:'App'}],edges:[]};
-test('all expanded technology IDs are unique, accepted and use existing local logo assets',()=>{
+test('all expanded technology IDs are unique, accepted and render generic component icons',()=>{
  assert.ok(ARCHITECTURE_TECHNOLOGIES.length>=80);
  assert.equal(new Set(ARCHITECTURE_TECHNOLOGIES.map(x=>x.id)).size,ARCHITECTURE_TECHNOLOGIES.length);
  for(const tech of ARCHITECTURE_TECHNOLOGIES){
   assert.doesNotThrow(()=>parseArchitectureSpec({...base,nodes:[{...base.nodes[0],icon:tech.id}]}));
-  const logo=techStackLogo(tech.title);if(logo)assert.ok(existsSync(new URL('../public'+logo,import.meta.url)),logo);
+  assert.ok(["SERVER","DATABASE","CACHE","STORAGE","CLIENT","CLOUD","CONTAINER","PROXY","CUSTOM"].includes(architectureIconKind(tech.id)));
  }
 });
 test('legacy vendor details survive category normalization without repeated prefixes',()=>{
@@ -31,4 +29,10 @@ test('blank optional group details are accepted but invalid nesting and oversize
  assert.throws(()=>parseArchitectureSpec({...spec,groups:[{...spec.groups[0],type:'CONTAINER',typeLabel:null},spec.groups[1]]}));
  assert.throws(()=>parseArchitectureSpec({...spec,groups:[{...spec.groups[0],label:'a'.repeat(101)}]}));
  assert.throws(()=>parseArchitectureSpec({...base,nodes:[{...base.nodes[0],icon:'https://example.com/icon.svg'}]}));
+});
+
+test('legacy technology selections resolve to generic icons without changing saved IDs',()=>{
+ for(const [id,kind] of Object.entries({DOCKER:'CONTAINER',DOCKER_COMPOSE:'CONTAINER',KUBERNETES:'CONTAINER',POSTGRESQL:'DATABASE',MYSQL:'DATABASE',REDIS:'CACHE',R2:'STORAGE',REACT:'CLIENT',SPRING:'SERVER',CLOUDFLARE:'CLOUD',NGINX:'PROXY'}))assert.equal(architectureIconKind(id),kind);
+ assert.equal(architectureIconKind(null,'DATABASE'),'DATABASE');
+ assert.equal(architectureIconKind('UNKNOWN'),'SERVER');
 });
