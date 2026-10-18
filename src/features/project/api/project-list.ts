@@ -3,7 +3,7 @@ import {parseProjectMedia,type ProjectMedia} from "../../media/model.ts";
 import { guestJson, GuestApiError } from "../../../lib/public-api.ts";
 import { parseListQuery, validId } from "../../../lib/list-query.ts";
 export type ProjectQuery = { page: number; q?: string; techStackId?: string; lifecycleStatus?: "IN_PROGRESS" | "COMPLETED" };
-export type ProjectSummary = { likeCount?:number;likedByMe?:boolean; id: string; name: string; summary: string | null; owner: { id: string; nickname: string }; techStacks: {id: string; name: string}[]; lifecycleStatus: "IN_PROGRESS" | "COMPLETED"; publishedAt: string | null; createdAt: string };
+export type ProjectSummary = { likeCount?:number;likedByMe?:boolean; id: string; name: string; summary: string | null; owner: { id: string; nickname: string }; techStacks: {id: string; name: string}[]; lifecycleStatus: "IN_PROGRESS" | "COMPLETED"; publishedAt: string | null; createdAt: string; thumbnailUrl?: string | null };
 export type ProjectPage = { content: ProjectSummary[]; page: number; size: number; totalElements: number; totalPages: number; hasNext: boolean; hasPrevious: boolean };
 export function parseProjectQuery(params: Record<string,string|string[]|undefined>): ProjectQuery | null {
   const { lifecycleStatus, ...rest } = params;
@@ -29,7 +29,8 @@ function isProject(value: unknown): value is ProjectSummary & Record<string,unkn
     && ["IN_PROGRESS","COMPLETED"].includes(String(value.lifecycleStatus))
     && Array.isArray(value.techStacks) && value.techStacks.every(tag=>record(tag) && typeof tag.id === "string" && validId(tag.id) && typeof tag.name === "string")
     && (value.likeCount===undefined || count(value.likeCount)) && (value.likedByMe===undefined || typeof value.likedByMe==="boolean")
-    && (value.publishedAt === null || timestamp(value.publishedAt)) && timestamp(value.createdAt);
+    && (value.publishedAt === null || timestamp(value.publishedAt)) && timestamp(value.createdAt)
+    && (value.thumbnailUrl === undefined || value.thumbnailUrl === null || typeof value.thumbnailUrl === "string");
 }
 export function parseProjectPage(value: unknown, page: number): ProjectPage {
   if(!record(value) || !record(value.data)) throw new GuestApiError("response");
