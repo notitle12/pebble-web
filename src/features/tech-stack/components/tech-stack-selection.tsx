@@ -2,13 +2,8 @@
 import {useEffect,useMemo,useState} from "react";
 import {getPublicTechStacks,type PublicTechStack} from "../api/public-tech-stacks";
 import {filterTechStacks,mergeTechStacks,TECH_FILTERS,type TechFilter} from "../tech-stack-groups";
-import {techStackLogo} from "../../blog-home/tech-stack-logos";
 import styles from "./tech-stack-selection.module.css";
 
-function TechLogo({name}:{name:string}) {
-  const logo=techStackLogo(name);
-  return logo ? <img className={styles.logo} src={logo} alt="" width={20} height={20}/> : <span className={styles.fallback} aria-hidden="true">{name.slice(0,1).toUpperCase()}</span>;
-}
 export function TechStackSelection({selected,existing=[],onChange,disabled=false}:{selected:string[];existing:PublicTechStack[];onChange:(ids:string[])=>void;disabled?:boolean}) {
   const [fetched,setFetched]=useState<PublicTechStack[]>([]);
   const [error,setError]=useState(false),[loading,setLoading]=useState(true);
@@ -31,7 +26,7 @@ export function TechStackSelection({selected,existing=[],onChange,disabled=false
       {selected.length===0 ? <p className={styles.hint}>사용한 기술을 검색하거나 분류에서 선택하세요.</p> : selected.map(id=>{
         const item=byId.get(id),name=item?.name??`기존 기술 (${id})`;
         return <button type="button" className={styles.chip} key={id} disabled={disabled} aria-label={`${name} 제거`} onClick={()=>remove(id)}>
-          <TechLogo name={name}/><span>{name}</span><span aria-hidden="true">×</span>
+          <span>{name}</span><span aria-hidden="true">×</span>
         </button>;
       })}
     </div>
@@ -45,7 +40,7 @@ export function TechStackSelection({selected,existing=[],onChange,disabled=false
       {results.map(item=>{
         const checked=selected.includes(item.id);
         return <button type="button" key={item.id} aria-pressed={checked} disabled={disabled} onClick={()=>checked?remove(item.id):onChange([...selected,item.id])}>
-          <TechLogo name={item.name}/><span className={styles.name}>{item.name}{item.status!=="ACTIVE"&&<small>기존 기술</small>}</span><span className={styles.mark} aria-hidden="true">{checked?"✓":"+"}</span>
+          <span className={styles.name}>{item.name}{item.status!=="ACTIVE"&&<small>기존 기술</small>}</span><span className={styles.mark} aria-hidden="true">{checked?"✓":"+"}</span>
         </button>;
       })}
       {!loading&&results.length===0&&<p className={styles.hint}>조건에 맞는 등록 기술이 없어요.</p>}
