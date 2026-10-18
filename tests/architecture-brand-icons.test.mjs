@@ -5,11 +5,12 @@ import {ARCHITECTURE_BRAND_ICONS,architectureBrandIcon,searchArchitectureIcons} 
 import {toolboxIcon,newArchitectureNode} from '../src/features/post/architecture-tools.ts';
 import {parseArchitectureSpec} from '../src/features/post/api/post-list.ts';
 test('only reviewed commercial artwork is offered; unknown IDs and URLs cannot resolve to brand assets',()=>{
- assert.deepEqual(ARCHITECTURE_BRAND_ICONS.map(icon=>icon.value),['GIT','RUST']);
- for(const value of ['DOCKER','GO','PYTHON','POSTGRESQL','https://example.com/a.svg','<svg/>',null])assert.equal(architectureBrandIcon(value),undefined);
+ const expectedIcons = ['GIT','RUST'];
+ assert.deepEqual(ARCHITECTURE_BRAND_ICONS.map(icon=>icon.value),expectedIcons);
+ for(const value of ['DOCKER','GO','PYTHON','POSTGRESQL','AWS','UNKNOWN_TECH','FOOBAR','https://example.com/a.svg','<svg/>',null])assert.equal(architectureBrandIcon(value),undefined);
  for(const icon of ARCHITECTURE_BRAND_ICONS){
   assert.equal(toolboxIcon(icon.value),icon.value);
-  assert.ok(['CC BY 3.0','CC BY 4.0'].includes(icon.license));
+  assert.ok(['CC BY 3.0','CC BY 4.0','MIT'].includes(icon.license));
   assert.match(icon.asset,/^\/technology-icons\/[a-z]+\.(svg|png)$/);
   assert.ok(readFileSync(new URL(`../public${icon.asset}`,import.meta.url)).length>100);
   const node={...newArchitectureNode('n',icon.value,0),label:'직접 입력한 이름'};
@@ -24,6 +25,9 @@ test('icon search accepts Korean aliases, case and whitespace without modifying 
  assert.equal(searchArchitectureIcons(ARCHITECTURE_BRAND_ICONS,' 러 스트 ')[0].value,'RUST');
  assert.equal(searchArchitectureIcons(ARCHITECTURE_BRAND_ICONS,'gIt')[0].value,'GIT');
  assert.equal(searchArchitectureIcons(ARCHITECTURE_BRAND_ICONS,'깃')[0].value,'GIT');
- assert.deepEqual(searchArchitectureIcons(ARCHITECTURE_BRAND_ICONS,'Docker'),[]);
+ assert.deepEqual(searchArchitectureIcons(ARCHITECTURE_BRAND_ICONS,'도커'),[]);
+ assert.equal(searchArchitectureIcons(ARCHITECTURE_BRAND_ICONS,'','devops')[0].value,'GIT');
+ assert.equal(searchArchitectureIcons(ARCHITECTURE_BRAND_ICONS,'','language')[0].value,'RUST');
+ assert.deepEqual(searchArchitectureIcons(ARCHITECTURE_BRAND_ICONS,'','database'),[]);
  assert.equal(searchArchitectureIcons(ARCHITECTURE_BRAND_ICONS,'  ').length,2);
 });
