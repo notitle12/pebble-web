@@ -30,6 +30,12 @@ const freshId=()=>`n-${globalThis.crypto.randomUUID()}`;
 export const newDbColumn=():DbColumn=>({id:freshId(),name:'',logicalName:'',dataType:'',nullable:true,primaryKey:false,unique:false,description:'',reference:null,defaultValue:'',autoIncrement:false});
 export function newDbTable(index=0):DbTable{return {id:freshId(),name:'',description:'',position:{x:32+(index%3)*340,y:32+Math.floor(index/3)*300},columns:[newDbColumn()]};}
 export const newDatabaseSchema=():DatabaseSchema=>({schemaVersion:1,display:'BOTH',tables:[newDbTable()]});
+export function isDatabaseSchemaEmpty(schema: DatabaseSchema): boolean {
+  if (!schema || schema.schemaVersion !== 1 || !Array.isArray(schema.tables)) return false;
+  return schema.tables.every(table => !table.name?.trim() && !table.description?.trim() && Array.isArray(table.columns) && table.columns.every(col =>
+    !col.name?.trim() && !col.dataType?.trim() && !col.logicalName?.trim() && !col.description?.trim() && !col.defaultValue?.trim()
+    && !col.primaryKey && !col.unique && !col.reference && !col.autoIncrement && col.nullable !== false));
+}
 
 export function sortDbColumns(columns: DbColumn[]): DbColumn[] {
  return [...columns].sort((a, b) => {
