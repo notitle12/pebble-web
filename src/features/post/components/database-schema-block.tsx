@@ -544,10 +544,6 @@ export function DatabaseDiagram({
        화면 맞춤
       </button>
      </>
-    ) : onExpand ? (
-     <button type="button" className="diagram-expand" onClick={onExpand}>
-      확대 보기
-     </button>
     ) : null}
    </div>
 
@@ -595,9 +591,14 @@ export function DatabaseDiagram({
       }
      }}
      onClick={event => {
+      if (!editable && onExpand) {
+       const target = event.target as HTMLElement;
+       if (target.closest('input,select,textarea')) return;
+       onExpand();
+       return;
+      }
       if ((event.target as Element).closest('article,button,input,select,[data-relation-id]')) return;
-      if (onExpand) onExpand();
-      else clear();
+      clear();
      }}
      tabIndex={0}
      aria-label="ERD 스크롤 영역"
@@ -753,6 +754,8 @@ export function DatabaseDiagram({
             const el = e.target as HTMLElement;
             if (el.closest('input,button,select,textarea')) return;
             actions.connectToTable?.(actions.connectingFrom, t.id);
+           } else if (!editable && onExpand) {
+            onExpand();
            }
           }}
          >
@@ -1406,12 +1409,15 @@ export function DatabaseSchemaBlock({
  const table = schema.tables.find(t => t.id === selected);
 
  return (
-  <section ref={root} className={s.block} aria-label={title || 'DB 설계'}>
+  <section
+   ref={root}
+   className={`${s.block}${!expanded ? ' database-reader' : ''}`}
+   aria-label={title || 'DB 설계'}
+  >
    {title && <h2>{title}</h2>}
    {!expanded && (
     <DiagramLightbox
-     label="데이터베이스 설계"
-     hideTrigger={schema.display !== 'SPEC'}
+     label="데이터베이스"
      open={viewerOpen}
      onOpenChange={setViewerOpen}
     >

@@ -38,3 +38,35 @@ test('직군 이름을 직접 편집하고 빈 인원과 작업 서술을 저장
  const doc={...newProjectDocument(),teamSize:2,teamComposition:[{role:'백엔드',count:2},{role:'프로덕트 디자인',count:0}],role:'실시간 API 설계 및 배포 자동화\n'.repeat(30)};
  assert.deepEqual(parseProjectDocument(doc).teamComposition,doc.teamComposition);assert.equal(parseProjectDocument(doc).role,doc.role);
 });
+
+test('빈 다이어그램 블록은 직렬화 시 제외되고 미완성 다이어그램은 한글 오류 메시지를 발생시킨다',()=>{
+ const emptyDb={schemaVersion:1,display:'BOTH',tables:[{id:'t-1',name:'',description:'',position:{x:0,y:0},columns:[{id:'c-1',name:'',dataType:'',nullable:true,primaryKey:false,unique:false,description:'',reference:null}]}]};
+ const emptyArch={schemaVersion:1,groups:[],nodes:[{id:'client',type:'CLIENT',label:'클라이언트',icon:'CLIENT',position:{x:56,y:80}}],edges:[]};
+ const doc=newProjectDocument();
+ doc.sections.find(s=>s.key==='DATABASE').blocks=[{key:'db',type:'DB_SCHEMA',content:JSON.stringify(emptyDb),language:null,title:null,valid:false}];
+ doc.sections.find(s=>s.key==='ARCHITECTURE').blocks=[{key:'arch',type:'ARCHITECTURE',content:JSON.stringify(emptyArch),language:null,title:null,valid:true}];
+
+ const serialized=serializeProjectDocument(doc);
+ assert.equal(serialized.sections.find(s=>s.key==='DATABASE').blocks.length,0);
+ assert.equal(serialized.sections.find(s=>s.key==='ARCHITECTURE').blocks.length,0);
+
+ const incompleteDb={schemaVersion:1,display:'BOTH',tables:[{id:'t-1',name:'users',description:'',position:{x:0,y:0},columns:[{id:'c-1',name:'',dataType:'',nullable:true,primaryKey:false,unique:false,description:'',reference:null}]}]};
+ const incompleteDoc=newProjectDocument();
+ incompleteDoc.sections.find(s=>s.key==='DATABASE').blocks=[{key:'db',type:'DB_SCHEMA',content:JSON.stringify(incompleteDb),language:null,title:null,valid:false}];
+ assert.throws(()=>parseProjectDocument(incompleteDoc),/데이터베이스 설계를 완성해 주세요/);
+});
+
+
+test('작성한 단일 client 노드와 잘못된 다이어그램을 조용히 버리지 않는다',()=>{
+ const architecture={schemaVersion:1,groups:[],nodes:[{id:'client',type:'CLIENT',label:'직접 작성한 사용자',icon:'CLIENT',position:{x:56,y:80}}],edges:[]};
+ const doc=newProjectDocument();
+ doc.sections.find(s=>s.key==='ARCHITECTURE').blocks=[{key:'arch',type:'ARCHITECTURE',content:JSON.stringify(architecture),language:null,title:null,valid:true}];
+ assert.equal(serializeProjectDocument(doc).sections.find(s=>s.key==='ARCHITECTURE').blocks.length,1);
+ for(const type of ['ARCHITECTURE','DB_SCHEMA']){
+  const invalid=newProjectDocument();invalid.sections[0].blocks=[{key:'bad',type,content:'{broken',language:null,title:null,valid:false}];
+  assert.throws(()=>serializeProjectDocument(invalid));
+ }
+ const db={schemaVersion:1,display:'BOTH',tables:[{id:'t',name:'',description:'작성 중인 테이블',position:{x:0,y:0},columns:[]}]};
+ const partial=newProjectDocument();partial.sections[0].blocks=[{key:'db',type:'DB_SCHEMA',content:JSON.stringify(db),language:null,title:null,valid:false}];
+ assert.throws(()=>serializeProjectDocument(partial),/데이터베이스 설계를 완성/);
+});

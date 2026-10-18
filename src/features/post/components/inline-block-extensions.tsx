@@ -15,7 +15,13 @@ import styles from "./rich-body-editor.module.css";
 export const InlineCode = TiptapNode.create({
   name: "pebbleCode", group: "block", content: "text*", marks: "", code: true, defining: true,
   addAttributes() { return { language: { default: "TYPESCRIPT" }, align: { default: "left", parseHTML: (element: HTMLElement) => ["left", "center", "right"].includes(element.getAttribute("data-align") || "") ? element.getAttribute("data-align") : "left", renderHTML: attrs => ({ "data-align": ["left", "center", "right"].includes(String(attrs.align)) ? attrs.align : "left" }) }, key: { default: null, rendered: false }, title: { default: null, rendered: false } }; },
-  parseHTML() { return [{ tag: "pre", preserveWhitespace: "full", getAttrs: element => ({ language: codeLanguages.includes(element.getAttribute("data-language") ?? "") ? element.getAttribute("data-language") : "TYPESCRIPT", align: ["left", "center", "right"].includes(element.getAttribute("data-align") || "") ? element.getAttribute("data-align") : "left" }) }]; },
+  parseHTML() { return [{ tag: "pre", preserveWhitespace: "full", getAttrs: element => {
+    const explicitLang = (element.getAttribute("data-language") ?? "").toUpperCase();
+    const codeClass = element.querySelector("code")?.className ?? "";
+    const classMatch = (codeClass.match(/language-([a-z0-9_-]+)/i)?.[1] ?? "").toUpperCase();
+    const detected = codeLanguages.includes(explicitLang) ? explicitLang : codeLanguages.includes(classMatch) ? classMatch : "TYPESCRIPT";
+    return { language: detected, align: ["left", "center", "right"].includes(element.getAttribute("data-align") || "") ? element.getAttribute("data-align") : "left" };
+  } }]; },
   renderHTML({ node, HTMLAttributes }) { return ["pre", { ...HTMLAttributes, "data-language": node.attrs.language }, ["code", {}, 0]]; },
   addNodeView() { return ReactNodeViewRenderer(InlineCodeView, { contentDOMElementTag: "code" }); },
   addProseMirrorPlugins() { return [new Plugin({ props: { handlePaste: (view, event) => {
