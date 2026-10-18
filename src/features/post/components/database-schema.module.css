@@ -343,8 +343,11 @@
 .selectedSpecification{position:relative;margin-top:18px;padding:18px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--text)}
 .closeSpecification{display:block;margin-left:auto;padding:6px 10px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--text);cursor:pointer}
 .viewport[data-preview=true]{overflow:hidden;max-height:none;overscroll-behavior:auto}
-.viewport[data-preview=true]:has(.inspectTable){cursor:default}
-.zoom :global(.diagram-expand){margin:0;padding:5px 9px;min-height:0}
+.viewport[data-preview=true],
+.viewport[data-preview=true] :is(.card,.cardHeading,.inspectTable,.cardGrid,.cardRow,.cardSubHeader,svg){cursor:zoom-in}
+:global(.diagram-lightbox) .viewport[data-preview=true],
+:global(.diagram-lightbox) .viewport[data-preview=true] :is(.card,.cardHeading,.inspectTable,.cardGrid,.cardRow,.cardSubHeader,svg){cursor:default}
+:global(.diagram-lightbox) .inspectTable{cursor:pointer}
 
 .primaryToolbarBtn{background:var(--accent-soft,#eef4ff)!important;border-color:var(--accent,#4770d6)!important;color:var(--accent,#345b95)!important;font-weight:600}
 .historyButtons{display:inline-flex;gap:4px}

@@ -206,7 +206,8 @@ body:has(.writer-shell){background:#fff}
 .post-detail .like-panel{background:transparent;border:0;border-top:1px solid var(--line);border-radius:0;box-shadow:none;padding:36px 0 8px;margin-top:40px}
 .detail-shell .like-panel:not(.post-detail *){background:#fff;border:1px solid var(--line);border-radius:16px;padding:20px 36px;margin-top:18px;box-shadow:0 3px 16px #26344c04}
 .detail-shell .comments-panel .list-heading{margin-top:0}
-@media(max-width:760px){.discovery-section{padding:22px 20px;border-radius:12px}.personal-blog-content{padding:24px 20px;border-radius:12px}.personal-blog-profile{padding:24px}.detail-shell .post-detail{padding:30px 24px;border-radius:12px}.detail-shell .like-panel,.detail-shell .comments-panel{padding:22px 24px;border-radius:12px}.post-heading-bar{gap:10px;align-items:flex-start}.post-heading-bar .post-meta{font-size:12px}.post-owner-actions a{padding:7px 10px}.personal-blog-layout{gap:18px}}
+.post-detail .content-thumbnail{display:block;width:100%;height:auto;max-height:540px;object-fit:cover;border-radius:12px;margin:22px 0 28px;border:1px solid var(--line);box-shadow:0 4px 18px #17202a0a}
+@media(max-width:760px){.discovery-section{padding:22px 20px;border-radius:12px}.personal-blog-content{padding:24px 20px;border-radius:12px}.personal-blog-profile{padding:24px}.detail-shell .post-detail{padding:30px 24px;border-radius:12px}.detail-shell .like-panel,.detail-shell .comments-panel{padding:22px 24px;border-radius:12px}.post-heading-bar{gap:10px;align-items:flex-start}.post-heading-bar .post-meta{font-size:12px}.post-owner-actions a{padding:7px 10px}.personal-blog-layout{gap:18px}.post-detail .content-thumbnail{max-height:360px;margin:16px 0 22px;border-radius:8px}}
 @media(max-width:420px){.detail-shell .post-detail{padding:26px 20px}.detail-shell .like-panel,.detail-shell .comments-panel{padding:20px}.discovery-section{padding:20px 18px}.discovery-heading p{font-size:12px}}
 
 /* Public lists and the author blog use distinct content surfaces. */
@@ -718,8 +719,9 @@ html[data-theme=dark] .comment-composer-card,html[data-theme=dark] .comment-comp
 .comment-composer-toggle svg{width:16px;height:16px;margin-right:5px;fill:none;stroke:currentColor;stroke-width:1.7}
 .architecture-reader .architecture-scroll{overflow:hidden;max-height:none;overscroll-behavior:auto;display:grid;place-items:center;cursor:zoom-in}
 .diagram-lightbox .architecture-reader .architecture-scroll{cursor:default}
-.architecture-reader{position:relative}
-.architecture-reader>.diagram-expand{position:static;display:block;margin:8px 10px 8px auto;padding:5px 9px;min-height:0;background:var(--surface,#fff)}
+.architecture-reader,.database-reader{position:relative}
+.architecture-reader>.diagram-expand,.database-reader>.diagram-expand{position:static;display:block;margin:8px 10px 8px auto;padding:5px 9px;min-height:0;background:var(--surface,#fff)}
+.database-reader>.diagram-expand{margin:0 0 10px auto}
 .post-body h2:has(+section[aria-label="DB 설계"]){margin-bottom:10px}
 
 .project-document-section>h2,.project-document-section>div>h3{margin:0 0 20px}
@@ -727,3 +729,11 @@ html[data-theme=dark] .comment-composer-card,html[data-theme=dark] .comment-comp
 .project-document-section .post-body>[data-block-alignment]:first-child>*{margin-top:0}
 .project-document-section .text-block>:first-child,.project-document-section .post-rich-content>div>:first-child{margin-top:0}
 .project-document-overview{padding:0;margin:0 0 20px}
+.post-detail .post-body > .project-document-section:first-child,
+.post-detail .post-body > :first-child.project-document-section {
+  border-top: none;
+  padding-top: 28px;
+}
+.post-detail .content-thumbnail {
+  margin: 22px 0 0;
+}
