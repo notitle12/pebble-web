@@ -1,54 +1,1464 @@
 "use client";
-import {useEffect,useId,useLayoutEffect,useMemo,useRef,useState,type CSSProperties} from 'react';
-import type {DatabaseSchema,DbReference} from '../database-schema';
-import {databaseLinks,type DbSize} from '../database-relations';
-import {RelationshipEndMark} from './database-relation-symbols';
-import {type DatabaseEditActions} from './database-edit-table';
+import {
+ useCallback,
+ useEffect,
+ useId,
+ useLayoutEffect,
+ useMemo,
+ useRef,
+ useState,
+ type CSSProperties,
+} from 'react';
+import {
+ COMMON_DB_TYPES,
+ DB_TABLE_COLORS,
+ getDatabaseContentBounds,
+ sortDbColumns,
+ type DatabaseSchema,
+ type DbReference,
+} from '../database-schema';
+import { architectureZoom } from '../architecture-interaction';
+import { databaseLinks, type DbSize } from '../database-relations';
+import { RelationshipEndMark } from './database-relation-symbols';
+import {
+ DatabaseKeyCellSelect,
+ DatabaseSelectedRelationBar,
+ type DatabaseEditActions,
+} from './database-edit-table';
+import { TableTextInput } from './inline-block-views';
 import s from './database-schema.module.css';
-import {useDiagramFit} from './use-diagram-fit';
-import {DiagramLightbox} from './diagram-lightbox';
-export function DatabaseDiagram({schema,actions,onSelectTable,selectedTable,onClearSelection,onExpand,expanded=false}:{schema:DatabaseSchema;actions?:DatabaseEditActions;onSelectTable?:(id:string)=>void;selectedTable?:string|null;onClearSelection?:()=>void;onExpand?:()=>void;expanded?:boolean}){
- const viewport=useRef<HTMLDivElement>(null);
- const [zoom,setZoom]=useState(1),[moving,setMoving]=useState<{id:string;x:number;y:number}|null>(null),[relation,setRelation]=useState<string|null>(null),[hover,setHover]=useState<string|null>(null),[localTable,setLocalTable]=useState<string|null>(null),[dragPreview,setDragPreview]=useState<{from:{x:number;y:number};to:{x:number;y:number}}|null>(null);
- const drag=useRef<{id:string;px:number;py:number;x:number;y:number}|null>(null),connectionDrag=useRef<{ref:DbReference;x:number;y:number}|null>(null),suppressClick=useRef(false);
- const editable=!!actions,cardWidth=280;
- const cards=useRef(new Map<string,HTMLElement>()),[sizes,setSizes]=useState<Record<string,DbSize>>({});
- const cardIds=schema.tables.map(t=>t.id).join(',');
- useLayoutEffect(()=>{
-  const measure=()=>{const next=Object.fromEntries([...cards.current].map(([id,el])=>[id,{width:el.offsetWidth,height:el.offsetHeight}]));setSizes(previous=>JSON.stringify(previous)===JSON.stringify(next)?previous:next);};
-  measure();const observer=new ResizeObserver(measure);cards.current.forEach(el=>observer.observe(el));return ()=>observer.disconnect();
- },[cardIds]);
- const tables=useMemo(()=>schema.tables.map(t=>moving?.id===t.id?{...t,position:{x:moving.x,y:moving.y}}:t),[schema,moving]);
- const links=useMemo(()=>databaseLinks({...schema,tables},false,sizes),[schema,tables,sizes]);
- const currentRelation=links.find(l=>l.id===relation),activeRelation=currentRelation??links.find(l=>l.id===hover),activeTable=selectedTable??localTable;
- const focused=Boolean(activeRelation||activeTable);
- const relevant=(l:typeof links[number])=>activeRelation?l.id===activeRelation.id:activeTable?l.sourceTableId===activeTable||l.targetTableId===activeTable:true;
- const relatedTables=new Set(links.filter(relevant).flatMap(l=>[l.sourceTableId,l.targetTableId]));
- const width=Math.max(800,...tables.map(t=>t.position.x+cardWidth+80),...links.flatMap(l=>l.points.map(p=>p.x+40))),height=Math.max(420,...tables.map(t=>t.position.y+(sizes[t.id]?.height??42+t.columns.length*32)+80),...links.flatMap(l=>l.points.map(p=>p.y+40)));
- const fitted=useDiagramFit(viewport,width,height,expanded,!editable),viewScale=editable?zoom:fitted;
- const clear=()=>{setRelation(null);setLocalTable(null);setHover(null);onClearSelection?.();};
- const selectRelation=(id:string)=>{if(onExpand){onExpand();return;}setRelation(current=>current===id?null:id);setLocalTable(null);};
- const selectTable=(id:string)=>{if(onExpand){onExpand();return;}setRelation(null);setHover(null);if(onSelectTable)onSelectTable(id);else setLocalTable(current=>current===id?null:id);};
- const colors=['#5276a6','#8a669f','#428576','#a17a3c','#a46369','#587e91'];
- return <section className={s.diagram} aria-label="ERD 관계도">
-  <div className={s.zoom}><span>테이블 {tables.length} · 관계 {links.length}</span>{focused&&<button type="button" onClick={clear}>강조 해제</button>}{editable?<><button type="button" aria-label="ERD 축소" disabled={zoom<=.5} onClick={()=>setZoom(z=>Math.max(.5,z-.1))}>−</button><output>{Math.round(zoom*100)}%</output><button type="button" aria-label="ERD 확대" disabled={zoom>=1.5} onClick={()=>setZoom(z=>Math.min(1.5,z+.1))}>＋</button><button type="button" onClick={()=>setZoom(1)}>100%</button></>:onExpand?<button type="button" className="diagram-expand" onClick={onExpand}>확대 보기</button>:null}</div>
-  {currentRelation&&<div className={s.relationFocus} role="status">{currentRelation.label}<button type="button" onClick={clear}>선택 해제</button></div>}
-  <div ref={viewport} className={s.viewport} data-preview={!editable} onKeyDown={event=>{if(event.key==='Escape')clear();}} onClick={event=>{if((event.target as Element).closest('article,button,[data-relation-id]'))return;if(onExpand)onExpand();else clear();}} tabIndex={0} aria-label="ERD 스크롤 영역"><div style={{width:width*viewScale,height:height*viewScale,marginInline:editable?undefined:'auto'}}><div className={s.world} style={{width,height,transform:`scale(${viewScale})`}}>
-   <svg width={width} height={height} className={s.lines} aria-label="외래 키 관계선">{[...links.filter(l=>!relevant(l)),...links.filter(relevant)].map(l=><g key={l.id} className={s.relationLine} data-relation-id={l.id} data-active={focused&&relevant(l)} data-muted={focused&&!relevant(l)} style={{'--relation-color':colors[links.indexOf(l)%colors.length]} as CSSProperties} role="button" tabIndex={0} aria-label={l.label} aria-pressed={relation===l.id} onPointerEnter={()=>setHover(l.id)} onPointerLeave={()=>setHover(null)} onClick={event=>{event.stopPropagation();selectRelation(l.id);}} onKeyDown={event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();selectRelation(l.id);}}}><title>{l.label}</title><path className={s.relationHit} d={l.d}/><path className={s.relationRoute} d={l.d}/><RelationshipEndMark x={l.source.x} y={l.source.y} angle={l.source.angle} many={l.many} required={l.sourceRequired} notation={l.notation}/><RelationshipEndMark x={l.target.x} y={l.target.y} angle={l.target.angle} many={false} required={l.targetRequired} notation={l.notation}/></g>)}{dragPreview&&<path className={s.dragRelationPreview} d={`M${dragPreview.from.x} ${dragPreview.from.y} L${dragPreview.to.x} ${dragPreview.to.y}`}/>}</svg>
-   {tables.map(t=><article key={t.id} ref={el=>{if(el)cards.current.set(t.id,el);else cards.current.delete(t.id);}} className={s.card} data-editable={editable} data-selected={activeTable===t.id} data-muted={focused&&activeTable!==t.id&&!relatedTables.has(t.id)} style={{width:cardWidth,left:t.position.x,top:t.position.y}}>
-    <div className={s.cardHeading}>{actions&&<button type="button" className={s.dragHandle} aria-label={`${t.name||'새 테이블'} 이동`} onPointerDown={event=>{drag.current={id:t.id,px:event.clientX,py:event.clientY,x:t.position.x,y:t.position.y};event.currentTarget.setPointerCapture(event.pointerId);}} onPointerMove={event=>{const d=drag.current;if(d?.id!==t.id)return;setMoving({id:t.id,x:Math.max(0,Math.min(6000,Math.round(d.x+(event.clientX-d.px)/zoom))),y:Math.max(0,Math.min(6000,Math.round(d.y+(event.clientY-d.py)/zoom)))});}} onPointerUp={event=>{const d=drag.current;if(d?.id!==t.id)return;drag.current=null;setMoving(null);actions.changeTable(t.id,{position:{x:Math.max(0,Math.min(6000,Math.round(d.x+(event.clientX-d.px)/zoom))),y:Math.max(0,Math.min(6000,Math.round(d.y+(event.clientY-d.py)/zoom)))}});}} onPointerCancel={()=>{drag.current=null;setMoving(null);}}>⠿</button>}<button type="button" className={s.inspectTable} aria-label={`${t.name||'새 테이블'} ${editable?'편집':'컬럼 상세 보기'}`} onClick={()=>selectTable(t.id)}>{t.name||'새 테이블'}</button></div>
-    {t.columns.map(c=>{const lit=Boolean(activeRelation&&(activeRelation.sourceTableId===t.id&&activeRelation.sourceColumnId===c.id||activeRelation.targetTableId===t.id&&activeRelation.targetColumnId===c.id));return <div key={c.id} className={s.cardColumn} data-highlight={lit} data-db-table={t.id} data-db-column={c.id}><span className={s.key}>{[c.primaryKey?'PK':'',c.reference?'FK':'',c.unique?'UQ':''].filter(Boolean).join('/')}</span><button type="button" className={s.columnName} onClick={()=>selectTable(t.id)}>{c.name||'새 컬럼'}</button><small>{c.dataType}</small>{actions&&<button type="button" className={s.columnPort} aria-label={`${t.name||'새 테이블'}.${c.name||'새 컬럼'} 관계 연결`} onPointerDown={event=>{connectionDrag.current={ref:{tableId:t.id,columnId:c.id},x:event.clientX,y:event.clientY};event.currentTarget.setPointerCapture(event.pointerId);}} onPointerUp={event=>{const d=connectionDrag.current;connectionDrag.current=null;setDragPreview(null);if(!d||Math.hypot(event.clientX-d.x,event.clientY-d.y)<5)return;suppressClick.current=true;const row=document.elementFromPoint(event.clientX,event.clientY)?.closest<HTMLElement>('[data-db-table][data-db-column]');if(row?.dataset.dbTable&&row.dataset.dbColumn)actions.connectPair?.(d.ref,{tableId:row.dataset.dbTable,columnId:row.dataset.dbColumn});}} onPointerMove={event=>{const d=connectionDrag.current,view=viewport.current;if(!d||!view||Math.hypot(event.clientX-d.x,event.clientY-d.y)<5)return;const box=view.getBoundingClientRect();setDragPreview({from:{x:t.position.x+cardWidth,y:t.position.y+40+(t.columns.indexOf(c)+.5)*32},to:{x:(event.clientX-box.left+view.scrollLeft)/viewScale,y:(event.clientY-box.top+view.scrollTop)/viewScale}});}} onPointerCancel={()=>{connectionDrag.current=null;setDragPreview(null);}} onClick={()=>{if(suppressClick.current){suppressClick.current=false;return;}actions.connect?.({tableId:t.id,columnId:c.id});}}>○</button>}</div>;})}
-   </article>)}
-  </div></div></div>
-  {links.length>0&&<details className={s.relations}><summary>관계 목록 ({links.length})</summary><ul>{links.map(l=><li key={l.id}><button type="button" aria-pressed={relation===l.id} onClick={()=>selectRelation(l.id)}>{l.label} <span>({l.sourceRequired?'1':'0'}..{l.many?'N':'1'} : {l.targetRequired?'1':'0..1'})</span></button></li>)}</ul></details>}
- </section>;
+import { useDiagramFit } from './use-diagram-fit';
+import { DiagramLightbox } from './diagram-lightbox';
+
+export function DatabaseDiagram({
+ schema,
+ actions,
+ statusMessage,
+ onSelectTable,
+ selectedTable,
+ selectedRelation,
+ onSelectRelation,
+ onClearSelection,
+ onExpand,
+ expanded = false,
+}: {
+ schema: DatabaseSchema;
+ actions?: DatabaseEditActions;
+ statusMessage?: string;
+ onSelectTable?: (id: string) => void;
+ selectedTable?: string | null;
+ selectedRelation?: string | null;
+ onSelectRelation?: (id: string | null) => void;
+ onClearSelection?: () => void;
+ onExpand?: () => void;
+ expanded?: boolean;
+}) {
+ const viewport = useRef<HTMLDivElement>(null);
+ const zoomAnchor = useRef<{
+  x: number;
+  y: number;
+  ratio: number;
+  left: number;
+  top: number;
+ } | null>(null);
+ const typeListId = useId();
+ const [namingMode, setNamingMode] = useState<'physical' | 'logical' | 'both'>('both');
+ const [zoom, setZoom] = useState(1);
+ const [moving, setMoving] = useState<{ id: string; x: number; y: number } | null>(null);
+ const [editingTitleTableId, setEditingTitleTableId] = useState<string | null>(null);
+ const [localRelation, setLocalRelation] = useState<string | null>(null);
+ const [hover, setHover] = useState<string | null>(null);
+ const [draggingBendId, setDraggingBendId] = useState<string | null>(null);
+ const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+ const enterRelationHover = useCallback((id: string) => {
+  if (hoverTimeoutRef.current) {
+   clearTimeout(hoverTimeoutRef.current);
+   hoverTimeoutRef.current = null;
+  }
+  setHover(id);
+ }, []);
+
+ const leaveRelationHover = useCallback((id: string) => {
+  if (hoverTimeoutRef.current) {
+   clearTimeout(hoverTimeoutRef.current);
+  }
+  hoverTimeoutRef.current = setTimeout(() => {
+   setHover(curr => (curr === id ? null : curr));
+  }, 350);
+ }, []);
+
+ const [localTable, setLocalTable] = useState<string | null>(null);
+ const [dragPreview, setDragPreview] = useState<{
+  from: { x: number; y: number };
+  to: { x: number; y: number };
+ } | null>(null);
+ const [dropTarget, setDropTarget] = useState<{
+  tableId: string;
+  columnId?: string;
+ } | null>(null);
+
+ const relation = selectedRelation !== undefined ? selectedRelation : localRelation;
+ const setRelation = useCallback(
+  (next: string | null | ((prev: string | null) => string | null)) => {
+   const resolved = typeof next === 'function' ? next(relation) : next;
+   if (onSelectRelation) onSelectRelation(resolved);
+   else setLocalRelation(resolved);
+  },
+  [onSelectRelation, relation]
+ );
+
+ const drag = useRef<{
+  id: string;
+  px: number;
+  py: number;
+  x: number;
+  y: number;
+  moved: boolean;
+ } | null>(null);
+ const connectionDrag = useRef<{
+  ref: DbReference;
+  x: number;
+  y: number;
+  side: 'left' | 'right';
+ } | null>(null);
+ const suppressClick = useRef(false);
+
+ const editable = !!actions;
+ const defaultCardWidth = namingMode === 'both' ? 390 : 290;
+ const cards = useRef(new Map<string, HTMLElement>());
+ const [sizes, setSizes] = useState<Record<string, DbSize>>({});
+ const [customBends, setCustomBends] = useState<Record<string, { axis: 'x' | 'y'; value: number }>>({});
+ const [draggingColId, setDraggingColId] = useState<string | null>(null);
+ const [dragOverColId, setDragOverColId] = useState<string | null>(null);
+ const [colCenters, setColCenters] = useState<Record<string, number>>({});
+
+ const cardIds = schema.tables.map(t => `${t.id}:${t.columns.length}`).join(',');
+
+ useLayoutEffect(() => {
+  const measure = () => {
+   const next = Object.fromEntries(
+    [...cards.current].map(([id, el]) => [id, { width: el.offsetWidth, height: el.offsetHeight }])
+   );
+   setSizes(previous =>
+    JSON.stringify(previous) === JSON.stringify(next) ? previous : next
+   );
+   const nextColCenters: Record<string, number> = {};
+   cards.current.forEach((cardEl, tableId) => {
+    const t = schema.tables.find(tbl => tbl.id === tableId);
+    if (!t) return;
+    const cardRect = cardEl.getBoundingClientRect();
+    const scale = cardEl.offsetWidth ? cardRect.width / cardEl.offsetWidth : 1;
+    const rows = cardEl.querySelectorAll<HTMLElement>('[data-db-column]');
+    rows.forEach(rowEl => {
+     const colId = rowEl.dataset.dbColumn;
+     if (colId) {
+      const rowRect = rowEl.getBoundingClientRect();
+      nextColCenters[`${tableId}-${colId}`] =
+       t.position.y + ((rowRect.top - cardRect.top) + rowRect.height / 2) / (scale || 1);
+     }
+    });
+   });
+   setColCenters(prev =>
+    JSON.stringify(prev) === JSON.stringify(nextColCenters) ? prev : nextColCenters
+   );
+  };
+  measure();
+  const observer = new ResizeObserver(measure);
+  cards.current.forEach(el => observer.observe(el));
+  return () => observer.disconnect();
+ }, [cardIds, schema, namingMode]);
+
+ const tables = useMemo(
+  () =>
+   schema.tables.map(t => {
+    const sorted = sortDbColumns(t.columns);
+    return moving?.id === t.id
+     ? { ...t, columns: sorted, position: { x: moving.x, y: moving.y } }
+     : { ...t, columns: sorted };
+   }),
+  [schema, moving]
+ );
+ const links = useMemo(
+  () => {
+   const centers = { ...colCenters };
+   if (moving) {
+    const original = schema.tables.find(t => t.id === moving.id);
+    if (original) for (const column of original.columns) {
+     const key = `${original.id}-${column.id}`;
+     if (centers[key] !== undefined) centers[key] += moving.y - original.position.y;
+    }
+   }
+   return databaseLinks({ ...schema, tables }, false, sizes, centers, customBends);
+  },
+  [schema, tables, sizes, colCenters, customBends, moving]
+ );
+ const currentRelation = links.find(l => l.id === relation);
+ const activeRelation = currentRelation ?? links.find(l => l.id === hover);
+ const activeTable = selectedTable ?? localTable;
+ const focused = Boolean(activeRelation || activeTable);
+
+ const relevant = (l: (typeof links)[number]) =>
+  activeRelation
+   ? l.id === activeRelation.id
+   : activeTable
+     ? l.sourceTableId === activeTable || l.targetTableId === activeTable
+     : true;
+ const relatedTables = new Set(
+  links.filter(relevant).flatMap(l => [l.sourceTableId, l.targetTableId])
+ );
+
+ const width = Math.max(
+  860,
+  ...tables.map(t => t.position.x + (sizes[t.id]?.width ?? defaultCardWidth) + 80),
+  ...links.flatMap(l => l.points.map(p => p.x + 40))
+ );
+ const height = Math.max(
+  460,
+  ...tables.map(
+   t => t.position.y + (sizes[t.id]?.height ?? 42 + t.columns.length * 32 + (editable ? 32 : 0)) + 80
+  ),
+  ...links.flatMap(l => l.points.map(p => p.y + 40))
+ );
+ const fitted = useDiagramFit(viewport, width, height, expanded, !editable);
+ const viewScale = editable ? zoom : fitted;
+
+ const fitToView = useCallback(() => {
+  const el = viewport.current;
+  if (!el || !tables.length) {
+   setZoom(1);
+   return;
+  }
+  const bounds = getDatabaseContentBounds({ ...schema, tables }, sizes, defaultCardWidth);
+  const pad = 64;
+  const availW = Math.max(320, el.clientWidth - pad);
+  const availH = Math.max(240, el.clientHeight - pad);
+  const scale = Math.min(1.25, Math.max(0.45, Math.min(availW / bounds.width, availH / bounds.height)));
+  const rounded = Math.round(scale * 20) / 20;
+  setZoom(rounded);
+  requestAnimationFrame(() => {
+   const targetLeft = Math.max(0, (bounds.minX - 24) * rounded);
+   const targetTop = Math.max(0, (bounds.minY - 24) * rounded);
+   el.scrollTo({ left: targetLeft, top: targetTop, behavior: 'smooth' });
+  });
+ }, [schema, tables, sizes]);
+
+ // Architecture-style Ctrl/Cmd + Wheel zoom with cursor anchor
+ useEffect(() => {
+  const el = viewport.current;
+  if (!el || !editable) return;
+  const onWheel = (event: WheelEvent) => {
+   if (!(event.ctrlKey || event.metaKey)) return;
+   event.preventDefault();
+   const delta =
+    event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? el.clientHeight : 1);
+   setZoom(current => {
+    const next = architectureZoom(current, delta);
+    const rect = el.getBoundingClientRect();
+    zoomAnchor.current = {
+     x: event.clientX - rect.left,
+     y: event.clientY - rect.top,
+     ratio: next / current,
+     left: el.scrollLeft,
+     top: el.scrollTop,
+    };
+    return next;
+   });
+  };
+  el.addEventListener('wheel', onWheel, { passive: false, capture: true });
+  return () => el.removeEventListener('wheel', onWheel, { capture: true });
+ }, [editable]);
+
+ useLayoutEffect(() => {
+  const anchor = zoomAnchor.current;
+  const el = viewport.current;
+  if (anchor && el) {
+   el.scrollLeft = (anchor.left + anchor.x) * anchor.ratio - anchor.x;
+   el.scrollTop = (anchor.top + anchor.y) * anchor.ratio - anchor.y;
+   zoomAnchor.current = null;
+  }
+ }, [zoom]);
+
+ const clear = () => {
+  if (hoverTimeoutRef.current) {
+   clearTimeout(hoverTimeoutRef.current);
+   hoverTimeoutRef.current = null;
+  }
+  setRelation(null);
+  setLocalTable(null);
+  setHover(null);
+  onClearSelection?.();
+ };
+
+ const selectRelation = (id: string) => {
+  if (onExpand) {
+   onExpand();
+   return;
+  }
+  const next = relation === id ? null : id;
+  setRelation(next);
+  setLocalTable(null);
+  if (next && onSelectTable && selectedTable) {
+   onClearSelection?.();
+  }
+ };
+
+ const bendDragRef = useRef<{
+  relId: string;
+  axis: 'x' | 'y';
+  startCoord: number;
+  startVal: number;
+  min: number;
+  max: number;
+ } | null>(null);
+
+ const handleBendPointerDown = useCallback(
+  (e: React.PointerEvent, link: (typeof links)[number]) => {
+   if (!editable || !link.bend) return;
+   e.preventDefault();
+   e.stopPropagation();
+
+   if (hoverTimeoutRef.current) {
+    clearTimeout(hoverTimeoutRef.current);
+    hoverTimeoutRef.current = null;
+   }
+   setDraggingBendId(link.id);
+
+   const d = {
+    relId: link.id,
+    axis: link.bend.axis,
+    startCoord: link.bend.axis === 'x' ? e.clientX : e.clientY,
+    startVal: link.bend.value,
+    min: link.bend.min,
+    max: link.bend.max,
+   };
+   bendDragRef.current = d;
+
+   const onPointerMove = (ev: PointerEvent) => {
+    ev.preventDefault();
+    const currentCoord = d.axis === 'x' ? ev.clientX : ev.clientY;
+    const delta = (currentCoord - d.startCoord) / viewScale;
+    const raw = d.startVal + delta;
+    const clamped = Math.round(Math.max(d.min, Math.min(d.max, raw)));
+    setCustomBends(prev => {
+     const curr = prev[d.relId];
+     if (curr && curr.axis === d.axis && curr.value === clamped) return prev;
+     return { ...prev, [d.relId]: { axis: d.axis, value: clamped } };
+    });
+   };
+
+   const onPointerUp = (ev: PointerEvent) => {
+    ev.preventDefault();
+    window.removeEventListener('pointermove', onPointerMove);
+    window.removeEventListener('pointerup', onPointerUp);
+    window.removeEventListener('pointercancel', onPointerUp);
+    bendDragRef.current = null;
+    setDraggingBendId(null);
+   };
+
+   window.addEventListener('pointermove', onPointerMove);
+   window.addEventListener('pointerup', onPointerUp);
+   window.addEventListener('pointercancel', onPointerUp);
+  },
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  [editable, viewScale]
+ );
+
+ const handleResetBend = useCallback((relId: string) => {
+  setCustomBends(prev => {
+   if (prev[relId] === undefined) return prev;
+   const next = { ...prev };
+   delete next[relId];
+   return next;
+  });
+ }, []);
+
+ const selectTable = (id: string) => {
+  if (onExpand) {
+   onExpand();
+   return;
+  }
+  setRelation(null);
+  setHover(null);
+  if (onSelectTable) onSelectTable(id);
+  else setLocalTable(current => (current === id ? null : id));
+ };
+
+ const startConnectionDrag = (
+  event: React.PointerEvent<HTMLButtonElement>,
+  tableId: string,
+  columnId: string,
+  side: 'left' | 'right'
+ ) => {
+  event.stopPropagation();
+  connectionDrag.current = {
+   ref: { tableId, columnId },
+   x: event.clientX,
+   y: event.clientY,
+   side,
+  };
+  event.currentTarget.setPointerCapture(event.pointerId);
+ };
+
+ const moveConnectionDrag = (
+  event: React.PointerEvent<HTMLButtonElement>,
+  table: DatabaseSchema['tables'][number],
+  colId: string,
+  colIndex: number
+ ) => {
+  const d = connectionDrag.current;
+  const view = viewport.current;
+  if (!d || !view || Math.hypot(event.clientX - d.x, event.clientY - d.y) < 5) return;
+  const box = view.getBoundingClientRect();
+  const currentCardW = sizes[table.id]?.width ?? defaultCardWidth;
+  const fromX = d.side === 'left' ? table.position.x : table.position.x + currentCardW;
+  const fromY =
+   colCenters[`${table.id}-${colId}`] ?? table.position.y + 42 + (colIndex + 0.5) * 32;
+  const toX = (event.clientX - box.left + view.scrollLeft) / viewScale;
+  const toY = (event.clientY - box.top + view.scrollTop) / viewScale;
+  setDragPreview({ from: { x: fromX, y: fromY }, to: { x: toX, y: toY } });
+
+  const hitEl = document.elementFromPoint(event.clientX, event.clientY);
+  const row = hitEl?.closest<HTMLElement>('[data-db-table][data-db-column]');
+  if (row?.dataset.dbTable && row.dataset.dbColumn) {
+   if (row.dataset.dbTable !== d.ref.tableId || row.dataset.dbColumn !== d.ref.columnId) {
+    setDropTarget({ tableId: row.dataset.dbTable, columnId: row.dataset.dbColumn });
+    return;
+   }
+  }
+  const cardEl = hitEl?.closest<HTMLElement>('article[data-table-id]');
+  if (cardEl?.dataset.tableId && cardEl.dataset.tableId !== d.ref.tableId) {
+   setDropTarget({ tableId: cardEl.dataset.tableId });
+   return;
+  }
+  setDropTarget(null);
+ };
+
+ const endConnectionDrag = (event: React.PointerEvent<HTMLButtonElement>) => {
+  const d = connectionDrag.current;
+  connectionDrag.current = null;
+  setDragPreview(null);
+  setDropTarget(null);
+  if (!d || !actions) return;
+  if (Math.hypot(event.clientX - d.x, event.clientY - d.y) < 6) {
+   suppressClick.current = true;
+   actions.connect?.({ tableId: d.ref.tableId, columnId: d.ref.columnId });
+   return;
+  }
+  suppressClick.current = true;
+  const hitEl = document.elementFromPoint(event.clientX, event.clientY);
+  const row = hitEl?.closest<HTMLElement>('[data-db-table][data-db-column]');
+  if (row?.dataset.dbTable && row.dataset.dbColumn) {
+   actions.connectPair?.(d.ref, {
+    tableId: row.dataset.dbTable,
+    columnId: row.dataset.dbColumn,
+   });
+   return;
+  }
+  const cardEl = hitEl?.closest<HTMLElement>('article[data-table-id]');
+  if (cardEl?.dataset.tableId && cardEl.dataset.tableId !== d.ref.tableId) {
+   actions.connectToTable?.(d.ref, cardEl.dataset.tableId);
+  }
+ };
+
+ const colors = ['#4770d6', '#7c5cbf', '#2f856e', '#b5742c', '#b84b59', '#3b7a9e'];
+
+ return (
+  <section className={s.diagram} aria-label="ERD 관계도">
+   {editable && (
+    <datalist id={typeListId}>
+     {COMMON_DB_TYPES.map(type => (
+      <option key={type} value={type} />
+     ))}
+    </datalist>
+   )}
+   <div className={s.zoom}>
+    <span>
+     테이블 {tables.length} · 관계 {links.length}
+    </span>
+    {statusMessage ? (
+     <span className={s.inlineStatusMsg} role="status">
+      {statusMessage}
+     </span>
+    ) : editable ? (
+     <span className={s.inlineHint}>
+      상단 헤더 드래그로 이동(클릭 시 이름 수정) · 맨 앞 칸 클릭으로 PK·FK 설정 · Ctrl+휠 확대/축소
+     </span>
+    ) : null}
+    <div className={s.notationSwitch} role="group" aria-label="칼럼명 표기 방식">
+     <button
+      type="button"
+      aria-pressed={namingMode === 'physical'}
+      onClick={() => setNamingMode('physical')}
+      title="물리명 (영문 식별자)만 표시"
+     >
+      물리명
+     </button>
+     <button
+      type="button"
+      aria-pressed={namingMode === 'logical'}
+      onClick={() => setNamingMode('logical')}
+      title="논리명 (한글 속성명) 표시"
+     >
+      논리명
+     </button>
+     <button
+      type="button"
+      aria-pressed={namingMode === 'both'}
+      onClick={() => setNamingMode('both')}
+      title="물리명과 논리명 함께 표시"
+     >
+      둘 다
+     </button>
+    </div>
+    {focused && (
+     <button type="button" onClick={clear}>
+      강조 해제
+     </button>
+    )}
+    {editable ? (
+     <>
+      <button
+       type="button"
+       aria-label="ERD 축소"
+       disabled={zoom <= 0.4}
+       onClick={() => setZoom(z => Math.max(0.4, Math.round((z - 0.1) * 100) / 100))}
+      >
+       −
+      </button>
+      <output>{Math.round(zoom * 100)}%</output>
+      <button
+       type="button"
+       aria-label="ERD 확대"
+       disabled={zoom >= 3}
+       onClick={() => setZoom(z => Math.min(3, Math.round((z + 0.1) * 100) / 100))}
+      >
+       ＋
+      </button>
+      <button type="button" onClick={() => setZoom(1)}>
+       100%
+      </button>
+      <button type="button" onClick={fitToView} title="모든 테이블이 보이도록 배율과 위치를 맞춥니다 (Space)">
+       화면 맞춤
+      </button>
+     </>
+    ) : onExpand ? (
+     <button type="button" className="diagram-expand" onClick={onExpand}>
+      확대 보기
+     </button>
+    ) : null}
+   </div>
+
+   <div className={s.canvasStage}>
+    {currentRelation && (
+     <div className={s.floatingRelationOverlay}>
+      <DatabaseSelectedRelationBar
+       schema={schema}
+       sourceTableId={currentRelation.sourceTableId}
+       sourceColumnId={currentRelation.sourceColumnId}
+       actions={actions}
+       onClose={clear}
+       onResetBend={() => handleResetBend(currentRelation.id)}
+       hasCustomBend={currentRelation.hasCustomBend}
+      />
+     </div>
+    )}
+
+    <div
+     ref={viewport}
+     className={s.viewport}
+     data-preview={!editable}
+     data-connecting={Boolean(actions?.connecting || dragPreview)}
+     onKeyDown={event => {
+      const target = event.target as HTMLElement;
+      if (target.closest('input,select,textarea')) return;
+      if (event.key === 'Escape') {
+       clear();
+       return;
+      }
+      if ((event.key === ' ' || event.code === 'Space') && editable && !target.closest('button')) {
+       event.preventDefault();
+       fitToView();
+       return;
+      }
+      if (
+       (event.key === 'Delete' || event.key === 'Backspace') &&
+       editable &&
+       currentRelation &&
+       actions?.disconnectColumn
+      ) {
+       event.preventDefault();
+       actions.disconnectColumn(currentRelation.sourceTableId, currentRelation.sourceColumnId);
+       setRelation(null);
+      }
+     }}
+     onClick={event => {
+      if ((event.target as Element).closest('article,button,input,select,[data-relation-id]')) return;
+      if (onExpand) onExpand();
+      else clear();
+     }}
+     tabIndex={0}
+     aria-label="ERD 스크롤 영역"
+    >
+     <div
+      style={{
+       width: width * viewScale,
+       height: height * viewScale,
+       marginInline: editable ? undefined : 'auto',
+      }}
+     >
+      <div className={s.world} style={{ width, height, transform: `scale(${viewScale})` }}>
+       <svg width={width} height={height} className={s.lines} aria-label="외래 키 관계선">
+        {[...links.filter(l => !relevant(l)), ...links.filter(relevant)].map(l => {
+         return (
+          <g
+           key={l.id}
+           className={s.relationLine}
+           data-relation-id={l.id}
+           data-active={focused && relevant(l)}
+           data-selected={relation === l.id}
+           data-muted={focused && !relevant(l)}
+           style={{ '--relation-color': colors[links.indexOf(l) % colors.length] } as CSSProperties}
+           role="button"
+           tabIndex={0}
+           aria-label={l.label}
+           aria-pressed={relation === l.id}
+           onPointerEnter={() => enterRelationHover(l.id)}
+           onPointerLeave={() => leaveRelationHover(l.id)}
+           onClick={event => {
+            event.stopPropagation();
+            selectRelation(l.id);
+           }}
+           onKeyDown={event => {
+            if (event.key === 'Enter' || event.key === ' ') {
+             event.preventDefault();
+             selectRelation(l.id);
+            }
+           }}
+          >
+           <title>{`${l.label} (클릭하여 선 종류·기호 변경)`}</title>
+           <path className={s.relationHit} d={l.d} />
+           <path className={s.relationRoute} d={l.d} />
+           <RelationshipEndMark
+            x={l.source.x}
+            y={l.source.y}
+            angle={l.source.angle}
+            many={l.many}
+            required={l.sourceRequired}
+            notation={l.notation}
+           />
+           <RelationshipEndMark
+            x={l.target.x}
+            y={l.target.y}
+            angle={l.target.angle}
+            many={false}
+            required={l.targetRequired}
+            notation={l.notation}
+           />
+          </g>
+         );
+        })}
+        {editable && (
+         <g className={s.bendHandlesLayer}>
+          {links.map((l, index) => {
+           if (!l.bend) return null;
+           const isHovered = hover === l.id;
+           const isSelected = relation === l.id;
+           const isDragging = draggingBendId === l.id;
+           if (!isHovered && !isSelected && !l.hasCustomBend && !isDragging) return null;
+           const color = colors[index % colors.length];
+           return (
+            <g
+             key={`bend-${l.id}`}
+             className={s.bendHandleGroup}
+             data-axis={l.bend.axis}
+             data-dragging={isDragging}
+             style={{ '--relation-color': color } as CSSProperties}
+             onPointerEnter={() => enterRelationHover(l.id)}
+             onPointerLeave={() => leaveRelationHover(l.id)}
+             onPointerDown={e => handleBendPointerDown(e, l)}
+             onDoubleClick={e => {
+              e.stopPropagation();
+              handleResetBend(l.id);
+             }}
+            >
+             <title>드래그하여 꺾임 위치 조절 (더블클릭: 자동 정렬로 복원)</title>
+             <rect
+              x={l.bend.axis === 'x' ? l.bend.mid.x - 12 : l.bend.mid.x - 18}
+              y={l.bend.axis === 'x' ? l.bend.mid.y - 18 : l.bend.mid.y - 12}
+              width={l.bend.axis === 'x' ? 24 : 36}
+              height={l.bend.axis === 'x' ? 36 : 24}
+              rx={6}
+              className={s.bendHandleHit}
+             />
+             {l.bend.axis === 'x' ? (
+              <rect
+               x={l.bend.mid.x - 3.5}
+               y={l.bend.mid.y - 12}
+               width={7}
+               height={24}
+               rx={3.5}
+               className={s.bendHandlePill}
+              />
+             ) : (
+              <rect
+               x={l.bend.mid.x - 12}
+               y={l.bend.mid.y - 3.5}
+               width={24}
+               height={7}
+               rx={3.5}
+               className={s.bendHandlePill}
+              />
+             )}
+            </g>
+           );
+          })}
+         </g>
+        )}
+        {dragPreview && (
+         <g className={s.dragPreviewGroup}>
+          <path
+           className={s.dragRelationPreview}
+           d={`M${dragPreview.from.x} ${dragPreview.from.y} L${dragPreview.to.x} ${dragPreview.to.y}`}
+          />
+          <circle cx={dragPreview.from.x} cy={dragPreview.from.y} r={4} />
+          <circle cx={dragPreview.to.x} cy={dragPreview.to.y} r={4} />
+         </g>
+        )}
+       </svg>
+
+       {tables.map(t => {
+        const isDropTable = dropTarget?.tableId === t.id && !dropTarget.columnId;
+        const isEditingTitle = editingTitleTableId === t.id;
+
+        return (
+         <article
+          key={t.id}
+          data-table-id={t.id}
+          ref={el => {
+           if (el) cards.current.set(t.id, el);
+           else cards.current.delete(t.id);
+          }}
+          className={s.card}
+          data-editable={editable}
+          data-selected={activeTable === t.id}
+          data-drop-table={isDropTable}
+          data-naming-mode={namingMode}
+          data-muted={focused && activeTable !== t.id && !relatedTables.has(t.id)}
+          style={{ width: defaultCardWidth, left: t.position.x, top: t.position.y }}
+          onClick={e => {
+           if (actions?.connecting && actions.connectingFrom && actions.connectingFrom.tableId !== t.id) {
+            const el = e.target as HTMLElement;
+            if (el.closest('input,button,select,textarea')) return;
+            actions.connectToTable?.(actions.connectingFrom, t.id);
+           }
+          }}
+         >
+          {/* Header: Drag anywhere (including Table Name) to move; click without dragging to edit Table Name */}
+          <div
+           className={s.cardHeading}
+           onPointerDown={
+            editable
+             ? event => {
+                if ((event.target as Element).closest('input,button')) return;
+                event.preventDefault();
+                drag.current = {
+                 id: t.id,
+                 px: event.clientX,
+                 py: event.clientY,
+                 x: t.position.x,
+                 y: t.position.y,
+                 moved: false,
+                };
+                event.currentTarget.setPointerCapture(event.pointerId);
+               }
+             : undefined
+           }
+           onPointerMove={
+            editable
+             ? event => {
+                const d = drag.current;
+                if (d?.id !== t.id) return;
+                if (!d.moved && Math.hypot(event.clientX - d.px, event.clientY - d.py) < 4) {
+                 return;
+                }
+                d.moved = true;
+                setMoving({
+                 id: t.id,
+                 x: Math.max(0, Math.min(6000, Math.round(d.x + (event.clientX - d.px) / zoom))),
+                 y: Math.max(0, Math.min(6000, Math.round(d.y + (event.clientY - d.py) / zoom))),
+                });
+               }
+             : undefined
+           }
+           onPointerUp={
+            editable
+             ? event => {
+                const d = drag.current;
+                if (d?.id !== t.id) return;
+                drag.current = null;
+                setMoving(null);
+                if (d.moved && actions) {
+                 suppressClick.current = true;
+                 actions.changeTable(t.id, {
+                  position: {
+                   x: Math.max(
+                    0,
+                    Math.min(6000, Math.round(d.x + (event.clientX - d.px) / zoom))
+                   ),
+                   y: Math.max(
+                    0,
+                    Math.min(6000, Math.round(d.y + (event.clientY - d.py) / zoom))
+                   ),
+                  },
+                 });
+                } else {
+                 selectTable(t.id);
+                 setEditingTitleTableId(t.id);
+                }
+               }
+             : undefined
+           }
+           onPointerCancel={
+            editable
+             ? () => {
+                drag.current = null;
+                setMoving(null);
+               }
+             : undefined
+           }
+          >
+           {editable && actions ? (
+            <>
+             {isEditingTitle ? (
+              <TableTextInput
+               autoFocus
+               className={s.cardTitleInput}
+               aria-label={`${t.name || '새 테이블'} 편집`}
+               value={t.name}
+               maxLength={100}
+               placeholder="테이블명 (예: users)"
+               onFocus={e => e.currentTarget.select()}
+               onCommit={name => {
+                actions.changeTable(t.id, { name });
+               }}
+               onBlur={() => setEditingTitleTableId(null)}
+               onKeyDown={e => {
+                if (e.key === 'Enter' || e.key === 'Escape') {
+                 e.currentTarget.blur();
+                }
+               }}
+              />
+             ) : (
+              <span
+               className={s.cardTitleLabel}
+               title="드래그하여 테이블 이동 · 클릭하여 테이블명 수정"
+              >
+               {t.name || 'Table Name'}
+              </span>
+             )}
+             <button
+              type="button"
+              className={s.cardDeleteBtn}
+              disabled={schema.tables.length <= 1}
+              aria-label={`${t.name || '새 테이블'} 삭제`}
+              title="이 테이블 삭제"
+              onClick={() => actions.removeTable(t.id)}
+             >
+              ×
+             </button>
+            </>
+           ) : (
+            <button
+             type="button"
+             className={s.inspectTable}
+             aria-label={`${t.name || '새 테이블'} 컬럼 상세 보기`}
+             onClick={() => selectTable(t.id)}
+            >
+             {t.name || '새 테이블'}
+            </button>
+           )}
+          </div>
+
+          {/* Pure 3-Column Table Body (PK/FK/Blank | 칼럼명 | 데이터타입) */}
+          <div className={s.cardGrid}>
+           <div className={s.cardSubHeader} role="row" aria-hidden="true">
+            <span>구분</span>
+            {namingMode === 'both' ? (
+             <>
+              <span>속성명</span>
+              <span>칼럼명</span>
+             </>
+            ) : namingMode === 'logical' ? (
+             <span>속성명</span>
+            ) : (
+             <span>칼럼명</span>
+            )}
+            <span>타입</span>
+           </div>
+           {t.columns.map((c, colIdx) => {
+            const lit = Boolean(
+             activeRelation &&
+              ((activeRelation.sourceTableId === t.id &&
+               activeRelation.sourceColumnId === c.id) ||
+               (activeRelation.targetTableId === t.id &&
+                activeRelation.targetColumnId === c.id))
+            );
+            const isConnectingFrom =
+             actions?.connectingFrom?.tableId === t.id &&
+             actions?.connectingFrom?.columnId === c.id;
+            const isDropCol =
+             dropTarget?.tableId === t.id && dropTarget?.columnId === c.id;
+            const rowLabel = `${t.name || '새 테이블'} 컬럼 ${colIdx + 1}`;
+            const keyText = c.primaryKey ? 'PK' : c.reference ? 'FK' : '';
+
+            return (
+             <div
+              key={c.id}
+              className={s.cardRow}
+              data-editable={editable}
+              data-highlight={lit}
+              data-connecting-source={isConnectingFrom}
+              data-drop-target={isDropCol}
+              data-dragging={draggingColId === c.id}
+              data-drag-over={dragOverColId === c.id}
+              data-db-table={t.id}
+              data-db-column={c.id}
+              draggable={editable}
+              onClick={e => {
+               if (actions?.connecting) {
+                const el = e.target as HTMLElement;
+                if (el.closest('input,button,select,textarea')) return;
+                e.stopPropagation();
+                actions.connect?.({ tableId: t.id, columnId: c.id });
+               }
+              }}
+              onDragStart={e => {
+               e.dataTransfer.setData('text/plain', `${t.id}:${c.id}`);
+               e.dataTransfer.effectAllowed = 'move';
+               setDraggingColId(c.id);
+              }}
+              onDragOver={e => {
+               e.preventDefault();
+               e.dataTransfer.dropEffect = 'move';
+               if (dragOverColId !== c.id) setDragOverColId(c.id);
+              }}
+              onDragLeave={() => {
+               if (dragOverColId === c.id) setDragOverColId(null);
+              }}
+              onDrop={e => {
+               e.preventDefault();
+               setDraggingColId(null);
+               setDragOverColId(null);
+               const data = e.dataTransfer.getData('text/plain');
+               if (!data) return;
+               const [sourceTableId, sourceColId] = data.split(':');
+               if (sourceTableId === t.id && sourceColId && sourceColId !== c.id) {
+                actions?.reorderColumn?.(t.id, sourceColId, c.id);
+               }
+              }}
+              onDragEnd={() => {
+               setDraggingColId(null);
+               setDragOverColId(null);
+              }}
+             >
+              {/* Cell 1: PK / FK / Blank (Direct Selection Popover) */}
+              <div className={s.cellKey} title="드래그하여 순서 변경 · 클릭하여 PK / FK 설정">
+               {editable && actions ? (
+                <DatabaseKeyCellSelect
+                 schema={schema}
+                 table={t}
+                 column={c}
+                 rowLabel={rowLabel}
+                 actions={actions}
+                 onInspectRelation={relId => selectRelation(relId)}
+                />
+               ) : (
+                <span
+                 className={s.erdKeyCellText}
+                 data-pk={c.primaryKey}
+                 data-fk={Boolean(c.reference)}
+                >
+                 {keyText}
+                </span>
+               )}
+              </div>
+
+              {/* Cell: 속성명 (둘 다 모드이거나 논리명 모드일 때 독립된 칸으로 표시) */}
+              {(namingMode === 'both' || namingMode === 'logical') && (
+               <div className={s.cellLogical}>
+                {editable && actions ? (
+                 <TableTextInput
+                  className={s.erdCellInput}
+                  aria-label={`${rowLabel} 속성명`}
+                  value={c.logicalName ?? ''}
+                  maxLength={100}
+                  placeholder={colIdx === 0 ? '예: 회원 ID' : colIdx === 1 ? '예: 이메일' : '속성명'}
+                  onFocus={() => {
+                   if (actions.connecting) {
+                    actions.connect?.({ tableId: t.id, columnId: c.id });
+                   }
+                  }}
+                  onCommit={logicalName => actions.changeColumn(t.id, c.id, { logicalName })}
+                 />
+                ) : (
+                 <span className={s.erdCellText} title={c.logicalName || '속성명'}>
+                  {c.logicalName || (namingMode === 'logical' ? c.name : '') || '새 속성'}
+                 </span>
+                )}
+               </div>
+              )}
+
+              {/* Cell: 칼럼명 (둘 다 모드이거나 물리명 모드일 때 독립된 칸으로 표시) */}
+              {(namingMode === 'both' || namingMode === 'physical') && (
+               <div className={s.cellName}>
+                {editable && actions ? (
+                 <TableTextInput
+                  className={s.erdCellInput}
+                  aria-label={`${rowLabel} 물리명`}
+                  value={c.name}
+                  maxLength={100}
+                  placeholder={colIdx === 0 ? '예: id' : colIdx === 1 ? '예: email' : '칼럼명'}
+                  onFocus={() => {
+                   if (actions.connecting) {
+                    actions.connect?.({ tableId: t.id, columnId: c.id });
+                   }
+                  }}
+                  onCommit={name => actions.changeColumn(t.id, c.id, { name })}
+                 />
+                ) : (
+                 <span className={s.erdCellText} title={c.name || '새 컬럼'}>
+                  {c.name || '새 컬럼'}
+                 </span>
+                )}
+               </div>
+              )}
+
+              {/* Cell 3: Data Type */}
+              <div className={s.cellType}>
+               {editable && actions ? (
+                <TableTextInput
+                 className={s.erdCellInput}
+                 aria-label={`${rowLabel} 자료형`}
+                 list={typeListId}
+                 value={c.dataType}
+                 maxLength={100}
+                 placeholder={colIdx === 0 ? '예: BIGINT' : colIdx === 1 ? '예: VARCHAR(255)' : '데이터타입'}
+                 onCommit={dataType => actions.changeColumn(t.id, c.id, { dataType })}
+                 onKeyDown={e => {
+                  if (
+                   e.key === 'Enter' &&
+                   colIdx === t.columns.length - 1 &&
+                   t.columns.length < 50
+                  ) {
+                   e.preventDefault();
+                   actions.addColumn(t.id);
+                  }
+                 }}
+                />
+               ) : (
+                <span className={s.erdCellText} title={c.dataType}>
+                 {c.dataType}
+                </span>
+               )}
+              </div>
+
+              {/* Delete column button floats on row hover at the right end */}
+              {editable && actions && (
+               <div className={s.cellActionFloating}>
+                <button
+                 type="button"
+                 className={s.cardColDeleteBtn}
+                 disabled={t.columns.length <= 1}
+                 aria-label={`${rowLabel} 삭제`}
+                 title="이 컬럼 삭제"
+                 onClick={() => actions.removeColumn(t.id, c.id)}
+                >
+                 ×
+                </button>
+               </div>
+              )}
+
+              {/* Subtle connection handles ONLY visible when hovering this specific row (both left and right) */}
+              {actions && (
+               <>
+                <button
+                 type="button"
+                 className={`${s.columnPort} ${s.columnPortLeft}`}
+                 aria-label={`${t.name || '새 테이블'}.${c.name || '새 컬럼'} 왼쪽 관계 연결`}
+                 title="드래그하여 다른 테이블/컬럼에 연결 (왼쪽)"
+                 onPointerDown={e => startConnectionDrag(e, t.id, c.id, 'left')}
+                 onPointerMove={e => moveConnectionDrag(e, t, c.id, colIdx)}
+                 onPointerUp={endConnectionDrag}
+                 onPointerCancel={() => {
+                  connectionDrag.current = null;
+                  setDragPreview(null);
+                  setDropTarget(null);
+                 }}
+                 onClick={e => {
+                  e.stopPropagation();
+                  if (suppressClick.current) {
+                   suppressClick.current = false;
+                   return;
+                  }
+                  actions.connect?.({ tableId: t.id, columnId: c.id });
+                 }}
+                >
+                 ○
+                </button>
+                <button
+                 type="button"
+                 className={`${s.columnPort} ${s.columnPortRight}`}
+                 aria-label={`${t.name || '새 테이블'}.${c.name || '새 컬럼'} 오른쪽 관계 연결`}
+                 title="드래그하여 다른 테이블/컬럼에 연결 (오른쪽)"
+                 onPointerDown={e => startConnectionDrag(e, t.id, c.id, 'right')}
+                 onPointerMove={e => moveConnectionDrag(e, t, c.id, colIdx)}
+                 onPointerUp={endConnectionDrag}
+                 onPointerCancel={() => {
+                  connectionDrag.current = null;
+                  setDragPreview(null);
+                  setDropTarget(null);
+                 }}
+                 onClick={e => {
+                  e.stopPropagation();
+                  if (suppressClick.current) {
+                   suppressClick.current = false;
+                   return;
+                  }
+                  actions.connect?.({ tableId: t.id, columnId: c.id });
+                 }}
+                >
+                 ○
+                </button>
+               </>
+              )}
+             </div>
+            );
+           })}
+          </div>
+
+          {actions && t.columns.length < 50 && (
+           <div className={s.cardFooterActions}>
+            <button
+             type="button"
+             className={s.addColumn}
+             onClick={() => actions.addColumn(t.id)}
+            >
+             ＋ 컬럼 추가
+            </button>
+            <button
+             type="button"
+             className={s.addPkColumn}
+             title="BIGINT 기본 키(id) 컬럼 추가"
+             onClick={() => actions.addColumn(t.id, 'id')}
+            >
+             + id(PK)
+            </button>
+            <button
+             type="button"
+             className={s.addPresetColBtn}
+             title="TIMESTAMP 생성일시(created_at) 컬럼 추가"
+             onClick={() => actions.addColumn(t.id, 'created_at')}
+            >
+             + created_at
+            </button>
+            <button
+             type="button"
+             className={s.addPresetColBtn}
+             title="TIMESTAMP 수정일시(updated_at) 컬럼 추가"
+             onClick={() => actions.addColumn(t.id, 'updated_at')}
+            >
+             + updated_at
+            </button>
+           </div>
+          )}
+         </article>
+        );
+       })}
+      </div>
+     </div>
+    </div>
+   </div>
+
+   {links.length > 0 && (
+    <details className={s.relations}>
+     <summary>관계 목록 ({links.length}) — 클릭하여 관계선 종류·기호 편집</summary>
+     <ul>
+      {links.map(l => (
+       <li key={l.id}>
+        <button
+         type="button"
+         aria-pressed={relation === l.id}
+         onClick={() => selectRelation(l.id)}
+        >
+         {l.label}{' '}
+         <span>
+          ({l.sourceRequired ? '1' : '0'}..{l.many ? 'N' : '1'} :{' '}
+          {l.targetRequired ? '1' : '0..1'})
+         </span>
+        </button>
+       </li>
+      ))}
+     </ul>
+    </details>
+   )}
+  </section>
+ );
 }
-export function DatabaseSpecifications({schema,referenceSchema=schema}:{schema:DatabaseSchema;referenceSchema?:DatabaseSchema}){return <div className={s.specifications}>{schema.tables.map(t=><section key={t.id} aria-label={`${t.name} 테이블 명세`}><h3>{t.name}</h3>{t.description&&<p>{t.description}</p>}<div className={s.specScroll} tabIndex={0}><table><caption>{t.name} 컬럼 명세</caption><thead><tr><th>컬럼</th><th>자료형</th><th>NULL</th><th>키</th><th>참조</th><th>설명</th></tr></thead><tbody>{t.columns.map(c=>{const target=referenceSchema.tables.find(t=>t.id===c.reference?.tableId),col=target?.columns.find(k=>k.id===c.reference?.columnId);return <tr key={c.id}><th scope="row">{c.name}</th><td>{c.dataType}</td><td>{c.nullable?'허용':'불가'}</td><td>{[c.primaryKey?'PK':'',c.unique?'UQ':'',c.reference?'FK':''].filter(Boolean).join(' · ')}</td><td>{target&&col?`${target.name}.${col.name}`:''}</td><td>{c.description}</td></tr>;})}</tbody></table></div></section>)}</div>;}
-export function DatabaseSchemaBlock({schema,title,expanded=false}:{schema:DatabaseSchema;title:string|null;expanded?:boolean}){
- const [selected,setSelected]=useState<string|null>(null),[viewerOpen,setViewerOpen]=useState(false),detailId=useId();
- const root=useRef<HTMLElement>(null);
- useEffect(()=>{if(!selected)return;const clear=(event:PointerEvent)=>{if(event.target instanceof Node&&!root.current?.contains(event.target))setSelected(null);};document.addEventListener('pointerdown',clear);return()=>document.removeEventListener('pointerdown',clear);},[selected]);
- const table=schema.tables.find(t=>t.id===selected);
- return <section ref={root} className={s.block} aria-label={title||'DB 설계'}>{title&&<h2>{title}</h2>}{!expanded&&<DiagramLightbox label="데이터베이스 설계" hideTrigger={schema.display!=="SPEC"} open={viewerOpen} onOpenChange={setViewerOpen}>{()=> <DatabaseSchemaBlock schema={schema} title={title} expanded/>}</DiagramLightbox>}{schema.display!=='SPEC'&&<>{expanded&&schema.display==='BOTH'&&<p className={s.inspectHint}>테이블을 선택하면 컬럼 상세를 볼 수 있어요.</p>}<DatabaseDiagram schema={schema} expanded={expanded} onExpand={!expanded?()=>setViewerOpen(true):undefined} onClearSelection={()=>setSelected(null)} selectedTable={table?.id} onSelectTable={expanded&&schema.display==='BOTH'?id=>setSelected(current=>current===id?null:id):undefined}/></>}
- {schema.display==='SPEC'?<DatabaseSpecifications schema={schema}/>:schema.display==='BOTH'&&table&&<section id={detailId} className={s.selectedSpecification} aria-label={`${table.name} 컬럼 상세`}><button className={s.closeSpecification} type="button" onClick={()=>setSelected(null)}>상세 닫기</button><DatabaseSpecifications schema={{...schema,tables:[table]}} referenceSchema={schema}/></section>}</section>;
+
+export function DatabaseSpecifications({
+ schema,
+ referenceSchema = schema,
+}: {
+ schema: DatabaseSchema;
+ referenceSchema?: DatabaseSchema;
+}) {
+ const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
+
+ const toggleCollapse = (tableId: string) => {
+  setCollapsedIds(prev => {
+   const next = new Set(prev);
+   if (next.has(tableId)) next.delete(tableId);
+   else next.add(tableId);
+   return next;
+  });
+ };
+
+ return (
+  <div className={s.specifications}>
+   {/* 상단 퀵점프 목차 바 */}
+   <div className={s.specNav} role="navigation" aria-label="테이블 목차 및 퀵점프">
+    <div className={s.specNavScroll}>
+     <span className={s.specNavLabel}>목차 ({schema.tables.length})</span>
+     {schema.tables.map((t, idx) => {
+      const color = DB_TABLE_COLORS[idx % DB_TABLE_COLORS.length];
+      const isCollapsed = collapsedIds.has(t.id);
+      return (
+       <button
+        key={t.id}
+        type="button"
+        className={s.specNavChip}
+        style={{ '--table-color': color } as React.CSSProperties}
+        title={`${t.name || '새 테이블'} 위치로 이동`}
+        onClick={() => {
+         if (isCollapsed) {
+          setCollapsedIds(prev => {
+           const next = new Set(prev);
+           next.delete(t.id);
+           return next;
+          });
+         }
+         document.getElementById(`spec-view-${t.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }}
+       >
+        <span className={s.specNavChipNum}>{String(idx + 1).padStart(2, '0')}</span>
+        <span className={s.specNavChipName}>{t.name || '새 테이블'}</span>
+        <span className={s.specNavChipCount}>{t.columns.length}</span>
+       </button>
+      );
+     })}
+    </div>
+    <div className={s.specNavActions}>
+     <button
+      type="button"
+      className={s.specNavToggleAll}
+      onClick={() => {
+       if (collapsedIds.size > 0) {
+        setCollapsedIds(new Set());
+       } else {
+        setCollapsedIds(new Set(schema.tables.map(t => t.id)));
+       }
+      }}
+     >
+      {collapsedIds.size > 0 ? '모두 펼치기' : '모두 접기'}
+     </button>
+    </div>
+   </div>
+
+   {schema.tables.map((t, idx) => {
+    const color = DB_TABLE_COLORS[idx % DB_TABLE_COLORS.length];
+    const isCollapsed = collapsedIds.has(t.id);
+    const sorted = sortDbColumns(t.columns);
+    const pkCol = t.columns.find(c => c.primaryKey);
+
+    return (
+     <section
+      key={t.id}
+      id={`spec-view-${t.id}`}
+      aria-label={`${t.name} 테이블 명세`}
+      style={{ '--table-color': color } as React.CSSProperties}
+     >
+      <h3 style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+        <span className={s.tableIndexBadge}>{String(idx + 1).padStart(2, '0')}</span>
+        <span>{t.name}</span>
+        <span className={s.tableColCountBadge}>칼럼 {t.columns.length}개</span>
+       </span>
+       <button
+        type="button"
+        className={s.specCollapseBtn}
+        aria-expanded={!isCollapsed}
+        title={isCollapsed ? '테이블 펼치기' : '테이블 접기'}
+        onClick={() => toggleCollapse(t.id)}
+       >
+        {isCollapsed ? '펼치기 ▼' : '접기 ▲'}
+       </button>
+      </h3>
+      {t.description && !isCollapsed && <p>{t.description}</p>}
+
+      {isCollapsed ? (
+       <div
+        className={s.specCollapsedSummary}
+        role="button"
+        tabIndex={0}
+        onClick={() => toggleCollapse(t.id)}
+        onKeyDown={e => e.key === 'Enter' && toggleCollapse(t.id)}
+        style={{ cursor: 'pointer' }}
+       >
+        <div className={s.specCollapsedInfo}>
+         <strong>{t.name}</strong>
+         {t.description && <span>· {t.description}</span>}
+         <span>(칼럼 {t.columns.length}개{pkCol ? ` · PK ${pkCol.name || 'id'}` : ''})</span>
+        </div>
+        <span style={{ fontSize: 11, color: 'var(--muted)' }}>클릭하여 명세 펼치기</span>
+       </div>
+      ) : (
+       <div className={s.specScroll} tabIndex={0}>
+        <table>
+         <caption>{t.name} 컬럼 명세</caption>
+         <thead>
+          <tr>
+           <th style={{ width: 46, textAlign: 'center' }}>구분</th>
+           <th style={{ width: 140 }}>속성명</th>
+           <th style={{ width: 145 }}>칼럼명</th>
+           <th style={{ width: 135 }}>데이터타입</th>
+           <th style={{ width: 100 }}>기본값</th>
+           <th style={{ width: 72, textAlign: 'center' }}>자동증가</th>
+           <th style={{ width: 72, textAlign: 'center' }}>NOT NULL</th>
+           <th style={{ width: 72, textAlign: 'center' }}>UQ</th>
+           <th style={{ minWidth: 260 }}>설명</th>
+          </tr>
+         </thead>
+         <tbody>
+          {sorted.map(c => {
+           const target = referenceSchema.tables.find(
+            tbl => tbl.id === c.reference?.tableId
+           );
+           const col = target?.columns.find(k => k.id === c.reference?.columnId);
+           const keyText = c.primaryKey ? 'PK' : c.reference ? 'FK' : '';
+           return (
+            <tr key={c.id}>
+             <td
+              style={{ textAlign: 'center', fontWeight: 700 }}
+              title={target && col ? `참조: ${target.name}.${col.name}` : undefined}
+             >
+              {keyText}
+             </td>
+             <td>{c.logicalName || '-'}</td>
+             <th scope="row">{c.name}</th>
+             <td>{c.dataType}</td>
+             <td>{c.defaultValue ?? ''}</td>
+             <td style={{ textAlign: 'center' }}>{c.autoIncrement ? '✓' : ''}</td>
+             <td style={{ textAlign: 'center' }}>{!c.nullable ? '✓' : ''}</td>
+             <td style={{ textAlign: 'center' }}>{c.unique ? '✓' : ''}</td>
+             <td>{c.description}</td>
+            </tr>
+           );
+          })}
+         </tbody>
+        </table>
+       </div>
+      )}
+     </section>
+    );
+   })}
+  </div>
+ );
+}
+
+export function DatabaseSchemaBlock({
+ schema,
+ title,
+ expanded = false,
+}: {
+ schema: DatabaseSchema;
+ title: string | null;
+ expanded?: boolean;
+}) {
+ const [selected, setSelected] = useState<string | null>(null);
+ const [viewerOpen, setViewerOpen] = useState(false);
+ const detailId = useId();
+ const root = useRef<HTMLElement>(null);
+
+ useEffect(() => {
+  if (!selected) return;
+  const clear = (event: PointerEvent) => {
+   if (event.target instanceof Node && !root.current?.contains(event.target)) {
+    setSelected(null);
+   }
+  };
+  document.addEventListener('pointerdown', clear);
+  return () => document.removeEventListener('pointerdown', clear);
+ }, [selected]);
+
+ const table = schema.tables.find(t => t.id === selected);
+
+ return (
+  <section ref={root} className={s.block} aria-label={title || 'DB 설계'}>
+   {title && <h2>{title}</h2>}
+   {!expanded && (
+    <DiagramLightbox
+     label="데이터베이스 설계"
+     hideTrigger={schema.display !== 'SPEC'}
+     open={viewerOpen}
+     onOpenChange={setViewerOpen}
+    >
+     {() => <DatabaseSchemaBlock schema={schema} title={title} expanded />}
+    </DiagramLightbox>
+   )}
+   {schema.display !== 'SPEC' && (
+    <>
+     {expanded && schema.display === 'BOTH' && (
+      <p className={s.inspectHint}>테이블을 선택하면 컬럼 상세를 볼 수 있어요.</p>
+     )}
+     <DatabaseDiagram
+      schema={schema}
+      expanded={expanded}
+      onExpand={!expanded ? () => setViewerOpen(true) : undefined}
+      onClearSelection={() => setSelected(null)}
+      selectedTable={table?.id}
+      onSelectTable={
+       expanded && schema.display === 'BOTH'
+        ? id => setSelected(current => (current === id ? null : id))
+        : undefined
+      }
+     />
+    </>
+   )}
+   {schema.display === 'SPEC' ? (
+    <DatabaseSpecifications schema={schema} />
+   ) : (
+    schema.display === 'BOTH' &&
+    table && (
+     <section
+      id={detailId}
+      className={s.selectedSpecification}
+      aria-label={`${table.name} 컬럼 상세`}
+     >
+      <button
+       className={s.closeSpecification}
+       type="button"
+       onClick={() => setSelected(null)}
+      >
+       상세 닫기
+      </button>
+      <DatabaseSpecifications
+       schema={{ ...schema, tables: [table] }}
+       referenceSchema={schema}
+      />
+     </section>
+    )
+   )}
+  </section>
+ );
 }

@@ -1,5 +1,6 @@
 import { ARCHITECTURE_TECHNOLOGIES } from "../architecture-catalog.ts";
-import { isArchitectureContainer } from "../architecture-groups.ts";
+import { isArchitectureContainer, ARCHITECTURE_GROUP_COLOR_IDS, type ArchitectureGroupColorId } from "../architecture-groups.ts";
+export { type ArchitectureGroupColorId } from "../architecture-groups.ts";
 import {parseDatabaseSchema} from "../database-schema.ts";
 import { GuestApiError as PostListError, guestJson } from "../../../lib/public-api.ts";
 export { GuestApiError as PostListError } from "../../../lib/public-api.ts";
@@ -108,7 +109,7 @@ export type TableColumn = {
   description?: string | null;
 };
 export type TableSpec = { schemaVersion: 1; tableName: string; description?: string | null; columns: TableColumn[] };
-export type ArchitectureGroup = { id: string; type: "ORACLE_CLOUD" | "AWS" | "CLOUDFLARE" | "DOCKER" | "CLOUD" | "CONTAINER" | "CUSTOM"; label: string; typeLabel?: string | null; icon?: string | null; parentId?: string | null; bounds?: { x: number; y: number; width: number; height: number } | null };
+export type ArchitectureGroup = { id: string; type: "ORACLE_CLOUD" | "AWS" | "CLOUDFLARE" | "DOCKER" | "CLOUD" | "CONTAINER" | "CUSTOM"; label: string; typeLabel?: string | null; icon?: string | null; color?: ArchitectureGroupColorId | null; parentId?: string | null; bounds?: { x: number; y: number; width: number; height: number } | null };
 export type ArchitectureNode = { id: string; type: "CLIENT" | "APP" | "DATABASE" | "CACHE" | "STORAGE" | "PROXY" | "CUSTOM"; label: string; typeLabel?: string | null; groupId?: string | null; icon?: string | null; position?: { x: number; y: number } | null };
 export type ArchitectureSide = "TOP" | "RIGHT" | "BOTTOM" | "LEFT";
 export type ArchitectureEdge = { id: string; source: string; target: string; label?: string | null; direction?: "NONE"|"FORWARD"|"BOTH"|null; sourceSide?: ArchitectureSide | null; targetSide?: ArchitectureSide | null; waypoint?: {x:number;y:number} | null };
@@ -171,8 +172,9 @@ export function parseArchitectureSpec(value: unknown): ArchitectureSpec {
   const addId = (id: unknown) => { if (!architectureId(id) || ids.has(id)) throw new PostListError("response"); ids.add(id); };
   const groups = new Map<string, ArchitectureGroup>();
   for (const item of value.groups) {
-    if (!record(item) || !keysAre(item, ["id", "type", "label", "typeLabel", "parentId", "bounds", "icon"]) || typeof item.type !== "string" || !groupTypes.includes(item.type) || !(typeof item.label === "string" && safeString(item.label) && pointLength(item.label)<=100) || !validArchitectureTypeLabel(item)
+    if (!record(item) || !keysAre(item, ["id", "type", "label", "typeLabel", "parentId", "bounds", "icon", "color"]) || typeof item.type !== "string" || !groupTypes.includes(item.type) || !(typeof item.label === "string" && safeString(item.label) && pointLength(item.label)<=100) || !validArchitectureTypeLabel(item)
       || !(item.icon == null || typeof item.icon === "string" && architectureIcons.includes(item.icon))
+      || !(item.color == null || (typeof item.color === "string" && ARCHITECTURE_GROUP_COLOR_IDS.includes(item.color as any)))
       || !(item.parentId === undefined || item.parentId === null || architectureId(item.parentId))) throw new PostListError("response");
     if (item.bounds != null) {
       const b = item.bounds;
@@ -185,7 +187,14 @@ export function parseArchitectureSpec(value: unknown): ArchitectureSpec {
   for (const group of groups.values()) {
     if (group.parentId != null) {
       const parent = groups.get(group.parentId);
-      if (!isArchitectureContainer(group.type) || !parent || isArchitectureContainer(parent.type) || parent.parentId != null) throw new PostListError("response");
+      if (!parent || parent.id === group.id || isArchitectureContainer(parent.type)) throw new PostListError("response");
+      let curr: ArchitectureGroup | undefined = parent;
+      const seen = new Set<string>([group.id]);
+      while (curr) {
+        if (seen.has(curr.id)) throw new PostListError("response");
+        seen.add(curr.id);
+        curr = curr.parentId ? groups.get(curr.parentId) : undefined;
+      }
     }
   }
   const nodes = new Set<string>();

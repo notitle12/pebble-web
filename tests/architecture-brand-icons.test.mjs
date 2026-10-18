@@ -1,15 +1,20 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
 import {readFileSync} from 'node:fs';
 import {ARCHITECTURE_BRAND_ICONS,architectureBrandIcon,searchArchitectureIcons} from '../src/features/post/architecture-brand-icons.ts';
 import {toolboxIcon,newArchitectureNode} from '../src/features/post/architecture-tools.ts';
 import {parseArchitectureSpec} from '../src/features/post/api/post-list.ts';
 test('only reviewed commercial artwork is offered; unknown IDs and URLs cannot resolve to brand assets',()=>{
- assert.deepEqual(ARCHITECTURE_BRAND_ICONS.map(icon=>icon.value),['GIT','RUST']);
- for(const value of ['DOCKER','GO','PYTHON','POSTGRESQL','https://example.com/a.svg','<svg/>',null])assert.equal(architectureBrandIcon(value),undefined);
+ const expectedIcons = ['GIT','RUST','JAVASCRIPT','REDUX','FLASK','CPP'];
+ assert.deepEqual(ARCHITECTURE_BRAND_ICONS.map(icon=>icon.value),expectedIcons);
+ for(const value of ['DOCKER','GO','PYTHON','POSTGRESQL','AWS','UNKNOWN_TECH','FOOBAR','https://example.com/a.svg','<svg/>',null])assert.equal(architectureBrandIcon(value),undefined);
  for(const icon of ARCHITECTURE_BRAND_ICONS){
   assert.equal(toolboxIcon(icon.value),icon.value);
-  assert.ok(['CC BY 3.0','CC BY 4.0'].includes(icon.license));
+  assert.ok(['CC BY 3.0','CC BY 4.0','MIT','CC0 1.0','Flask Artwork License','Standard C++ Logo Permission'].includes(icon.license));
+  const bytes=readFileSync(new URL(`../public${icon.asset}`,import.meta.url));
+  assert.equal(createHash('sha256').update(bytes).digest('hex'),icon.sha256);
+  assert.ok(icon.assetSource.startsWith('https://'));
   assert.match(icon.asset,/^\/technology-icons\/[a-z]+\.(svg|png)$/);
   assert.ok(readFileSync(new URL(`../public${icon.asset}`,import.meta.url)).length>100);
   const node={...newArchitectureNode('n',icon.value,0),label:'직접 입력한 이름'};
@@ -24,6 +29,11 @@ test('icon search accepts Korean aliases, case and whitespace without modifying 
  assert.equal(searchArchitectureIcons(ARCHITECTURE_BRAND_ICONS,' 러 스트 ')[0].value,'RUST');
  assert.equal(searchArchitectureIcons(ARCHITECTURE_BRAND_ICONS,'gIt')[0].value,'GIT');
  assert.equal(searchArchitectureIcons(ARCHITECTURE_BRAND_ICONS,'깃')[0].value,'GIT');
- assert.deepEqual(searchArchitectureIcons(ARCHITECTURE_BRAND_ICONS,'Docker'),[]);
- assert.equal(searchArchitectureIcons(ARCHITECTURE_BRAND_ICONS,'  ').length,2);
+ assert.deepEqual(searchArchitectureIcons(ARCHITECTURE_BRAND_ICONS,'도커'),[]);
+ assert.equal(searchArchitectureIcons(ARCHITECTURE_BRAND_ICONS,'','devops')[0].value,'GIT');
+ assert.deepEqual(searchArchitectureIcons(ARCHITECTURE_BRAND_ICONS,'','language').map(i=>i.value),['RUST','JAVASCRIPT','CPP']);
+ assert.equal(searchArchitectureIcons(ARCHITECTURE_BRAND_ICONS,'리덕스')[0].value,'REDUX');
+ assert.equal(searchArchitectureIcons(ARCHITECTURE_BRAND_ICONS,'플라스크')[0].value,'FLASK');
+ assert.deepEqual(searchArchitectureIcons(ARCHITECTURE_BRAND_ICONS,'','database'),[]);
+ assert.equal(searchArchitectureIcons(ARCHITECTURE_BRAND_ICONS,'  ').length,6);
 });
