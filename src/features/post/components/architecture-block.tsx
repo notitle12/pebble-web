@@ -18,7 +18,7 @@ const groupDetail=(group:ArchitectureGroup)=>architectureGroupPresentation(group
 const short = (text: string, maxWidth = 138, fontSize = 11) => { let result = "", width = 0; for (const char of Array.from(text)) { const size = char.codePointAt(0)! > 255 ? fontSize : fontSize * .58; if (width + size > maxWidth) return `${result}…`; result += char; width += size; } return result; };
 export function ArchitectureIcon({ value, type, standalone = false }: { value?: string | null; type?:string; standalone?:boolean }) {
   const brand=architectureBrandIcon(value);
-  if(brand)return <svg className="arch-tech-icon arch-brand-icon" data-brand-icon={brand.value} viewBox="0 0 26 26" x={standalone?0:10} y={standalone?0:15} width={26} height={26} aria-hidden="true">{brand.value==='RUST'&&<rect width={26} height={26} rx={13} fill="white"/>}<image href={brand.asset} x={1} y={1} width={24} height={24} preserveAspectRatio="xMidYMid meet"/></svg>;
+  if(brand)return <svg className="arch-tech-icon arch-brand-icon" data-brand-icon={brand.value} viewBox="0 0 26 26" x={standalone?0:10} y={standalone?0:15} width={26} height={26} aria-hidden="true">{(brand.value==='RUST'||brand.value==='FLASK')&&<rect width={26} height={26} rx={13} fill="white"/>}<image href={brand.asset} x={1} y={1} width={24} height={24} preserveAspectRatio="xMidYMid meet"/></svg>;
   const kind=architectureIconKind(value,type);
   const shapes={
     PERSON:<><circle cx="13" cy="8" r="4"/><path d="M20 22v-1.5a4.5 4.5 0 0 0-4.5-4.5h-5A4.5 4.5 0 0 0 6 20.5V22"/></>,

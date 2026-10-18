@@ -13,6 +13,7 @@ export const ARCHITECTURE_TECHNOLOGIES = [
   {"id":"DART","title":"Dart","group":"language","type":"APP"},
   {"id":"PHP","title":"PHP","group":"language","type":"APP"},
   {"id":"RUBY","title":"Ruby","group":"language","type":"APP"},
+  {"id":"REDUX","title":"Redux","group":"frontend","type":"CLIENT"},
   {"id":"REACT","title":"React","group":"frontend","type":"CLIENT"},
   {"id":"NEXTJS","title":"Next.js","group":"frontend","type":"CLIENT"},
   {"id":"VUEJS","title":"Vue.js","group":"frontend","type":"CLIENT"},
