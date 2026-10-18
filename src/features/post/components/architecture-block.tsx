@@ -4,6 +4,7 @@ import {DiagramLightbox} from "./diagram-lightbox";
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import type { ArchitectureEdge, ArchitectureNode, ArchitectureGroup, ArchitectureSide, ArchitectureSpec } from "../api/post-list";
 import { isArchitectureContainer, architectureGroupPresentation, architectureGroupLabel } from "../architecture-groups";
+import {architectureBrandIcon} from "../architecture-brand-icons";
 import {connectionMarkers} from "../architecture-tools";
 import { architectureIconKind } from "../architecture-catalog";
 import { architectureZoom, nearestArchitectureSide } from "../architecture-interaction";
@@ -11,13 +12,12 @@ import { architectureEdgeRoute } from "../architecture-edge";
 import { architectureLayout, ARCH_NODE_WIDTH, ARCH_NODE_HEIGHT, type ArchPoint } from "../architecture-layout";
 export { architectureLayout, type ArchPoint } from "../architecture-layout";
 
-const nodeColors: Record<string, string> = { CLIENT: "#e9f2ff", APP: "#edf7ef", DATABASE: "#fff1e6", CACHE: "#f5edff", STORAGE: "#e7f7f5", PROXY: "#fff8dc", CUSTOM: "#f1f3f8" };
-const typeNames: Record<string, string> = { CLIENT: "클라이언트", APP: "앱 서버", DATABASE: "데이터베이스", CACHE: "캐시", STORAGE: "스토리지", PROXY: "프록시", CUSTOM: "요소" };
-const nodeKind=(node:ArchitectureNode)=>node.type==="CUSTOM"?(node.typeLabel??typeNames[node.type]):typeNames[node.type];
 const groupKind=(group:ArchitectureGroup)=>architectureGroupPresentation(group).category;
 const groupDetail=(group:ArchitectureGroup)=>architectureGroupPresentation(group).detail;
 const short = (text: string, maxWidth = 138, fontSize = 11) => { let result = "", width = 0; for (const char of Array.from(text)) { const size = char.codePointAt(0)! > 255 ? fontSize : fontSize * .58; if (width + size > maxWidth) return `${result}…`; result += char; width += size; } return result; };
-export function ArchitectureIcon({ value, type }: { value?: string | null; type?:string }) {
+export function ArchitectureIcon({ value, type, standalone = false }: { value?: string | null; type?:string; standalone?:boolean }) {
+  const brand=architectureBrandIcon(value);
+  if(brand)return <svg className="arch-tech-icon arch-brand-icon" data-brand-icon={brand.value} viewBox="0 0 26 26" x={standalone?0:10} y={standalone?0:15} width={26} height={26} aria-hidden="true">{brand.value==='RUST'&&<rect width={26} height={26} rx={13} fill="white"/>}<image href={brand.asset} x={1} y={1} width={24} height={24} preserveAspectRatio="xMidYMid meet"/></svg>;
   const kind=architectureIconKind(value,type);
   const shapes={
     PERSON:<><circle cx="13" cy="7" r="4"/><path d="M5 24v-4a8 8 0 0 1 16 0v4M9 24v-4M17 24v-4"/></>,
@@ -31,30 +31,11 @@ export function ArchitectureIcon({ value, type }: { value?: string | null; type?
     PROXY:<><path d="M3 8h20l-5-5M23 18H3l5 5M23 8l-5 5M3 18l5-5"/></>,
     CUSTOM:<><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="15" y="3" width="8" height="8" rx="2"/><rect x="3" y="15" width="8" height="8" rx="2"/><rect x="15" y="15" width="8" height="8" rx="2"/></>
   };
-  return <svg className="arch-tech-icon" data-icon-kind={kind} viewBox="0 0 26 26" x={10} y={15} width={26} height={26} fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{shapes[kind]}</svg>;
+  return <svg className="arch-tech-icon" data-icon-kind={kind} viewBox="0 0 26 26" x={standalone?0:10} y={standalone?0:15} width={26} height={26} fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{shapes[kind]}</svg>;
 }
 
-function ArchitectureObject({kind,fill}:{kind:ReturnType<typeof architectureIconKind>;fill:string}){
- const paths={
-  DATABASE:'M12 14C12 0 148 0 148 14V62C148 78 12 78 12 62Z',
-  CLOUD:'M31 70C-4 70-4 29 24 28C24 3 57-1 71 15C93-7 128 1 133 27C165 25 174 70 132 70Z',
-  SERVER:'M20 3H140V73H20Z',
-  CLIENT:'M5 2H155V58H5Z',
-  STORAGE:'M8 25L27 4H133L152 25V69H8Z',
-  CONTAINER:'M12 17L40 4H148V59L121 73H12Z',
-  CACHE:'M15 10H145V66H15Z',
-  PROXY:'M8 12H149L139 3M149 12L139 21M152 64H11L21 55M11 64L21 73',
-  CUSTOM:'M23 3H137L157 38L137 73H23L3 38Z',
-  PERSON:'M65 50V37C65 22 95 22 95 37V50M80 50V37M70 12A10 10 0 1 0 90 12A10 10 0 1 0 70 12'
- };
- return <><rect className="arch-object-hit" width={160} height={76} fill="transparent"/><path className={`arch-node arch-object-shape${kind==='PERSON'||kind==='PROXY'?' arch-object-outline':''}`} d={paths[kind]} fill={fill}/><g className="arch-object-detail" fill="none" stroke="currentColor" strokeWidth={1.4}>
- {kind==='DATABASE'&&<path d="M12 14C12 29 148 29 148 14"/>}
- {kind==='SERVER'&&<><path d="M20 18H140M30 10H33M40 10H43M50 10H53"/><path d="M27 63H43M117 63H133"/></>}
- {kind==='CLIENT'&&<path d="M5 51H155M80 58V73M57 74H103"/>}
- {kind==='STORAGE'&&<path d="M8 25H152M8 58H152M122 64H125M136 64H139"/>}
- {kind==='CONTAINER'&&<path d="M12 17H121V73M121 17L148 4M131 28V54M140 24V50"/>}
- {kind==='CACHE'&&<path d="M5 23H15M5 38H15M5 53H15M145 23H155M145 38H155M145 53H155M38 0V10M65 0V10M95 0V10M122 0V10M38 66V76M65 66V76M95 66V76M122 66V76"/>}
- </g></>;
+function ArchitectureObject({value,type}:{value?:string|null;type:string}){
+ return <><rect className="arch-object-hit" width={160} height={76} fill="transparent"/><g className="arch-object-symbol" transform="translate(58 -1) scale(1.7)"><ArchitectureIcon value={value} type={type} standalone/></g></>;
 }
 
 type PointerDrag = { id: string; pointerId: number; start: { x: number; y: number }; point: ArchPoint; scaleX: number; scaleY: number; moved: boolean };
@@ -64,13 +45,13 @@ const clamp = (value: number, min: number, max: number) => Math.max(min, Math.mi
 const sideNames: Record<ArchitectureSide, string> = { TOP: "위쪽", RIGHT: "오른쪽", BOTTOM: "아래쪽", LEFT: "왼쪽" };
 const sides: ArchitectureSide[] = ["TOP", "RIGHT", "BOTTOM", "LEFT"];
 
-export function ArchitectureBlock({ spec, title, expanded = false, interactive = false, selectedNode, selectedGroup, selectedEdge, connecting = false, connectionDirection, onSelectNode, onSelectGroup, onSelectEdge, onConnect, onMoveNode, onMoveGroup, onResizeGroup, onMoveEdge, onReconnectEdge, onDeleteEdge, onResetEdgeWaypoint, onInteractionStart, onInteractionEnd, zoom, onZoomChange, onConnectNodes, onClearSelection, onRenameNode, onRenameGroup, onRenameNodeType, onRenameGroupType }: {
+export function ArchitectureBlock({ spec, title, expanded = false, interactive = false, selectedNode, selectedGroup, selectedEdge, connecting = false, connectionDirection, onSelectNode, onSelectGroup, onSelectEdge, onConnect, onMoveNode, onMoveGroup, onResizeGroup, onMoveEdge, onReconnectEdge, onDeleteEdge, onResetEdgeWaypoint, onInteractionStart, onInteractionEnd, zoom, onZoomChange, onConnectNodes, onClearSelection, onRenameNode, onRenameGroup, onRenameGroupType }: {
   spec: ArchitectureSpec; title: string | null; expanded?: boolean; interactive?: boolean; selectedNode?: string | null; selectedGroup?: string | null; selectedEdge?: string | null; connecting?: boolean; connectionDirection?: ArchitectureEdge["direction"];
   onSelectNode?: (id: string) => void; onSelectGroup?: (id: string) => void; onSelectEdge?: (id: string) => void;
   onConnect?: (id: string, side: ArchitectureSide) => void;
   onClearSelection?:()=>void;
   onRenameNode?:(id:string,label:string)=>void; onRenameGroup?:(id:string,label:string)=>void;
-  onRenameNodeType?:(id:string,label:string)=>void; onRenameGroupType?:(id:string,label:string)=>void;
+  onRenameGroupType?:(id:string,label:string)=>void;
   zoom?:number; onZoomChange?:(zoom:number)=>void;
   onConnectNodes?:(source:string,sourceSide:ArchitectureSide|null,target:string,targetSide:ArchitectureSide|null)=>void;
   onMoveNode?: (id: string, point: ArchPoint, finished?: boolean) => void; onMoveGroup?: (id: string, point: ArchPoint) => void;
@@ -80,16 +61,16 @@ export function ArchitectureBlock({ spec, title, expanded = false, interactive =
 }) {
   const id = `architecture-${useId().replace(/:/g, "")}`;
   const { positions, groups, width, height } = architectureLayout(spec);
-  const [editingName,setEditingName]=useState<{kind:"node"|"group"|"nodeType"|"groupType";id:string;label:string}|null>(null);
+  const [editingName,setEditingName]=useState<{kind:"node"|"group"|"groupType";id:string;label:string}|null>(null);
   const [viewerOpen,setViewerOpen]=useState(false);
   const [hiddenWaypoint,setHiddenWaypoint]=useState<string|null>(null);
   const nameInput=useRef<HTMLInputElement>(null);
   useEffect(()=>{if(editingName){nameInput.current?.focus({preventScroll:true});nameInput.current?.select();}},[editingName?.id,editingName?.kind]);
-  function nameEditor(x:number,y:number,kind:"node"|"group"|"nodeType"|"groupType",endpointId:string) {
+  function nameEditor(x:number,y:number,kind:"node"|"group"|"groupType",endpointId:string) {
     if(!editingName || editingName.id!==endpointId || editingName.kind!==kind) return null;
-    const finish=()=>{if(kind==="group" || editingName.label.trim())(kind==="node"?onRenameNode:kind==="group"?onRenameGroup:kind==="nodeType"?onRenameNodeType:onRenameGroupType)?.(endpointId,editingName.label);setEditingName(null);};
-    return <foreignObject x={x} y={y} width={kind==="node"?146:kind==="nodeType"?110:200} height={34} className="arch-name-editor" data-kind={kind} onPointerDown={event=>event.stopPropagation()} onClick={event=>event.stopPropagation()} onDoubleClick={event=>event.stopPropagation()}>
-      <input ref={nameInput} aria-label={kind==="node"?"카드 이름 수정":kind==="group"?"그룹 이름 수정":kind==="nodeType"?"카드 종류 표시 수정":"그룹 종류 표시 수정"} value={editingName.label} maxLength={kind==="nodeType"||kind==="groupType"?50:100} onChange={event=>setEditingName({...editingName,label:event.target.value})} onBlur={finish} onKeyDown={event=>{event.stopPropagation();if(event.key==="Enter"){event.preventDefault();finish();}else if(event.key==="Escape"){event.preventDefault();setEditingName(null);}}}/>
+    const finish=()=>{if(kind==="group" || editingName.label.trim())(kind==="node"?onRenameNode:kind==="group"?onRenameGroup:onRenameGroupType)?.(endpointId,editingName.label);setEditingName(null);};
+    return <foreignObject x={x} y={y} width={kind==="node"?146:200} height={34} className="arch-name-editor" data-kind={kind} onPointerDown={event=>event.stopPropagation()} onClick={event=>event.stopPropagation()} onDoubleClick={event=>event.stopPropagation()}>
+      <input ref={nameInput} aria-label={kind==="node"?"카드 이름 수정":kind==="group"?"그룹 이름 수정":"그룹 종류 표시 수정"} value={editingName.label} maxLength={kind==="groupType"?50:100} onChange={event=>setEditingName({...editingName,label:event.target.value})} onBlur={finish} onKeyDown={event=>{event.stopPropagation();if(event.key==="Enter"){event.preventDefault();finish();}else if(event.key==="Escape"){event.preventDefault();setEditingName(null);}}}/>
     </foreignObject>;
   }
   const [hoveredEndpoint,setHoveredEndpoint]=useState<string|null>(null);
@@ -262,7 +243,7 @@ export function ArchitectureBlock({ spec, title, expanded = false, interactive =
           {interactive && onResizeGroup && <g className="arch-group-resize" transform={`translate(${box.x + box.width} ${box.y + box.height})`} role="button" tabIndex={0} aria-label={`${label} 크기 조절`} onPointerDown={(event) => beginResize(event, group.id)} onPointerMove={moveResize} onPointerUp={endResize} onPointerCancel={endResize} onLostPointerCapture={endResize} onKeyDown={(event) => {  const delta = event.shiftKey ? 10 : 1; const vectors: Record<string, { width: number; height: number }> = { ArrowLeft: { width: -delta, height: 0 }, ArrowRight: { width: delta, height: 0 }, ArrowUp: { width: 0, height: -delta }, ArrowDown: { width: 0, height: delta } }; const vector = vectors[event.key]; if (vector && onResizeGroup) { event.preventDefault(); event.stopPropagation(); onInteractionStart?.(); onResizeGroup(group.id, { width: clamp(box.width + vector.width, 200, 4200), height: clamp(box.height + vector.height, 120, 4200) }); onInteractionEnd?.(); } }}><circle className="arch-group-resize-hit" r="12"/><path className="arch-group-resize-mark" d="M-7 7 7-7M0 7 7 0"/><title>{`${label} 크기 조절`}</title></g>}
         </g>; })}
         {spec.edges.map((edge) => { const route = edgeRoutes.get(edge.id); if (!route) return null; const selected = interactive && selectedEdge === edge.id; const accessibleLabel = `연결 ${edgeLabel(edge)}`; return <g key={edge.id} className={`arch-edge-wrap${selected ? " is-selected" : ""}`} role={interactive ? "button" : undefined} tabIndex={interactive ? 0 : undefined} aria-label={interactive ? accessibleLabel : undefined} onClick={() => {if(interactive){setHiddenWaypoint(null);onSelectEdge?.(edge.id);}}} onKeyDown={(event) => { if (interactive && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); setHiddenWaypoint(null); onSelectEdge?.(edge.id); } }}><title>{`${edgeLabel(edge)}${edge.label ? ` · ${edge.label}` : ""}`}</title>{interactive && <path className="arch-edge-hit" d={route.path}/>}<path className="arch-edge" markerStart={connectionMarkers(edge.direction).start?`url(#${id}-arrow)`:undefined} markerEnd={connectionMarkers(edge.direction).end?`url(#${id}-arrow)`:undefined} d={route.path}/>{edge.label && <text className="arch-edge-label" x={route.label.x} y={route.label.y}>{short(edge.label, 112, 10)}</text>}</g>; })}
-        {spec.nodes.map((node) => { const point = positions.get(node.id)!; const selected = selectedNode === node.id || connectionPreview?.target===node.id; return <g key={node.id} onDoubleClick={event=>{if(interactive && onRenameNode){event.stopPropagation();setEditingName({kind:"node",id:node.id,label:node.label});}}} onPointerEnter={()=>setHoveredEndpoint(node.id)} onPointerLeave={()=>setHoveredEndpoint(null)} data-architecture-endpoint={node.id} data-node-type={node.type} data-object-kind={architectureIconKind(node.icon,node.type)} className={`arch-node-wrap${interactive ? " arch-node-draggable" : ""}${selected ? " is-selected" : ""}`} transform={`translate(${point.x} ${point.y})`} onPointerDown={(event) => beginNodeDrag(event, node)} onPointerMove={moveNodeDrag} onPointerUp={(event) => endNodeDrag(event)} onPointerCancel={(event) => endNodeDrag(event, true)} onLostPointerCapture={(event) => endNodeDrag(event, true)} onClick={() => { if (suppressClickRef.current) { suppressClickRef.current = false; return; } if (interactive) onSelectNode?.(node.id); }} onKeyDown={(event) => { if (!interactive) return; if(onRenameNode && (event.key==="F2" || event.key==="Enter")){event.preventDefault();event.stopPropagation();setEditingName({kind:"node",id:node.id,label:node.label});return;} const delta = event.shiftKey ? 10 : 1; if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onSelectNode?.(node.id); return; } const vectors: Record<string, ArchPoint> = { ArrowLeft: { x: -delta, y: 0 }, ArrowRight: { x: delta, y: 0 }, ArrowUp: { x: 0, y: -delta }, ArrowDown: { x: 0, y: delta } }; const vector = vectors[event.key]; if (vector && onMoveNode) { event.preventDefault(); event.stopPropagation(); onInteractionStart?.(); onMoveNode(node.id, { x: clamp(point.x + vector.x, 0, 4000), y: clamp(point.y + vector.y, 0, 4000) }, true); onInteractionEnd?.(); } }} tabIndex={interactive ? 0 : undefined} role={interactive ? "button" : undefined} aria-label={`${node.label}, ${nodeKind(node)}`}><ArchitectureObject kind={architectureIconKind(node.icon,node.type)} fill={nodeColors[node.type]}/><text className={`arch-node-type${node.type==="CUSTOM"?" arch-editable-kind":""}`} x="80" y={architectureIconKind(node.icon,node.type)==='PERSON'?61:architectureIconKind(node.icon,node.type)==='CLIENT'?23:38} onPointerDown={event=>{if(interactive && node.type==="CUSTOM")event.stopPropagation();}} onDoubleClick={event=>{if(interactive && node.type==="CUSTOM" && onRenameNodeType){event.preventDefault();event.stopPropagation();setEditingName({kind:"nodeType",id:node.id,label:nodeKind(node)});}}}>{short(nodeKind(node),116,10)}</text><text className="arch-node-label" x="80" y={architectureIconKind(node.icon,node.type)==='PERSON'?75:architectureIconKind(node.icon,node.type)==='CLIENT'?41:55} onDoubleClick={event=>{if(interactive && onRenameNode){event.stopPropagation();setEditingName({kind:"node",id:node.id,label:node.label});}}}>{short(node.label||'이름 입력',112,11)}</text>{nameEditor(7,architectureIconKind(node.icon,node.type)==='PERSON'?49:35,"node",node.id)}{nameEditor(22,architectureIconKind(node.icon,node.type)==='PERSON'?41:18,"nodeType",node.id)}</g>; })}
+        {spec.nodes.map((node) => { const point = positions.get(node.id)!; const selected = selectedNode === node.id || connectionPreview?.target===node.id; return <g key={node.id} onDoubleClick={event=>{if(interactive && onRenameNode){event.stopPropagation();setEditingName({kind:"node",id:node.id,label:node.label});}}} onPointerEnter={()=>setHoveredEndpoint(node.id)} onPointerLeave={()=>setHoveredEndpoint(null)} data-architecture-endpoint={node.id} data-node-type={node.type} data-object-kind={architectureIconKind(node.icon,node.type)} className={`arch-node-wrap${interactive ? " arch-node-draggable" : ""}${selected ? " is-selected" : ""}`} transform={`translate(${point.x} ${point.y})`} onPointerDown={(event) => beginNodeDrag(event, node)} onPointerMove={moveNodeDrag} onPointerUp={(event) => endNodeDrag(event)} onPointerCancel={(event) => endNodeDrag(event, true)} onLostPointerCapture={(event) => endNodeDrag(event, true)} onClick={() => { if (suppressClickRef.current) { suppressClickRef.current = false; return; } if (interactive) onSelectNode?.(node.id); }} onKeyDown={(event) => { if (!interactive) return; if(onRenameNode && (event.key==="F2" || event.key==="Enter")){event.preventDefault();event.stopPropagation();setEditingName({kind:"node",id:node.id,label:node.label});return;} const delta = event.shiftKey ? 10 : 1; if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onSelectNode?.(node.id); return; } const vectors: Record<string, ArchPoint> = { ArrowLeft: { x: -delta, y: 0 }, ArrowRight: { x: delta, y: 0 }, ArrowUp: { x: 0, y: -delta }, ArrowDown: { x: 0, y: delta } }; const vector = vectors[event.key]; if (vector && onMoveNode) { event.preventDefault(); event.stopPropagation(); onInteractionStart?.(); onMoveNode(node.id, { x: clamp(point.x + vector.x, 0, 4000), y: clamp(point.y + vector.y, 0, 4000) }, true); onInteractionEnd?.(); } }} tabIndex={interactive ? 0 : undefined} role={interactive ? "button" : undefined} aria-label={node.label||"이름 입력"}><ArchitectureObject value={node.icon} type={node.type}/><text className="arch-node-label" x="80" y={59} onDoubleClick={event=>{if(interactive && onRenameNode){event.stopPropagation();setEditingName({kind:"node",id:node.id,label:node.label});}}}>{short(node.label||'이름 입력',148,12)}</text>{nameEditor(7,42,"node",node.id)}</g>; })}
         {spec.nodes.map((node) => { const point = positions.get(node.id)!; return connectHandle(node.id, node.label, { ...point, width: ARCH_NODE_WIDTH, height: ARCH_NODE_HEIGHT }); })}
         {connectionPreview && <path className="arch-connection-preview" d={`M${connectionPreview.start.x},${connectionPreview.start.y} L${connectionPreview.end.x},${connectionPreview.end.y}`} markerStart={connectionMarkers(connectionDirection).start?`url(#${id}-arrow)`:undefined} markerEnd={connectionMarkers(connectionDirection).end?`url(#${id}-arrow)`:undefined}/>}
         {interactive && selectedEdge && (() => { const edge = spec.edges.find((item) => item.id === selectedEdge), route = edgeRoutes.get(selectedEdge); if (!edge || !route) return null; const sourceBox = endpointBox(edge.source), targetBox = endpointBox(edge.target); if (!sourceBox || !targetBox) return null; const toolbarY = route.bend.y - 43; return <g className="arch-edge-controls">
@@ -273,6 +254,7 @@ export function ArchitectureBlock({ spec, title, expanded = false, interactive =
         </g>; })()}
       </svg>
     </div>
-    {!interactive && <div className="architecture-description"><h3>경계 그룹</h3>{spec.groups.length ? <ul>{spec.groups.map((group) => <li key={group.id}>{architectureGroupLabel(group)}{group.parentId ? ` (내부: ${endpointLabel(group.parentId)})` : ""}</li>)}</ul> : <p>경계 그룹이 없습니다.</p>}<h3>구성 요소</h3><ul>{spec.nodes.map((node) => <li key={node.id}><strong>{node.label}</strong> — {nodeKind(node)}{node.groupId ? ` · ${endpointLabel(node.groupId)}` : ""}</li>)}</ul><h3>연결</h3>{spec.edges.length ? <ol>{spec.edges.map((edge) => <li key={edge.id}>{edgeLabel(edge)}{edge.label ? ` · ${edge.label}` : ""}</li>)}</ol> : <p>표시할 연결이 없습니다.</p>}</div>}
+    {spec.nodes.some(node=>architectureBrandIcon(node.icon))||spec.groups.some(group=>architectureBrandIcon(group.icon))?<a className="architecture-icon-credits" href="/technology-icons/NOTICE.txt" target="_blank" rel="noreferrer">아이콘 출처·라이선스</a>:null}
+    {!interactive && <div className="architecture-description"><h3>경계 그룹</h3>{spec.groups.length ? <ul>{spec.groups.map((group) => <li key={group.id}>{architectureGroupLabel(group)}{group.parentId ? ` (내부: ${endpointLabel(group.parentId)})` : ""}</li>)}</ul> : <p>경계 그룹이 없습니다.</p>}<h3>구성 요소</h3><ul>{spec.nodes.map((node) => <li key={node.id}><strong>{node.label}</strong>{node.groupId ? ` · ${endpointLabel(node.groupId)}` : ""}</li>)}</ul><h3>연결</h3>{spec.edges.length ? <ol>{spec.edges.map((edge) => <li key={edge.id}>{edgeLabel(edge)}{edge.label ? ` · ${edge.label}` : ""}</li>)}</ol> : <p>표시할 연결이 없습니다.</p>}</div>}
   </section>;
 }
