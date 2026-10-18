@@ -19,6 +19,7 @@ import { escapeRichText, isSafeOpenStreetMapEmbed, persistedRichHtml, richConten
 import { InlineCode, InlineTableSpec, InlineArchitecture, InlineDatabase, TocNode, AutomaticToc, ControllableTable, HeadingParagraphReset, EditableToggle } from "./inline-block-extensions";
 import { defaultInlineTableSpec, defaultInlineArchitectureSpec } from "./inline-block-views";
 import { blocksToDocument, documentToBlocks, blocksSignature, textSizes, defaultTextSizes, textColors, highlightColors } from "../writer-document";
+import { htmlToMarkdown, blocksToHtml } from "../html-to-markdown";
 import type { EditorBlock } from "../post-editor-model";
 import { BodyBlockHandle } from "./body-block-handle";
 import { PostBody } from "./post-body";
@@ -258,49 +259,105 @@ export function RichBodyEditor({ blocks, onChangeBlocks, uploadImage, imagePrevi
     if (signature === lastExternal.current) return;
     lastExternal.current = signature;
     if (signature === lastEmitted.current) { lastEmitted.current = null; return; }
+    if (blocks.length === 1 && blocks[0].type === "MARKDOWN") {
+      setDraftContent(blocks[0].content);
+      setFormat("MARKDOWN");
+      setDisplayMode("MARKDOWN");
+      if (editor) {
+        editor.commands.setContent(toDocument(blocks), { emitUpdate: false });
+      }
+      return;
+    }
     if (editor) {
       editor.commands.setContent(toDocument(blocks), { emitUpdate: false });
       setDraftContent(editor.getHTML());
-      setFormat(blocks.length === 1 && blocks[0].type === "MARKDOWN" ? "MARKDOWN" : "HTML");
+      setFormat("HTML");
     }
   }, [blocks, editor, imagePreviews]);
 
   const publishSource = useCallback((value: string, nextFormat: "HTML" | "MARKDOWN") => {
     setDraftContent(value); setFormat(nextFormat);
-    if (!editor) return;
-    editor.commands.setContent(generateJSON(richEditorHtml(value, nextFormat, imagePreviews).replace(/<(\/?)(h[456])\b/gi, "<$1h3"), extensionSet), { emitUpdate: false });
-    emitDocument(editor);
-  }, [editor, imagePreviews, onChangeBlocks]);
+    const nextBlocks: EditorBlock[] = [{
+      key: blocks[0]?.key ?? "main",
+      type: nextFormat,
+      content: value,
+      language: null,
+      title: null,
+      valid: true,
+      ...(Object.keys(imagePreviews).length ? { imagePreviews } : {}),
+    }];
+    lastEmitted.current = blocksSignature(nextBlocks);
+    onChangeBlocks(nextBlocks);
+  }, [blocks, imagePreviews, onChangeBlocks]);
 
   const applyMode = (next: "NORMAL" | "HTML" | "MARKDOWN") => {
     if (next === displayMode) return;
     if (next === "MARKDOWN") {
-      const html = format === "TEXT" ? escapeRichText(draftContent) : displayMode === "HTML" ? draftContent : editor?.getHTML() ?? draftContent;
-      publishSource(`<!-- Pebble HTML content -->\n${html}\n\n`, "MARKDOWN");
+      const currentHtml = displayMode === "HTML" ? draftContent : blocksToHtml(blocks, editor?.getHTML() ?? draftContent);
+      const markdown = htmlToMarkdown(currentHtml);
+      setDraftContent(markdown);
+      setFormat("MARKDOWN");
       setDisplayMode("MARKDOWN");
+      const nextBlocks: EditorBlock[] = [{
+        key: blocks[0]?.key ?? "main",
+        type: "MARKDOWN",
+        content: markdown,
+        language: null,
+        title: null,
+        valid: true,
+        ...(Object.keys(imagePreviews).length ? { imagePreviews } : {}),
+      }];
+      lastEmitted.current = blocksSignature(nextBlocks);
+      onChangeBlocks(nextBlocks);
       return;
     }
-    if (format === "MARKDOWN") {
-      const converted = richContentHtml(draftContent, "MARKDOWN");
-      publishSource(converted, "HTML");
-      editor?.commands.setContent(richEditorHtml(converted, "HTML", imagePreviews), { emitUpdate: false });
-      setDisplayMode(next);
-      return;
-    }
-    if (next === "NORMAL" && displayMode === "HTML") {
-      editor?.commands.setContent(richEditorHtml(draftContent, "HTML", imagePreviews), { emitUpdate: false });
-    } else if (next === "HTML" && displayMode === "NORMAL") {
-      const html = editor?.getHTML() ?? draftContent;
+    if (next === "HTML") {
+      let html = "";
+      if (displayMode === "MARKDOWN") {
+        html = richContentHtml(draftContent, "MARKDOWN");
+      } else {
+        html = blocksToHtml(blocks, editor?.getHTML() ?? draftContent);
+      }
       setDraftContent(html);
-      if (format === "TEXT") publishSource(html, "HTML");
+      setFormat("HTML");
+      setDisplayMode("HTML");
+      const nextBlocks: EditorBlock[] = [{
+        key: blocks[0]?.key ?? "main",
+        type: "HTML",
+        content: html,
+        language: null,
+        title: null,
+        valid: true,
+        ...(Object.keys(imagePreviews).length ? { imagePreviews } : {}),
+      }];
+      lastEmitted.current = blocksSignature(nextBlocks);
+      onChangeBlocks(nextBlocks);
+      return;
     }
-    setDisplayMode(next);
+    if (next === "NORMAL") {
+      let html = draftContent;
+      if (displayMode === "MARKDOWN") {
+        html = richContentHtml(draftContent, "MARKDOWN");
+      }
+      setDraftContent(html);
+      setFormat("HTML");
+      setDisplayMode("NORMAL");
+      if (editor) {
+        editor.commands.setContent(generateJSON(richEditorHtml(html, "HTML", imagePreviews).replace(/<(\/?)(h[456])\b/gi, "<$1h3"), extensionSet));
+        emitDocument(editor);
+      }
+      return;
+    }
   };
 
   useEffect(()=>{const dialog=formatDialog.current;if(!dialog)return;if(pendingMode&&!dialog.open)dialog.showModal();else if(!pendingMode&&dialog.open)dialog.close();},[pendingMode]);
   const changeMode=(next:"NORMAL"|"HTML"|"MARKDOWN")=>{
     if(next===displayMode)return;
-    if(next==="MARKDOWN"||format==="MARKDOWN"||(next==="NORMAL"&&displayMode==="HTML")){setPendingMode(next);return;}
+    const hasDraft = (displayMode === "NORMAL" ? (editor?.getText().trim() || "") : draftContent.replace(/<[^>]+>/g, "").trim()).length > 0;
+    if (hasDraft) {
+      setPendingMode(next);
+      return;
+    }
     applyMode(next);
   };
 
@@ -417,7 +474,7 @@ export function RichBodyEditor({ blocks, onChangeBlocks, uploadImage, imagePrevi
   return <section ref={root} onFocusCapture={onActivate} onPointerDownCapture={onActivate} inert={disabled} className={`${styles.root} ${toolbarMode === "inline" ? styles.inlineRoot : ""}`} aria-label="본문 편집기">
     <dialog ref={formatDialog} className={styles.formatDialog} aria-labelledby={formatDialogId} onCancel={()=>setPendingMode(null)}>
       <h2 id={formatDialogId}>작성 형식을 변경할까요?</h2>
-      <p>{pendingMode==="MARKDOWN"?"현재 서식은 마크다운 안에 HTML로 보존됩니다.":"지원하는 문단·표·이미지 형식으로 변환합니다. 지원하지 않는 HTML 구조나 위험한 요소는 제거될 수 있습니다."}</p>
+      <p>현재 작성된 내용을 {pendingMode==="MARKDOWN"?"마크다운":pendingMode==="HTML"?"HTML":"일반"} 서식으로 변환합니다. 글자·이미지 정렬 등 일부 서식은 달라질 수 있습니다.</p>
       <footer><button type="button" onClick={()=>setPendingMode(null)}>취소</button><button type="button" onClick={()=>{if(pendingMode)applyMode(pendingMode);setPendingMode(null);}}>형식 변경</button></footer>
     </dialog>
     {toolbarHost !== undefined ? toolbarHost && toolbarActive && createPortal(<div className={`${styles.root} ${styles.sharedTools}`}>{toolbar}</div>,toolbarHost) : toolbar}

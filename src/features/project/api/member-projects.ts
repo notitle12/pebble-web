@@ -29,6 +29,7 @@ export function parseOwnProjects(value:unknown,page:number,memberId:string):OwnP
 export function projectWriteFailure(error:unknown) {
   if(error instanceof MemberApiError&&error.status===0)return "저장 결과를 확인하지 못했습니다. 입력은 유지됩니다. 다시 저장하기 전에 내 프로젝트에서 저장 여부를 확인해 주세요.";
   if(error instanceof MemberApiError&&error.status===404)return "프로젝트가 없거나 본인 프로젝트가 아닙니다.";
-  if(error instanceof GuestApiError)return "프로젝트 응답을 확인하지 못했습니다. 다시 불러와 주세요.";
+  if(error instanceof GuestApiError)return "프로젝트 입력 내용을 확인해 주세요.";
+  if(error instanceof Error&&error.message==="response")return "프로젝트 입력 내용을 확인해 주세요.";
   return error instanceof Error?error.message:"프로젝트를 처리하지 못했습니다.";
 }

@@ -1,5 +1,5 @@
 import type {ProjectEditorValue} from './project-editor-model.ts';
-export type ProjectDraft={value:ProjectEditorValue;projectId?:string;cover:File|null;savedAt:number};
+export type ProjectDraft={value:ProjectEditorValue;projectId?:string;cover:File|null;coverDeleted?:boolean;savedAt:number};
 function openDrafts():Promise<IDBDatabase>{return new Promise((resolve,reject)=>{const request=indexedDB.open('pebble-project-drafts',1);request.onupgradeneeded=()=>request.result.createObjectStore('drafts');request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(new Error('이 브라우저에서 임시저장 공간을 열지 못했어요.'));});}
 export async function projectDraft(action:'read'|'write'|'remove',memberId:string,id:string|undefined,value?:ProjectDraft):Promise<ProjectDraft|undefined>{
  const db=await openDrafts();const key=`${memberId}:${id??'new'}`;
