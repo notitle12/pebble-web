@@ -8,6 +8,7 @@ import { isNodeInMarquee, isGroupInMarquee } from "../architecture-editing";
 import {architectureBrandIcon} from "../architecture-brand-icons";
 import {connectionMarkers} from "../architecture-tools";
 import { architectureIconKind } from "../architecture-catalog";
+import { diagramZoomScroll } from "../diagram-viewport";
 import { architectureZoom, nearestArchitectureSide } from "../architecture-interaction";
 import { architectureEdgeRoute } from "../architecture-edge";
 import { architectureLayout, ARCH_NODE_WIDTH, ARCH_NODE_HEIGHT, architectureNodeWidth, measureTextWidth, getArchitectureContentBounds, type ArchPoint } from "../architecture-layout";
@@ -108,7 +109,53 @@ function ArchitectureBlockInner({ spec, title, expanded = false, interactive = f
     }
   }, [onZoomChange]);
   const viewScale = activeZoom !== null ? activeZoom : (interactive ? 1 : fit);
-  const zoomAnchor = useRef<{ x: number; y: number; ratio: number; left: number; top: number } | null>(null);
+  const canvasPadding = !interactive && (activeZoom !== null || expanded) ? 48 : 0;
+  const zoomAnchor = useRef<{ x: number; y: number; ratio: number; left: number; top: number; padding: number; nextPadding: number } | null>(null);
+  const panState = useRef<{
+    startX: number;
+    startY: number;
+    scrollLeft: number;
+    scrollTop: number;
+    active: boolean;
+  } | null>(null);
+  const [isPanning, setIsPanning] = useState(false);
+
+  const handleZoomStep = useCallback((step: number) => {
+    const viewport = scrollRef.current;
+    const current = viewScale;
+    const next = clamp(Math.round((current + step) * 100) / 100, 0.4, 3.0);
+    if (next === current) return;
+    if (viewport) {
+      const rect = viewport.getBoundingClientRect();
+      zoomAnchor.current = {
+        x: rect.width / 2,
+        y: rect.height / 2,
+        ratio: next / current,
+        left: viewport.scrollLeft,
+        top: viewport.scrollTop,
+        padding: canvasPadding,
+        nextPadding: interactive ? 0 : 48,
+      };
+    }
+    handleZoomChange(next);
+  }, [viewScale, handleZoomChange, canvasPadding, interactive]);
+
+  const handleResetZoom = useCallback(() => {
+    const viewport = scrollRef.current;
+    if (viewport && viewScale !== 1) {
+      const rect = viewport.getBoundingClientRect();
+      zoomAnchor.current = {
+        x: rect.width / 2,
+        y: rect.height / 2,
+        ratio: 1 / viewScale,
+        left: viewport.scrollLeft,
+        top: viewport.scrollTop,
+        padding: canvasPadding,
+        nextPadding: interactive ? 0 : 48,
+      };
+    }
+    handleZoomChange(1);
+  }, [viewScale, handleZoomChange, canvasPadding, interactive]);
 
   const fitToView = useCallback(() => {
     const viewport = scrollRef.current;
@@ -117,7 +164,7 @@ function ArchitectureBlockInner({ spec, title, expanded = false, interactive = f
     if (clientWidth <= 0 || clientHeight <= 0) return;
 
     const bounds = getArchitectureContentBounds(spec, { positions, groups });
-    const padding = 60;
+    const padding = interactive ? 0 : 48;
     const availW = Math.max(100, clientWidth - padding * 2);
     const availH = Math.max(100, clientHeight - padding * 2);
 
@@ -128,8 +175,8 @@ function ArchitectureBlockInner({ spec, title, expanded = false, interactive = f
 
     const contentCenterX = bounds.minX + bounds.width / 2;
     const contentCenterY = bounds.minY + bounds.height / 2;
-    const targetScrollX = Math.max(0, Math.round(contentCenterX * nextZoom - clientWidth / 2));
-    const targetScrollY = Math.max(0, Math.round(contentCenterY * nextZoom - clientHeight / 2));
+    const targetScrollX = Math.max(0, Math.round(contentCenterX * nextZoom + padding - clientWidth / 2));
+    const targetScrollY = Math.max(0, Math.round(contentCenterY * nextZoom + padding - clientHeight / 2));
 
     viewport.scrollTo({ left: targetScrollX, top: targetScrollY, behavior: "smooth" });
     requestAnimationFrame(() => {
@@ -137,7 +184,7 @@ function ArchitectureBlockInner({ spec, title, expanded = false, interactive = f
         scrollRef.current.scrollTo({ left: targetScrollX, top: targetScrollY, behavior: "smooth" });
       }
     });
-  }, [spec, positions, groups, handleZoomChange]);
+  }, [spec, positions, groups, handleZoomChange, interactive]);
 
   useImperativeHandle(ref, () => ({
     fitToView,
@@ -159,18 +206,20 @@ function ArchitectureBlockInner({ spec, title, expanded = false, interactive = f
         ratio: next / current,
         left: viewport.scrollLeft,
         top: viewport.scrollTop,
+        padding: canvasPadding,
+        nextPadding: interactive ? 0 : 48,
       };
       handleZoomChange(next);
     };
     viewport.addEventListener("wheel", wheel, { passive: false });
     return () => viewport.removeEventListener("wheel", wheel);
-  }, [viewScale, handleZoomChange]);
+  }, [viewScale, handleZoomChange, canvasPadding, interactive]);
 
   useLayoutEffect(() => {
     const anchor = zoomAnchor.current, viewport = scrollRef.current;
     if (anchor && viewport) {
-      viewport.scrollLeft = (anchor.left + anchor.x) * anchor.ratio - anchor.x;
-      viewport.scrollTop = (anchor.top + anchor.y) * anchor.ratio - anchor.y;
+      viewport.scrollLeft = diagramZoomScroll(anchor.left, anchor.x, anchor.ratio, anchor.padding, anchor.nextPadding);
+      viewport.scrollTop = diagramZoomScroll(anchor.top, anchor.y, anchor.ratio, anchor.padding, anchor.nextPadding);
       zoomAnchor.current = null;
     }
   }, [viewScale]);
@@ -577,7 +626,7 @@ function ArchitectureBlockInner({ spec, title, expanded = false, interactive = f
                 className="architecture-toggle-collapse-btn"
                 aria-label="아키텍처 축소"
                 disabled={viewScale <= 0.4}
-                onClick={() => handleZoomChange(Math.max(0.4, Math.round((viewScale - 0.1) * 100) / 100))}
+                onClick={() => handleZoomStep(-0.1)}
               >
                 −
               </button>
@@ -589,21 +638,21 @@ function ArchitectureBlockInner({ spec, title, expanded = false, interactive = f
                 className="architecture-toggle-collapse-btn"
                 aria-label="아키텍처 확대"
                 disabled={viewScale >= 3}
-                onClick={() => handleZoomChange(Math.min(3, Math.round((viewScale + 0.1) * 100) / 100))}
+                onClick={() => handleZoomStep(0.1)}
               >
                 ＋
               </button>
               <button
                 type="button"
                 className="architecture-toggle-collapse-btn"
-                onClick={() => handleZoomChange(1)}
+                onClick={handleResetZoom}
               >
                 100%
               </button>
               <button
                 type="button"
                 className="architecture-toggle-collapse-btn"
-                onClick={() => handleZoomChange(null)}
+                onClick={fitToView}
                 title="모든 구성 요소가 보이도록 화면에 맞춥니다"
               >
                 화면 맞춤
@@ -626,18 +675,86 @@ function ArchitectureBlockInner({ spec, title, expanded = false, interactive = f
     {!collapsed && (
       <div
         ref={scrollRef}
-        className="architecture-scroll"
+        className={`architecture-scroll${isPanning ? " is-panning" : ""}`}
         data-zoomed={activeZoom !== null}
-        style={
-          interactive
-            ? { height: `${Math.min(520, Math.max(340, Math.round(height * (zoom ?? 1) + 20)))}px` }
-            : undefined
-        }
-        onClick={!interactive && !expanded && activeZoom === null ? () => setViewerOpen(true) : undefined}
+        style={{
+          height: interactive
+            ? `${Math.min(520, Math.max(340, Math.round(height * (zoom ?? 1) + 20)))}px`
+            : undefined,
+          touchAction: !interactive ? (expanded || activeZoom !== null ? "none" : "pan-y") : undefined,
+          userSelect: !interactive ? "none" : undefined,
+        }}
         onPointerDown={event => {
-          if (interactive && event.target === event.currentTarget) {
-            setEditingName(null);
-            onClearSelection?.();
+          if (interactive) {
+            if (event.target === event.currentTarget) {
+              setEditingName(null);
+              onClearSelection?.();
+            }
+            return;
+          }
+          if (event.pointerType === "touch" && !expanded && activeZoom === null) return;
+          if (event.button !== 0 && event.button !== 1) return;
+          const target = event.target as Element;
+          if (target.closest("button,input,select,textarea,a")) return;
+          const view = scrollRef.current;
+          if (!view) return;
+          event.preventDefault();
+          panState.current = {
+            startX: event.clientX,
+            startY: event.clientY,
+            scrollLeft: view.scrollLeft,
+            scrollTop: view.scrollTop,
+            active: false,
+          };
+          try {
+            event.currentTarget.setPointerCapture(event.pointerId);
+          } catch {}
+        }}
+        onPointerMove={event => {
+          if (!panState.current || !scrollRef.current) return;
+          const dx = event.clientX - panState.current.startX;
+          const dy = event.clientY - panState.current.startY;
+          if (Math.hypot(dx, dy) > 3) {
+            if (!panState.current.active) {
+              panState.current.active = true;
+              setIsPanning(true);
+            }
+            scrollRef.current.scrollLeft = panState.current.scrollLeft - dx;
+            scrollRef.current.scrollTop = panState.current.scrollTop - dy;
+          }
+        }}
+        onPointerUp={event => {
+          if (panState.current) {
+            if (panState.current.active) {
+              suppressClickRef.current = true;
+            }
+            panState.current = null;
+            setIsPanning(false);
+            try {
+              if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+                event.currentTarget.releasePointerCapture(event.pointerId);
+              }
+            } catch {}
+          }
+        }}
+        onPointerCancel={event => {
+          if (panState.current) {
+            panState.current = null;
+            setIsPanning(false);
+            try {
+              if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+                event.currentTarget.releasePointerCapture(event.pointerId);
+              }
+            } catch {}
+          }
+        }}
+        onClick={event => {
+          if (suppressClickRef.current) {
+            suppressClickRef.current = false;
+            return;
+          }
+          if (!interactive && !expanded && activeZoom === null) {
+            setViewerOpen(true);
           }
         }}
         onKeyDown={event => {
@@ -653,34 +770,47 @@ function ArchitectureBlockInner({ spec, title, expanded = false, interactive = f
         tabIndex={0}
         aria-label="가로 스크롤 가능한 아키텍처 다이어그램"
       >
-        <svg
-          className={`architecture-svg${connecting ? " is-canvas-connecting" : ""}`}
-          onPointerDown={beginCanvasMarquee}
-          onPointerMove={moveCanvasMarquee}
-          onPointerUp={event => endCanvasMarquee(event)}
-          onPointerCancel={event => endCanvasMarquee(event, true)}
-          onLostPointerCapture={event => endCanvasMarquee(event, true)}
-          style={
-            (activeZoom !== null || (interactive && zoom !== undefined))
-              ? {
-                  width: `${Math.round(width * viewScale)}px`,
-                  height: `${Math.round(height * viewScale)}px`,
-                  minWidth: `${Math.round(width * viewScale)}px`,
-                  minHeight: `${Math.round(height * viewScale)}px`,
-                  flexShrink: 0,
-                }
-              : !interactive
+        <div
+          style={{
+            minWidth: "100%",
+            width: "max-content",
+            boxSizing: "border-box",
+            padding: canvasPadding || undefined,
+            display: "inline-block",
+            verticalAlign: "top",
+          }}
+        >
+          <svg
+            className={`architecture-svg${connecting ? " is-canvas-connecting" : ""}`}
+            onPointerDown={beginCanvasMarquee}
+            onPointerMove={moveCanvasMarquee}
+            onPointerUp={event => endCanvasMarquee(event)}
+            onPointerCancel={event => endCanvasMarquee(event, true)}
+            onLostPointerCapture={event => endCanvasMarquee(event, true)}
+            style={
+              (activeZoom !== null || (interactive && zoom !== undefined))
                 ? {
-                    width: width * fit,
-                    height: height * fit,
-                    minWidth: 0,
-                    maxWidth: "100%",
+                    width: `${Math.round(width * viewScale)}px`,
+                    height: `${Math.round(height * viewScale)}px`,
+                    minWidth: `${Math.round(width * viewScale)}px`,
+                    minHeight: `${Math.round(height * viewScale)}px`,
+                    flexShrink: 0,
+                    display: "block",
                   }
-                : undefined
-          }
-          width={width}
-          height={height}
-          viewBox={`0 0 ${width} ${height}`}
+                : !interactive
+                  ? {
+                      width: width * fit,
+                      height: height * fit,
+                      minWidth: 0,
+                      maxWidth: "100%",
+                      display: "block",
+                      margin: "0 auto",
+                    }
+                  : { display: "block" }
+            }
+            width={width}
+            height={height}
+            viewBox={`0 0 ${width} ${height}`}
           role="group"
           aria-label={title ?? "시스템 아키텍처"}
         >
@@ -775,6 +905,7 @@ function ArchitectureBlockInner({ spec, title, expanded = false, interactive = f
             );
           })()}
         </svg>
+        </div>
       </div>
     )}
     {spec.nodes.some(node=>architectureBrandIcon(node.icon))||spec.groups.some(group=>architectureBrandIcon(group.icon))?<a className="architecture-icon-credits" href="/technology-icons/NOTICE.txt" target="_blank" rel="noreferrer">아이콘 출처·라이선스</a>:null}

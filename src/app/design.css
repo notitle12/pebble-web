@@ -702,14 +702,19 @@ body>.site-header,body>.site-footer{flex-shrink:0}
 .blog-owner-actions .content-management>.button{font:inherit;background:transparent;color:inherit;border:0;padding:0;text-decoration:underline;text-underline-offset:3px}
 
 .architecture-reader .architecture-scroll{max-height:560px;overscroll-behavior:auto}
-.diagram-expand{display:block;margin:8px 0 12px auto;font-size:12px}
-.diagram-lightbox{width:min(1500px,96vw);max-width:96vw;max-height:94vh;margin:auto;padding:22px;border:1px solid var(--line);border-radius:12px;background:var(--surface,#fff);color:var(--text);overscroll-behavior:contain}
+dialog.diagram-lightbox:not([open]){display:none!important}
+.diagram-lightbox{box-sizing:border-box;width:min(1500px,94vw);max-width:94vw;max-height:92vh;margin:auto;padding:20px 22px;border:1px solid var(--line);border-radius:12px;background:var(--surface,#fff);color:var(--text);overscroll-behavior:contain}
 .diagram-lightbox::backdrop{background:rgb(0 0 0 / .65);overscroll-behavior:contain}
-.diagram-lightbox>header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:16px}
+.diagram-lightbox>header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:12px}
 .diagram-lightbox>header h2{margin:0;font-size:18px}
 .diagram-lightbox-close{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;min-height:0;padding:0;border:0;border-radius:6px;background:transparent;color:var(--muted,#64748b);cursor:pointer;transition:all .15s ease}
 .diagram-lightbox-close:hover{background:rgba(0,0,0,.06);color:var(--text,#0f172a)}
-.diagram-lightbox .architecture-scroll{max-height:72vh;overflow:auto!important;overscroll-behavior:contain!important}
+.diagram-lightbox .architecture-block.architecture-reader{margin:0;border:1px solid #dfe5ee;border-radius:10px;overflow:hidden;box-shadow:none}
+.diagram-lightbox .architecture-reader .architecture-scroll{max-height:72vh!important;width:100%;box-sizing:border-box;overflow:auto!important;overscroll-behavior:contain!important;display:block!important;cursor:grab}
+.diagram-lightbox .architecture-reader .architecture-scroll.is-panning{cursor:grabbing!important;user-select:none}
+.diagram-lightbox .database-reader [class*="viewport"],.diagram-lightbox [class*="canvasStage"] [class*="viewport"]{max-height:72vh!important;width:100%;box-sizing:border-box;overflow:auto!important;overscroll-behavior:contain!important;display:block!important;cursor:grab}
+.diagram-lightbox .database-reader [class*="viewport"].is-panning,.diagram-lightbox [class*="viewport"][class*="isPanning"]{cursor:grabbing!important;user-select:none}
+.diagram-lightbox .architecture-description-details{border-top:1px solid #e2e6eb}
 html[data-theme=dark] .diagram-lightbox{background:var(--bg)}
 html[data-theme=dark] .diagram-lightbox-close{background:transparent;border:0;color:var(--muted)}
 html[data-theme=dark] .diagram-lightbox-close:hover{background:rgba(255,255,255,.08);color:var(--text)}
@@ -721,14 +726,15 @@ html[data-theme=dark] .comment-composer-card,html[data-theme=dark] .comment-comp
 .blog-owner-actions .content-management>.button{display:inline-block;min-height:0;margin:0;padding:6px 0;border:0;border-bottom:1px solid var(--line);border-radius:0;background:transparent;box-shadow:none;color:var(--text);font:inherit;font-size:11px;text-decoration:none;line-height:1.6;cursor:pointer}
 .comment-composer-toggle::before,.comment-composer-toggle[aria-pressed=true]::before{content:none}
 .comment-composer-toggle svg{width:16px;height:16px;margin-right:5px;fill:none;stroke:currentColor;stroke-width:1.7}
-.architecture-reader .architecture-scroll{overflow:hidden;max-height:none;overscroll-behavior:auto;display:grid;place-items:center;cursor:zoom-in}
-.architecture-reader .architecture-scroll[data-zoomed="true"]{overflow:auto!important;max-height:600px!important;overscroll-behavior:auto!important;display:block}
-.diagram-lightbox .architecture-reader .architecture-scroll{overflow:auto!important;max-height:72vh!important;overscroll-behavior:contain!important;display:block;cursor:default}
+.architecture-reader .architecture-scroll{overflow:hidden;max-height:none;overscroll-behavior:auto;display:block;cursor:zoom-in}
+body:not(:has(.diagram-lightbox[open])) .architecture-reader .architecture-scroll[data-zoomed="true"]{overflow:auto!important;max-height:600px!important;overscroll-behavior:auto!important;display:block;cursor:grab}
+.architecture-reader .architecture-scroll.is-panning{cursor:grabbing!important;user-select:none}
 .architecture-reader,.database-reader{position:relative}
 .architecture-block.architecture-reader{margin:18px 0 34px;border:1px solid #dfe5ee;border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(15,23,42,.03)}
-.architecture-reader-toolbar{display:flex;align-items:center;justify-content:space-between;min-height:42px;padding:6px 12px;border-bottom:1px solid #e2e6eb;background:#fff;font-size:12px;box-sizing:border-box}
-.architecture-reader-summary{font-weight:600;color:#4b5565}
-.architecture-reader-actions{display:flex;align-items:center;gap:6px}
+.architecture-reader-toolbar{display:flex;align-items:center;justify-content:space-between;min-height:42px;padding:6px 12px;border-bottom:1px solid #e2e6eb;background:#fff;font-size:12px;box-sizing:border-box;flex-wrap:wrap;gap:8px}
+.architecture-reader-summary{font-weight:600;color:#4b5565;white-space:nowrap}
+.architecture-reader-hint{font-size:11.5px;color:#64748b;font-weight:400;margin-inline:8px auto}
+.architecture-reader-actions{display:flex;align-items:center;gap:6px;flex-shrink:0;margin-left:auto}
 .architecture-toggle-collapse-btn,.architecture-expand-btn{display:inline-flex;align-items:center;justify-content:center;height:28px;min-height:28px;padding:0 10px;font:inherit;font-size:11.5px;font-weight:550;line-height:1;border:1px solid #dce1e8;border-radius:6px;background:#fff;color:#444c59;cursor:pointer;box-sizing:border-box;white-space:nowrap;transition:background .15s ease,border-color .15s ease,color .15s ease}
 .architecture-toggle-collapse-btn:hover,.architecture-expand-btn:hover{border-color:#98afd2;background:#f7f9fc;color:#1e293b}
 .architecture-icon-credits{display:block;text-align:right;margin:8px 16px 10px auto;width:fit-content;padding:0 4px;font-size:11px;color:var(--muted)}
