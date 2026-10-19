@@ -62,43 +62,45 @@ export function DiagramLightbox({
           {triggerText ?? "확대"}
         </button>
       )}
-      <dialog
-        ref={ref}
-        className="diagram-lightbox"
-        aria-labelledby={titleId}
-        onClose={() => setOpen(false)}
-        onClick={(event) => {
-          if (event.target === event.currentTarget) setOpen(false);
-        }}
-      >
-        <header>
-          <h2 id={titleId}>{label}</h2>
-          <button
-            type="button"
-            className="diagram-lightbox-close"
-            aria-label={`${label} 닫기`}
-            title="닫기"
-            autoFocus
-            onClick={() => setOpen(false)}
-          >
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
+      {open && (
+        <dialog
+          ref={ref}
+          className="diagram-lightbox"
+          aria-labelledby={titleId}
+          onClose={() => setOpen(false)}
+          onClick={(event) => {
+            if (event.target === event.currentTarget) setOpen(false);
+          }}
+        >
+          <header>
+            <h2 id={titleId}>{label}</h2>
+            <button
+              type="button"
+              className="diagram-lightbox-close"
+              aria-label={`${label} 닫기`}
+              title="닫기"
+              autoFocus
+              onClick={() => setOpen(false)}
             >
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
-          </button>
-        </header>
-        {open && children()}
-      </dialog>
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          </header>
+          {children()}
+        </dialog>
+      )}
     </>
   );
 }

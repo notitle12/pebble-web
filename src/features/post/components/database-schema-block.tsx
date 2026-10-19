@@ -17,6 +17,7 @@ import {
  type DatabaseSchema,
  type DbReference,
 } from '../database-schema';
+import { diagramZoomScroll } from '../diagram-viewport';
 import { architectureZoom } from '../architecture-interaction';
 import { databaseLinks, type DbSize } from '../database-relations';
 import { RelationshipEndMark } from './database-relation-symbols';
@@ -109,7 +110,17 @@ export function DatabaseDiagram({
   ratio: number;
   left: number;
   top: number;
+  padding: number;
+  nextPadding: number;
  } | null>(null);
+ const panState = useRef<{
+  startX: number;
+  startY: number;
+  scrollLeft: number;
+  scrollTop: number;
+  active: boolean;
+ } | null>(null);
+ const [isPanning, setIsPanning] = useState(false);
  const typeListId = useId();
  const [namingMode, setNamingMode] = useState<'physical' | 'logical' | 'both'>(() =>
   schema.tables.some(table => table.columns.some(column => column.logicalName?.trim())) ? 'both' : 'physical'
@@ -247,7 +258,7 @@ export function DatabaseDiagram({
   [schema, tables, sizes, colCenters, customBends, moving]
  );
  const currentRelation = links.find(l => l.id === relation);
- const activeRelation = currentRelation ?? links.find(l => l.id === hover);
+ const activeRelation = currentRelation;
  const activeTable = selectedTable ?? localTable;
  const focused = Boolean(activeRelation || activeTable);
 
@@ -276,6 +287,7 @@ export function DatabaseDiagram({
  const fitted = useDiagramFit(viewport, width, height, expanded, !editable);
  const [userZoom, setUserZoom] = useState<number | null>(null);
  const viewScale = userZoom !== null ? userZoom : (editable ? zoom : fitted);
+ const canvasPadding = !editable && (userZoom !== null || expanded) ? 48 : 0;
 
  const fitToView = useCallback(() => {
   const el = viewport.current;
@@ -285,7 +297,7 @@ export function DatabaseDiagram({
    return;
   }
   const bounds = getDatabaseContentBounds({ ...schema, tables }, sizes, defaultCardWidth);
-  const pad = 64;
+  const pad = editable ? 64 : 96;
   const availW = Math.max(320, el.clientWidth - pad);
   const availH = Math.max(240, el.clientHeight - pad);
   const scale = Math.min(1.25, Math.max(0.45, Math.min(availW / bounds.width, availH / bounds.height)));
@@ -293,8 +305,9 @@ export function DatabaseDiagram({
   if (editable) setZoom(rounded);
   else setUserZoom(rounded);
   requestAnimationFrame(() => {
-   const targetLeft = Math.max(0, (bounds.minX - 24) * rounded);
-   const targetTop = Math.max(0, (bounds.minY - 24) * rounded);
+   const padding = editable ? 0 : 48;
+   const targetLeft = Math.max(0, (bounds.minX + bounds.width / 2) * rounded + padding - el.clientWidth / 2);
+   const targetTop = Math.max(0, (bounds.minY + bounds.height / 2) * rounded + padding - el.clientHeight / 2);
    el.scrollTo({ left: targetLeft, top: targetTop, behavior: 'smooth' });
   });
  }, [schema, tables, sizes, editable]);
@@ -317,6 +330,8 @@ export function DatabaseDiagram({
     ratio: next / current,
     left: el.scrollLeft,
     top: el.scrollTop,
+    padding: canvasPadding,
+    nextPadding: editable ? 0 : 48,
    };
    if (editable) {
     setZoom(next);
@@ -326,14 +341,14 @@ export function DatabaseDiagram({
   };
   el.addEventListener('wheel', onWheel, { passive: false, capture: true });
   return () => el.removeEventListener('wheel', onWheel, { capture: true });
- }, [editable, viewScale]);
+ }, [editable, viewScale, canvasPadding]);
 
  useLayoutEffect(() => {
   const anchor = zoomAnchor.current;
   const el = viewport.current;
   if (anchor && el) {
-   el.scrollLeft = (anchor.left + anchor.x) * anchor.ratio - anchor.x;
-   el.scrollTop = (anchor.top + anchor.y) * anchor.ratio - anchor.y;
+   el.scrollLeft = diagramZoomScroll(anchor.left, anchor.x, anchor.ratio, anchor.padding, anchor.nextPadding);
+   el.scrollTop = diagramZoomScroll(anchor.top, anchor.y, anchor.ratio, anchor.padding, anchor.nextPadding);
    zoomAnchor.current = null;
   }
  }, [viewScale]);
@@ -350,10 +365,6 @@ export function DatabaseDiagram({
  };
 
  const selectRelation = (id: string) => {
-  if (onExpand) {
-   onExpand();
-   return;
-  }
   const next = relation === id ? null : id;
   setRelation(next);
   setLocalTable(null);
@@ -592,6 +603,19 @@ export function DatabaseDiagram({
        disabled={viewScale <= 0.4}
        onClick={() => {
         const next = Math.max(0.4, Math.round((viewScale - 0.1) * 100) / 100);
+        const el = viewport.current;
+        if (el) {
+         const rect = el.getBoundingClientRect();
+         zoomAnchor.current = {
+          x: rect.width / 2,
+          y: rect.height / 2,
+          ratio: next / viewScale,
+          left: el.scrollLeft,
+          top: el.scrollTop,
+          padding: canvasPadding,
+          nextPadding: editable ? 0 : 48,
+         };
+        }
         if (editable) setZoom(next);
         else setUserZoom(next);
        }}
@@ -605,6 +629,19 @@ export function DatabaseDiagram({
        disabled={viewScale >= 3}
        onClick={() => {
         const next = Math.min(3, Math.round((viewScale + 0.1) * 100) / 100);
+        const el = viewport.current;
+        if (el) {
+         const rect = el.getBoundingClientRect();
+         zoomAnchor.current = {
+          x: rect.width / 2,
+          y: rect.height / 2,
+          ratio: next / viewScale,
+          left: el.scrollLeft,
+          top: el.scrollTop,
+          padding: canvasPadding,
+          nextPadding: editable ? 0 : 48,
+         };
+        }
         if (editable) setZoom(next);
         else setUserZoom(next);
        }}
@@ -614,6 +651,19 @@ export function DatabaseDiagram({
       <button
        type="button"
        onClick={() => {
+        const el = viewport.current;
+        if (el && viewScale !== 1) {
+         const rect = el.getBoundingClientRect();
+         zoomAnchor.current = {
+          x: rect.width / 2,
+          y: rect.height / 2,
+          ratio: 1 / viewScale,
+          left: el.scrollLeft,
+          top: el.scrollTop,
+          padding: canvasPadding,
+          nextPadding: editable ? 0 : 48,
+         };
+        }
         if (editable) setZoom(1);
         else setUserZoom(1);
        }}
@@ -651,10 +701,76 @@ export function DatabaseDiagram({
 
     <div
      ref={viewport}
-     className={s.viewport}
+     className={`${s.viewport}${isPanning ? ` ${s.isPanning}` : ''}`}
      data-preview={!editable}
      data-zoomed={userZoom !== null || viewScale !== fitted}
      data-connecting={Boolean(actions?.connecting || dragPreview)}
+     style={{
+      touchAction: !editable ? (expanded || userZoom !== null ? 'none' : 'pan-y') : undefined,
+      userSelect: !editable ? 'none' : undefined,
+     }}
+     onPointerDown={event => {
+      if (event.pointerType === 'touch' && !expanded && !editable && userZoom === null) return;
+      if (event.button !== 0 && event.button !== 1) return;
+      const target = event.target as HTMLElement;
+      if (target.closest('input,button,select,textarea')) return;
+      if (editable && target.closest('article, [data-relation-id], .bendHandleGroup')) return;
+      if (!editable && target.closest('article, [data-relation-id], button, input, select')) return;
+
+      const view = viewport.current;
+      if (!view) return;
+      if (!editable) {
+       event.preventDefault();
+      }
+      panState.current = {
+       startX: event.clientX,
+       startY: event.clientY,
+       scrollLeft: view.scrollLeft,
+       scrollTop: view.scrollTop,
+       active: false,
+      };
+      try {
+       event.currentTarget.setPointerCapture(event.pointerId);
+      } catch {}
+     }}
+     onPointerMove={event => {
+      if (!panState.current || !viewport.current) return;
+      const dx = event.clientX - panState.current.startX;
+      const dy = event.clientY - panState.current.startY;
+      if (Math.hypot(dx, dy) > 3) {
+       if (!panState.current.active) {
+        panState.current.active = true;
+        setIsPanning(true);
+       }
+       viewport.current.scrollLeft = panState.current.scrollLeft - dx;
+       viewport.current.scrollTop = panState.current.scrollTop - dy;
+      }
+     }}
+     onPointerUp={event => {
+      if (panState.current) {
+       if (panState.current.active) {
+        suppressClick.current = true;
+       }
+       panState.current = null;
+       setIsPanning(false);
+       try {
+        if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+         event.currentTarget.releasePointerCapture(event.pointerId);
+        }
+       } catch {}
+      }
+     }}
+     onPointerCancel={event => {
+      if (panState.current) {
+       panState.current = null;
+       setIsPanning(false);
+       try {
+        if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+         event.currentTarget.releasePointerCapture(event.pointerId);
+        }
+       } catch {}
+      }
+     }}
      onKeyDown={event => {
       const target = event.target as HTMLElement;
       if (target.closest('input,select,textarea')) return;
@@ -679,13 +795,21 @@ export function DatabaseDiagram({
       }
      }}
      onClick={event => {
+      const target = event.target as HTMLElement;
+      if (target.closest('input,button,select,textarea')) return;
+      if (suppressClick.current) {
+       suppressClick.current = false;
+       return;
+      }
+      if (target.closest('article, [data-relation-id]')) return;
+      if (focused) {
+       clear();
+       return;
+      }
       if (!editable && !expanded && onExpand && userZoom === null) {
-       const target = event.target as HTMLElement;
-       if (target.closest('input,select,textarea')) return;
        onExpand();
        return;
       }
-      if ((event.target as Element).closest('article,button,input,select,[data-relation-id]')) return;
       clear();
      }}
      tabIndex={0}
@@ -695,7 +819,10 @@ export function DatabaseDiagram({
       style={{
        width: width * viewScale,
        height: height * viewScale,
+       minWidth: canvasPadding ? 'calc(100% - 96px)' : '100%',
        marginInline: (editable || userZoom !== null || expanded) ? undefined : 'auto',
+       padding: canvasPadding || undefined,
+       boxSizing: 'content-box',
       }}
      >
       <div className={s.world} style={{ width, height, transform: `scale(${viewScale})` }}>
