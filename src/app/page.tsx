@@ -12,6 +12,7 @@ export default async function HomePage({searchParams}:{searchParams:Promise<Reco
   const query=parsePostQuery(await searchParams);
   // 기존 키워드 검색 링크는 새 검색 화면으로 연결하되 분류 URL은 유지한다.
   if(query?.q && !query.categoryId) redirect(searchHref({q:query.q,type:"posts",page:query.page}));
+  if(query && !query.categoryId && query.page>0) redirect(`/posts?page=${query.page}`);
   const filtered=!!(query?.categoryId);
   return <>
     <a className="skip-link" href="#main-content">본문으로 바로가기</a><SiteHeader home/>
@@ -22,7 +23,7 @@ export default async function HomePage({searchParams}:{searchParams:Promise<Reco
         <div className="banner-copy"><p className="banner-eyebrow">A LITTLE, EVERY DAY</p><h1 id="home-title">하루의 작은 기록이<br/>나만의 길이 되도록.</h1><p>코드 한 줄, 새롭게 배운 것, 만들어 낸 프로젝트.<br/>작은 기록을 하나씩 쌓아가세요.</p><Link href="/me/blog" prefetch={false} className="banner-link">내 블로그에 기록 쌓기 <span aria-hidden="true">↗</span></Link></div>
         <div className="pebble-stack" aria-hidden="true"><span className="stone stone-one"/><span className="stone stone-two"/><span className="stone stone-three"/><span className="stone stone-four"/><span className="stack-caption">one day, one pebble.</span></div>
       </section>
-      {!query?<InvalidPage/>:<Suspense key={JSON.stringify(query)} fallback={<PostListLoading/>}>{filtered?<PostList query={query}/>:<HomeFeed query={query}/>}</Suspense>}
+      {!query?<InvalidPage/>:<Suspense key={JSON.stringify(query)} fallback={<PostListLoading/>}>{filtered?<PostList query={query}/>:<HomeFeed/>}</Suspense>}
     </main>
   </>;
 }

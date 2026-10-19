@@ -784,3 +784,11 @@ html[data-theme=dark] .architecture-auto-layout:hover:not(:disabled){border-colo
 .post-detail .content-thumbnail {
   margin: 22px 0 0;
 }
+
+.popular-projects-section .project-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:24px}
+@media(max-width:900px){.popular-projects-section .project-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:680px){.popular-projects-section .project-grid{grid-template-columns:minmax(0,1fr)}}
+
+.own-post-actions .own-project-featured{padding:0;border:0;border-radius:0;background:transparent;color:var(--muted);font:inherit;white-space:nowrap;box-shadow:none;min-height:0}
+.own-post-actions .own-project-featured[aria-pressed=true]{color:var(--accent);font-weight:600}
+.own-post-actions .own-project-featured:disabled{opacity:.4;cursor:default}

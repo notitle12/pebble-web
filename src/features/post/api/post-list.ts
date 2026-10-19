@@ -94,6 +94,11 @@ export async function getPublicPosts(
   return parsePostPage(await guestJson(query.q ? "posts/search" : "posts", params, baseUrl, request), page);
 }
 
+/** One globally ranked page; the API filters public posts with at least one like. */
+export async function getPopularPosts(baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL, request: typeof fetch = fetch): Promise<PostPage> {
+  return parsePostPage(await guestJson("posts/popular", new URLSearchParams({page:"0",size:String(PAGE_SIZE)}), baseUrl, request), 0);
+}
+
 const validHandle = (value: string) => /^[a-z][a-z0-9_-]{1,28}[a-z0-9_]$/.test(value);
 const validPostKey = (value: string) => validId(value) || (value.length <= 200
   && /^[a-z0-9]+(-[a-z0-9]+)*$/.test(value) && !/^\d+$/.test(value) && value !== "search");
