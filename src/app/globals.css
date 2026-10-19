@@ -1,6 +1,6 @@
 :root { color-scheme: light; --background: #fff; --surface: #fff; --text: #17243d; --muted: #58677e; --line: #e0e7f1; --accent: #2f6b50; }
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--background); color: var(--text); font-family: Arial, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; line-height: 1.6; }
+body { margin: 0; background: var(--background); color: var(--text); font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; line-height: 1.6; }
 a { color: inherit; text-decoration: none; }
 a:focus-visible { outline: 3px solid var(--accent); outline-offset: 5px; border-radius: 4px; }
 .skip-link { position: fixed; left: 12px; top: -100px; z-index: 10; padding: 12px; background: var(--surface); }
@@ -192,10 +192,10 @@ input:focus-visible, select:focus-visible, button:focus-visible { outline: 3px s
 .architecture-description li { margin-bottom: 4px; overflow-wrap: anywhere; }
 .architecture-description p { margin: 0; }
 .architecture-editor-layout { display: grid; grid-template-columns: minmax(210px, 248px) minmax(0, 1fr) minmax(224px, 260px); align-items: start; gap: 14px; }
-.architecture-palette, .architecture-inspector, .architecture-canvas-panel { min-width: 0; border: 1px solid #dce2eb; border-radius: 14px; background: #fff; box-shadow: 0 5px 20px rgba(28,45,72,.045); }
-.architecture-palette, .architecture-inspector { padding: 16px; }
-.architecture-panel-title, .architecture-canvas-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.architecture-panel-title h2, .architecture-canvas-toolbar h2 { margin: 2px 0 0; font-size: 17px; letter-spacing: -.02em; }
+.architecture-palette, .architecture-inspector, .architecture-canvas-panel { min-width: 0; border: 1px solid #dfe5ee; border-radius: 10px; background: #fff; box-shadow: 0 2px 8px rgba(15,23,42,.03); }
+.architecture-palette, .architecture-inspector { padding: 14px; }
+.architecture-panel-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.architecture-panel-title h2 { margin: 2px 0 0; font-size: 15px; letter-spacing: -.02em; }
 .architecture-eyebrow { color: #8090a5; font-size: 9px; font-weight: 800; letter-spacing: .12em; }
 .architecture-count { padding: 4px 7px; border-radius: 6px; background: #f0f3f8; color: #65748a; font-size: 10px; font-weight: 750; }
 .architecture-palette > p { margin: 12px 0 14px; color: #77869a; font-size: 11px; }
@@ -219,12 +219,14 @@ input:focus-visible, select:focus-visible, button:focus-visible { outline: 3px s
 .architecture-edge-list li span { overflow-wrap: anywhere; }.architecture-edge-list b { color: #8996a8; }
 .architecture-edge-list button { flex: 0 0 22px; width: 22px; height: 22px; border: 0; border-radius: 5px; background: transparent; color: #8692a3; font-size: 17px; cursor: pointer; }
 .architecture-canvas-panel { overflow: hidden; }
-.architecture-canvas-toolbar { min-height: 58px; padding: 9px 14px; border-bottom: 1px solid #e8edf3; }
-.architecture-canvas-help { color: #8290a2; font-size: 9px; text-align: right; }
+.architecture-canvas-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 42px; padding: 6px 12px; border-bottom: 1px solid #e2e6eb; background: #fff; font-size: 12px; flex-wrap: wrap; box-sizing: border-box; }
+.architecture-canvas-title { font-size: 12px; font-weight: 600; color: #4b5565; }
+.architecture-canvas-hint { font-size: 11.5px; color: #64748b; font-weight: 400; margin-right: auto; }
+.architecture-canvas-actions { display: flex; align-items: center; gap: 6px; margin-left: auto; flex-wrap: wrap; }
 .architecture-canvas-panel .architecture-block { border: 0; border-radius: 0; box-shadow: none; }
-.architecture-canvas-panel .architecture-scroll { min-height: 420px; max-height: min(66vh, 680px); }
+.architecture-canvas-panel .architecture-scroll { width: 100%; min-height: 340px; max-height: 540px; }
 .architecture-canvas-panel .architecture-svg { min-width: unset; }
-.architecture-canvas-status { min-height: 31px; padding: 8px 13px; border-top: 1px solid #e8edf3; color: #77869a; font-size: 10px; }
+.architecture-canvas-status { min-height: 28px; padding: 5px 12px; border-top: 1px solid #e2e6eb; background: #fff; color: #64748b; font-size: 11px; }
 .architecture-inspector label { display: grid; gap: 5px; margin-top: 15px; color: #65748a; font-size: 10px; font-weight: 750; }
 .architecture-inspector input, .architecture-inspector select { width: 100%; min-width: 0; height: 36px; padding: 6px 8px; border: 1px solid #dce2eb; border-radius: 7px; background: #fff; color: #29384d; font: inherit; font-size: 11px; }
 .architecture-inspector-icon { display: grid; width: 30px; height: 30px; place-items: center; border-radius: 8px; background: #f1f4f9; color: #73839b; }
@@ -260,12 +262,13 @@ input:focus-visible, select:focus-visible, button:focus-visible { outline: 3px s
 .architecture-edge-select:hover { color: #3159a4; }
 @media(max-width:680px) { .architecture-canvas-help { font-size: 12px; } }
 
-.architecture-auto-layout { min-height: 36px; padding: 6px 12px; border: 1px solid #dce2eb; border-radius: 8px; background: white; color: #344c70; font: inherit; font-size: 12px; cursor: pointer; }
-.architecture-canvas-toolbar { flex-wrap: wrap; }
+.architecture-auto-layout { min-height: 28px; height: 28px; padding: 4px 9px; border: 1px solid #dce1e8; border-radius: 6px; background: white; color: #444c59; font: inherit; font-size: 12px; cursor: pointer; transition: background .15s ease, border-color .15s ease, color .15s ease; }
+.architecture-auto-layout:hover:not(:disabled) { border-color: #98afd2; background: #f7f9fc; }
+.architecture-auto-layout:disabled { opacity: .4; cursor: default; }
 .architecture-json-panel summary { cursor: pointer; font-size: 13px; color: #65748a; }
 .architecture-edge-list .architecture-edge-select { flex: 1; min-width: 0; width: auto; height: auto; text-align: left; font-size: 12px; overflow-wrap: anywhere; }
 
-.architecture-canvas-fit .architecture-scroll { width: 100%; height: 100%; min-height: 480px; }
+.architecture-canvas-fit .architecture-scroll { width: 100%; max-height: 540px; }
 .architecture-canvas-fit .architecture-svg { display: block; max-width: none; min-width: unset; }
 
 .architecture-color-swatches { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
@@ -630,19 +633,16 @@ body:has(.writer-shell){background:#fff}
 
 /* Keep the diagram full-width; supporting controls sit above and below it. */
 .architecture-editor-layout{grid-template-columns:minmax(0,1fr);gap:12px}
-.architecture-palette{padding:8px 14px}
+.architecture-palette{padding:6px 12px;margin-bottom:10px}
 .architecture-library-disclosure>summary{cursor:pointer;font-size:13px;font-weight:650;color:var(--text)}
 .architecture-library{display:grid;grid-template-columns:minmax(0,2fr) minmax(160px,1fr) minmax(160px,1fr);gap:20px;padding-top:16px}
 .architecture-library .architecture-tech-grid{grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:5px}
 .architecture-library .architecture-tech-grid button{padding:4px 6px;font-size:12px;gap:5px;grid-template-columns:26px 1fr 12px}
 .architecture-library .architecture-palette-section{margin:0;padding:0;border:0}
 .architecture-library .architecture-panel-title{margin-bottom:10px}
-.architecture-canvas-toolbar{justify-content:flex-start;gap:7px}
-.architecture-canvas-toolbar>div:first-child{margin-right:auto}
-.architecture-canvas-help{width:100%;max-width:none;text-align:left;margin-top:3px}
-.architecture-canvas-panel .architecture-scroll{height:clamp(360px,58vh,640px);min-height:0;max-height:none}
+.architecture-canvas-panel .architecture-scroll{min-height:0;max-height:540px}
 .architecture-zoom-controls{display:flex;gap:3px;align-items:center}
-.architecture-zoom-controls button{padding:6px 9px}
+.architecture-zoom-controls button{padding:4px 7px}
 .architecture-canvas-toolbar button.active{border-color:var(--accent);color:var(--accent)}
 .architecture-workspace{position:relative;width:100%;min-width:0}
 .architecture-workspace>.architecture-canvas-panel{width:100%;min-width:0}
@@ -686,8 +686,8 @@ body:has(.writer-shell){background:#fff}
 
 .architecture-compact-palette{position:relative;z-index:12}
 .architecture-library-triggers{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap}
-.architecture-library-triggers button,.architecture-connection-dropdown>button{display:inline-flex;align-items:center;justify-content:center;height:32px;padding:0 12px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--text);font:inherit;font-size:13px;font-weight:550;line-height:1;gap:6px;cursor:pointer;white-space:nowrap;box-sizing:border-box;transition:all .15s ease}
-.architecture-library-triggers button:hover:not(:disabled),.architecture-connection-dropdown>button:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
+.architecture-library-triggers button,.architecture-connection-dropdown>button{display:inline-flex;align-items:center;justify-content:center;height:30px;padding:0 10px;border:1px solid #dce1e8;border-radius:6px;background:var(--surface,#fff);color:var(--text,#444c59);font:inherit;font-size:12px;font-weight:550;line-height:1;gap:6px;cursor:pointer;white-space:nowrap;box-sizing:border-box;transition:all .15s ease}
+.architecture-library-triggers button:hover:not(:disabled),.architecture-connection-dropdown>button:hover:not(:disabled){border-color:#98afd2;background:#f7f9fc;color:var(--accent,#4770d6)}
 .architecture-library-triggers button[aria-expanded=true],.architecture-library-triggers button[aria-pressed=true],.architecture-connection-dropdown>button[aria-expanded=true],.architecture-connection-dropdown>button[aria-pressed=true]{background:var(--accent-soft);color:var(--accent);border-color:var(--accent);font-weight:600}
 .architecture-library-triggers button svg,.architecture-connection-dropdown>button svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
 .architecture-connection-dropdown{position:relative;display:inline-flex}
