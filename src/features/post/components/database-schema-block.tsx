@@ -176,7 +176,7 @@ export function DatabaseDiagram({
  const suppressClick = useRef(false);
 
  const editable = !!actions;
- const defaultCardWidth = namingMode === 'both' ? 390 : 290;
+ const defaultCardWidth = namingMode === 'both' ? 440 : 330;
  const cards = useRef(new Map<string, HTMLElement>());
  const [sizes, setSizes] = useState<Record<string, DbSize>>({});
  const [customBends, setCustomBends] = useState<Record<string, { axis: 'x' | 'y'; value: number }>>({});
@@ -1291,6 +1291,7 @@ export function DatabaseSpecifications({
  hideNav = false,
  collapsedIds: controlledCollapsedIds,
  onToggleCollapse,
+ initiallyCollapsed = true,
 }: {
  schema: DatabaseSchema;
  referenceSchema?: DatabaseSchema;
@@ -1299,8 +1300,9 @@ export function DatabaseSpecifications({
  hideNav?: boolean;
  collapsedIds?: Set<string>;
  onToggleCollapse?: (id: string) => void;
+ initiallyCollapsed?: boolean;
 }) {
- const [localCollapsedIds, setLocalCollapsedIds] = useState<Set<string>>(new Set());
+ const [localCollapsedIds, setLocalCollapsedIds] = useState<Set<string>>(() => new Set(initiallyCollapsed ? schema.tables.map(table => table.id) : []));
  const collapsedIds = controlledCollapsedIds ?? localCollapsedIds;
  const isCollapseControlled = controlledCollapsedIds !== undefined;
 
@@ -1471,7 +1473,7 @@ export function DatabaseSchemaBlock({
  const [selected, setSelected] = useState<string | null>(null);
  const [viewerOpen, setViewerOpen] = useState(false);
  const [viewTab, setViewTab] = useState<'ERD' | 'SPEC'>(initialView);
- const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
+ const [collapsedIds, setCollapsedIds] = useState<Set<string>>(() => new Set(schema.tables.map(t => t.id)));
  const detailId = useId();
  const tabId = useId();
  const erdTabRef = useRef<HTMLButtonElement>(null);
@@ -1486,6 +1488,9 @@ export function DatabaseSchemaBlock({
 
  const focusTab = (next: 'ERD' | 'SPEC') => {
   setViewTab(next);
+  if (next === 'SPEC') {
+   setCollapsedIds(new Set(schema.tables.map(t => t.id)));
+  }
   (next === 'ERD' ? erdTabRef : specTabRef).current?.focus();
  };
 
@@ -1571,7 +1576,10 @@ export function DatabaseSchemaBlock({
       aria-controls={panelId}
       tabIndex={activeTab === 'SPEC' ? 0 : -1}
       className={`${s.viewTabBtn} ${activeTab === 'SPEC' ? s.viewTabBtnActive : ''}`}
-      onClick={() => setViewTab('SPEC')}
+      onClick={() => {
+       setViewTab('SPEC');
+       setCollapsedIds(new Set(schema.tables.map(t => t.id)));
+      }}
       onKeyDown={onTabKeyDown}
      >
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -1587,20 +1595,25 @@ export function DatabaseSchemaBlock({
 
     {activeTab === 'SPEC' && (!expanded || schema.tables.length > 1) && (
      <div className={s.specTopActions}>
+      {schema.tables.length > 1 && (() => {
+       const isAllCollapsed = schema.tables.length > 0 && schema.tables.every(t => collapsedIds.has(t.id));
+       return (
+        <button
+         type="button"
+         className={s.specNavToggleAll}
+         onClick={() => {
+          if (isAllCollapsed) {
+           setCollapsedIds(new Set());
+          } else {
+           setCollapsedIds(new Set(schema.tables.map(t => t.id)));
+          }
+         }}
+        >
+         {isAllCollapsed ? '모두 펼치기' : '모두 접기'}
+        </button>
+       );
+      })()}
       {!expanded && <button type="button" className={s.diagramExpandBtn} aria-label="데이터베이스 확대 보기" onClick={() => setViewerOpen(true)}>확대</button>}
-      {schema.tables.length > 1 && <button
-       type="button"
-       className={s.specNavToggleAll}
-       onClick={() => {
-        if (collapsedIds.size > 0) {
-         setCollapsedIds(new Set());
-        } else {
-         setCollapsedIds(new Set(schema.tables.map(t => t.id)));
-        }
-       }}
-      >
-       {collapsedIds.size > 0 ? '모두 펼치기' : '모두 접기'}
-      </button>}
      </div>
     )}
    </div>}
@@ -1627,6 +1640,7 @@ export function DatabaseSchemaBlock({
        <DatabaseSpecifications
         schema={{ ...schema, tables: [table] }}
         referenceSchema={schema}
+        initiallyCollapsed={false}
         onClose={() => setSelected(null)}
         hideNav
        />

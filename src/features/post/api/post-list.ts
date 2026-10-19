@@ -110,7 +110,7 @@ export type TableColumn = {
 };
 export type TableSpec = { schemaVersion: 1; tableName: string; description?: string | null; columns: TableColumn[] };
 export type ArchitectureGroup = { id: string; type: "ORACLE_CLOUD" | "AWS" | "CLOUDFLARE" | "DOCKER" | "CLOUD" | "CONTAINER" | "CUSTOM"; label: string; typeLabel?: string | null; icon?: string | null; color?: ArchitectureGroupColorId | null; parentId?: string | null; bounds?: { x: number; y: number; width: number; height: number } | null };
-export type ArchitectureNode = { id: string; type: "CLIENT" | "APP" | "DATABASE" | "CACHE" | "STORAGE" | "PROXY" | "CUSTOM"; label: string; typeLabel?: string | null; groupId?: string | null; icon?: string | null; position?: { x: number; y: number } | null };
+export type ArchitectureNode = { id: string; type: "CLIENT" | "APP" | "DATABASE" | "CACHE" | "STORAGE" | "PROXY" | "CUSTOM"; label: string; typeLabel?: string | null; groupId?: string | null; icon?: string | null; position?: { x: number; y: number } | null; description?: string | null };
 export type ArchitectureSide = "TOP" | "RIGHT" | "BOTTOM" | "LEFT";
 export type ArchitectureEdge = { id: string; source: string; target: string; label?: string | null; direction?: "NONE"|"FORWARD"|"BOTH"|null; sourceSide?: ArchitectureSide | null; targetSide?: ArchitectureSide | null; waypoint?: {x:number;y:number} | null };
 export type ArchitectureSpec = { schemaVersion: 1; groups: ArchitectureGroup[]; nodes: ArchitectureNode[]; edges: ArchitectureEdge[] };
@@ -199,9 +199,10 @@ export function parseArchitectureSpec(value: unknown): ArchitectureSpec {
   }
   const nodes = new Set<string>();
   for (const item of value.nodes) {
-    if (!record(item) || !keysAre(item, ["id", "type", "label", "typeLabel", "groupId", "icon", "position"]) || typeof item.type !== "string" || !nodeTypes.includes(item.type) || !architectureLabel(item.label) || !validArchitectureTypeLabel(item)
+    if (!record(item) || !keysAre(item, ["id", "type", "label", "typeLabel", "groupId", "icon", "position", "description"]) || typeof item.type !== "string" || !nodeTypes.includes(item.type) || !architectureLabel(item.label) || !validArchitectureTypeLabel(item)
       || !(item.groupId === undefined || item.groupId === null || architectureId(item.groupId))
       || !(item.icon === undefined || item.icon === null || (typeof item.icon === "string" && architectureIcons.includes(item.icon)))
+      || !(item.description === undefined || item.description === null || optionalTextField(item.description, 300))
       || !(item.position === undefined || item.position === null || (record(item.position) && keysAre(item.position, ["x", "y"]) && Number.isInteger(item.position.x) && Number.isInteger(item.position.y) && (item.position.x as number) >= 0 && (item.position.x as number) <= 4000 && (item.position.y as number) >= 0 && (item.position.y as number) <= 4000))) throw new PostListError("response");
     addId(item.id); nodes.add(item.id as string);
     if (item.groupId != null && !groups.has(item.groupId as string)) throw new PostListError("response");

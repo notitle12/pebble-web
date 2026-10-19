@@ -210,7 +210,7 @@ export function autoLayoutDbTables(schema: DatabaseSchema): DatabaseSchema {
 export function getDatabaseContentBounds(
  schema: DatabaseSchema,
  sizes: Record<string, { width: number; height: number }> = {},
- cardWidth = 280
+ cardWidth = 330
 ) {
  if (!schema.tables.length) {
   return { minX: 0, minY: 0, maxX: cardWidth, maxY: 200, width: cardWidth, height: 200 };
