@@ -274,12 +274,14 @@ export function DatabaseDiagram({
   ...links.flatMap(l => l.points.map(p => p.y + 40))
  );
  const fitted = useDiagramFit(viewport, width, height, expanded, !editable);
- const viewScale = editable ? zoom : fitted;
+ const [userZoom, setUserZoom] = useState<number | null>(null);
+ const viewScale = userZoom !== null ? userZoom : (editable ? zoom : fitted);
 
  const fitToView = useCallback(() => {
   const el = viewport.current;
   if (!el || !tables.length) {
-   setZoom(1);
+   if (editable) setZoom(1);
+   else setUserZoom(null);
    return;
   }
   const bounds = getDatabaseContentBounds({ ...schema, tables }, sizes, defaultCardWidth);
@@ -288,39 +290,43 @@ export function DatabaseDiagram({
   const availH = Math.max(240, el.clientHeight - pad);
   const scale = Math.min(1.25, Math.max(0.45, Math.min(availW / bounds.width, availH / bounds.height)));
   const rounded = Math.round(scale * 20) / 20;
-  setZoom(rounded);
+  if (editable) setZoom(rounded);
+  else setUserZoom(rounded);
   requestAnimationFrame(() => {
    const targetLeft = Math.max(0, (bounds.minX - 24) * rounded);
    const targetTop = Math.max(0, (bounds.minY - 24) * rounded);
    el.scrollTo({ left: targetLeft, top: targetTop, behavior: 'smooth' });
   });
- }, [schema, tables, sizes]);
+ }, [schema, tables, sizes, editable]);
 
  // Architecture-style Ctrl/Cmd + Wheel zoom with cursor anchor
  useEffect(() => {
   const el = viewport.current;
-  if (!el || !editable) return;
+  if (!el) return;
   const onWheel = (event: WheelEvent) => {
    if (!(event.ctrlKey || event.metaKey)) return;
    event.preventDefault();
    const delta =
     event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? el.clientHeight : 1);
-   setZoom(current => {
-    const next = architectureZoom(current, delta);
-    const rect = el.getBoundingClientRect();
-    zoomAnchor.current = {
-     x: event.clientX - rect.left,
-     y: event.clientY - rect.top,
-     ratio: next / current,
-     left: el.scrollLeft,
-     top: el.scrollTop,
-    };
-    return next;
-   });
+   const current = viewScale;
+   const next = architectureZoom(current, delta);
+   const rect = el.getBoundingClientRect();
+   zoomAnchor.current = {
+    x: event.clientX - rect.left,
+    y: event.clientY - rect.top,
+    ratio: next / current,
+    left: el.scrollLeft,
+    top: el.scrollTop,
+   };
+   if (editable) {
+    setZoom(next);
+   } else {
+    setUserZoom(next);
+   }
   };
   el.addEventListener('wheel', onWheel, { passive: false, capture: true });
   return () => el.removeEventListener('wheel', onWheel, { capture: true });
- }, [editable]);
+ }, [editable, viewScale]);
 
  useLayoutEffect(() => {
   const anchor = zoomAnchor.current;
@@ -330,7 +336,7 @@ export function DatabaseDiagram({
    el.scrollTop = (anchor.top + anchor.y) * anchor.ratio - anchor.y;
    zoomAnchor.current = null;
   }
- }, [zoom]);
+ }, [viewScale]);
 
  const clear = () => {
   if (hoverTimeoutRef.current) {
@@ -529,9 +535,11 @@ export function DatabaseDiagram({
      <span className={s.inlineStatusMsg} role="status">
       {statusMessage}
      </span>
-    ) : editable ? (
+    ) : (editable || expanded) ? (
      <span className={s.inlineHint}>
-      상단 헤더 드래그로 이동(클릭 시 이름 수정) · 맨 앞 칸 클릭으로 PK·FK 설정 · Ctrl+휠 확대/축소
+      {editable
+       ? '상단 헤더 드래그로 이동(클릭 시 이름 수정) · 맨 앞 칸 클릭으로 PK·FK 설정 · Ctrl+휠 확대/축소'
+       : 'Ctrl+휠로 다이어그램을 확대/축소할 수 있습니다.'}
      </span>
     ) : null}
     <div className={s.notationSwitch} role="group" aria-label="칼럼명 표기 방식">
@@ -565,7 +573,7 @@ export function DatabaseDiagram({
       강조 해제
      </button>
     )}
-    {!editable && onExpand && (
+    {!editable && !expanded && onExpand && (
      <button
       type="button"
       className={s.diagramExpandBtn}
@@ -576,29 +584,50 @@ export function DatabaseDiagram({
       확대
      </button>
     )}
-    {editable ? (
+    {(editable || expanded || userZoom !== null) ? (
      <>
       <button
        type="button"
        aria-label="ERD 축소"
-       disabled={zoom <= 0.4}
-       onClick={() => setZoom(z => Math.max(0.4, Math.round((z - 0.1) * 100) / 100))}
+       disabled={viewScale <= 0.4}
+       onClick={() => {
+        const next = Math.max(0.4, Math.round((viewScale - 0.1) * 100) / 100);
+        if (editable) setZoom(next);
+        else setUserZoom(next);
+       }}
       >
        −
       </button>
-      <output>{Math.round(zoom * 100)}%</output>
+      <output>{Math.round(viewScale * 100)}%</output>
       <button
        type="button"
        aria-label="ERD 확대"
-       disabled={zoom >= 3}
-       onClick={() => setZoom(z => Math.min(3, Math.round((z + 0.1) * 100) / 100))}
+       disabled={viewScale >= 3}
+       onClick={() => {
+        const next = Math.min(3, Math.round((viewScale + 0.1) * 100) / 100);
+        if (editable) setZoom(next);
+        else setUserZoom(next);
+       }}
       >
        ＋
       </button>
-      <button type="button" onClick={() => setZoom(1)}>
+      <button
+       type="button"
+       onClick={() => {
+        if (editable) setZoom(1);
+        else setUserZoom(1);
+       }}
+      >
        100%
       </button>
-      <button type="button" onClick={fitToView} title="모든 테이블이 보이도록 배율과 위치를 맞춥니다 (Space)">
+      <button
+       type="button"
+       onClick={() => {
+        if (editable) fitToView();
+        else setUserZoom(null);
+       }}
+       title="모든 테이블이 보이도록 화면에 맞춥니다"
+      >
        화면 맞춤
       </button>
      </>
@@ -624,6 +653,7 @@ export function DatabaseDiagram({
      ref={viewport}
      className={s.viewport}
      data-preview={!editable}
+     data-zoomed={userZoom !== null || viewScale !== fitted}
      data-connecting={Boolean(actions?.connecting || dragPreview)}
      onKeyDown={event => {
       const target = event.target as HTMLElement;
@@ -649,7 +679,7 @@ export function DatabaseDiagram({
       }
      }}
      onClick={event => {
-      if (!editable && onExpand) {
+      if (!editable && !expanded && onExpand && userZoom === null) {
        const target = event.target as HTMLElement;
        if (target.closest('input,select,textarea')) return;
        onExpand();
@@ -665,7 +695,7 @@ export function DatabaseDiagram({
       style={{
        width: width * viewScale,
        height: height * viewScale,
-       marginInline: editable ? undefined : 'auto',
+       marginInline: (editable || userZoom !== null || expanded) ? undefined : 'auto',
       }}
      >
       <div className={s.world} style={{ width, height, transform: `scale(${viewScale})` }}>
