@@ -50,7 +50,7 @@ export function DatabaseSchemaEditor({
  const [message, setMessage] = useState('');
  const [selectedTable, setSelectedTable] = useState<string | null>(null);
  const [selectedRelationId, setSelectedRelationId] = useState<string | null>(null);
- const [collapsedTableIds, setCollapsedTableIds] = useState<Set<string>>(new Set());
+ const [collapsedTableIds, setCollapsedTableIds] = useState<Set<string>>(() => new Set(schema.tables.map(t => t.id)));
 
  const toggleCollapse = (tableId: string) => {
   setCollapsedTableIds(prev => {
@@ -260,6 +260,7 @@ export function DatabaseSchemaEditor({
       aria-controls={`${id}-panel`}
       onClick={() => {
        setTab('SPEC');
+       setCollapsedTableIds(new Set(schema.tables.map(t => t.id)));
        setConnecting(false);
        setFrom(null);
       }}
@@ -368,19 +369,24 @@ export function DatabaseSchemaEditor({
         })}
        </div>
        <div className={s.specNavActions}>
-        <button
-         type="button"
-         className={s.specNavToggleAll}
-         onClick={() => {
-          if (collapsedTableIds.size > 0) {
-           setCollapsedTableIds(new Set());
-          } else {
-           setCollapsedTableIds(new Set(schema.tables.map(t => t.id)));
-          }
-         }}
-        >
-         {collapsedTableIds.size > 0 ? '모두 펼치기' : '모두 접기'}
-        </button>
+        {(() => {
+         const isAllCollapsed = schema.tables.length > 0 && schema.tables.every(t => collapsedTableIds.has(t.id));
+         return (
+          <button
+           type="button"
+           className={s.specNavToggleAll}
+           onClick={() => {
+            if (isAllCollapsed) {
+             setCollapsedTableIds(new Set());
+            } else {
+             setCollapsedTableIds(new Set(schema.tables.map(t => t.id)));
+            }
+           }}
+          >
+           {isAllCollapsed ? '모두 펼치기' : '모두 접기'}
+          </button>
+         );
+        })()}
        </div>
       </div>
 

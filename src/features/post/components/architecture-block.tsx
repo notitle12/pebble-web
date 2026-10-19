@@ -10,7 +10,7 @@ import {connectionMarkers} from "../architecture-tools";
 import { architectureIconKind } from "../architecture-catalog";
 import { architectureZoom, nearestArchitectureSide } from "../architecture-interaction";
 import { architectureEdgeRoute } from "../architecture-edge";
-import { architectureLayout, ARCH_NODE_WIDTH, ARCH_NODE_HEIGHT, architectureNodeWidth, getArchitectureContentBounds, type ArchPoint } from "../architecture-layout";
+import { architectureLayout, ARCH_NODE_WIDTH, ARCH_NODE_HEIGHT, architectureNodeWidth, measureTextWidth, getArchitectureContentBounds, type ArchPoint } from "../architecture-layout";
 export { architectureLayout, getArchitectureContentBounds, type ArchPoint } from "../architecture-layout";
 
 const groupKind=(group:ArchitectureGroup)=>architectureGroupPresentation(group).category;
@@ -75,6 +75,7 @@ function ArchitectureBlockInner({ spec, title, expanded = false, interactive = f
   const { positions, groups, width, height } = architectureLayout(spec);
   const [editingName,setEditingName]=useState<{kind:"node"|"group"|"groupType"|"edge";id:string;label:string}|null>(null);
   const [viewerOpen,setViewerOpen]=useState(false);
+  const [collapsed,setCollapsed]=useState(false);
   const [hiddenWaypoint,setHiddenWaypoint]=useState<string|null>(null);
   const nameInput=useRef<HTMLInputElement>(null);
   useEffect(()=>{if(editingName){nameInput.current?.focus({preventScroll:true});nameInput.current?.select();}},[editingName?.id,editingName?.kind]);
@@ -265,7 +266,79 @@ function ArchitectureBlockInner({ spec, title, expanded = false, interactive = f
     return { scaleX: bounds && width ? bounds.width / width : 1, scaleY: bounds && height ? bounds.height / height : 1 };
   };
   const edgeRoutes = new Map<string, ReturnType<typeof architectureEdgeRoute>>();
-  spec.edges.forEach((edge) => { const from = endpointBox(edge.source), to = endpointBox(edge.target); if (from && to) edgeRoutes.set(edge.id, architectureEdgeRoute(edge, endpointPreview?.id===edge.id && endpointPreview.end==="source" ? {...endpointPreview.point,width:0,height:0}:from, endpointPreview?.id===edge.id && endpointPreview.end==="target" ? {...endpointPreview.point,width:0,height:0}:to)); });
+  const edgeEndpoints = spec.edges.map(edge => {
+    const rawFrom = endpointBox(edge.source);
+    const rawTo = endpointBox(edge.target);
+    if (!rawFrom || !rawTo) return null;
+    const from = endpointPreview?.id === edge.id && endpointPreview.end === "source" ? { ...endpointPreview.point, width: 0, height: 0 } : rawFrom;
+    const to = endpointPreview?.id === edge.id && endpointPreview.end === "target" ? { ...endpointPreview.point, width: 0, height: 0 } : rawTo;
+    const dx = to.x + to.width / 2 - from.x - from.width / 2;
+    const dy = to.y + to.height / 2 - from.y - from.height / 2;
+    const sourceSide = edge.sourceSide ?? (Math.abs(dx) >= Math.abs(dy) ? (dx >= 0 ? "RIGHT" : "LEFT") : dy >= 0 ? "BOTTOM" : "TOP");
+    const targetSide = edge.targetSide ?? (Math.abs(dx) >= Math.abs(dy) ? (dx >= 0 ? "LEFT" : "RIGHT") : dy >= 0 ? "TOP" : "BOTTOM");
+    return { edge, from, to, sourceSide, targetSide };
+  }).filter((item): item is NonNullable<typeof item> => item !== null);
+
+  const sourceGroups = new Map<string, { edgeId: string; otherCoord: number }[]>();
+  const targetGroups = new Map<string, { edgeId: string; otherCoord: number }[]>();
+  for (const item of edgeEndpoints) {
+    const sKey = `${item.edge.source}:${item.sourceSide}`;
+    const sList = sourceGroups.get(sKey) ?? [];
+    sList.push({
+      edgeId: item.edge.id,
+      otherCoord: item.sourceSide === "LEFT" || item.sourceSide === "RIGHT" ? item.to.y : item.to.x,
+    });
+    sourceGroups.set(sKey, sList);
+
+    const tKey = `${item.edge.target}:${item.targetSide}`;
+    const tList = targetGroups.get(tKey) ?? [];
+    tList.push({
+      edgeId: item.edge.id,
+      otherCoord: item.targetSide === "LEFT" || item.targetSide === "RIGHT" ? item.from.y : item.from.x,
+    });
+    targetGroups.set(tKey, tList);
+  }
+  for (const list of sourceGroups.values()) {
+    list.sort((a, b) => a.otherCoord - b.otherCoord);
+  }
+  for (const list of targetGroups.values()) {
+    list.sort((a, b) => a.otherCoord - b.otherCoord);
+  }
+
+  const pairCounts = new Map<string, number>();
+  const edgeLanes = new Map<string, number>();
+  for (const item of edgeEndpoints) {
+    const pair = [item.edge.source, item.edge.target].sort().join("/");
+    const lane = pairCounts.get(pair) ?? 0;
+    pairCounts.set(pair, lane + 1);
+    edgeLanes.set(item.edge.id, lane);
+  }
+
+  for (const item of edgeEndpoints) {
+    const sList = sourceGroups.get(`${item.edge.source}:${item.sourceSide}`) ?? [];
+    const sIdx = sList.findIndex(e => e.edgeId === item.edge.id);
+    const sTotal = sList.length;
+    let sourceOffset: { x?: number; y?: number } | undefined;
+    if (sTotal > 1) {
+      const spread = (sIdx - (sTotal - 1) / 2) * (item.sourceSide === "LEFT" || item.sourceSide === "RIGHT" ? Math.min(14, 36 / sTotal) : Math.min(18, 54 / sTotal));
+      sourceOffset = item.sourceSide === "LEFT" || item.sourceSide === "RIGHT" ? { y: spread } : { x: spread };
+    }
+
+    const tList = targetGroups.get(`${item.edge.target}:${item.targetSide}`) ?? [];
+    const tIdx = tList.findIndex(e => e.edgeId === item.edge.id);
+    const tTotal = tList.length;
+    let targetOffset: { x?: number; y?: number } | undefined;
+    if (tTotal > 1) {
+      const spread = (tIdx - (tTotal - 1) / 2) * (item.targetSide === "LEFT" || item.targetSide === "RIGHT" ? Math.min(14, 36 / tTotal) : Math.min(18, 54 / tTotal));
+      targetOffset = item.targetSide === "LEFT" || item.targetSide === "RIGHT" ? { y: spread } : { x: spread };
+    }
+
+    const lane = edgeLanes.get(item.edge.id) ?? 0;
+    edgeRoutes.set(
+      item.edge.id,
+      architectureEdgeRoute(item.edge, item.from, item.to, { sourceOffset, targetOffset, lane })
+    );
+  }
   function beginNodeDrag(event: React.PointerEvent<SVGGElement>, node: ArchitectureNode) {
     if (!interactive || (!onMoveNode && !onMoveSelection)) return;
     suppressClickRef.current = false; event.preventDefault(); event.stopPropagation(); event.currentTarget.setPointerCapture(event.pointerId); event.currentTarget.focus({preventScroll:true}); onInteractionStart?.();
@@ -390,7 +463,16 @@ function ArchitectureBlockInner({ spec, title, expanded = false, interactive = f
   }
   function endEdgeDrag(event: React.PointerEvent<SVGGElement>, cancelled = false) {
     const drag = edgeDragRef.current; if (!drag || drag.pointerId !== event.pointerId) return;
-    if (!cancelled) reconnectAtPointer(event, drag);
+    if (!cancelled) {
+      if (drag.end) {
+        reconnectAtPointer(event, drag);
+      } else {
+        const route = edgeRoutes.get(drag.id);
+        if (route && onMoveEdge) {
+          onMoveEdge(drag.id, { x: route.bend.x, y: route.bend.y });
+        }
+      }
+    }
     setEndpointPreview(null); edgeDragRef.current = null; onInteractionEnd?.(); if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
   }
   function connectionTarget(event:React.PointerEvent<SVGGElement>,source:string) {
@@ -423,7 +505,7 @@ function ArchitectureBlockInner({ spec, title, expanded = false, interactive = f
     return sides.map((side) => <g key={`connect-${endpointId}-${side}`} data-architecture-endpoint={endpointId} data-architecture-side={side} className={`arch-connect-handle${connecting || connectionPreview ? " is-connecting" : ""}${selectedNode===endpointId || selectedGroup===endpointId || hoveredEndpoint===endpointId ? " is-visible":""}`} transform={`translate(${points[side].x} ${points[side].y})`} role="button" tabIndex={0} aria-label={`${label} ${sideNames[side]} 연결 포인트`} onPointerDown={(event) => { suppressClickRef.current = false; event.preventDefault(); event.stopPropagation(); event.currentTarget.setPointerCapture(event.pointerId); event.currentTarget.focus({preventScroll:true}); connectionDrag.current={source:endpointId,side,pointerId:event.pointerId,startX:event.clientX,startY:event.clientY,point:points[side],moved:false}; }} onPointerMove={moveConnection} onPointerUp={event=>endConnection(event)} onPointerCancel={event=>endConnection(event,true)} onLostPointerCapture={event=>endConnection(event,true)} onKeyDownCapture={event=>{if(event.key==="Escape"){connectionDrag.current=null;setConnectionPreview(null);suppressClickRef.current=true;}}} onClick={(event) => { event.stopPropagation(); if (suppressClickRef.current) { suppressClickRef.current = false; return; } onConnect(endpointId, side); }} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); event.stopPropagation(); onConnect(endpointId, side); } }}><circle className="arch-connect-hit" r="8"/><circle className="arch-connect-dot" r="5"/><title>{`${label} ${sideNames[side]} 연결 포인트`}</title></g>);
   }
   const edgeLabel = (edge: ArchitectureEdge) => `${endpointLabel(edge.source)} ${edge.direction==="NONE"?"—":edge.direction==="BOTH"?"↔":"→"} ${endpointLabel(edge.target)}`;
-  return <section className={`architecture-block${!interactive?" architecture-reader":""}`} aria-label={title ?? "시스템 아키텍처 다이어그램"}>
+  return <section className={`architecture-block${!interactive?" architecture-reader":""}${collapsed ? " is-collapsed" : ""}`} aria-label={title ?? "시스템 아키텍처 다이어그램"}>
     {title !== null && <div className="architecture-heading"><h2>{title}</h2><p>구성 요소와 데이터 흐름</p></div>}
     {!interactive && !expanded && (
       <div className="architecture-reader-toolbar">
@@ -432,15 +514,28 @@ function ArchitectureBlockInner({ spec, title, expanded = false, interactive = f
             ? `그룹 ${spec.groups.length} · 구성 요소 ${spec.nodes.length} · 연결 ${spec.edges.length}`
             : `구성 요소 ${spec.nodes.length} · 연결 ${spec.edges.length}`}
         </span>
-        <button
-          type="button"
-          className="architecture-expand-btn"
-          aria-label="아키텍처 확대 보기"
-          onClick={() => setViewerOpen(true)}
-          title="아키텍처 다이어그램 확대"
-        >
-          확대
-        </button>
+        <div className="architecture-reader-actions">
+          <button
+            type="button"
+            className="architecture-toggle-collapse-btn"
+            aria-label={collapsed ? "아키텍처 다이어그램 펼치기" : "아키텍처 다이어그램 접기"}
+            aria-expanded={!collapsed}
+            onClick={() => setCollapsed(!collapsed)}
+          >
+            {collapsed ? "다이어그램 펼치기" : "다이어그램 접기"}
+          </button>
+          {!collapsed && (
+            <button
+              type="button"
+              className="architecture-expand-btn"
+              aria-label="아키텍처 확대 보기"
+              onClick={() => setViewerOpen(true)}
+              title="아키텍처 다이어그램 확대"
+            >
+              확대
+            </button>
+          )}
+        </div>
       </div>
     )}
     {!interactive && !expanded && (
@@ -453,63 +548,189 @@ function ArchitectureBlockInner({ spec, title, expanded = false, interactive = f
         {() => <ArchitectureBlockInner spec={spec} title={title} expanded />}
       </DiagramLightbox>
     )}
-    <div
-      ref={scrollRef}
-      className="architecture-scroll"
-      style={
-        interactive
-          ? { height: `${Math.min(520, Math.max(340, Math.round(height * (zoom ?? 1) + 20)))}px` }
-          : undefined
-      }
-      onClick={!interactive && !expanded ? () => setViewerOpen(true) : undefined} onPointerDown={event=>{if(interactive && event.target===event.currentTarget){setEditingName(null);onClearSelection?.();}}} onKeyDown={event => { if (interactive && (event.key === " " || event.code === "Space")) { const target = event.target as HTMLElement; if (target.closest("input,textarea,select,[contenteditable=true]")) return; event.preventDefault(); event.stopPropagation(); fitToView(); } }} role="region" tabIndex={0} aria-label="가로 스크롤 가능한 아키텍처 다이어그램">
-      <svg className={`architecture-svg${connecting ? " is-canvas-connecting" : ""}`} onPointerDown={beginCanvasMarquee} onPointerMove={moveCanvasMarquee} onPointerUp={event=>endCanvasMarquee(event)} onPointerCancel={event=>endCanvasMarquee(event, true)} onLostPointerCapture={event=>endCanvasMarquee(event, true)} style={interactive && zoom!==undefined ? {width:`${Math.round(width*zoom)}px`,height:`${Math.round(height*zoom)}px`,minWidth:`${Math.round(width*zoom)}px`,minHeight:`${Math.round(height*zoom)}px`,flexShrink:0} : !interactive ? {width:width*fit,height:height*fit,minWidth:0,maxWidth:"100%"}:undefined} width={width} height={height} viewBox={`0 0 ${width} ${height}`} role="group" aria-label={title ?? "시스템 아키텍처"}>
-        <rect className="arch-canvas-bg" width={width} height={height} fill="transparent" pointerEvents="all" />
-        <defs><marker id={`${id}-arrow`} markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto-start-reverse"><path d="M0,0 L8,4 L0,8 z" fill="#78869a" /></marker></defs>
-        {[...spec.groups].sort((a, b) => {
-          if (isDescendant(spec.groups, a.id, b.id)) return -1;
-          if (isDescendant(spec.groups, b.id, a.id)) return 1;
-          if (!a.parentId && b.parentId) return -1;
-          if (a.parentId && !b.parentId) return 1;
-          const boxA = groups.get(a.id);
-          const boxB = groups.get(b.id);
-          const areaA = boxA ? boxA.width * boxA.height : 0;
-          const areaB = boxB ? boxB.width * boxB.height : 0;
-          return areaB - areaA;
-        }).map((group) => { const box = groups.get(group.id)!; const color = group.color ? `arch-group-color-${group.color}` : isArchitectureContainer(group.type) ? "arch-group-docker" : group.type === "CUSTOM" ? "arch-group-custom" : ""; const label = architectureGroupLabel(group); const displayGroupTitle = group.label || (group.type === "CUSTOM" ? (group.typeLabel || "그룹") : groupKind(group)); const selected = selectedGroupSet.has(group.id) || selectedGroup === group.id || connectionPreview?.target===group.id; return <g key={group.id} onDoubleClick={event=>{if(interactive && onRenameGroup){event.stopPropagation();setEditingName({kind:"group",id:group.id,label:displayGroupTitle});}}} onPointerEnter={()=>setHoveredEndpoint(group.id)} onPointerLeave={()=>setHoveredEndpoint(null)} className={`arch-group-wrap${interactive && (onMoveGroup || onSelectGroup || onMoveSelection) ? " is-interactive" : ""}${selected ? " is-selected" : ""}`}>
-          <rect data-architecture-endpoint={group.id} className={`arch-group ${color}`} x={box.x} y={box.y} width={box.width} height={box.height} rx="18" onPointerDown={(event) => beginGroupDrag(event, group.id)} onPointerMove={moveGroupDrag} onPointerUp={(event) => endGroupDrag(event)} onPointerCancel={(event) => endGroupDrag(event, true)} onLostPointerCapture={(event) => endGroupDrag(event, true)} onClick={(event) => { if (suppressClickRef.current) { suppressClickRef.current = false; return; } if (interactive) onSelectGroup?.(group.id, event.shiftKey || event.metaKey || event.ctrlKey); }} />
-          {connectHandle(group.id, label, box)}
-          {group.icon&&<g transform={`translate(${box.x+1} ${box.y-9})`}><ArchitectureIcon value={group.icon}/></g>}
-          <text onDoubleClick={event=>{if(interactive && onRenameGroup){event.stopPropagation();setEditingName({kind:"group",id:group.id,label:displayGroupTitle});}}} data-architecture-endpoint={group.id} className="arch-group-label" x={box.x + (group.icon?46:14)} y={box.y + 24} tabIndex={interactive ? 0 : undefined} role={interactive ? "button" : undefined} aria-label={interactive ? label : undefined} onPointerDown={(event) => beginGroupDrag(event, group.id)} onPointerMove={moveGroupDrag} onPointerUp={(event) => endGroupDrag(event)} onPointerCancel={(event) => endGroupDrag(event, true)} onLostPointerCapture={(event) => endGroupDrag(event, true)} onClick={(event) => { if (suppressClickRef.current) { suppressClickRef.current = false; return; } if (interactive) onSelectGroup?.(group.id, event.shiftKey || event.metaKey || event.ctrlKey); }} onKeyDown={(event) => { if (!interactive) return; if(selectedNodeSet.size+selectedGroupSet.size>1 && ["Delete","Backspace","ArrowLeft","ArrowRight","ArrowUp","ArrowDown"].includes(event.key))return; if((event.key==="Delete"||event.key==="Backspace")&&onDeleteGroup){event.preventDefault();event.stopPropagation();onDeleteGroup(group.id);return;} if (event.key === "Enter") { event.preventDefault(); onSelectGroup?.(group.id); return; } const delta = event.shiftKey ? 10 : 1; const vectors: Record<string, ArchPoint> = { ArrowLeft: { x: -delta, y: 0 }, ArrowRight: { x: delta, y: 0 }, ArrowUp: { x: 0, y: -delta }, ArrowDown: { x: 0, y: delta } }; const vector = vectors[event.key]; if (vector && onMoveGroup) { event.preventDefault(); event.stopPropagation(); onInteractionStart?.(); onMoveGroup(group.id, { x: clamp(box.x + vector.x, 0, 4000), y: clamp(box.y + vector.y, 0, 4000) }, true); onInteractionEnd?.(); } }}><tspan>{short(displayGroupTitle,Math.max(40,box.width-32-(group.icon?36:0)),12)}</tspan></text><title>{label}</title>
-          {nameEditor(box.x+8+(group.icon?34:0),box.y+3,"group",group.id)}
-          {interactive && onResizeGroup && <g className="arch-group-resize" transform={`translate(${box.x + box.width} ${box.y + box.height})`} role="button" tabIndex={0} aria-label={`${label} 크기 조절`} onPointerDown={(event) => beginResize(event, group.id)} onPointerMove={moveResize} onPointerUp={endResize} onPointerCancel={endResize} onLostPointerCapture={endResize} onKeyDown={(event) => {  const delta = event.shiftKey ? 10 : 1; const vectors: Record<string, { width: number; height: number }> = { ArrowLeft: { width: -delta, height: 0 }, ArrowRight: { width: delta, height: 0 }, ArrowUp: { width: 0, height: -delta }, ArrowDown: { width: 0, height: delta } }; const vector = vectors[event.key]; if (vector && onResizeGroup) { event.preventDefault(); event.stopPropagation(); onInteractionStart?.(); onResizeGroup(group.id, { width: clamp(box.width + vector.width, 200, 4200), height: clamp(box.height + vector.height, 120, 4200) }); onInteractionEnd?.(); } }}><circle className="arch-group-resize-hit" r="12"/><path className="arch-group-resize-mark" d="M-7 7 7-7M0 7 7 0"/><title>{`${label} 크기 조절`}</title></g>}
-        </g>; })}
-        {spec.edges.map((edge) => { const route = edgeRoutes.get(edge.id); if (!route) return null; const selected = interactive && selectedEdge === edge.id; const accessibleLabel = `연결 ${edgeLabel(edge)}`; return <g key={edge.id} className={`arch-edge-wrap${selected ? " is-selected" : ""}`} role={interactive ? "button" : undefined} tabIndex={interactive ? 0 : undefined} aria-label={interactive ? accessibleLabel : undefined} onClick={() => {if(interactive){setHiddenWaypoint(null);onSelectEdge?.(edge.id);}}} onDoubleClick={event=>{if(interactive && onRenameEdge){event.stopPropagation();onSelectEdge?.(edge.id);setEditingName({kind:"edge",id:edge.id,label:edge.label??""});}}} onKeyDown={(event) => { if (interactive && event.key === "Enter") { event.preventDefault(); setHiddenWaypoint(null); onSelectEdge?.(edge.id); } }}><title>{`${edgeLabel(edge)}${edge.label ? ` · ${edge.label}` : ""}`}</title>{interactive && <path className="arch-edge-hit" d={route.path}/>}<path className="arch-edge" markerStart={connectionMarkers(edge.direction).start?`url(#${id}-arrow)`:undefined} markerEnd={connectionMarkers(edge.direction).end?`url(#${id}-arrow)`:undefined} d={route.path}/>{edge.label && <text className="arch-edge-label" x={route.label.x} y={route.label.y} onDoubleClick={event=>{if(interactive && onRenameEdge){event.stopPropagation();onSelectEdge?.(edge.id);setEditingName({kind:"edge",id:edge.id,label:edge.label??""});}}}>{short(edge.label, 112, 10)}</text>}</g>; })}
-        {spec.nodes.map((node) => { const point = positions.get(node.id)!; const selected = selectedNodeSet.has(node.id) || selectedNode === node.id || connectionPreview?.target===node.id; const nodeWidth = architectureNodeWidth(node.label); const editorWidth = Math.max(nodeWidth + 12, 80); return <g key={node.id} onDoubleClick={event=>{if(interactive && onRenameNode){event.stopPropagation();setEditingName({kind:"node",id:node.id,label:node.label});}}} onPointerEnter={()=>setHoveredEndpoint(node.id)} onPointerLeave={()=>setHoveredEndpoint(null)} data-architecture-endpoint={node.id} data-node-type={node.type} data-object-kind={architectureIconKind(node.icon,node.type)} className={`arch-node-wrap${interactive ? " arch-node-draggable" : ""}${selected ? " is-selected" : ""}`} transform={`translate(${point.x} ${point.y})`} onPointerDown={(event) => beginNodeDrag(event, node)} onPointerMove={moveNodeDrag} onPointerUp={(event) => endNodeDrag(event)} onPointerCancel={(event) => endNodeDrag(event, true)} onLostPointerCapture={(event) => endNodeDrag(event, true)} onClick={(event) => { if (suppressClickRef.current) { suppressClickRef.current = false; return; } if (interactive) onSelectNode?.(node.id, event.shiftKey || event.metaKey || event.ctrlKey); }} onKeyDown={(event) => { if (!interactive) return; if(selectedNodeSet.size+selectedGroupSet.size>1 && ["Delete","Backspace","ArrowLeft","ArrowRight","ArrowUp","ArrowDown"].includes(event.key))return; if((event.key==="Delete"||event.key==="Backspace")&&onDeleteNode){event.preventDefault();event.stopPropagation();onDeleteNode(node.id);return;} if(onRenameNode && (event.key==="F2" || event.key==="Enter")){event.preventDefault();event.stopPropagation();setEditingName({kind:"node",id:node.id,label:node.label});return;} const delta = event.shiftKey ? 10 : 1; if (event.key === "Enter") { event.preventDefault(); onSelectNode?.(node.id); return; } const vectors: Record<string, ArchPoint> = { ArrowLeft: { x: -delta, y: 0 }, ArrowRight: { x: delta, y: 0 }, ArrowUp: { x: 0, y: -delta }, ArrowDown: { x: 0, y: delta } }; const vector = vectors[event.key]; if (vector && onMoveNode) { event.preventDefault(); event.stopPropagation(); onInteractionStart?.(); onMoveNode(node.id, { x: clamp(point.x + vector.x, 0, 4000), y: clamp(point.y + vector.y, 0, 4000) }, true); onInteractionEnd?.(); } }} tabIndex={interactive ? 0 : undefined} role={interactive ? "button" : undefined} aria-label={node.label||"이름 입력"}><ArchitectureObject value={node.icon} type={node.type} width={nodeWidth}/><text className="arch-node-label" x={nodeWidth / 2} y={59} textAnchor="middle" onDoubleClick={event=>{if(interactive && onRenameNode){event.stopPropagation();setEditingName({kind:"node",id:node.id,label:node.label});}}}>{short(node.label||'이름 입력',nodeWidth - 8,11)}</text>{nameEditor(nodeWidth / 2 - editorWidth / 2, 45, "node", node.id, editorWidth)}</g>; })}
-        {spec.nodes.map((node) => { const point = positions.get(node.id)!; const width = architectureNodeWidth(node.label); return connectHandle(node.id, node.label, { ...point, width, height: ARCH_NODE_HEIGHT, anchorY: 25 }); })}
-        {connectionPreview && <path className="arch-connection-preview" d={`M${connectionPreview.start.x},${connectionPreview.start.y} L${connectionPreview.end.x},${connectionPreview.end.y}`} markerStart={connectionMarkers(connectionDirection).start?`url(#${id}-arrow)`:undefined} markerEnd={connectionMarkers(connectionDirection).end?`url(#${id}-arrow)`:undefined}/>}
-        {marquee && (() => {
-          const x = Math.min(marquee.start.x, marquee.current.x);
-          const y = Math.min(marquee.start.y, marquee.current.y);
-          const w = Math.abs(marquee.current.x - marquee.start.x);
-          const h = Math.abs(marquee.current.y - marquee.start.y);
-          return <rect className="arch-marquee-selection" x={x} y={y} width={w} height={h} rx={2} />;
-        })()}
-        {interactive && selectedEdge && (() => { const edge = spec.edges.find((item) => item.id === selectedEdge), route = edgeRoutes.get(selectedEdge); if (!edge || !route) return null; const sourceBox = endpointBox(edge.source), targetBox = endpointBox(edge.target); if (!sourceBox || !targetBox) return null; const toolbarY = route.bend.y - 43; return <g className="arch-edge-controls">
-          {hiddenWaypoint!==edge.id && <g className="arch-edge-waypoint" transform={`translate(${route.bend.x} ${route.bend.y})`} role="button" tabIndex={0} aria-label={`연결 경로 조절 ${edge.id}`} onPointerDown={(event) => beginEdgeDrag(event, edge, route.bend)} onPointerMove={moveEdgeDrag} onPointerUp={endEdgeDrag} onPointerCancel={(event) => endEdgeDrag(event, true)} onLostPointerCapture={(event) => endEdgeDrag(event, true)} onKeyDown={(event) => { if((event.key==="Delete" || event.key==="Backspace") && onResetEdgeWaypoint){event.preventDefault();event.stopPropagation();onResetEdgeWaypoint(edge.id);setHiddenWaypoint(edge.id);scrollRef.current?.focus({preventScroll:true});return;} const delta = event.shiftKey ? 10 : 1; const vectors: Record<string, ArchPoint> = { ArrowLeft: { x: -delta, y: 0 }, ArrowRight: { x: delta, y: 0 }, ArrowUp: { x: 0, y: -delta }, ArrowDown: { x: 0, y: delta } }; const vector = vectors[event.key]; if (vector && onMoveEdge) { event.preventDefault(); event.stopPropagation(); onInteractionStart?.(); onMoveEdge(edge.id, { x: clamp(route.bend.x + vector.x, 0, 4200), y: clamp(route.bend.y + vector.y, 0, 4200) }); onInteractionEnd?.(); } }}><circle className="arch-edge-waypoint-hit" r="12"/><circle className="arch-edge-waypoint-dot" r="4"/><title>{`연결 경로 조절 ${edge.id}`}</title></g>}
-          <g className="arch-edge-toolbar" transform={`translate(${route.bend.x} ${toolbarY})`}>
-            {editingName?.kind==="edge" && editingName.id===edge.id ? nameEditor(-60,-17,"edge",edge.id) : <>
-              <rect x="-54" y="-13" width="108" height="26" rx="8" onClick={event=>{event.stopPropagation();if(interactive&&onRenameEdge)setEditingName({kind:"edge",id:edge.id,label:edge.label??""});}} onDoubleClick={event=>{event.stopPropagation();if(interactive&&onRenameEdge)setEditingName({kind:"edge",id:edge.id,label:edge.label??""});}}/>
-              <text x="-10" y="4" textAnchor="middle" onClick={event=>{event.stopPropagation();if(interactive&&onRenameEdge)setEditingName({kind:"edge",id:edge.id,label:edge.label??""});}} onDoubleClick={event=>{event.stopPropagation();if(interactive&&onRenameEdge)setEditingName({kind:"edge",id:edge.id,label:edge.label??""});}}>{short(edge.label || "설명 입력", 54, 10)}</text>
-              <g className="arch-edge-delete" transform="translate(36 0)" role="button" tabIndex={0} aria-label={`연결 삭제 ${edge.id}`} onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); onDeleteEdge?.(edge.id); }} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); event.stopPropagation(); onDeleteEdge?.(edge.id); } }}><circle r="9"/><path d="m-3-3 6 6m0-6-6 6"/><title>{`연결 삭제 ${edge.id}`}</title></g>
-            </>}
-          </g>
-          <g className="arch-edge-endpoint-handle source" transform={`translate(${route.start.x} ${route.start.y})`} role="button" tabIndex={0} aria-label={`연결 시작점 조절 ${edge.id}`} onPointerDown={(event) => beginEdgeDrag(event, edge, route.start, "source")} onPointerMove={moveEdgeDrag} onPointerUp={endEdgeDrag} onPointerCancel={(event) => endEdgeDrag(event, true)} onLostPointerCapture={(event) => endEdgeDrag(event, true)}><circle r="10"/><title>{`연결 시작점 조절 ${edge.id}`}</title></g>
-          <g className="arch-edge-endpoint-handle target" transform={`translate(${route.end.x} ${route.end.y})`} role="button" tabIndex={0} aria-label={`연결 도착점 조절 ${edge.id}`} onPointerDown={(event) => beginEdgeDrag(event, edge, route.end, "target")} onPointerMove={moveEdgeDrag} onPointerUp={endEdgeDrag} onPointerCancel={(event) => endEdgeDrag(event, true)} onLostPointerCapture={(event) => endEdgeDrag(event, true)}><circle r="10"/><title>{`연결 도착점 조절 ${edge.id}`}</title></g>
-        </g>; })()}
-      </svg>
-    </div>
+    {!collapsed && (
+      <div
+        ref={scrollRef}
+        className="architecture-scroll"
+        style={
+          interactive
+            ? { height: `${Math.min(520, Math.max(340, Math.round(height * (zoom ?? 1) + 20)))}px` }
+            : undefined
+        }
+        onClick={!interactive && !expanded ? () => setViewerOpen(true) : undefined}
+        onPointerDown={event => {
+          if (interactive && event.target === event.currentTarget) {
+            setEditingName(null);
+            onClearSelection?.();
+          }
+        }}
+        onKeyDown={event => {
+          if (interactive && (event.key === " " || event.code === "Space")) {
+            const target = event.target as HTMLElement;
+            if (target.closest("input,textarea,select,[contenteditable=true]")) return;
+            event.preventDefault();
+            event.stopPropagation();
+            fitToView();
+          }
+        }}
+        role="region"
+        tabIndex={0}
+        aria-label="가로 스크롤 가능한 아키텍처 다이어그램"
+      >
+        <svg className={`architecture-svg${connecting ? " is-canvas-connecting" : ""}`} onPointerDown={beginCanvasMarquee} onPointerMove={moveCanvasMarquee} onPointerUp={event=>endCanvasMarquee(event)} onPointerCancel={event=>endCanvasMarquee(event, true)} onLostPointerCapture={event=>endCanvasMarquee(event, true)} style={interactive && zoom!==undefined ? {width:`${Math.round(width*zoom)}px`,height:`${Math.round(height*zoom)}px`,minWidth:`${Math.round(width*zoom)}px`,minHeight:`${Math.round(height*zoom)}px`,flexShrink:0} : !interactive ? {width:width*fit,height:height*fit,minWidth:0,maxWidth:"100%"}:undefined} width={width} height={height} viewBox={`0 0 ${width} ${height}`} role="group" aria-label={title ?? "시스템 아키텍처"}>
+          <rect className="arch-canvas-bg" width={width} height={height} fill="transparent" pointerEvents="all" />
+          <defs><marker id={`${id}-arrow`} markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto-start-reverse"><path d="M0,0 L8,4 L0,8 z" fill="#78869a" /></marker></defs>
+          {[...spec.groups].sort((a, b) => {
+            if (isDescendant(spec.groups, a.id, b.id)) return -1;
+            if (isDescendant(spec.groups, b.id, a.id)) return 1;
+            if (!a.parentId && b.parentId) return -1;
+            if (a.parentId && !b.parentId) return 1;
+            const boxA = groups.get(a.id);
+            const boxB = groups.get(b.id);
+            const areaA = boxA ? boxA.width * boxA.height : 0;
+            const areaB = boxB ? boxB.width * boxB.height : 0;
+            return areaB - areaA;
+          }).map((group) => {
+            const box = groups.get(group.id)!;
+            const color = group.color ? `arch-group-color-${group.color}` : isArchitectureContainer(group.type) ? "arch-group-docker" : group.type === "CUSTOM" ? "arch-group-custom" : "";
+            const label = architectureGroupLabel(group);
+            const displayGroupTitle = group.label || (group.type === "CUSTOM" ? (group.typeLabel || "그룹") : groupKind(group));
+            const displayGroupDesc = group.typeLabel && group.typeLabel !== displayGroupTitle ? group.typeLabel : null;
+            const selected = selectedGroupSet.has(group.id) || selectedGroup === group.id || connectionPreview?.target===group.id;
+            return <g key={group.id} onDoubleClick={event=>{if(interactive && onRenameGroup){event.stopPropagation();setEditingName({kind:"group",id:group.id,label:displayGroupTitle});}}} onPointerEnter={()=>setHoveredEndpoint(group.id)} onPointerLeave={()=>setHoveredEndpoint(null)} className={`arch-group-wrap${interactive && (onMoveGroup || onSelectGroup || onMoveSelection) ? " is-interactive" : ""}${selected ? " is-selected" : ""}`}>
+            <rect data-architecture-endpoint={group.id} className={`arch-group ${color}`} x={box.x} y={box.y} width={box.width} height={box.height} rx="18" onPointerDown={(event) => beginGroupDrag(event, group.id)} onPointerMove={moveGroupDrag} onPointerUp={(event) => endGroupDrag(event)} onPointerCancel={(event) => endGroupDrag(event, true)} onLostPointerCapture={(event) => endGroupDrag(event, true)} onClick={(event) => { if (suppressClickRef.current) { suppressClickRef.current = false; return; } if (interactive) onSelectGroup?.(group.id, event.shiftKey || event.metaKey || event.ctrlKey); }} />
+            {connectHandle(group.id, label, box)}
+            {group.icon&&<g transform={`translate(${box.x+1} ${box.y-9})`}><ArchitectureIcon value={group.icon}/></g>}
+            <text onDoubleClick={event=>{if(interactive && onRenameGroup){event.stopPropagation();setEditingName({kind:"group",id:group.id,label:displayGroupTitle});}}} data-architecture-endpoint={group.id} className="arch-group-label" x={box.x + (group.icon?46:14)} y={box.y + (displayGroupDesc ? 19 : 24)} tabIndex={interactive ? 0 : undefined} role={interactive ? "button" : undefined} aria-label={interactive ? label : undefined} onPointerDown={(event) => beginGroupDrag(event, group.id)} onPointerMove={moveGroupDrag} onPointerUp={(event) => endGroupDrag(event)} onPointerCancel={(event) => endGroupDrag(event, true)} onLostPointerCapture={(event) => endGroupDrag(event, true)} onClick={(event) => { if (suppressClickRef.current) { suppressClickRef.current = false; return; } if (interactive) onSelectGroup?.(group.id, event.shiftKey || event.metaKey || event.ctrlKey); }} onKeyDown={(event) => { if (!interactive) return; if(selectedNodeSet.size+selectedGroupSet.size>1 && ["Delete","Backspace","ArrowLeft","ArrowRight","ArrowUp","ArrowDown"].includes(event.key))return; if((event.key==="Delete"||event.key==="Backspace")&&onDeleteGroup){event.preventDefault();event.stopPropagation();onDeleteGroup(group.id);return;} if (event.key === "Enter") { event.preventDefault(); onSelectGroup?.(group.id); return; } const delta = event.shiftKey ? 10 : 1; const vectors: Record<string, ArchPoint> = { ArrowLeft: { x: -delta, y: 0 }, ArrowRight: { x: delta, y: 0 }, ArrowUp: { x: 0, y: -delta }, ArrowDown: { x: 0, y: delta } }; const vector = vectors[event.key]; if (vector && onMoveGroup) { event.preventDefault(); event.stopPropagation(); onInteractionStart?.(); onMoveGroup(group.id, { x: clamp(box.x + vector.x, 0, 4000), y: clamp(box.y + vector.y, 0, 4000) }, true); onInteractionEnd?.(); } }}><tspan>{short(displayGroupTitle,Math.max(40,box.width-32-(group.icon?36:0)),12)}</tspan></text>
+            {displayGroupDesc && <text onDoubleClick={event=>{if(interactive && onRenameGroupType){event.stopPropagation();setEditingName({kind:"groupType",id:group.id,label:displayGroupDesc});}}} data-architecture-endpoint={group.id} className="arch-group-desc" x={box.x + (group.icon?46:14)} y={box.y + 33} tabIndex={interactive ? 0 : undefined} role={interactive ? "button" : undefined} onPointerDown={(event) => beginGroupDrag(event, group.id)} onPointerMove={moveGroupDrag} onPointerUp={(event) => endGroupDrag(event)} onPointerCancel={(event) => endGroupDrag(event, true)} onLostPointerCapture={(event) => endGroupDrag(event, true)} onClick={(event) => { if (suppressClickRef.current) { suppressClickRef.current = false; return; } if (interactive) onSelectGroup?.(group.id, event.shiftKey || event.metaKey || event.ctrlKey); }}><tspan>{short(displayGroupDesc,Math.max(40,box.width-32-(group.icon?36:0)),10)}</tspan></text>}
+            <title>{label}</title>
+            {nameEditor(box.x+8+(group.icon?34:0),box.y+3,"group",group.id)}
+            {nameEditor(box.x+8+(group.icon?34:0),box.y+20,"groupType",group.id)}
+            {interactive && onResizeGroup && <g className="arch-group-resize" transform={`translate(${box.x + box.width} ${box.y + box.height})`} role="button" tabIndex={0} aria-label={`${label} 크기 조절`} onPointerDown={(event) => beginResize(event, group.id)} onPointerMove={moveResize} onPointerUp={endResize} onPointerCancel={endResize} onLostPointerCapture={endResize} onKeyDown={(event) => {  const delta = event.shiftKey ? 10 : 1; const vectors: Record<string, { width: number; height: number }> = { ArrowLeft: { width: -delta, height: 0 }, ArrowRight: { width: delta, height: 0 }, ArrowUp: { width: 0, height: -delta }, ArrowDown: { width: 0, height: delta } }; const vector = vectors[event.key]; if (vector && onResizeGroup) { event.preventDefault(); event.stopPropagation(); onInteractionStart?.(); onResizeGroup(group.id, { width: clamp(box.width + vector.width, 200, 4200), height: clamp(box.height + vector.height, 120, 4200) }); onInteractionEnd?.(); } }}><circle className="arch-group-resize-hit" r="12"/><path className="arch-group-resize-mark" d="M-7 7 7-7M0 7 7 0"/><title>{`${label} 크기 조절`}</title></g>}
+          </g>; })}
+          {spec.edges.map((edge) => { const route = edgeRoutes.get(edge.id); if (!route) return null; const selected = interactive && selectedEdge === edge.id; const accessibleLabel = `연결 ${edgeLabel(edge)}`; return <g key={edge.id} className={`arch-edge-wrap${selected ? " is-selected" : ""}`} role={interactive ? "button" : undefined} tabIndex={interactive ? 0 : undefined} aria-label={interactive ? accessibleLabel : undefined} onClick={() => {if(interactive){setHiddenWaypoint(null);onSelectEdge?.(edge.id);}}} onDoubleClick={event=>{if(interactive && onRenameEdge){event.stopPropagation();onSelectEdge?.(edge.id);setEditingName({kind:"edge",id:edge.id,label:edge.label??""});}}} onKeyDown={(event) => { if (interactive && event.key === "Enter") { event.preventDefault(); setHiddenWaypoint(null); onSelectEdge?.(edge.id); } }}><title>{`${edgeLabel(edge)}${edge.label ? ` · ${edge.label}` : ""}`}</title>{interactive && <path className="arch-edge-hit" d={route.path}/>}<path className="arch-edge" markerStart={connectionMarkers(edge.direction).start?`url(#${id}-arrow)`:undefined} markerEnd={connectionMarkers(edge.direction).end?`url(#${id}-arrow)`:undefined} d={route.path}/>{edge.label && <text className="arch-edge-label" x={route.label.x} y={route.label.y} onDoubleClick={event=>{if(interactive && onRenameEdge){event.stopPropagation();onSelectEdge?.(edge.id);setEditingName({kind:"edge",id:edge.id,label:edge.label??""});}}}>{short(edge.label, 112, 10)}</text>}</g>; })}
+          {spec.nodes.map((node) => {
+            const point = positions.get(node.id)!;
+            const selected = selectedNodeSet.has(node.id) || selectedNode === node.id || connectionPreview?.target===node.id;
+            const nodeWidth = architectureNodeWidth(node.label);
+            const editorWidth = Math.max(nodeWidth + 12, 80);
+            const descLines = node.description ? node.description.split("\n") : [];
+            const maxLineWidth = descLines.reduce((m, l) => Math.max(m, measureTextWidth(l, 10.5)), 0);
+            const tooltipW = node.description ? Math.min(280, Math.max(nodeWidth, maxLineWidth + 20)) : 0;
+            const tooltipLineH = 15;
+            const tooltipPaddingY = 5;
+            const tooltipH = tooltipPaddingY * 2 + descLines.length * tooltipLineH;
+            const tooltipY = 68;
+            return <g key={node.id} onDoubleClick={event=>{if(interactive && onRenameNode){event.stopPropagation();setEditingName({kind:"node",id:node.id,label:node.label});}}} onPointerEnter={()=>setHoveredEndpoint(node.id)} onPointerLeave={()=>setHoveredEndpoint(null)} data-architecture-endpoint={node.id} data-node-type={node.type} data-object-kind={architectureIconKind(node.icon,node.type)} className={`arch-node-wrap${interactive ? " arch-node-draggable" : ""}${selected ? " is-selected" : ""}`} transform={`translate(${point.x} ${point.y})`} onPointerDown={(event) => beginNodeDrag(event, node)} onPointerMove={moveNodeDrag} onPointerUp={(event) => endNodeDrag(event)} onPointerCancel={(event) => endNodeDrag(event, true)} onLostPointerCapture={(event) => endNodeDrag(event, true)} onClick={(event) => { if (suppressClickRef.current) { suppressClickRef.current = false; return; } if (interactive) onSelectNode?.(node.id, event.shiftKey || event.metaKey || event.ctrlKey); }} onKeyDown={(event) => { if (!interactive) return; if(selectedNodeSet.size+selectedGroupSet.size>1 && ["Delete","Backspace","ArrowLeft","ArrowRight","ArrowUp","ArrowDown"].includes(event.key))return; if((event.key==="Delete"||event.key==="Backspace")&&onDeleteNode){event.preventDefault();event.stopPropagation();onDeleteNode(node.id);return;} if(onRenameNode && (event.key==="F2" || event.key==="Enter")){event.preventDefault();event.stopPropagation();setEditingName({kind:"node",id:node.id,label:node.label});return;} const delta = event.shiftKey ? 10 : 1; if (event.key === "Enter") { event.preventDefault(); onSelectNode?.(node.id); return; } const vectors: Record<string, ArchPoint> = { ArrowLeft: { x: -delta, y: 0 }, ArrowRight: { x: delta, y: 0 }, ArrowUp: { x: 0, y: -delta }, ArrowDown: { x: 0, y: delta } }; const vector = vectors[event.key]; if (vector && onMoveNode) { event.preventDefault(); event.stopPropagation(); onInteractionStart?.(); onMoveNode(node.id, { x: clamp(point.x + vector.x, 0, 4000), y: clamp(point.y + vector.y, 0, 4000) }, true); onInteractionEnd?.(); } }} tabIndex={interactive ? 0 : undefined} role={interactive ? "button" : undefined} aria-label={node.label||"이름 입력"}><title>{node.label}</title><ArchitectureObject value={node.icon} type={node.type} width={nodeWidth}/><text className="arch-node-label" x={nodeWidth / 2} y={59} textAnchor="middle" onDoubleClick={event=>{if(interactive && onRenameNode){event.stopPropagation();setEditingName({kind:"node",id:node.id,label:node.label});}}}>{short(node.label||'이름 입력',nodeWidth - 8,11)}</text>{nameEditor(nodeWidth / 2 - editorWidth / 2, 45, "node", node.id, editorWidth)}{node.description && !editingName && <g className="arch-node-tooltip" pointerEvents="none"><rect className="arch-node-tooltip-bg" x={nodeWidth / 2 - tooltipW / 2} y={tooltipY} width={tooltipW} height={tooltipH} rx={6}/>{descLines.map((line, idx) => <text key={idx} className="arch-node-tooltip-text" x={nodeWidth / 2} y={tooltipY + tooltipPaddingY + idx * tooltipLineH + 11} textAnchor="middle" xmlSpace="preserve">{short(line, 260, 10.5)}</text>)}</g>}</g>; })}
+          {spec.nodes.map((node) => { const point = positions.get(node.id)!; const width = architectureNodeWidth(node.label); return connectHandle(node.id, node.label, { ...point, width, height: ARCH_NODE_HEIGHT, anchorY: 25 }); })}
+          {connectionPreview && <path className="arch-connection-preview" d={`M${connectionPreview.start.x},${connectionPreview.start.y} L${connectionPreview.end.x},${connectionPreview.end.y}`} markerStart={connectionMarkers(connectionDirection).start?`url(#${id}-arrow)`:undefined} markerEnd={connectionMarkers(connectionDirection).end?`url(#${id}-arrow)`:undefined}/>}
+          {marquee && (() => {
+            const x = Math.min(marquee.start.x, marquee.current.x);
+            const y = Math.min(marquee.start.y, marquee.current.y);
+            const w = Math.abs(marquee.current.x - marquee.start.x);
+            const h = Math.abs(marquee.current.y - marquee.start.y);
+            return <rect className="arch-marquee-selection" x={x} y={y} width={w} height={h} rx={2} />;
+          })()}
+          {interactive && selectedEdge && (() => { const edge = spec.edges.find((item) => item.id === selectedEdge), route = edgeRoutes.get(selectedEdge); if (!edge || !route) return null; const sourceBox = endpointBox(edge.source), targetBox = endpointBox(edge.target); if (!sourceBox || !targetBox) return null; const toolbarY = route.bend.y - 43; return <g className="arch-edge-controls">
+            {hiddenWaypoint!==edge.id && <g className="arch-edge-waypoint" transform={`translate(${route.bend.x} ${route.bend.y})`} role="button" tabIndex={0} aria-label={`연결 경로 조절 ${edge.id}`} onPointerDown={(event) => beginEdgeDrag(event, edge, route.bend)} onPointerMove={moveEdgeDrag} onPointerUp={endEdgeDrag} onPointerCancel={(event) => endEdgeDrag(event, true)} onLostPointerCapture={(event) => endEdgeDrag(event, true)} onKeyDown={(event) => { if((event.key==="Delete" || event.key==="Backspace") && onResetEdgeWaypoint){event.preventDefault();event.stopPropagation();onResetEdgeWaypoint(edge.id);setHiddenWaypoint(edge.id);scrollRef.current?.focus({preventScroll:true});return;} const delta = event.shiftKey ? 10 : 1; const vectors: Record<string, ArchPoint> = { ArrowLeft: { x: -delta, y: 0 }, ArrowRight: { x: delta, y: 0 }, ArrowUp: { x: 0, y: -delta }, ArrowDown: { x: 0, y: delta } }; const vector = vectors[event.key]; if (vector && onMoveEdge) { event.preventDefault(); event.stopPropagation(); onInteractionStart?.(); onMoveEdge(edge.id, { x: clamp(route.bend.x + vector.x, 0, 4200), y: clamp(route.bend.y + vector.y, 0, 4200) }); onInteractionEnd?.(); } }}><circle className="arch-edge-waypoint-hit" r="12"/><circle className="arch-edge-waypoint-dot" r="4"/><title>{`연결 경로 조절 ${edge.id}`}</title></g>}
+            <g className="arch-edge-toolbar" transform={`translate(${route.bend.x} ${toolbarY})`}>
+              {editingName?.kind==="edge" && editingName.id===edge.id ? nameEditor(-60,-17,"edge",edge.id) : <>
+                <rect x="-54" y="-13" width="108" height="26" rx="8" onClick={event=>{event.stopPropagation();if(interactive&&onRenameEdge)setEditingName({kind:"edge",id:edge.id,label:edge.label??""});}} onDoubleClick={event=>{event.stopPropagation();if(interactive&&onRenameEdge)setEditingName({kind:"edge",id:edge.id,label:edge.label??""});}}/>
+                <text x="-10" y="4" textAnchor="middle" onClick={event=>{event.stopPropagation();if(interactive&&onRenameEdge)setEditingName({kind:"edge",id:edge.id,label:edge.label??""});}} onDoubleClick={event=>{event.stopPropagation();if(interactive&&onRenameEdge)setEditingName({kind:"edge",id:edge.id,label:edge.label??""});}}>{short(edge.label || "설명 입력", 54, 10)}</text>
+                <g className="arch-edge-delete" transform="translate(36 0)" role="button" tabIndex={0} aria-label={`연결 삭제 ${edge.id}`} onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); onDeleteEdge?.(edge.id); }} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); event.stopPropagation(); onDeleteEdge?.(edge.id); } }}><circle r="9"/><path d="m-3-3 6 6m0-6-6 6"/><title>{`연결 삭제 ${edge.id}`}</title></g>
+              </>}
+            </g>
+            <g className="arch-edge-endpoint-handle source" transform={`translate(${route.start.x} ${route.start.y})`} role="button" tabIndex={0} aria-label={`연결 시작점 조절 ${edge.id}`} onPointerDown={(event) => beginEdgeDrag(event, edge, route.start, "source")} onPointerMove={moveEdgeDrag} onPointerUp={endEdgeDrag} onPointerCancel={(event) => endEdgeDrag(event, true)} onLostPointerCapture={(event) => endEdgeDrag(event, true)}><circle r="10"/><title>{`연결 시작점 조절 ${edge.id}`}</title></g>
+            <g className="arch-edge-endpoint-handle target" transform={`translate(${route.end.x} ${route.end.y})`} role="button" tabIndex={0} aria-label={`연결 도착점 조절 ${edge.id}`} onPointerDown={(event) => beginEdgeDrag(event, edge, route.end, "target")} onPointerMove={moveEdgeDrag} onPointerUp={endEdgeDrag} onPointerCancel={(event) => endEdgeDrag(event, true)} onLostPointerCapture={(event) => endEdgeDrag(event, true)}><circle r="10"/><title>{`연결 도착점 조절 ${edge.id}`}</title></g>
+          </g>; })()}
+          {(() => {
+            if (!hoveredEndpoint) return null;
+            const hNode = nodeById.get(hoveredEndpoint);
+            if (!hNode || !hNode.description || editingName) return null;
+            const point = positions.get(hNode.id);
+            if (!point) return null;
+            const nWidth = architectureNodeWidth(hNode.label);
+            const lines = hNode.description.split("\n");
+            const maxW = lines.reduce((m, l) => Math.max(m, measureTextWidth(l, 10.5)), 0);
+            const w = Math.min(280, Math.max(nWidth, maxW + 20));
+            const lineH = 15;
+            const padY = 5;
+            const h = padY * 2 + lines.length * lineH;
+            const tY = 68;
+            return (
+              <g className="arch-node-tooltip is-active-overlay" transform={`translate(${point.x} ${point.y})`} pointerEvents="none">
+                <rect className="arch-node-tooltip-bg" x={nWidth / 2 - w / 2} y={tY} width={w} height={h} rx={6} />
+                {lines.map((l, i) => (
+                  <text key={i} className="arch-node-tooltip-text" x={nWidth / 2} y={tY + padY + i * lineH + 11} textAnchor="middle" xmlSpace="preserve">
+                    {short(l, 260, 10.5)}
+                  </text>
+                ))}
+              </g>
+            );
+          })()}
+        </svg>
+      </div>
+    )}
     {spec.nodes.some(node=>architectureBrandIcon(node.icon))||spec.groups.some(group=>architectureBrandIcon(group.icon))?<a className="architecture-icon-credits" href="/technology-icons/NOTICE.txt" target="_blank" rel="noreferrer">아이콘 출처·라이선스</a>:null}
-    {!interactive && <div className="architecture-description"><h3>경계 그룹</h3>{spec.groups.length ? <ul>{spec.groups.map((group) => <li key={group.id}>{architectureGroupLabel(group)}{group.parentId ? ` (내부: ${endpointLabel(group.parentId)})` : ""}</li>)}</ul> : <p>경계 그룹이 없습니다.</p>}<h3>구성 요소</h3><ul>{spec.nodes.map((node) => <li key={node.id}><strong>{node.label}</strong>{node.groupId ? ` · ${endpointLabel(node.groupId)}` : ""}</li>)}</ul><h3>연결</h3>{spec.edges.length ? <ol>{spec.edges.map((edge) => <li key={edge.id}>{edgeLabel(edge)}{edge.label ? ` · ${edge.label}` : ""}</li>)}</ol> : <p>표시할 연결이 없습니다.</p>}</div>}
+    {!interactive && !collapsed && (
+      <details className="architecture-description-details">
+        <summary className="architecture-description-summary">
+          <span>구성 요소 및 연결 목록 ({spec.edges.length})</span>
+          <svg
+            className="architecture-description-chevron"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+        </summary>
+        <div className="architecture-description">
+          <h3>경계 그룹</h3>
+          {spec.groups.length ? (
+            <ul>
+              {spec.groups.map(group => (
+                <li key={group.id}>
+                  {architectureGroupLabel(group)}
+                  {group.parentId ? ` (내부: ${endpointLabel(group.parentId)})` : ""}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p>경계 그룹이 없습니다.</p>
+          )}
+          <h3>구성 요소</h3>
+          <ul>
+            {spec.nodes.map(node => (
+              <li key={node.id}>
+                <strong>{node.label}</strong>
+                {node.description ? ` (${node.description})` : ""}
+                {node.groupId ? ` · ${endpointLabel(node.groupId)}` : ""}
+              </li>
+            ))}
+          </ul>
+          <h3>연결</h3>
+          {spec.edges.length ? (
+            <ol>
+              {spec.edges.map(edge => (
+                <li key={edge.id}>
+                  {edgeLabel(edge)}
+                  {edge.label ? ` · ${edge.label}` : ""}
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <p>표시할 연결이 없습니다.</p>
+          )}
+        </div>
+      </details>
+    )}
   </section>;
 }
 

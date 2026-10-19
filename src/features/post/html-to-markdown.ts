@@ -199,7 +199,7 @@ export function htmlToMarkdown(html: string): string {
             const match = cls.match(/language-([a-z0-9_-]+)/i);
             if (match) lang = match[1];
           }
-          codeText += child.children.map(c => isText(c) ? c.data : "").join("");
+          codeText += textContent(child.children);
         } else if (isText(child)) {
           codeText += child.data;
         }

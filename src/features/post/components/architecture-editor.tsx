@@ -459,6 +459,16 @@ export function ArchitectureEditor({ onChange, initialValue, embedded = false, o
               <label>요소 이름
                 <input ref={nodeName} value={selected.label} maxLength={100} placeholder="예: 주문 API, 사용자" onChange={(event)=>updateNode("label",event.target.value)}/>
               </label>
+              <label>부연설명 (선택)
+                <textarea
+                  className="architecture-inspector-textarea"
+                  value={selected.description ?? ''}
+                  maxLength={300}
+                  rows={3}
+                  placeholder="예: OAuth2 인증 및 세션 검증 처리 (띄어쓰기 및 줄바꿈 지원)"
+                  onChange={(event) => updateNode("description", event.target.value || null)}
+                />
+              </label>
               <label>아이콘
                 <select value={toolboxIcon(selected.icon,selected.type)} onChange={event=>updateNode("icon",event.target.value)}>
                   <optgroup label="기본 아이콘">{ARCHITECTURE_ICONS.map(icon=><option key={icon.value} value={icon.value}>{icon.label}</option>)}</optgroup>
@@ -479,7 +489,7 @@ export function ArchitectureEditor({ onChange, initialValue, embedded = false, o
               <label>그룹 이름
                 <input ref={nodeName} value={group.label} maxLength={100} placeholder="예: 운영 환경, 결제 영역" onChange={event=>update(current=>({...current,groups:current.groups.map(item=>item.id===group.id?{...item,label:event.target.value}:item)}))}/>
               </label>
-              <label>그룹 역할 (선택)
+              <label>그룹 상세 설명 (선택)
                 <input value={group.type==='CUSTOM'?group.typeLabel??'':groupTitle[group.type]} maxLength={50} placeholder="예: 외부 서비스, 데이터 계층" onChange={event=>update(current=>({...current,groups:current.groups.map(item=>item.id===group.id?{...item,type:'CUSTOM',typeLabel:event.target.value||null}:item)}))}/>
               </label>
               <label>그룹 색상

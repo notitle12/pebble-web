@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useId, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
  COMMON_DB_TYPES,
  relationCardinality,
@@ -54,17 +55,52 @@ export function DatabaseKeyCellSelect({
  onInspectRelation?: (relationId: string) => void;
 }) {
  const [open, setOpen] = useState(false);
- const wrapRef = useRef<HTMLDivElement>(null);
+ const [popoverPos, setPopoverPos] = useState<{ top: number; left: number; placeAbove?: boolean } | null>(null);
+ const btnRef = useRef<HTMLButtonElement>(null);
+ const popoverRef = useRef<HTMLDivElement>(null);
+
+ const updatePosition = () => {
+  if (!btnRef.current) return;
+  const rect = btnRef.current.getBoundingClientRect();
+  const popoverWidth = 220;
+  const popoverHeight = 260;
+  const spaceBelow = window.innerHeight - rect.bottom;
+  const placeAbove = spaceBelow < popoverHeight && rect.top > popoverHeight;
+
+  setPopoverPos({
+   top: placeAbove ? rect.top - 4 : rect.bottom + 4,
+   left: Math.max(8, Math.min(rect.left, window.innerWidth - popoverWidth - 8)),
+   placeAbove,
+  });
+ };
 
  useEffect(() => {
   if (!open) return;
+  updatePosition();
+
   const onPointerDown = (e: PointerEvent) => {
-   if (e.target instanceof Node && !wrapRef.current?.contains(e.target)) {
-    setOpen(false);
+   const target = e.target as Node;
+   if (btnRef.current?.contains(target) || popoverRef.current?.contains(target)) {
+    return;
    }
+   setOpen(false);
   };
+
+  const handleScroll = (e: Event) => {
+   if (popoverRef.current?.contains(e.target as Node)) {
+    return;
+   }
+   setOpen(false);
+  };
+
   document.addEventListener('pointerdown', onPointerDown);
-  return () => document.removeEventListener('pointerdown', onPointerDown);
+  window.addEventListener('scroll', handleScroll, true);
+  window.addEventListener('resize', handleScroll);
+  return () => {
+   document.removeEventListener('pointerdown', onPointerDown);
+   window.removeEventListener('scroll', handleScroll, true);
+   window.removeEventListener('resize', handleScroll);
+  };
  }, [open]);
 
  const keyText = column.primaryKey ? 'PK' : column.reference ? 'FK' : '';
@@ -89,8 +125,9 @@ export function DatabaseKeyCellSelect({
  });
 
  return (
-  <div ref={wrapRef} className={s.keyMenuWrap}>
+  <div className={s.keyMenuWrap}>
    <button
+    ref={btnRef}
     type="button"
     className={s.erdKeyCellBtn}
     data-pk={column.primaryKey}
@@ -112,8 +149,19 @@ export function DatabaseKeyCellSelect({
     {keyText}
    </button>
 
-   {open && (
-    <div className={s.keyPopover} onClick={e => e.stopPropagation()}>
+   {open && popoverPos && typeof document !== 'undefined' && createPortal(
+    <div
+     ref={popoverRef}
+     className={s.keyPopover}
+     style={{
+      position: 'fixed',
+      top: popoverPos.placeAbove ? undefined : `${popoverPos.top}px`,
+      bottom: popoverPos.placeAbove ? `${window.innerHeight - popoverPos.top}px` : undefined,
+      left: `${popoverPos.left}px`,
+      zIndex: 99999,
+     }}
+     onClick={e => e.stopPropagation()}
+    >
      <button
       type="button"
       className={s.keyPopoverItem}
@@ -199,7 +247,8 @@ export function DatabaseKeyCellSelect({
        </button>
       </>
      )}
-    </div>
+    </div>,
+    btnRef.current?.closest('dialog') ?? document.body
    )}
   </div>
  );

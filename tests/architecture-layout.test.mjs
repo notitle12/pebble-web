@@ -59,16 +59,34 @@ test('그룹 내부의 두 끝점이 함께 이동할 때 수동 화살표 경�
  assert.deepEqual(moved.edges[0].waypoint,{x:380,y:340}); assert.equal(moved.edges[0].sourceSide,'BOTTOM'); parseArchitectureSpec(moved);
 });
 
-test('수동 경로는 중앙 조절점 양쪽의 접선이 같아 뾰족한 꺾임이 생기지 않는다',()=>{
+test('수동 경로(waypoint 지정 시)도 직각 형태를 유지하며, 바깥으로 이동 시 ㄷ자 우회 경로를 생성한다',()=>{
  const from={x:100,y:100,width:160,height:76},to={x:500,y:300,width:160,height:76};
- for(const waypoint of [{x:320,y:40},{x:300,y:500},{x:100,y:138},{x:580,y:338}]){
-  const route=architectureEdgeRoute({id:'e',source:'a',target:'b',waypoint},from,to);
-  const n=route.path.match(/-?\d+(?:\.\d+)?(?:e[+-]?\d+)?/gi).map(Number);
-  const incoming={x:n[6]-n[4],y:n[7]-n[5]},outgoing={x:n[8]-n[6],y:n[9]-n[7]};
-  assert.ok(Math.hypot(incoming.x,incoming.y)>0);
-  assert.ok(Math.abs(incoming.x-outgoing.x)<1e-8&&Math.abs(incoming.y-outgoing.y)<1e-8);
-  assert.deepEqual(route.bend,waypoint);
- }
+ // 1. 시작점과 도착점 범위 내의 waypoint: 내부 S자 계단 경로
+ const inBounds = { x: 350, y: 220 };
+ const route1 = architectureEdgeRoute({ id: 'e', source: 'a', target: 'b', waypoint: inBounds }, from, to);
+ assert.ok(route1.path.startsWith('M'));
+ assert.ok(!route1.path.includes('C'), '수동 waypoint 지정 시에도 어색한 곡선(C) 대신 직각(L/Q) 경로여야 함');
+ assert.deepEqual(route1.bend, inBounds);
+
+ // 2. 시작점(y=138)보다 위로 벗어날 때: 상단 ㄷ자 우회 직각 경로 생성
+ const aboveBounds = { x: 320, y: 40 };
+ const route2 = architectureEdgeRoute({ id: 'e', source: 'a', target: 'b', waypoint: aboveBounds }, from, to);
+ assert.equal(route2.bend.y, 40);
+ assert.ok(!route2.path.includes('C'));
+ assert.ok(route2.path.includes('40'), '상단 ㄷ자 우회 y좌표 40이 경로에 포함되어야 함');
+
+ // 3. 도착점(y=338)보다 아래로 벗어날 때: 하단 ㄷ자 우회 직각 경로 생성
+ const belowBounds = { x: 300, y: 500 };
+ const route3 = architectureEdgeRoute({ id: 'e', source: 'a', target: 'b', waypoint: belowBounds }, from, to);
+ assert.equal(route3.bend.y, 500);
+ assert.ok(!route3.path.includes('C'));
+ assert.ok(route3.path.includes('500'), '하단 ㄷ자 우회 y좌표 500이 경로에 포함되어야 함');
+
+ // 4. 내부 수평 코리더 조절 시 시작점(x=260)보다 왼쪽으로 벗어나려 할 때: 최소 stub 여백(284)에서 안전하게 고정
+ const leftBounds = { x: 100, y: 220 };
+ const route4 = architectureEdgeRoute({ id: 'e', source: 'a', target: 'b', waypoint: leftBounds }, from, to);
+ assert.equal(route4.bend.x, 284);
+ assert.ok(!route4.path.includes('C'));
 });
 
 test('사용자 정의 표시 종류는 이전 문서와 호환되고 기본 종류는 덮어쓰지 못한다',()=>{
@@ -393,4 +411,29 @@ test('그룹에 속했던 아이콘이 그룹 바깥에 위치할 때 그룹을 
   assert.equal(insideSel.groupId, 'group1');
   assert.deepEqual(outsideSel.position, { x: 800, y: 800 });
   assert.equal(outsideSel.groupId, null);
+});
+
+test('자동 연결선은 직각(orthogonal) 경로를 생성하고 다중 연결 시 포트 오프셋이 적용된다', () => {
+  const from = { x: 100, y: 100, width: 120, height: 76 };
+  const to = { x: 400, y: 200, width: 120, height: 76 };
+  const edge = { id: 'e1', source: 'a', target: 'b' };
+
+  // 1. 기본 직각 경로 생성 확인
+  const route = architectureEdgeRoute(edge, from, to);
+  assert.ok(route.path.startsWith('M'));
+  assert.ok(route.path.includes('L') || route.path.includes('Q'));
+  assert.ok(!route.path.includes('C'), '수동 waypoint가 없을 때는 베지에 곡선(C) 대신 직각(L/Q) 경로여야 함');
+
+  // 2. 포트 오프셋 (sourceOffset, targetOffset) 적용 시 시작점/도착점이 이동하는지 확인
+  const routeWithOffsets = architectureEdgeRoute(edge, from, to, {
+    sourceOffset: { y: 12 },
+    targetOffset: { y: -12 },
+  });
+  assert.notDeepEqual(routeWithOffsets.start, route.start);
+  assert.notDeepEqual(routeWithOffsets.end, route.end);
+
+  // 3. 수동 waypoint가 있는 경우에도 직각(L/Q) 경로를 유지하며 조절점 일치
+  const manualRoute = architectureEdgeRoute({ ...edge, waypoint: { x: 260, y: 200 } }, from, to);
+  assert.ok(!manualRoute.path.includes('C'), '수동 waypoint가 지정된 경우에도 직각(L/Q) 경로여야 함');
+  assert.deepEqual(manualRoute.bend, { x: 260, y: 200 });
 });

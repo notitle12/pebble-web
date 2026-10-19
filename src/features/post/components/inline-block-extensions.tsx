@@ -5,11 +5,13 @@ import { Extension, Node as TiptapNode } from "@tiptap/core";
 import { NodeViewWrapper, NodeViewContent, useEditorState, ReactNodeViewRenderer, type NodeViewProps } from "@tiptap/react";
 import { Table, TableView } from "@tiptap/extension-table";
 import { Plugin } from "@tiptap/pm/state";
+import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import type { DOMOutputSpec, Node as PMNode } from "@tiptap/pm/model";
 import { parseTableSpec, parseArchitectureSpec } from "../api/post-list";
 import { codeLanguages, defaultTextSizes, textSizes } from "../writer-document";
 import { InlineCodeView, InlineTableSpecView, InlineArchitectureView, defaultInlineTableSpec, defaultInlineArchitectureSpec } from "./inline-block-views";
 import { headingEnterTransaction } from "../heading-enter";
+import { tokenizeCode } from "../syntax-highlight";
 import styles from "./rich-body-editor.module.css";
 
 export const InlineCode = TiptapNode.create({
@@ -24,15 +26,47 @@ export const InlineCode = TiptapNode.create({
   } }]; },
   renderHTML({ node, HTMLAttributes }) { return ["pre", { ...HTMLAttributes, "data-language": node.attrs.language }, ["code", {}, 0]]; },
   addNodeView() { return ReactNodeViewRenderer(InlineCodeView, { contentDOMElementTag: "code" }); },
-  addProseMirrorPlugins() { return [new Plugin({ props: { handlePaste: (view, event) => {
-    const { $from, $to, from, to } = view.state.selection;
-    if ($from.parent.type.name !== this.name || !$from.sameParent($to) || !event.clipboardData) return false;
-    const text = event.clipboardData.getData("text/plain");
-    if (!text) return false;
-    event.preventDefault();
-    view.dispatch(view.state.tr.insertText(text.replace(/\r\n?/g, "\n"), from, to).scrollIntoView());
-    return true;
-  } } })]; },
+  addProseMirrorPlugins() {
+    return [
+      new Plugin({
+        props: {
+          handlePaste: (view, event) => {
+            const { $from, $to, from, to } = view.state.selection;
+            if ($from.parent.type.name !== this.name || !$from.sameParent($to) || !event.clipboardData) return false;
+            const text = event.clipboardData.getData("text/plain");
+            if (!text) return false;
+            event.preventDefault();
+            view.dispatch(view.state.tr.insertText(text.replace(/\r\n?/g, "\n"), from, to).scrollIntoView());
+            return true;
+          },
+          decorations: (state) => {
+            const decorations: Decoration[] = [];
+            state.doc.descendants((node, pos) => {
+              if (node.type.name === this.name) {
+                const code = node.textContent;
+                const language = (node.attrs.language ?? "").toString();
+                const tokens = tokenizeCode(code, language);
+                let offset = 0;
+                for (const token of tokens) {
+                  const len = token.text.length;
+                  if (token.type && len > 0) {
+                    decorations.push(
+                      Decoration.inline(pos + 1 + offset, pos + 1 + offset + len, {
+                        class: `hl-${token.type}`,
+                      })
+                    );
+                  }
+                  offset += len;
+                }
+                return false;
+              }
+            });
+            return DecorationSet.create(state.doc, decorations);
+          },
+        },
+      }),
+    ];
+  },
   addKeyboardShortcuts() { return { Tab: () => this.editor.isActive(this.name) ? this.editor.commands.insertContent("  ") : false, "Mod-Enter": () => this.editor.isActive(this.name) ? this.editor.commands.exitCode() : false }; },
 });
 function ToggleView({ node, editor, updateAttributes }: NodeViewProps) {

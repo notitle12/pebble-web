@@ -724,16 +724,31 @@ html[data-theme=dark] .comment-composer-card,html[data-theme=dark] .comment-comp
 .architecture-reader .architecture-scroll{overflow:hidden;max-height:none;overscroll-behavior:auto;display:grid;place-items:center;cursor:zoom-in}
 .diagram-lightbox .architecture-reader .architecture-scroll{cursor:default}
 .architecture-reader,.database-reader{position:relative}
-.architecture-block.architecture-reader{border:1px solid #dfe5ee;border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(15,23,42,.03)}
+.architecture-block.architecture-reader{margin:18px 0 34px;border:1px solid #dfe5ee;border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(15,23,42,.03)}
 .architecture-reader-toolbar{display:flex;align-items:center;justify-content:space-between;min-height:42px;padding:6px 12px;border-bottom:1px solid #e2e6eb;background:#fff;font-size:12px;box-sizing:border-box}
 .architecture-reader-summary{font-weight:600;color:#4b5565}
-.architecture-expand-btn{font:inherit;font-size:12px;font-weight:600;padding:5px 10px;border:1px solid #dce1e8;border-radius:6px;background:#fff;color:#444c59;cursor:pointer;transition:background .15s ease,border-color .15s ease,color .15s ease}
-.architecture-expand-btn:hover{border-color:#98afd2;background:#f7f9fc}
+.architecture-reader-actions{display:flex;align-items:center;gap:6px}
+.architecture-toggle-collapse-btn,.architecture-expand-btn{display:inline-flex;align-items:center;justify-content:center;height:28px;min-height:28px;padding:0 10px;font:inherit;font-size:11.5px;font-weight:550;line-height:1;border:1px solid #dce1e8;border-radius:6px;background:#fff;color:#444c59;cursor:pointer;box-sizing:border-box;white-space:nowrap;transition:background .15s ease,border-color .15s ease,color .15s ease}
+.architecture-toggle-collapse-btn:hover,.architecture-expand-btn:hover{border-color:#98afd2;background:#f7f9fc;color:#1e293b}
+.architecture-icon-credits{display:block;text-align:right;margin:8px 16px 10px auto;width:fit-content;padding:0 4px;font-size:11px;color:var(--muted)}
+.architecture-block.is-collapsed .architecture-icon-credits{margin:10px 16px 14px auto}
+.architecture-description-details{border-top:1px solid #e2e6eb}
+.architecture-description-summary{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;font-size:12px;font-weight:600;color:#64748b;background:#fff;cursor:pointer;user-select:none;list-style:none;transition:background .15s ease,color .15s ease}
+.architecture-description-summary::-webkit-details-marker{display:none}
+.architecture-description-chevron{width:16px;height:16px;color:#64748b;flex-shrink:0;transition:transform .18s ease,color .15s ease}
+.architecture-description-details[open] .architecture-description-chevron{transform:rotate(180deg)}
+.architecture-description-summary:hover{color:#274d9a;background:#f7f9fc}
+.architecture-description-summary:hover .architecture-description-chevron{color:#274d9a}
 html[data-theme=dark] .architecture-block.architecture-reader{border-color:var(--line)}
 html[data-theme=dark] .architecture-reader-toolbar{background:var(--surface);border-bottom-color:var(--line)}
 html[data-theme=dark] .architecture-reader-summary{color:var(--muted)}
-html[data-theme=dark] .architecture-expand-btn{background:var(--surface);border-color:var(--line);color:var(--text)}
-html[data-theme=dark] .architecture-expand-btn:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+html[data-theme=dark] :is(.architecture-toggle-collapse-btn,.architecture-expand-btn){background:var(--surface);border-color:var(--line);color:var(--text)}
+html[data-theme=dark] :is(.architecture-toggle-collapse-btn:hover,.architecture-expand-btn:hover){border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+html[data-theme=dark] .architecture-description-details{border-top-color:var(--line)}
+html[data-theme=dark] .architecture-description-summary{background:var(--surface);color:var(--muted)}
+html[data-theme=dark] .architecture-description-summary:hover{background:var(--accent-soft);color:var(--accent)}
+html[data-theme=dark] .architecture-description-chevron{color:var(--muted)}
+html[data-theme=dark] .architecture-description-summary:hover .architecture-description-chevron{color:var(--accent)}
 html[data-theme=dark] .architecture-canvas-toolbar{background:var(--surface);border-bottom-color:var(--line)}
 html[data-theme=dark] .architecture-canvas-title{color:var(--text)}
 html[data-theme=dark] .architecture-canvas-hint{color:var(--muted)}
@@ -748,6 +763,7 @@ html[data-theme=dark] .architecture-auto-layout:hover:not(:disabled){border-colo
 .project-document-section>div+div,.project-document-tech-stack+.project-document-background{margin-top:44px}
 .project-document-section .post-body{padding-top:0}
 .project-document-section .post-body>[data-block-alignment]:first-child>*{margin-top:0}
+.project-document-section .post-body>[data-block-alignment]+[data-block-alignment]{margin-top:36px}
 .project-document-section .text-block>:first-child,.project-document-section .post-rich-content>div>:first-child{margin-top:0}
 .project-document-overview{padding:0;margin:0 0 20px}
 .post-detail .post-body {
