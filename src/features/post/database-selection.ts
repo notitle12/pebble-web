@@ -21,3 +21,9 @@ export function databaseTableSelection(previous:Set<string>, id:string, additive
  if(next.has(id)) next.delete(id); else next.add(id);
  return next;
 }
+
+/** Use the actual pointer position for both preview frames and the final release. */
+export function databaseBendValue(drag:{axis:'x'|'y';startCoord:number;startVal:number;min:number;max:number}, point:{clientX:number;clientY:number}, scale:number) {
+ const coordinate=drag.axis==='x'?point.clientX:point.clientY;
+ return Math.round(Math.max(drag.min,Math.min(drag.max,drag.startVal+(coordinate-drag.startCoord)/scale)));
+}
