@@ -37,7 +37,7 @@ const sanitizerOptions: IOptions = {
     "*": ["id", "class", "style", "colspan", "rowspan", "open", "aria-label", "data-level"],
   },
   allowedStyles,
-  allowedClasses: { nav:["post-toc"], "*":[] },
+  allowedClasses: { nav: ["post-toc"], span: [/^hl-[a-z-]+$/], pre: ["code-block", /^language-/], code: [/^language-/], "*": [] },
   allowedSchemes: ["http", "https", "mailto"],
   allowedSchemesByTag: { img: ["http", "https"] },
   allowedIframeHostnames: ["www.openstreetmap.org"],

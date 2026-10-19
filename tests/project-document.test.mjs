@@ -70,3 +70,10 @@ test('작성한 단일 client 노드와 잘못된 다이어그램을 조용히 �
  const partial=newProjectDocument();partial.sections[0].blocks=[{key:'db',type:'DB_SCHEMA',content:JSON.stringify(db),language:null,title:null,valid:false}];
  assert.throws(()=>serializeProjectDocument(partial),/데이터베이스 설계를 완성/);
 });
+
+test('기본 client에 설명만 작성해도 빈 아키텍처로 제거하지 않는다',()=>{
+ const architecture={schemaVersion:1,groups:[],nodes:[{id:'client',type:'CLIENT',label:'클라이언트',icon:'CLIENT',position:{x:56,y:80},description:'사용자 브라우저에서 접속'}],edges:[]};
+ const doc=newProjectDocument();doc.sections.find(s=>s.key==='ARCHITECTURE').blocks=[{key:'arch',type:'ARCHITECTURE',content:JSON.stringify(architecture),language:null,title:null,valid:true}];
+ const blocks=serializeProjectDocument(doc).sections.find(s=>s.key==='ARCHITECTURE').blocks;
+ assert.equal(blocks.length,1);assert.equal(JSON.parse(blocks[0].content).nodes[0].description,architecture.nodes[0].description);
+});

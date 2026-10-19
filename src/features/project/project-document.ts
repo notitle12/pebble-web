@@ -44,7 +44,7 @@ export function isProjectArchitectureEmpty(value: unknown): boolean {
  if (value.nodes.length !== 1 || !object(value.nodes[0])) return false;
  const node = value.nodes[0];
  return node.id === 'client' && node.type === 'CLIENT' && node.label === '클라이언트' && node.icon === 'CLIENT'
-  && node.groupId == null && node.typeLabel == null && object(node.position) && node.position.x === 56 && node.position.y === 80;
+  && (node.description == null || node.description === '') && node.groupId == null && node.typeLabel == null && object(node.position) && node.position.x === 56 && node.position.y === 80;
 }
 export function serializeProjectDocument(value:ProjectDocument){
  const document={
