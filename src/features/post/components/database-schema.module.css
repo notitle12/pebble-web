@@ -361,9 +361,11 @@
 .selectedSpecification{position:relative;margin-top:14px;padding:0;border:0;background:transparent}
 .closeSpecification{display:none}
 .viewport[data-preview=true]{overflow:hidden;max-height:none;overscroll-behavior:auto}
+.viewport[data-preview=true][data-zoomed=true]{overflow:auto!important;max-height:640px!important;overscroll-behavior:auto!important}
 .viewport[data-preview=true],
 .viewport[data-preview=true] :is(.cardGrid,.cardRow,.cardSubHeader,svg){cursor:default}
 .viewport[data-preview=true] :is(.cardHeading,.inspectTable){cursor:pointer}
+:global(.diagram-lightbox) .viewport{overflow:auto!important;max-height:72vh!important;overscroll-behavior:contain!important}
 :global(.diagram-lightbox) .viewport[data-preview=true],
 :global(.diagram-lightbox) .viewport[data-preview=true] :is(.cardGrid,.cardRow,.cardSubHeader,svg){cursor:default}
 :global(.diagram-lightbox) .viewport[data-preview=true] :is(.cardHeading,.inspectTable){cursor:pointer}

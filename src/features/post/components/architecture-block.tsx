@@ -92,13 +92,27 @@ function ArchitectureBlockInner({ spec, title, expanded = false, interactive = f
     </foreignObject>;
   }
   const [hoveredEndpoint,setHoveredEndpoint]=useState<string|null>(null);
-  const scrollRef=useRef<HTMLDivElement>(null);
-  const fit=useDiagramFit(scrollRef,width,height,expanded,!interactive);
-  const zoomAnchor=useRef<{x:number;y:number;ratio:number;left:number;top:number}|null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const fit = useDiagramFit(scrollRef, width, height, expanded, !interactive);
+  const [internalZoom, setInternalZoom] = useState<number | null>(null);
+  const activeZoom = zoom ?? internalZoom;
+  const handleZoomChange = useCallback((next: number | null) => {
+    if (next === null) {
+      setInternalZoom(null);
+      return;
+    }
+    if (onZoomChange) {
+      onZoomChange(next);
+    } else {
+      setInternalZoom(next);
+    }
+  }, [onZoomChange]);
+  const viewScale = activeZoom !== null ? activeZoom : (interactive ? 1 : fit);
+  const zoomAnchor = useRef<{ x: number; y: number; ratio: number; left: number; top: number } | null>(null);
 
   const fitToView = useCallback(() => {
     const viewport = scrollRef.current;
-    if (!viewport || !interactive) return;
+    if (!viewport) return;
     const { clientWidth, clientHeight } = viewport;
     if (clientWidth <= 0 || clientHeight <= 0) return;
 
@@ -110,7 +124,7 @@ function ArchitectureBlockInner({ spec, title, expanded = false, interactive = f
     const rawZoom = Math.min(availW / bounds.width, availH / bounds.height);
     const nextZoom = clamp(Math.round(rawZoom * 100) / 100, 0.4, 2.0);
 
-    onZoomChange?.(nextZoom);
+    handleZoomChange(nextZoom);
 
     const contentCenterX = bounds.minX + bounds.width / 2;
     const contentCenterY = bounds.minY + bounds.height / 2;
@@ -123,29 +137,43 @@ function ArchitectureBlockInner({ spec, title, expanded = false, interactive = f
         scrollRef.current.scrollTo({ left: targetScrollX, top: targetScrollY, behavior: "smooth" });
       }
     });
-  }, [interactive, spec, positions, groups, onZoomChange]);
+  }, [spec, positions, groups, handleZoomChange]);
 
   useImperativeHandle(ref, () => ({
     fitToView,
   }), [fitToView]);
-  useEffect(()=>{
-    const viewport=scrollRef.current;
-    if(!interactive || !viewport) return;
-    const wheel=(event:WheelEvent)=>{
-      if(!onZoomChange || !(event.ctrlKey || event.metaKey)) return;
+
+  useEffect(() => {
+    const viewport = scrollRef.current;
+    if (!viewport) return;
+    const wheel = (event: WheelEvent) => {
+      if (!(event.ctrlKey || event.metaKey)) return;
       event.preventDefault();
-      const current=zoom??1, next=architectureZoom(current,event.deltaY*(event.deltaMode===1?16:event.deltaMode===2?viewport.clientHeight:1));
-      const rect=viewport.getBoundingClientRect();
-      zoomAnchor.current={x:event.clientX-rect.left,y:event.clientY-rect.top,ratio:next/current,left:viewport.scrollLeft,top:viewport.scrollTop};
-      onZoomChange(next);
+      event.stopPropagation();
+      const current = viewScale;
+      const next = architectureZoom(current, event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? viewport.clientHeight : 1));
+      const rect = viewport.getBoundingClientRect();
+      zoomAnchor.current = {
+        x: event.clientX - rect.left,
+        y: event.clientY - rect.top,
+        ratio: next / current,
+        left: viewport.scrollLeft,
+        top: viewport.scrollTop,
+      };
+      handleZoomChange(next);
     };
-    viewport.addEventListener("wheel",wheel,{passive:false});
-    return ()=>viewport.removeEventListener("wheel",wheel);
-  },[interactive,zoom,onZoomChange]);
-  useLayoutEffect(()=>{
-    const anchor=zoomAnchor.current, viewport=scrollRef.current;
-    if(anchor && viewport){viewport.scrollLeft=(anchor.left+anchor.x)*anchor.ratio-anchor.x;viewport.scrollTop=(anchor.top+anchor.y)*anchor.ratio-anchor.y;zoomAnchor.current=null;}
-  },[zoom]);
+    viewport.addEventListener("wheel", wheel, { passive: false });
+    return () => viewport.removeEventListener("wheel", wheel);
+  }, [viewScale, handleZoomChange]);
+
+  useLayoutEffect(() => {
+    const anchor = zoomAnchor.current, viewport = scrollRef.current;
+    if (anchor && viewport) {
+      viewport.scrollLeft = (anchor.left + anchor.x) * anchor.ratio - anchor.x;
+      viewport.scrollTop = (anchor.top + anchor.y) * anchor.ratio - anchor.y;
+      zoomAnchor.current = null;
+    }
+  }, [viewScale]);
   const connectionDrag=useRef<{source:string;side:ArchitectureSide;pointerId:number;startX:number;startY:number;point:ArchPoint;moved:boolean}|null>(null);
   const [connectionPreview,setConnectionPreview]=useState<{start:ArchPoint;end:ArchPoint;target:string|null}|null>(null);
   const dragRef = useRef<PointerDrag | null>(null);
@@ -507,24 +535,31 @@ function ArchitectureBlockInner({ spec, title, expanded = false, interactive = f
   const edgeLabel = (edge: ArchitectureEdge) => `${endpointLabel(edge.source)} ${edge.direction==="NONE"?"—":edge.direction==="BOTH"?"↔":"→"} ${endpointLabel(edge.target)}`;
   return <section className={`architecture-block${!interactive?" architecture-reader":""}${collapsed ? " is-collapsed" : ""}`} aria-label={title ?? "시스템 아키텍처 다이어그램"}>
     {title !== null && <div className="architecture-heading"><h2>{title}</h2><p>구성 요소와 데이터 흐름</p></div>}
-    {!interactive && !expanded && (
+    {!interactive && (
       <div className="architecture-reader-toolbar">
         <span className="architecture-reader-summary">
           {spec.groups.length > 0
             ? `그룹 ${spec.groups.length} · 구성 요소 ${spec.nodes.length} · 연결 ${spec.edges.length}`
             : `구성 요소 ${spec.nodes.length} · 연결 ${spec.edges.length}`}
         </span>
+        {(expanded || activeZoom !== null) ? (
+          <span className="architecture-reader-hint" style={{ fontSize: "11.5px", color: "var(--muted)", marginInline: "8px auto" }}>
+            Ctrl+휠로 다이어그램을 확대/축소할 수 있습니다.
+          </span>
+        ) : null}
         <div className="architecture-reader-actions">
-          <button
-            type="button"
-            className="architecture-toggle-collapse-btn"
-            aria-label={collapsed ? "아키텍처 다이어그램 펼치기" : "아키텍처 다이어그램 접기"}
-            aria-expanded={!collapsed}
-            onClick={() => setCollapsed(!collapsed)}
-          >
-            {collapsed ? "다이어그램 펼치기" : "다이어그램 접기"}
-          </button>
-          {!collapsed && (
+          {!expanded && (
+            <button
+              type="button"
+              className="architecture-toggle-collapse-btn"
+              aria-label={collapsed ? "아키텍처 다이어그램 펼치기" : "아키텍처 다이어그램 접기"}
+              aria-expanded={!collapsed}
+              onClick={() => setCollapsed(!collapsed)}
+            >
+              {collapsed ? "다이어그램 펼치기" : "다이어그램 접기"}
+            </button>
+          )}
+          {!expanded && !collapsed && (
             <button
               type="button"
               className="architecture-expand-btn"
@@ -534,6 +569,46 @@ function ArchitectureBlockInner({ spec, title, expanded = false, interactive = f
             >
               확대
             </button>
+          )}
+          {(expanded || activeZoom !== null) && (
+            <>
+              <button
+                type="button"
+                className="architecture-toggle-collapse-btn"
+                aria-label="아키텍처 축소"
+                disabled={viewScale <= 0.4}
+                onClick={() => handleZoomChange(Math.max(0.4, Math.round((viewScale - 0.1) * 100) / 100))}
+              >
+                −
+              </button>
+              <output style={{ minWidth: "38px", textAlign: "center", fontVariantNumeric: "tabular-nums", color: "var(--text)" }}>
+                {Math.round(viewScale * 100)}%
+              </output>
+              <button
+                type="button"
+                className="architecture-toggle-collapse-btn"
+                aria-label="아키텍처 확대"
+                disabled={viewScale >= 3}
+                onClick={() => handleZoomChange(Math.min(3, Math.round((viewScale + 0.1) * 100) / 100))}
+              >
+                ＋
+              </button>
+              <button
+                type="button"
+                className="architecture-toggle-collapse-btn"
+                onClick={() => handleZoomChange(1)}
+              >
+                100%
+              </button>
+              <button
+                type="button"
+                className="architecture-toggle-collapse-btn"
+                onClick={() => handleZoomChange(null)}
+                title="모든 구성 요소가 보이도록 화면에 맞춥니다"
+              >
+                화면 맞춤
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -552,12 +627,13 @@ function ArchitectureBlockInner({ spec, title, expanded = false, interactive = f
       <div
         ref={scrollRef}
         className="architecture-scroll"
+        data-zoomed={activeZoom !== null}
         style={
           interactive
             ? { height: `${Math.min(520, Math.max(340, Math.round(height * (zoom ?? 1) + 20)))}px` }
             : undefined
         }
-        onClick={!interactive && !expanded ? () => setViewerOpen(true) : undefined}
+        onClick={!interactive && !expanded && activeZoom === null ? () => setViewerOpen(true) : undefined}
         onPointerDown={event => {
           if (interactive && event.target === event.currentTarget) {
             setEditingName(null);
@@ -577,7 +653,37 @@ function ArchitectureBlockInner({ spec, title, expanded = false, interactive = f
         tabIndex={0}
         aria-label="가로 스크롤 가능한 아키텍처 다이어그램"
       >
-        <svg className={`architecture-svg${connecting ? " is-canvas-connecting" : ""}`} onPointerDown={beginCanvasMarquee} onPointerMove={moveCanvasMarquee} onPointerUp={event=>endCanvasMarquee(event)} onPointerCancel={event=>endCanvasMarquee(event, true)} onLostPointerCapture={event=>endCanvasMarquee(event, true)} style={interactive && zoom!==undefined ? {width:`${Math.round(width*zoom)}px`,height:`${Math.round(height*zoom)}px`,minWidth:`${Math.round(width*zoom)}px`,minHeight:`${Math.round(height*zoom)}px`,flexShrink:0} : !interactive ? {width:width*fit,height:height*fit,minWidth:0,maxWidth:"100%"}:undefined} width={width} height={height} viewBox={`0 0 ${width} ${height}`} role="group" aria-label={title ?? "시스템 아키텍처"}>
+        <svg
+          className={`architecture-svg${connecting ? " is-canvas-connecting" : ""}`}
+          onPointerDown={beginCanvasMarquee}
+          onPointerMove={moveCanvasMarquee}
+          onPointerUp={event => endCanvasMarquee(event)}
+          onPointerCancel={event => endCanvasMarquee(event, true)}
+          onLostPointerCapture={event => endCanvasMarquee(event, true)}
+          style={
+            (activeZoom !== null || (interactive && zoom !== undefined))
+              ? {
+                  width: `${Math.round(width * viewScale)}px`,
+                  height: `${Math.round(height * viewScale)}px`,
+                  minWidth: `${Math.round(width * viewScale)}px`,
+                  minHeight: `${Math.round(height * viewScale)}px`,
+                  flexShrink: 0,
+                }
+              : !interactive
+                ? {
+                    width: width * fit,
+                    height: height * fit,
+                    minWidth: 0,
+                    maxWidth: "100%",
+                  }
+                : undefined
+          }
+          width={width}
+          height={height}
+          viewBox={`0 0 ${width} ${height}`}
+          role="group"
+          aria-label={title ?? "시스템 아키텍처"}
+        >
           <rect className="arch-canvas-bg" width={width} height={height} fill="transparent" pointerEvents="all" />
           <defs><marker id={`${id}-arrow`} markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto-start-reverse"><path d="M0,0 L8,4 L0,8 z" fill="#78869a" /></marker></defs>
           {[...spec.groups].sort((a, b) => {
