@@ -15,7 +15,11 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="ko" data-theme="light" suppressHydrationWarning>
-      <head><link rel="stylesheet" href="/fonts/pretendard/pretendard.css"/><script dangerouslySetInnerHTML={{__html:themeBootstrap}}/></head>
+      <head>
+        <link rel="stylesheet" href="/fonts/jetbrains-mono/jetbrains-mono.css" />
+        <link rel="stylesheet" href="/fonts/pretendard/pretendard.css"/>
+        <script dangerouslySetInnerHTML={{__html:themeBootstrap}}/>
+      </head>
       <body>{children}<SiteFooter/></body>
     </html>
   );
