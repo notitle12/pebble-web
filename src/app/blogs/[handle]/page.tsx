@@ -1,3 +1,4 @@
+import {featuredProjectIdsForHome} from "@/features/blog-home/api/blog-home";
 import {loadBlogPageData} from "@/features/blog-tools/api/blog-page";
 import {BlogSidebar} from "@/features/blog-tools/components/blog-sidebar";
 import {flattenBoards,type Board} from "@/features/board/api/boards";
@@ -49,7 +50,7 @@ export default async function PublicBlogPage({ params, searchParams }: {
   let result:PostPage|undefined;let sidebarProjects:ProjectPage|undefined;let projectError=false;let projectsResult:ProjectPage|undefined;let projectsError=false;let author:PublicBlogProfile|undefined;let home:PublicBlogHome|null=null;let homeError=false;let homeProjects:ProjectDetail[]=[];let homeProjectErrors=0;let homePosts:PostPage|null=null;let homePostsFailed=false;let boards:Board[]=[];let boardError=false;let links:BlogLinks|null=null;let linksError=false;
   try {
     ({author,links,linksError,boards,boardError,sidebarProjects,projectError,home,homeError,projectsResult,projectsError,result}=await loadBlogPageData({handle,page,homeView,projectView,selected,q}));
-    if(homeView&&home){ const {recentPosts:showPosts,featuredProjects:showProjects}=visibleHomeDataLoads(home); const [postResults,projectResults]=await Promise.all([Promise.allSettled(showPosts?[loadPopularPosts(page=>getPublicBlogPosts(handle,page))]:[]),Promise.allSettled(showProjects?home.featuredProjectIds.map(id=>getPublicProject(id).then(project=>{if(project.owner.id!==author!.id)throw new GuestApiError("response");return project})):[])]); const postResult=postResults[0]; if(postResult?.status==="fulfilled")homePosts=postResult.value; else if(postResult)homePostsFailed=true; homeProjects=projectResults.flatMap(item=>item.status==="fulfilled"?[item.value]:[]); homeProjectErrors=projectResults.filter(item=>item.status==="rejected").length; }
+    if(homeView&&home){ const {recentPosts:showPosts,featuredProjects:showProjects}=visibleHomeDataLoads(home); const [postResults,projectResults]=await Promise.all([Promise.allSettled(showPosts?[loadPopularPosts(page=>getPublicBlogPosts(handle,page))]:[]),Promise.allSettled(showProjects?featuredProjectIdsForHome(home).map(id=>getPublicProject(id).then(project=>{if(project.owner.id!==author!.id)throw new GuestApiError("response");return project})):[])]); const postResult=postResults[0]; if(postResult?.status==="fulfilled")homePosts=postResult.value; else if(postResult)homePostsFailed=true; homeProjects=projectResults.flatMap(item=>item.status==="fulfilled"?[item.value]:[]); homeProjectErrors=projectResults.filter(item=>item.status==="rejected").length; }
   } catch (error) {
     if (error instanceof GuestApiError && error.kind === "not-found") notFound();
     const message = error instanceof GuestApiError && error.kind === "configuration"

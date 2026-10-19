@@ -50,6 +50,11 @@ export async function getPublicProjects(query: ProjectQuery, baseUrl = process.e
   return parseProjectPage(await guestJson(validated.q ? "projects/search" : "projects",params,baseUrl,request),query.page);
 }
 
+/** One globally ranked page, including the same thumbnail metadata as the latest list. */
+export async function getPopularProjects(baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL, request: typeof fetch = fetch): Promise<ProjectPage> {
+  return parseProjectPage(await guestJson("projects/popular", new URLSearchParams({page:"0",size:"20"}), baseUrl, request), 0);
+}
+
 export type ProjectFeature = {id:string;title:string;description:string|null;displayOrder:number};
 export type ProjectLink = {id:string;linkType:string;label:string|null;url:string;displayOrder:number};
 export type ProjectDetail = ProjectSummary & {document?:ProjectDocument|null;description:string|null;architectureDescription:string|null;executionInstructions:string|null;startedOn:string|null;completedOn:string|null;media:ProjectMedia[];features:ProjectFeature[];links:ProjectLink[]};
