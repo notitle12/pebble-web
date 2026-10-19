@@ -841,8 +841,8 @@ export function DatabaseDiagram({
       if (event.button !== 0 && event.button !== 1) return;
       const target = event.target as HTMLElement;
       if (target.closest('input,button,select,textarea')) return;
-      if (editable && target.closest('article, [data-relation-id], .bendHandleGroup')) return;
-      if (!editable && target.closest('article, [data-relation-id], button, input, select')) return;
+      if (editable && target.closest('article[data-table-id], [data-relation-id], .bendHandleGroup')) return;
+      if (!editable && target.closest('article[data-table-id], [data-relation-id], button, input, select')) return;
 
       const view = viewport.current;
       if (!view) return;
@@ -1067,7 +1067,7 @@ export function DatabaseDiagram({
        suppressClick.current = false;
        return;
       }
-      if (target.closest('article, [data-relation-id]')) return;
+      if (target.closest('article[data-table-id], [data-relation-id]')) return;
       clear();
       if (!editable && !expanded && onExpand) {
        onExpand();
