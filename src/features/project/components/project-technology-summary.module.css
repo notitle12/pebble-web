@@ -3,7 +3,7 @@
   flex-direction: column;
   gap: 8px;
   padding: 12px 14px;
-  margin: 14px 0 18px;
+  margin: 0;
   background: var(--surface-soft, #f8fafc);
   border: 1px solid var(--line, #e0e7f1);
   border-radius: 10px;

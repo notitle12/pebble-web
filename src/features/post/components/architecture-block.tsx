@@ -425,8 +425,43 @@ function ArchitectureBlockInner({ spec, title, expanded = false, interactive = f
   const edgeLabel = (edge: ArchitectureEdge) => `${endpointLabel(edge.source)} ${edge.direction==="NONE"?"—":edge.direction==="BOTH"?"↔":"→"} ${endpointLabel(edge.target)}`;
   return <section className={`architecture-block${!interactive?" architecture-reader":""}`} aria-label={title ?? "시스템 아키텍처 다이어그램"}>
     {title !== null && <div className="architecture-heading"><h2>{title}</h2><p>구성 요소와 데이터 흐름</p></div>}
-    {!interactive&&!expanded&&<DiagramLightbox label="아키텍처" open={viewerOpen} onOpenChange={setViewerOpen}>{()=> <ArchitectureBlockInner spec={spec} title={title} expanded/>}</DiagramLightbox>}
-    <div ref={scrollRef} className="architecture-scroll" onClick={!interactive&&!expanded?()=>setViewerOpen(true):undefined} onPointerDown={event=>{if(interactive && event.target===event.currentTarget){setEditingName(null);onClearSelection?.();}}} onKeyDown={event => { if (interactive && (event.key === " " || event.code === "Space")) { const target = event.target as HTMLElement; if (target.closest("input,textarea,select,[contenteditable=true]")) return; event.preventDefault(); event.stopPropagation(); fitToView(); } }} role="region" tabIndex={0} aria-label="가로 스크롤 가능한 아키텍처 다이어그램">
+    {!interactive && !expanded && (
+      <div className="architecture-reader-toolbar">
+        <span className="architecture-reader-summary">
+          {spec.groups.length > 0
+            ? `그룹 ${spec.groups.length} · 구성 요소 ${spec.nodes.length} · 연결 ${spec.edges.length}`
+            : `구성 요소 ${spec.nodes.length} · 연결 ${spec.edges.length}`}
+        </span>
+        <button
+          type="button"
+          className="architecture-expand-btn"
+          aria-label="아키텍처 확대 보기"
+          onClick={() => setViewerOpen(true)}
+          title="아키텍처 다이어그램 확대"
+        >
+          확대
+        </button>
+      </div>
+    )}
+    {!interactive && !expanded && (
+      <DiagramLightbox
+        label="아키텍처"
+        hideTrigger
+        open={viewerOpen}
+        onOpenChange={setViewerOpen}
+      >
+        {() => <ArchitectureBlockInner spec={spec} title={title} expanded />}
+      </DiagramLightbox>
+    )}
+    <div
+      ref={scrollRef}
+      className="architecture-scroll"
+      style={
+        interactive
+          ? { height: `${Math.min(520, Math.max(340, Math.round(height * (zoom ?? 1) + 20)))}px` }
+          : undefined
+      }
+      onClick={!interactive && !expanded ? () => setViewerOpen(true) : undefined} onPointerDown={event=>{if(interactive && event.target===event.currentTarget){setEditingName(null);onClearSelection?.();}}} onKeyDown={event => { if (interactive && (event.key === " " || event.code === "Space")) { const target = event.target as HTMLElement; if (target.closest("input,textarea,select,[contenteditable=true]")) return; event.preventDefault(); event.stopPropagation(); fitToView(); } }} role="region" tabIndex={0} aria-label="가로 스크롤 가능한 아키텍처 다이어그램">
       <svg className={`architecture-svg${connecting ? " is-canvas-connecting" : ""}`} onPointerDown={beginCanvasMarquee} onPointerMove={moveCanvasMarquee} onPointerUp={event=>endCanvasMarquee(event)} onPointerCancel={event=>endCanvasMarquee(event, true)} onLostPointerCapture={event=>endCanvasMarquee(event, true)} style={interactive && zoom!==undefined ? {width:`${Math.round(width*zoom)}px`,height:`${Math.round(height*zoom)}px`,minWidth:`${Math.round(width*zoom)}px`,minHeight:`${Math.round(height*zoom)}px`,flexShrink:0} : !interactive ? {width:width*fit,height:height*fit,minWidth:0,maxWidth:"100%"}:undefined} width={width} height={height} viewBox={`0 0 ${width} ${height}`} role="group" aria-label={title ?? "시스템 아키텍처"}>
         <rect className="arch-canvas-bg" width={width} height={height} fill="transparent" pointerEvents="all" />
         <defs><marker id={`${id}-arrow`} markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto-start-reverse"><path d="M0,0 L8,4 L0,8 z" fill="#78869a" /></marker></defs>
