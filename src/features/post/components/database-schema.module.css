@@ -46,9 +46,9 @@
 .card[data-editable=true] .cardHeading{cursor:grab}
 .card[data-editable=true] .cardHeading:active{cursor:grabbing}
 
-.cardTitleLabel{flex:1;max-width:210px;min-width:0;padding:2px 6px;border-radius:4px;font-size:13.5px;font-weight:700;text-align:center;color:#1e293b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:grab;user-select:none}
+.cardTitleLabel{flex:0 0 210px;width:210px;max-width:210px;min-width:0;height:26px;line-height:22px;padding:2px 6px;border-radius:4px;font-size:13.5px;font-weight:700;text-align:center;color:#1e293b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:grab;user-select:none;box-sizing:border-box}
 .cardTitleLabel:hover{background:rgba(255,255,255,.55)}
-.cardTitleInput{flex:1;max-width:210px;min-width:0;height:26px!important;min-height:26px!important;padding:0 6px!important;line-height:24px!important;border:1.5px solid var(--accent,#4770d6)!important;border-radius:4px!important;background:var(--surface,#fff)!important;font-size:13.5px!important;font-weight:700!important;text-align:center!important;color:var(--text,#1e293b)!important;box-sizing:border-box!important;outline:none!important}
+.cardHeading .cardTitleInput,.cardTitleInput{flex:0 0 210px!important;width:210px!important;max-width:210px!important;min-width:0!important;height:26px!important;min-height:26px!important;padding:0 6px!important;line-height:24px!important;border:1.5px solid var(--accent,#4770d6)!important;border-radius:4px!important;background:var(--surface,#fff)!important;font-size:13.5px!important;font-weight:700!important;text-align:center!important;color:var(--text,#1e293b)!important;box-sizing:border-box!important;outline:none!important;box-shadow:none!important}
 
 /* Table Delete Button (right side of header, shown on card hover) */
 .cardDeleteBtn{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:22px;height:22px!important;min-height:0!important;padding:0!important;border:0!important;border-radius:4px!important;background:transparent!important;color:#64748b!important;font-size:15px!important;line-height:1!important;display:inline-flex;align-items:center;justify-content:center;opacity:0;transition:opacity .12s ease}
@@ -175,7 +175,7 @@
 .relationEditorPanel{display:flex;flex-direction:column;gap:8px;padding:10px 14px;background:rgba(244,248,255,.97);backdrop-filter:blur(6px);color:var(--text,#1e293b)}
 .relationEditorTop{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
 .relationEditorTitle{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:12.5px}
-.relationArrowText{color:var(--accent,#4770d6);font-weight:700}
+.relationArrowText{color:var(--accent,#4770d6);font-weight:700;display:inline-flex;align-items:center;vertical-align:middle;line-height:1}
 .relationEditorActions{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-left:auto}
 .notationSwitch{display:inline-flex;border:1px solid #cbd5e1;border-radius:6px;overflow:hidden;background:#fff}
 .notationSwitch button{border:0!important;border-radius:0!important;padding:5px 10px!important;font-size:11.5px!important;background:transparent!important;color:#64748b!important}
@@ -348,7 +348,7 @@
 .shapePicker path,.shapePicker circle{fill:none;stroke:currentColor;stroke-width:1.6}
 .shapePicker circle{fill:white}
 .shapePicker text{fill:currentColor;font:13px system-ui}
-.shapePicker span{font-size:10.5px;white-space:nowrap}
+.shapePicker span{font-size:10.5px;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;line-height:1}
 
 .srOnly{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
 /* Tab switcher bar at top of DatabaseSchemaBlock */
@@ -361,8 +361,8 @@
 
 .selectedSpecification{position:relative;margin-top:14px;padding:0;border:0;background:transparent}
 .closeSpecification{display:none}
-.viewport[data-preview=true]{overflow:hidden;max-height:none;overscroll-behavior:auto;cursor:grab}
-.viewport[data-preview=true][data-zoomed=true]{overflow:auto!important;max-height:640px!important;overscroll-behavior:auto!important;cursor:grab}
+.viewport[data-preview=true]{overflow:hidden;max-height:none;overscroll-behavior:auto;cursor:zoom-in}
+.viewport[data-preview=true][data-zoomed=true]{overflow:auto!important;max-height:640px!important;overscroll-behavior:auto!important;cursor:zoom-in}
 .viewport.isPanning{cursor:grabbing!important;user-select:none}
 .viewport[data-preview=true] :is(.cardGrid,.cardRow,.cardSubHeader,svg){cursor:default}
 .viewport[data-preview=true] :is(.cardHeading,.inspectTable){cursor:pointer}
@@ -458,3 +458,5 @@
 :global(html[data-theme=dark]) .cardReadFooterHint{color:var(--focus,#60a5fa)}
 :global(html[data-theme=dark]) .specCloseBtn{background:var(--surface)!important;border-color:var(--line)!important;color:var(--muted)!important}
 :global(html[data-theme=dark]) .specCloseBtn:hover{background:#451a1a!important;color:#f87171!important;border-color:#7f1d1d!important}
+
+.marqueeBox{position:absolute;border:1.5px dashed var(--accent,#4770d6);background:rgba(71,112,214,.12);border-radius:4px;pointer-events:none;z-index:50}

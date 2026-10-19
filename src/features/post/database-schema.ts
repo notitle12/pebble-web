@@ -66,6 +66,13 @@ export function updateDbColumn(schema:DatabaseSchema,tableId:string,columnId:str
 }
 function clearReferences(schema:DatabaseSchema,tableId:string,columnId?:string):DatabaseSchema{return {...schema,tables:schema.tables.map(t=>({...t,columns:t.columns.map(c=>c.reference?.tableId===tableId&&(!columnId||c.reference.columnId===columnId)?{...c,reference:null}:c)}))};}
 export function removeDbTable(schema:DatabaseSchema,id:string):DatabaseSchema{return clearReferences({...schema,tables:schema.tables.filter(t=>t.id!==id)},id);}
+/** Delete one selection atomically and clear references to every removed table. */
+export function removeDbTables(schema:DatabaseSchema, ids:Iterable<string>):DatabaseSchema {
+ const removed=new Set(ids);
+ const tables=schema.tables.filter(t=>!removed.has(t.id));
+ if (!tables.length || tables.length===schema.tables.length) return schema;
+ return {...schema,tables:tables.map(t=>({...t,columns:t.columns.map(c=>c.reference && removed.has(c.reference.tableId)?{...c,reference:null}:c)}))};
+}
 export function removeDbColumn(schema:DatabaseSchema,tableId:string,columnId:string):DatabaseSchema{return clearReferences({...schema,tables:schema.tables.map(t=>t.id!==tableId?t:{...t,columns:t.columns.filter(c=>c.id!==columnId)})},tableId,columnId);}
 export function schemaTableSpec(schema:DatabaseSchema,t:DbTable){return {schemaVersion:1 as const,tableName:t.name,description:t.description,columns:t.columns.map(c=>{const target=schema.tables.find(t=>t.id===c.reference?.tableId);const column=target?.columns.find(k=>k.id===c.reference?.columnId);return {name:c.name,logicalName:c.logicalName??'',dataType:c.dataType,nullable:c.nullable,primaryKey:c.primaryKey,foreignKey:target&&column?`${target.name}.${column.name}`:null,unique:c.unique,defaultValue:c.defaultValue??'',autoIncrement:Boolean(c.autoIncrement),description:c.description};})};}
 
