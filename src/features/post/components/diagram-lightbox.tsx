@@ -21,6 +21,7 @@ export function DiagramLightbox({
   const setOpen = onOpenChange ?? setLocalOpen;
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
+  const backdropPressed = useRef(false);
 
   useEffect(() => {
     const dialog = ref.current;
@@ -68,8 +69,16 @@ export function DiagramLightbox({
           className="diagram-lightbox"
           aria-labelledby={titleId}
           onClose={() => setOpen(false)}
-          onClick={(event) => {
-            if (event.target === event.currentTarget) setOpen(false);
+          onPointerDown={event => {
+            const rect=event.currentTarget.getBoundingClientRect();
+            backdropPressed.current=event.target===event.currentTarget &&
+              (event.clientX<rect.left || event.clientX>rect.right || event.clientY<rect.top || event.clientY>rect.bottom);
+          }}
+          onClick={event => {
+            const rect=event.currentTarget.getBoundingClientRect();
+            if (backdropPressed.current && event.target===event.currentTarget &&
+              (event.clientX<rect.left || event.clientX>rect.right || event.clientY<rect.top || event.clientY>rect.bottom)) setOpen(false);
+            backdropPressed.current=false;
           }}
         >
           <header>

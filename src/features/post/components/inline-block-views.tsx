@@ -28,7 +28,7 @@ function tableError(spec: TableSpec): string {
   }
 }
 
-export function TableTextInput({ value, disabled, onCommit, ...props }: Omit<InputHTMLAttributes<HTMLInputElement>, "value" | "onChange" | "onCompositionStart" | "onCompositionEnd"> & { value: string; onCommit: (value: string) => void }) {
+export function TableTextInput({ value, disabled, onCommit, onBlur, ...props }: Omit<InputHTMLAttributes<HTMLInputElement>, "value" | "onChange" | "onCompositionStart" | "onCompositionEnd"> & { value: string; onCommit: (value: string) => void }) {
   const [draft, setDraft] = useState(value);
   const composition = useRef<TableInputCompositionState>({ composing: false });
   useEffect(() => { if (!composition.current.composing) setDraft(value); }, [value]);
@@ -42,7 +42,7 @@ export function TableTextInput({ value, disabled, onCommit, ...props }: Omit<Inp
     onCompositionStart={() => handleComposition({ type: "compositionstart" })}
     onChange={event => handleComposition({ type: "change", value: event.currentTarget.value })}
     onCompositionEnd={event => handleComposition({ type: "compositionend", value: event.currentTarget.value })}
-    onBlur={event => handleComposition({ type: "blur", value: event.currentTarget.value })} />;
+    onBlur={event => { handleComposition({ type: "blur", value: event.currentTarget.value }); onBlur?.(event); }} />;
 }
 
 export function InlineCodeView({ node, editor, updateAttributes, deleteNode }: NodeViewProps) {
