@@ -84,8 +84,8 @@ export function architectureLayout(spec: ArchitectureSpec): { positions: Map<str
     const point = positions.get(node.id)!;
     return point.x + architectureNodeWidth(node.label) + 64;
   });
-  const width = Math.max(620, ...spec.edges.flatMap(edge=>edge.waypoint?[edge.waypoint.x+64]:[]), ...allNodeRight, ...Array.from(groups.values(), (box) => box.x + box.width + 32));
-  const height = Math.max(420, ...spec.edges.flatMap(edge=>edge.waypoint?[edge.waypoint.y+64]:[]), ...Array.from(positions.values(), (point) => point.y + ARCH_NODE_HEIGHT + 64), ...Array.from(groups.values(), (box) => box.y + box.height + 32));
+  const width = Math.max(680, ...spec.edges.flatMap(edge=>edge.waypoint?[edge.waypoint.x+80]:[]), ...allNodeRight, ...Array.from(groups.values(), (box) => box.x + box.width + 64));
+  const height = Math.max(460, ...spec.edges.flatMap(edge=>edge.waypoint?[edge.waypoint.y+80]:[]), ...Array.from(positions.values(), (point) => point.y + ARCH_NODE_HEIGHT + 80), ...Array.from(groups.values(), (box) => box.y + box.height + 64));
   return { positions, groups, width, height };
 }
 
