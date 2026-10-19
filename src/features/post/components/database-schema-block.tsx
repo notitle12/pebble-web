@@ -30,6 +30,55 @@ import s from './database-schema.module.css';
 import { useDiagramFit } from './use-diagram-fit';
 import { DiagramLightbox } from './diagram-lightbox';
 
+function resolveTablePositions(
+ rawTables: DatabaseSchema['tables'],
+ cardWidth: number,
+ sizes: Record<string, DbSize>,
+ editable: boolean,
+ movingId?: string
+): DatabaseSchema['tables'] {
+ if (rawTables.length <= 1) return rawTables;
+
+ const sortedIndices = rawTables
+  .map((t, idx) => ({ t, idx }))
+  .sort((a, b) => a.t.position.x - b.t.position.x);
+
+ const resolved = rawTables.map(t => ({ ...t, position: { ...t.position } }));
+ const minGap = 28;
+
+ for (let i = 0; i < sortedIndices.length; i++) {
+  const currIdx = sortedIndices[i].idx;
+  const curr = resolved[currIdx];
+  if (curr.id === movingId) continue;
+
+  const currH =
+   sizes[curr.id]?.height ??
+   (42 + curr.columns.length * 32 + (editable ? 32 : 0));
+
+  for (let j = 0; j < i; j++) {
+   const prevIdx = sortedIndices[j].idx;
+   const prev = resolved[prevIdx];
+   const prevW = sizes[prev.id]?.width ?? cardWidth;
+   const prevH =
+    sizes[prev.id]?.height ??
+    (42 + prev.columns.length * 32 + (editable ? 32 : 0));
+
+   const vOverlap =
+    Math.max(curr.position.y, prev.position.y) <
+    Math.min(curr.position.y + currH, prev.position.y + prevH) - 10;
+
+   if (vOverlap) {
+    const requiredX = prev.position.x + prevW + minGap;
+    if (curr.position.x < requiredX) {
+     curr.position.x = requiredX;
+    }
+   }
+  }
+ }
+
+ return resolved;
+}
+
 export function DatabaseDiagram({
  schema,
  actions,
@@ -171,16 +220,18 @@ export function DatabaseDiagram({
   return () => observer.disconnect();
  }, [cardIds, schema, namingMode]);
 
- const tables = useMemo(
-  () =>
-   schema.tables.map(t => {
-    const sorted = sortDbColumns(t.columns);
-    return moving?.id === t.id
-     ? { ...t, columns: sorted, position: { x: moving.x, y: moving.y } }
-     : { ...t, columns: sorted };
-   }),
-  [schema, moving]
- );
+ const tables = useMemo(() => {
+  const base = schema.tables.map(t => {
+   const sorted = sortDbColumns(t.columns);
+   return moving?.id === t.id
+    ? { ...t, columns: sorted, position: { x: moving.x, y: moving.y } }
+    : { ...t, columns: sorted };
+  });
+  if (namingMode === 'both') {
+   return resolveTablePositions(base, defaultCardWidth, sizes, editable, moving?.id);
+  }
+  return base;
+ }, [schema, moving, namingMode, defaultCardWidth, sizes, editable]);
  const links = useMemo(
   () => {
    const centers = { ...colCenters };
@@ -376,10 +427,6 @@ export function DatabaseDiagram({
  }, []);
 
  const selectTable = (id: string) => {
-  if (onExpand) {
-   onExpand();
-   return;
-  }
   setRelation(null);
   setHover(null);
   if (onSelectTable) onSelectTable(id);
@@ -516,6 +563,17 @@ export function DatabaseDiagram({
     {focused && (
      <button type="button" onClick={clear}>
       강조 해제
+     </button>
+    )}
+    {!editable && onExpand && (
+     <button
+      type="button"
+      className={s.diagramExpandBtn}
+      aria-label="데이터베이스 확대 보기"
+      onClick={onExpand}
+      title="데이터베이스 다이어그램 확대"
+     >
+      확대
      </button>
     )}
     {editable ? (
@@ -754,8 +812,10 @@ export function DatabaseDiagram({
             const el = e.target as HTMLElement;
             if (el.closest('input,button,select,textarea')) return;
             actions.connectToTable?.(actions.connectingFrom, t.id);
-           } else if (!editable && onExpand) {
-            onExpand();
+           } else if (!editable) {
+            const el = e.target as HTMLElement;
+            if (el.closest('button,input,select,textarea')) return;
+            selectTable(t.id);
            }
           }}
          >
@@ -878,7 +938,10 @@ export function DatabaseDiagram({
              type="button"
              className={s.inspectTable}
              aria-label={`${t.name || '새 테이블'} 컬럼 상세 보기`}
-             onClick={() => selectTable(t.id)}
+             onClick={e => {
+              e.stopPropagation();
+              selectTable(t.id);
+             }}
             >
              {t.name || '새 테이블'}
             </button>
@@ -1177,6 +1240,15 @@ export function DatabaseDiagram({
             </button>
            </div>
           )}
+
+          {!actions && (
+           <div className={s.cardReadFooter}>
+            <span>총 {t.columns.length}개 칼럼</span>
+            <span className={s.cardReadFooterHint}>
+             {activeTable === t.id ? '선택됨' : '클릭하여 상세 보기'}
+            </span>
+           </div>
+          )}
          </article>
         );
        })}
@@ -1214,14 +1286,30 @@ export function DatabaseDiagram({
 export function DatabaseSpecifications({
  schema,
  referenceSchema = schema,
+ onExpand,
+ onClose,
+ hideNav = false,
+ collapsedIds: controlledCollapsedIds,
+ onToggleCollapse,
 }: {
  schema: DatabaseSchema;
  referenceSchema?: DatabaseSchema;
+ onExpand?: () => void;
+ onClose?: () => void;
+ hideNav?: boolean;
+ collapsedIds?: Set<string>;
+ onToggleCollapse?: (id: string) => void;
 }) {
- const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
+ const [localCollapsedIds, setLocalCollapsedIds] = useState<Set<string>>(new Set());
+ const collapsedIds = controlledCollapsedIds ?? localCollapsedIds;
+ const isCollapseControlled = controlledCollapsedIds !== undefined;
 
  const toggleCollapse = (tableId: string) => {
-  setCollapsedIds(prev => {
+  if (onToggleCollapse) {
+   onToggleCollapse(tableId);
+   return;
+  }
+  setLocalCollapsedIds(prev => {
    const next = new Set(prev);
    if (next.has(tableId)) next.delete(tableId);
    else next.add(tableId);
@@ -1229,56 +1317,31 @@ export function DatabaseSpecifications({
   });
  };
 
+ const toggleAll = () => {
+  const allCollapsed = schema.tables.length > 0 && schema.tables.every(table => collapsedIds.has(table.id));
+  if (isCollapseControlled) {
+   if (!onToggleCollapse) return;
+   for (const table of schema.tables) {
+    if (collapsedIds.has(table.id) === allCollapsed) onToggleCollapse(table.id);
+   }
+   return;
+  }
+  setLocalCollapsedIds(allCollapsed ? new Set() : new Set(schema.tables.map(table => table.id)));
+ };
+
  return (
   <div className={s.specifications}>
-   {/* 상단 퀵점프 목차 바 */}
-   <div className={s.specNav} role="navigation" aria-label="테이블 목차 및 퀵점프">
-    <div className={s.specNavScroll}>
-     <span className={s.specNavLabel}>목차 ({schema.tables.length})</span>
-     {schema.tables.map((t, idx) => {
-      const color = DB_TABLE_COLORS[idx % DB_TABLE_COLORS.length];
-      const isCollapsed = collapsedIds.has(t.id);
-      return (
-       <button
-        key={t.id}
-        type="button"
-        className={s.specNavChip}
-        style={{ '--table-color': color } as React.CSSProperties}
-        title={`${t.name || '새 테이블'} 위치로 이동`}
-        onClick={() => {
-         if (isCollapsed) {
-          setCollapsedIds(prev => {
-           const next = new Set(prev);
-           next.delete(t.id);
-           return next;
-          });
-         }
-         document.getElementById(`spec-view-${t.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }}
-       >
-        <span className={s.specNavChipNum}>{String(idx + 1).padStart(2, '0')}</span>
-        <span className={s.specNavChipName}>{t.name || '새 테이블'}</span>
-        <span className={s.specNavChipCount}>{t.columns.length}</span>
-       </button>
-      );
-     })}
-    </div>
-    <div className={s.specNavActions}>
+   {!hideNav && schema.tables.length > 1 && (
+    <div className={s.specTopActions}>
      <button
       type="button"
       className={s.specNavToggleAll}
-      onClick={() => {
-       if (collapsedIds.size > 0) {
-        setCollapsedIds(new Set());
-       } else {
-        setCollapsedIds(new Set(schema.tables.map(t => t.id)));
-       }
-      }}
+      onClick={toggleAll}
      >
-      {collapsedIds.size > 0 ? '모두 펼치기' : '모두 접기'}
+      {schema.tables.length > 0 && schema.tables.every(table => collapsedIds.has(table.id)) ? '모두 펼치기' : '모두 접기'}
      </button>
     </div>
-   </div>
+   )}
 
    {schema.tables.map((t, idx) => {
     const color = DB_TABLE_COLORS[idx % DB_TABLE_COLORS.length];
@@ -1299,15 +1362,28 @@ export function DatabaseSpecifications({
         <span>{t.name}</span>
         <span className={s.tableColCountBadge}>칼럼 {t.columns.length}개</span>
        </span>
-       <button
-        type="button"
-        className={s.specCollapseBtn}
-        aria-expanded={!isCollapsed}
-        title={isCollapsed ? '테이블 펼치기' : '테이블 접기'}
-        onClick={() => toggleCollapse(t.id)}
-       >
-        {isCollapsed ? '펼치기 ▼' : '접기 ▲'}
-       </button>
+       <div className={s.specHeaderActions}>
+        <button
+         type="button"
+         className={s.specCollapseBtn}
+         aria-expanded={!isCollapsed}
+         title={isCollapsed ? '테이블 펼치기' : '테이블 접기'}
+         onClick={() => toggleCollapse(t.id)}
+        >
+         {isCollapsed ? '펼치기 ▼' : '접기 ▲'}
+        </button>
+        {onClose && (
+         <button
+          type="button"
+          className={s.specCloseBtn}
+          aria-label="상세 닫기"
+          title="상세 닫기"
+          onClick={onClose}
+         >
+          ✕
+         </button>
+        )}
+       </div>
       </h3>
       {t.description && !isCollapsed && <p>{t.description}</p>}
 
@@ -1385,15 +1461,52 @@ export function DatabaseSchemaBlock({
  schema,
  title,
  expanded = false,
+ initialView = 'ERD',
 }: {
  schema: DatabaseSchema;
  title: string | null;
  expanded?: boolean;
+ initialView?: 'ERD' | 'SPEC';
 }) {
  const [selected, setSelected] = useState<string | null>(null);
  const [viewerOpen, setViewerOpen] = useState(false);
+ const [viewTab, setViewTab] = useState<'ERD' | 'SPEC'>(initialView);
+ const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
  const detailId = useId();
+ const tabId = useId();
+ const erdTabRef = useRef<HTMLButtonElement>(null);
+ const specTabRef = useRef<HTMLButtonElement>(null);
  const root = useRef<HTMLElement>(null);
+
+ const activeTab = schema.display === 'SPEC' ? 'SPEC' : schema.display === 'ERD' ? 'ERD' : viewTab;
+ const showTabs = schema.display === 'BOTH';
+ const panelId = `${tabId}-panel`;
+ const erdTabId = `${tabId}-erd`;
+ const specTabId = `${tabId}-spec`;
+
+ const focusTab = (next: 'ERD' | 'SPEC') => {
+  setViewTab(next);
+  (next === 'ERD' ? erdTabRef : specTabRef).current?.focus();
+ };
+
+ const onTabKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {
+  let next: 'ERD' | 'SPEC' | null = null;
+  if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') next = activeTab === 'ERD' ? 'SPEC' : 'ERD';
+  else if (event.key === 'Home') next = 'ERD';
+  else if (event.key === 'End') next = 'SPEC';
+  if (!next) return;
+  event.preventDefault();
+  focusTab(next);
+ };
+
+ const toggleCollapse = (tableId: string) => {
+  setCollapsedIds(prev => {
+   const next = new Set(prev);
+   if (next.has(tableId)) next.delete(tableId);
+   else next.add(tableId);
+   return next;
+  });
+ };
 
  useEffect(() => {
   if (!selected) return;
@@ -1418,55 +1531,118 @@ export function DatabaseSchemaBlock({
    {!expanded && (
     <DiagramLightbox
      label="데이터베이스"
+     hideTrigger
      open={viewerOpen}
      onOpenChange={setViewerOpen}
     >
-     {() => <DatabaseSchemaBlock schema={schema} title={title} expanded />}
+     {() => <DatabaseSchemaBlock schema={schema} title={title} expanded initialView={activeTab} />}
     </DiagramLightbox>
    )}
-   {schema.display !== 'SPEC' && (
+
+   {/* View Switcher Row: Left = ERD / SPEC tabs, Right = [확대] [모두 펼치기/접기] when in SPEC view */}
+   {(showTabs || (activeTab === 'SPEC' && (!expanded || schema.tables.length > 1))) && <div className={s.viewHeaderRow}>
+    {showTabs && <div className={s.viewTabBar} role="tablist" aria-label="데이터베이스 보기 선택">
+     <button
+      type="button"
+      ref={erdTabRef}
+      id={erdTabId}
+      role="tab"
+      aria-selected={activeTab === 'ERD'}
+      aria-controls={panelId}
+      tabIndex={activeTab === 'ERD' ? 0 : -1}
+      className={`${s.viewTabBtn} ${activeTab === 'ERD' ? s.viewTabBtnActive : ''}`}
+      onClick={() => setViewTab('ERD')}
+      onKeyDown={onTabKeyDown}
+     >
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+       <rect x="3" y="3" width="7" height="9" rx="1" />
+       <rect x="14" y="3" width="7" height="5" rx="1" />
+       <rect x="14" y="12" width="7" height="9" rx="1" />
+       <rect x="3" y="16" width="7" height="5" rx="1" />
+      </svg>
+      <span>ERD 다이어그램</span>
+     </button>
+     <button
+      type="button"
+      ref={specTabRef}
+      id={specTabId}
+      role="tab"
+      aria-selected={activeTab === 'SPEC'}
+      aria-controls={panelId}
+      tabIndex={activeTab === 'SPEC' ? 0 : -1}
+      className={`${s.viewTabBtn} ${activeTab === 'SPEC' ? s.viewTabBtnActive : ''}`}
+      onClick={() => setViewTab('SPEC')}
+      onKeyDown={onTabKeyDown}
+     >
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+       <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+       <polyline points="14 2 14 8 20 8" />
+       <line x1="16" y1="13" x2="8" y2="13" />
+       <line x1="16" y1="17" x2="8" y2="17" />
+       <polyline points="10 9 9 9 8 9" />
+      </svg>
+      <span>테이블 명세서</span>
+     </button>
+    </div>}
+
+    {activeTab === 'SPEC' && (!expanded || schema.tables.length > 1) && (
+     <div className={s.specTopActions}>
+      {!expanded && <button type="button" className={s.diagramExpandBtn} aria-label="데이터베이스 확대 보기" onClick={() => setViewerOpen(true)}>확대</button>}
+      {schema.tables.length > 1 && <button
+       type="button"
+       className={s.specNavToggleAll}
+       onClick={() => {
+        if (collapsedIds.size > 0) {
+         setCollapsedIds(new Set());
+        } else {
+         setCollapsedIds(new Set(schema.tables.map(t => t.id)));
+        }
+       }}
+      >
+       {collapsedIds.size > 0 ? '모두 펼치기' : '모두 접기'}
+      </button>}
+     </div>
+    )}
+   </div>}
+
+   <div id={panelId} role={showTabs ? 'tabpanel' : undefined} aria-labelledby={showTabs ? (activeTab === 'ERD' ? erdTabId : specTabId) : undefined} tabIndex={showTabs ? 0 : undefined}>
+   {activeTab === 'ERD' ? (
     <>
-     {expanded && schema.display === 'BOTH' && (
-      <p className={s.inspectHint}>테이블을 선택하면 컬럼 상세를 볼 수 있어요.</p>
-     )}
      <DatabaseDiagram
       schema={schema}
       expanded={expanded}
       onExpand={!expanded ? () => setViewerOpen(true) : undefined}
       onClearSelection={() => setSelected(null)}
       selectedTable={table?.id}
-      onSelectTable={
-       expanded && schema.display === 'BOTH'
-        ? id => setSelected(current => (current === id ? null : id))
-        : undefined
-      }
+      onSelectTable={id => setSelected(current => (current === id ? null : id))}
      />
-    </>
-   )}
-   {schema.display === 'SPEC' ? (
-    <DatabaseSpecifications schema={schema} />
-   ) : (
-    schema.display === 'BOTH' &&
-    table && (
-     <section
-      id={detailId}
-      className={s.selectedSpecification}
-      aria-label={`${table.name} 컬럼 상세`}
-     >
-      <button
-       className={s.closeSpecification}
-       type="button"
-       onClick={() => setSelected(null)}
+
+     {/* When a table is selected in ERD view, show only that table's specification below */}
+     {table && (
+      <section
+       id={detailId}
+       className={s.selectedSpecification}
+       aria-label={`${table.name} 컬럼 상세`}
       >
-       상세 닫기
-      </button>
-      <DatabaseSpecifications
-       schema={{ ...schema, tables: [table] }}
-       referenceSchema={schema}
-      />
-     </section>
-    )
+       <DatabaseSpecifications
+        schema={{ ...schema, tables: [table] }}
+        referenceSchema={schema}
+        onClose={() => setSelected(null)}
+        hideNav
+       />
+      </section>
+     )}
+    </>
+   ) : (
+    <DatabaseSpecifications
+     schema={schema}
+     referenceSchema={schema}
+     collapsedIds={collapsedIds}
+     onToggleCollapse={toggleCollapse}
+     hideNav
+    />
    )}
+   </div>
   </section>
  );
 }

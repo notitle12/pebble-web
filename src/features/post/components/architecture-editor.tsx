@@ -392,26 +392,29 @@ export function ArchitectureEditor({ onChange, initialValue, embedded = false, o
     <div className={`architecture-workspace${hasSelection && inspectorOpen ? " has-sidebar" : ""}`}>
       <section className="architecture-canvas-panel architecture-canvas-fit" aria-label="아키텍처 캔버스">
         <div className="architecture-canvas-toolbar">
-          <div><span className="architecture-eyebrow">캔버스</span><h2>시스템 구성도</h2></div>
-          <button className="architecture-auto-layout" type="button" disabled={!past.current.length} onClick={()=>undo()}>되돌리기</button>
-          <button className="architecture-auto-layout" type="button" disabled={!future.current.length} onClick={()=>undo(true)}>다시 적용</button>
-          <div className="architecture-zoom-controls" aria-label="캔버스 확대 축소">
-            <button className="architecture-auto-layout" type="button" aria-label="축소" disabled={zoom<=.4} onClick={()=>setZoom(value=>Math.max(.4,Math.round((value-.1)*100)/100))}>−</button>
-            <button className="architecture-auto-layout" type="button" aria-label="전체 보기" onClick={()=>blockRef.current?blockRef.current.fitToView():setZoom(1)}>{Math.round(zoom*100)}%</button>
-            <button className="architecture-auto-layout" type="button" aria-label="확대" disabled={zoom>=3} onClick={()=>setZoom(value=>Math.min(3,Math.round((value+.1)*100)/100))}>＋</button>
+          <span className="architecture-canvas-title">시스템 구성도</span>
+          <span className="architecture-canvas-hint">영역 드래그 다중 선택 · 연결점 드래그 연결 · Ctrl+휠 확대/축소</span>
+          <div className="architecture-canvas-actions">
+            <button className="architecture-auto-layout" type="button" disabled={!past.current.length} onClick={()=>undo()} title="되돌리기">되돌리기</button>
+            <button className="architecture-auto-layout" type="button" disabled={!future.current.length} onClick={()=>undo(true)} title="다시 적용">다시 적용</button>
+            <div className="architecture-zoom-controls" aria-label="캔버스 확대 축소">
+              <button className="architecture-auto-layout" type="button" aria-label="축소" disabled={zoom<=.4} onClick={()=>setZoom(value=>Math.max(.4,Math.round((value-.1)*100)/100))}>−</button>
+              <button className="architecture-auto-layout" type="button" aria-label="100% 원래 크기" onClick={()=>setZoom(1)} title="100% 기본 크기">{Math.round(zoom*100)}%</button>
+              <button className="architecture-auto-layout" type="button" aria-label="확대" disabled={zoom>=3} onClick={()=>setZoom(value=>Math.min(3,Math.round((value+.1)*100)/100))}>＋</button>
+            </div>
+            <button className="architecture-auto-layout" type="button" onClick={()=>blockRef.current?blockRef.current.fitToView():setZoom(1)} title="현재 창 크기에 맞추기">화면 맞춤</button>
+            <button className="architecture-auto-layout" type="button" onClick={() => update((current) => ({ ...current, groups: current.groups.map(({bounds,...group})=>group), nodes: current.nodes.map(({ position, ...node }) => node) }))} title="자동 정렬">자동 정렬</button>
+            {hasSelection && (
+              <button
+                className={`architecture-auto-layout architecture-inspector-toggle${inspectorOpen ? " is-active" : ""}`}
+                type="button"
+                onClick={() => setInspectorOpen(v => !v)}
+                title={inspectorOpen ? "속성 패널 접기" : "속성 패널 열기"}
+              >
+                속성 {inspectorOpen ? "접기" : "열기"}
+              </button>
+            )}
           </div>
-          <button className="architecture-auto-layout" type="button" onClick={() => update((current) => ({ ...current, groups: current.groups.map(({bounds,...group})=>group), nodes: current.nodes.map(({ position, ...node }) => node) }))}>자동 정렬</button>
-          {hasSelection && (
-            <button
-              className={`architecture-auto-layout architecture-inspector-toggle${inspectorOpen ? " is-active" : ""}`}
-              type="button"
-              onClick={() => setInspectorOpen(v => !v)}
-              title={inspectorOpen ? "속성 패널 접기" : "속성 패널 열기"}
-            >
-              속성 {inspectorOpen ? "접기" : "열기"}
-            </button>
-          )}
-          <span className="architecture-canvas-help">영역 드래그로 다중 선택 · 연결점 드래그로 연결</span>
         </div>
         <ArchitectureBlock ref={blockRef} onRenameGroupType={(id,label)=>rename("group",id,label,"typeLabel")} onClearSelection={clearSelection} onRenameNode={(id,label)=>rename("node",id,label)} onRenameGroup={(id,label)=>rename("group",id,label)} onRenameEdge={(id,label)=>updateEdge(id,{label:label.trim()||null})} zoom={zoom} onZoomChange={setZoom} onConnectNodes={addConnection} spec={spec} title={null} interactive selectedNode={connectFrom ?? selectedNode} onSelectNode={selectNode} onMoveNode={moveNode} selectedGroup={selectedGroup} selectedNodes={selectedNodes} selectedGroups={selectedGroups} onSelectRange={selectRange} onMoveSelection={moveSelection} connecting={connectMode} connectionDirection={connectionDirection} onSelectGroup={selectGroup} onConnect={connectPoint} onMoveGroup={moveGroup} onResizeGroup={resizeGroup} selectedEdge={selectedEdge} onSelectEdge={selectEdge} onDeleteEdge={deleteEdge} onDeleteNode={id=>{removeNode(id);setSingleNode(null);}} onDeleteGroup={id=>{removeGroup(id);setSingleGroup(null);}} onResetEdgeWaypoint={id=>updateEdge(id,{waypoint:null})} onMoveEdge={(id,point)=>updateEdge(id,{waypoint:{x:Math.max(0,Math.min(4200,Math.round(point.x))),y:Math.max(0,Math.min(4200,Math.round(point.y)))}})} onReconnectEdge={(id,end,target,side)=>updateEdge(id,end==="source"?{source:target,sourceSide:side,waypoint:null}:{target,targetSide:side,waypoint:null})} onInteractionStart={beginInteraction} onInteractionEnd={endInteraction} />
         <div className="architecture-canvas-status" role="status">{message || "● 캔버스 드래그 다중 선택 · 방향키 일괄 이동 · Delete 삭제"}</div>
