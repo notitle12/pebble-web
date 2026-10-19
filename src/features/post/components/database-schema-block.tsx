@@ -11,12 +11,12 @@ import {
 } from 'react';
 import {
  COMMON_DB_TYPES,
- DB_TABLE_COLORS,
  getDatabaseContentBounds,
  sortDbColumns,
  type DatabaseSchema,
  type DbReference,
 } from '../database-schema';
+import { databaseSelectionPositions, databaseMarqueeTables, databaseTableSelection, databaseBendValue } from '../database-selection';
 import { diagramZoomScroll } from '../diagram-viewport';
 import { architectureZoom } from '../architecture-interaction';
 import { databaseLinks, type DbSize } from '../database-relations';
@@ -27,9 +27,12 @@ import {
  type DatabaseEditActions,
 } from './database-edit-table';
 import { TableTextInput } from './inline-block-views';
+import { DatabaseSpecifications } from './database-specifications';
 import s from './database-schema.module.css';
 import { useDiagramFit } from './use-diagram-fit';
 import { DiagramLightbox } from './diagram-lightbox';
+
+export { DatabaseSpecifications } from './database-specifications';
 
 function resolveTablePositions(
  rawTables: DatabaseSchema['tables'],
@@ -86,6 +89,8 @@ export function DatabaseDiagram({
  statusMessage,
  onSelectTable,
  selectedTable,
+ selectedTables,
+ onSelectTables,
  selectedRelation,
  onSelectRelation,
  onClearSelection,
@@ -97,6 +102,8 @@ export function DatabaseDiagram({
  statusMessage?: string;
  onSelectTable?: (id: string) => void;
  selectedTable?: string | null;
+ selectedTables?: string[] | Set<string>;
+ onSelectTables?: (ids: string[]) => void;
  selectedRelation?: string | null;
  onSelectRelation?: (id: string | null) => void;
  onClearSelection?: () => void;
@@ -126,7 +133,8 @@ export function DatabaseDiagram({
   schema.tables.some(table => table.columns.some(column => column.logicalName?.trim())) ? 'both' : 'physical'
  );
  const [zoom, setZoom] = useState(1);
- const [moving, setMoving] = useState<{ id: string; x: number; y: number } | null>(null);
+ const [movingPositions, setMovingPositions] = useState<Record<string, { x: number; y: number }> | null>(null);
+ const [localSelectedTables, setLocalSelectedTables] = useState<Set<string>>(new Set());
  const [editingTitleTableId, setEditingTitleTableId] = useState<string | null>(null);
  const [localRelation, setLocalRelation] = useState<string | null>(null);
  const [hover, setHover] = useState<string | null>(null);
@@ -150,7 +158,6 @@ export function DatabaseDiagram({
   }, 350);
  }, []);
 
- const [localTable, setLocalTable] = useState<string | null>(null);
  const [dragPreview, setDragPreview] = useState<{
   from: { x: number; y: number };
   to: { x: number; y: number };
@@ -170,13 +177,65 @@ export function DatabaseDiagram({
   [onSelectRelation, relation]
  );
 
+ const selectedTableSet = useMemo(() => {
+  if (selectedTables) {
+   return selectedTables instanceof Set ? selectedTables : new Set(selectedTables);
+  }
+  if (selectedTable) {
+   return new Set([selectedTable]);
+  }
+  return localSelectedTables;
+ }, [selectedTables, selectedTable, localSelectedTables]);
+
+ const setSelectedTablesState = useCallback(
+  (next: Set<string> | ((prev: Set<string>) => Set<string>)) => {
+   const resolved = typeof next === 'function' ? next(selectedTableSet) : next;
+   if (onSelectTables) {
+    onSelectTables(Array.from(resolved));
+   } else if (onSelectTable) {
+    if (resolved.size === 1) {
+     onSelectTable(Array.from(resolved)[0]);
+    } else if (resolved.size === 0) {
+     onClearSelection?.();
+    }
+   } else {
+    setLocalSelectedTables(resolved);
+   }
+  },
+  [selectedTableSet, onSelectTables, onSelectTable, onClearSelection]
+ );
+
  const drag = useRef<{
-  id: string;
+  primaryId: string;
+  targets: { id: string; startX: number; startY: number }[];
   px: number;
   py: number;
-  x: number;
-  y: number;
+  isAdditive: boolean;
+  isAlreadySelected: boolean;
   moved: boolean;
+ } | null>(null);
+ const rafMoveRef = useRef<number | null>(null);
+ const pendingMovingPositionsRef = useRef<Record<string, { x: number; y: number }> | null>(null);
+ const marqueeDrag = useRef<{
+  startX: number;
+  startY: number;
+  isAdditive: boolean;
+  moved: boolean;
+ } | null>(null);
+ const rafMarqueeRef = useRef<number | null>(null);
+ const pendingMarqueeBoxRef = useRef<{
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+ } | null>(null);
+ const rafBendRef = useRef<number | null>(null);
+ const bendCleanupRef = useRef<(() => void) | null>(null);
+ const [marqueeBox, setMarqueeBox] = useState<{
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
  } | null>(null);
  const connectionDrag = useRef<{
   ref: DbReference;
@@ -185,6 +244,15 @@ export function DatabaseDiagram({
   side: 'left' | 'right';
  } | null>(null);
  const suppressClick = useRef(false);
+
+ useEffect(() => {
+  return () => {
+   if (rafMoveRef.current !== null) cancelAnimationFrame(rafMoveRef.current);
+   if (rafMarqueeRef.current !== null) cancelAnimationFrame(rafMarqueeRef.current);
+   if (rafBendRef.current !== null) cancelAnimationFrame(rafBendRef.current);
+   bendCleanupRef.current?.();
+  };
+ }, []);
 
  const editable = !!actions;
  const defaultCardWidth = namingMode === 'both' ? 440 : 330;
@@ -234,39 +302,49 @@ export function DatabaseDiagram({
  const tables = useMemo(() => {
   const base = schema.tables.map(t => {
    const sorted = sortDbColumns(t.columns);
-   return moving?.id === t.id
-    ? { ...t, columns: sorted, position: { x: moving.x, y: moving.y } }
+   const movedPos = movingPositions?.[t.id];
+   return movedPos
+    ? { ...t, columns: sorted, position: { x: movedPos.x, y: movedPos.y } }
     : { ...t, columns: sorted };
   });
-  if (namingMode === 'both') {
-   return resolveTablePositions(base, defaultCardWidth, sizes, editable, moving?.id);
+  if (namingMode === 'both' && !movingPositions) {
+   return resolveTablePositions(
+    base,
+    defaultCardWidth,
+    sizes,
+    editable,
+    movingPositions ? Object.keys(movingPositions)[0] : undefined
+   );
   }
   return base;
- }, [schema, moving, namingMode, defaultCardWidth, sizes, editable]);
+ }, [schema, movingPositions, namingMode, defaultCardWidth, sizes, editable]);
  const links = useMemo(
   () => {
+   if (!movingPositions) {
+    return databaseLinks({ ...schema, tables }, false, sizes, colCenters, customBends);
+   }
    const centers = { ...colCenters };
-   if (moving) {
-    const original = schema.tables.find(t => t.id === moving.id);
+   for (const [tableId, newPos] of Object.entries(movingPositions)) {
+    const original = schema.tables.find(t => t.id === tableId);
     if (original) for (const column of original.columns) {
      const key = `${original.id}-${column.id}`;
-     if (centers[key] !== undefined) centers[key] += moving.y - original.position.y;
+     if (centers[key] !== undefined) centers[key] += newPos.y - original.position.y;
     }
    }
    return databaseLinks({ ...schema, tables }, false, sizes, centers, customBends);
   },
-  [schema, tables, sizes, colCenters, customBends, moving]
+  [schema, tables, sizes, colCenters, customBends, movingPositions]
  );
  const currentRelation = links.find(l => l.id === relation);
  const activeRelation = currentRelation;
- const activeTable = selectedTable ?? localTable;
- const focused = Boolean(activeRelation || activeTable);
+ const activeTables = selectedTableSet;
+ const focused = Boolean(activeRelation || activeTables.size > 0);
 
  const relevant = (l: (typeof links)[number]) =>
   activeRelation
    ? l.id === activeRelation.id
-   : activeTable
-     ? l.sourceTableId === activeTable || l.targetTableId === activeTable
+   : activeTables.size > 0
+     ? activeTables.has(l.sourceTableId) || activeTables.has(l.targetTableId)
      : true;
  const relatedTables = new Set(
   links.filter(relevant).flatMap(l => [l.sourceTableId, l.targetTableId])
@@ -353,24 +431,46 @@ export function DatabaseDiagram({
   }
  }, [viewScale]);
 
- const clear = () => {
+ const clear = useCallback(() => {
+  // Flush a composing title before removing its input from the tree.
+  const active = document.activeElement as HTMLElement | null;
+  if (active?.closest(`.${s.cardHeading}`)) active.blur();
   if (hoverTimeoutRef.current) {
    clearTimeout(hoverTimeoutRef.current);
    hoverTimeoutRef.current = null;
   }
   setRelation(null);
-  setLocalTable(null);
+  setLocalSelectedTables(new Set());
+  setEditingTitleTableId(null);
   setHover(null);
+  setSelectedTablesState(new Set());
   onClearSelection?.();
- };
+ }, [setRelation, setSelectedTablesState, onClearSelection]);
+
+ // ERD를 눌러 연결된 테이블끼리 강조될 때 또는 제목 편집 중일 때 화면의 빈 공간 클릭 시 강조/선택 해제
+ useEffect(() => {
+  if (!focused && !editingTitleTableId) return;
+  const handleGlobalPointerDown = (event: PointerEvent) => {
+   const target = event.target as HTMLElement | null;
+   if (!target || viewport.current?.contains(target)) return;
+   if (
+    target.closest(
+     'article[data-table-id], [data-relation-id], button, input, select, textarea, .bendHandleGroup, [class*="selectedSpecification"]'
+    )
+   ) {
+    return;
+   }
+   clear();
+  };
+  window.addEventListener('pointerdown', handleGlobalPointerDown, { capture: true });
+  return () => window.removeEventListener('pointerdown', handleGlobalPointerDown, { capture: true });
+ }, [focused, editingTitleTableId, clear]);
 
  const selectRelation = (id: string) => {
   const next = relation === id ? null : id;
+  setSelectedTablesState(new Set());
   setRelation(next);
-  setLocalTable(null);
-  if (next && onSelectTable && selectedTable) {
-   onClearSelection?.();
-  }
+  setHover(null);
  };
 
  const bendDragRef = useRef<{
@@ -384,7 +484,12 @@ export function DatabaseDiagram({
 
  const handleBendPointerDown = useCallback(
   (e: React.PointerEvent, link: (typeof links)[number]) => {
-   if (!editable || !link.bend) return;
+   if (!editable || !link.bend || e.button !== 0) return;
+   bendCleanupRef.current?.();
+   if (rafBendRef.current !== null) {
+    cancelAnimationFrame(rafBendRef.current);
+    rafBendRef.current = null;
+   }
    e.preventDefault();
    e.stopPropagation();
 
@@ -396,6 +501,7 @@ export function DatabaseDiagram({
 
    const d = {
     relId: link.id,
+    pointerId: e.pointerId,
     axis: link.bend.axis,
     startCoord: link.bend.axis === 'x' ? e.clientX : e.clientY,
     startVal: link.bend.value,
@@ -403,29 +509,51 @@ export function DatabaseDiagram({
     max: link.bend.max,
    };
    bendDragRef.current = d;
+   let latestClamped = d.startVal;
 
    const onPointerMove = (ev: PointerEvent) => {
+    if (ev.pointerId !== d.pointerId) return;
     ev.preventDefault();
-    const currentCoord = d.axis === 'x' ? ev.clientX : ev.clientY;
-    const delta = (currentCoord - d.startCoord) / viewScale;
-    const raw = d.startVal + delta;
-    const clamped = Math.round(Math.max(d.min, Math.min(d.max, raw)));
+    latestClamped = databaseBendValue(d, ev, viewScale);
+    if (rafBendRef.current === null) {
+     rafBendRef.current = requestAnimationFrame(() => {
+      rafBendRef.current = null;
+      if (!bendDragRef.current) return;
+      const clamped = latestClamped;
+      setCustomBends(prev => {
+       const curr = prev[d.relId];
+       if (curr && curr.axis === d.axis && curr.value === clamped) return prev;
+       return { ...prev, [d.relId]: { axis: d.axis, value: clamped } };
+      });
+     });
+    }
+   };
+
+   const onPointerUp = (ev: PointerEvent) => {
+    if (ev.pointerId !== d.pointerId) return;
+    ev.preventDefault();
+    bendCleanupRef.current?.();
+    if (ev.type !== 'pointercancel') latestClamped = databaseBendValue(d, ev, viewScale);
+    if (rafBendRef.current !== null) {
+     cancelAnimationFrame(rafBendRef.current);
+     rafBendRef.current = null;
+    }
+    const clamped = latestClamped;
     setCustomBends(prev => {
      const curr = prev[d.relId];
      if (curr && curr.axis === d.axis && curr.value === clamped) return prev;
      return { ...prev, [d.relId]: { axis: d.axis, value: clamped } };
     });
-   };
-
-   const onPointerUp = (ev: PointerEvent) => {
-    ev.preventDefault();
-    window.removeEventListener('pointermove', onPointerMove);
-    window.removeEventListener('pointerup', onPointerUp);
-    window.removeEventListener('pointercancel', onPointerUp);
     bendDragRef.current = null;
     setDraggingBendId(null);
    };
 
+   bendCleanupRef.current = () => {
+    window.removeEventListener('pointermove', onPointerMove);
+    window.removeEventListener('pointerup', onPointerUp);
+    window.removeEventListener('pointercancel', onPointerUp);
+    bendCleanupRef.current = null;
+   };
    window.addEventListener('pointermove', onPointerMove);
    window.addEventListener('pointerup', onPointerUp);
    window.addEventListener('pointercancel', onPointerUp);
@@ -443,11 +571,10 @@ export function DatabaseDiagram({
   });
  }, []);
 
- const selectTable = (id: string) => {
+ const selectTable = (id: string, isAdditive = false) => {
   setRelation(null);
   setHover(null);
-  if (onSelectTable) onSelectTable(id);
-  else setLocalTable(current => (current === id ? null : id));
+  setSelectedTablesState(prev=>databaseTableSelection(prev,id,isAdditive));
  };
 
  const startConnectionDrag = (
@@ -528,6 +655,11 @@ export function DatabaseDiagram({
  };
 
  const colors = ['#4770d6', '#7c5cbf', '#2f856e', '#b5742c', '#b84b59', '#3b7a9e'];
+ const linkColorMap = useMemo(
+  () => new Map(links.map((l, idx) => [l.id, colors[idx % colors.length]])),
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  [links]
+ );
 
  return (
   <section className={s.diagram} aria-label="ERD 관계도">
@@ -579,11 +711,6 @@ export function DatabaseDiagram({
       둘 다
      </button>
     </div>
-    {focused && (
-     <button type="button" onClick={clear}>
-      강조 해제
-     </button>
-    )}
     {!editable && !expanded && onExpand && (
      <button
       type="button"
@@ -685,7 +812,7 @@ export function DatabaseDiagram({
    </div>
 
    <div className={s.canvasStage}>
-    {currentRelation && (
+    {editable && currentRelation && (
      <div className={s.floatingRelationOverlay}>
       <DatabaseSelectedRelationBar
        schema={schema}
@@ -719,9 +846,28 @@ export function DatabaseDiagram({
 
       const view = viewport.current;
       if (!view) return;
-      if (!editable) {
-       event.preventDefault();
+
+      // If editable and left-click on empty canvas -> Marquee selection!
+      if (editable && event.button === 0 && !event.altKey) {
+       view.focus({preventScroll:true});
+       const active = document.activeElement as HTMLElement | null;
+       if (active?.closest(`.${s.cardHeading}`)) active.blur();
+       setEditingTitleTableId(null);
+       const rect = view.getBoundingClientRect();
+       const worldX = (event.clientX - rect.left + view.scrollLeft) / viewScale;
+       const worldY = (event.clientY - rect.top + view.scrollTop) / viewScale;
+       marqueeDrag.current = {
+        startX: worldX,
+        startY: worldY,
+        isAdditive: event.shiftKey || event.metaKey || event.ctrlKey,
+        moved: false,
+       };
+       try {
+        event.currentTarget.setPointerCapture(event.pointerId);
+       } catch {}
+       return;
       }
+
       panState.current = {
        startX: event.clientX,
        startY: event.clientY,
@@ -734,7 +880,37 @@ export function DatabaseDiagram({
       } catch {}
      }}
      onPointerMove={event => {
-      if (!panState.current || !viewport.current) return;
+      const view = viewport.current;
+      if (!view) return;
+
+      if (marqueeDrag.current) {
+       const rect = view.getBoundingClientRect();
+       const worldX = (event.clientX - rect.left + view.scrollLeft) / viewScale;
+       const worldY = (event.clientY - rect.top + view.scrollTop) / viewScale;
+       const md = marqueeDrag.current;
+       if (!md.moved && Math.hypot(worldX - md.startX, worldY - md.startY) > 3) {
+        md.moved = true;
+       }
+       if (md.moved) {
+        pendingMarqueeBoxRef.current = {
+         minX: Math.min(md.startX, worldX),
+         maxX: Math.max(md.startX, worldX),
+         minY: Math.min(md.startY, worldY),
+         maxY: Math.max(md.startY, worldY),
+        };
+        if (rafMarqueeRef.current === null) {
+         rafMarqueeRef.current = requestAnimationFrame(() => {
+          rafMarqueeRef.current = null;
+          if (marqueeDrag.current?.moved && pendingMarqueeBoxRef.current) {
+           setMarqueeBox(pendingMarqueeBoxRef.current);
+          }
+         });
+        }
+       }
+       return;
+      }
+
+      if (!panState.current) return;
       const dx = event.clientX - panState.current.startX;
       const dy = event.clientY - panState.current.startY;
       if (Math.hypot(dx, dy) > 3) {
@@ -742,11 +918,48 @@ export function DatabaseDiagram({
         panState.current.active = true;
         setIsPanning(true);
        }
-       viewport.current.scrollLeft = panState.current.scrollLeft - dx;
-       viewport.current.scrollTop = panState.current.scrollTop - dy;
+       view.scrollLeft = panState.current.scrollLeft - dx;
+       view.scrollTop = panState.current.scrollTop - dy;
       }
      }}
      onPointerUp={event => {
+      if (marqueeDrag.current) {
+       const md = marqueeDrag.current;
+       marqueeDrag.current = null;
+       if (rafMarqueeRef.current !== null) {
+        cancelAnimationFrame(rafMarqueeRef.current);
+        rafMarqueeRef.current = null;
+       }
+       pendingMarqueeBoxRef.current = null;
+       try {
+        if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+         event.currentTarget.releasePointerCapture(event.pointerId);
+        }
+       } catch {}
+
+       if (md.moved && viewport.current) {
+        suppressClick.current = true;
+        const view=viewport.current;
+        const rect=view.getBoundingClientRect();
+        const worldX=(event.clientX-rect.left+view.scrollLeft)/viewScale;
+        const worldY=(event.clientY-rect.top+view.scrollTop)/viewScale;
+        const box={minX:Math.min(md.startX,worldX),maxX:Math.max(md.startX,worldX),minY:Math.min(md.startY,worldY),maxY:Math.max(md.startY,worldY)};
+        const selectedIds = databaseMarqueeTables(tables, box, sizes, defaultCardWidth, editable);
+        setMarqueeBox(null);
+        if (md.isAdditive) {
+         const next = new Set(selectedTableSet);
+         selectedIds.forEach(id => next.add(id));
+         setSelectedTablesState(next);
+        } else {
+         setSelectedTablesState(new Set(selectedIds));
+        }
+        return;
+       }
+       setMarqueeBox(null);
+       if (!md.isAdditive) clear();
+       suppressClick.current = true;
+      }
+
       if (panState.current) {
        if (panState.current.active) {
         suppressClick.current = true;
@@ -761,6 +974,20 @@ export function DatabaseDiagram({
       }
      }}
      onPointerCancel={event => {
+      if (marqueeDrag.current) {
+       marqueeDrag.current = null;
+       if (rafMarqueeRef.current !== null) {
+        cancelAnimationFrame(rafMarqueeRef.current);
+        rafMarqueeRef.current = null;
+       }
+       pendingMarqueeBoxRef.current = null;
+       setMarqueeBox(null);
+       try {
+        if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+         event.currentTarget.releasePointerCapture(event.pointerId);
+        }
+       } catch {}
+      }
       if (panState.current) {
        panState.current = null;
        setIsPanning(false);
@@ -783,6 +1010,29 @@ export function DatabaseDiagram({
        fitToView();
        return;
       }
+
+      // Arrow keys to move selected tables
+      if (
+       editable &&
+       selectedTableSet.size > 0 &&
+       ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)
+      ) {
+       event.preventDefault();
+       const delta = event.shiftKey ? 10 : 2;
+       const vectors: Record<string, { x: number; y: number }> = {
+        ArrowLeft: { x: -delta, y: 0 },
+        ArrowRight: { x: delta, y: 0 },
+        ArrowUp: { x: 0, y: -delta },
+        ArrowDown: { x: 0, y: delta },
+       };
+       const vec = vectors[event.key];
+       if (vec && actions) {
+        const positions = databaseSelectionPositions(schema.tables.filter(tbl=>selectedTableSet.has(tbl.id)).map(tbl=>({id:tbl.id,startX:tbl.position.x,startY:tbl.position.y})), vec.x, vec.y);
+        actions.changeTables(Object.entries(positions).map(([id,position])=>({id,patch:{position}})));
+       }
+       return;
+      }
+
       if (
        (event.key === 'Delete' || event.key === 'Backspace') &&
        editable &&
@@ -792,6 +1042,22 @@ export function DatabaseDiagram({
        event.preventDefault();
        actions.disconnectColumn(currentRelation.sourceTableId, currentRelation.sourceColumnId);
        setRelation(null);
+       return;
+      }
+
+      if (
+       (event.key === 'Delete' || event.key === 'Backspace') &&
+       editable &&
+       selectedTableSet.size > 0 &&
+       actions?.removeTables
+      ) {
+       event.preventDefault();
+       const toDelete = Array.from(selectedTableSet);
+       if (toDelete.length < schema.tables.length) {
+        actions.removeTables(toDelete);
+        setSelectedTablesState(new Set());
+       }
+       return;
       }
      }}
      onClick={event => {
@@ -802,15 +1068,11 @@ export function DatabaseDiagram({
        return;
       }
       if (target.closest('article, [data-relation-id]')) return;
-      if (focused) {
-       clear();
-       return;
-      }
-      if (!editable && !expanded && onExpand && userZoom === null) {
+      clear();
+      if (!editable && !expanded && onExpand) {
        onExpand();
        return;
       }
-      clear();
      }}
      tabIndex={0}
      aria-label="ERD 스크롤 영역"
@@ -836,7 +1098,7 @@ export function DatabaseDiagram({
            data-active={focused && relevant(l)}
            data-selected={relation === l.id}
            data-muted={focused && !relevant(l)}
-           style={{ '--relation-color': colors[links.indexOf(l) % colors.length] } as CSSProperties}
+           style={{ '--relation-color': linkColorMap.get(l.id) ?? colors[0] } as CSSProperties}
            role="button"
            tabIndex={0}
            aria-label={l.label}
@@ -945,9 +1207,23 @@ export function DatabaseDiagram({
         )}
        </svg>
 
+       {marqueeBox && (
+        <div
+         className={s.marqueeBox}
+         style={{
+          left: marqueeBox.minX,
+          top: marqueeBox.minY,
+          width: marqueeBox.maxX - marqueeBox.minX,
+          height: marqueeBox.maxY - marqueeBox.minY,
+         }}
+        />
+       )}
+
        {tables.map(t => {
         const isDropTable = dropTarget?.tableId === t.id && !dropTarget.columnId;
         const isEditingTitle = editingTitleTableId === t.id;
+        const isSelected = selectedTableSet.has(t.id);
+        const isMuted = focused && !isSelected && !relatedTables.has(t.id);
 
         return (
          <article
@@ -959,10 +1235,10 @@ export function DatabaseDiagram({
           }}
           className={s.card}
           data-editable={editable}
-          data-selected={activeTable === t.id}
+          data-selected={isSelected}
           data-drop-table={isDropTable}
           data-naming-mode={namingMode}
-          data-muted={focused && activeTable !== t.id && !relatedTables.has(t.id)}
+          data-muted={isMuted}
           style={{ width: defaultCardWidth, left: t.position.x, top: t.position.y }}
           onClick={e => {
            if (actions?.connecting && actions.connectingFrom && actions.connectingFrom.tableId !== t.id) {
@@ -984,12 +1260,40 @@ export function DatabaseDiagram({
              ? event => {
                 if ((event.target as Element).closest('input,button')) return;
                 event.preventDefault();
+                event.stopPropagation();
+                // Commit the previous title before its input is unmounted on a new selection.
+                const active = document.activeElement as HTMLElement | null;
+                if (active?.closest(`.${s.cardHeading}`)) active.blur();
+                setEditingTitleTableId(null);
+                viewport.current?.focus({preventScroll:true});
+
+                const isAdditive = event.shiftKey || event.metaKey || event.ctrlKey;
+                const isAlreadySelected = selectedTableSet.has(t.id);
+
+                let nextSelected = new Set(selectedTableSet);
+                if (!isAlreadySelected && !isAdditive) {
+                 nextSelected = new Set([t.id]);
+                 setSelectedTablesState(nextSelected);
+                } else if (isAdditive && !isAlreadySelected) {
+                 nextSelected.add(t.id);
+                 setSelectedTablesState(nextSelected);
+                }
+
+                const targetTables = schema.tables.filter(tbl =>
+                 nextSelected.has(tbl.id) || tbl.id === t.id
+                );
+
                 drag.current = {
-                 id: t.id,
+                 primaryId: t.id,
+                 targets: targetTables.map(tbl => ({
+                  id: tbl.id,
+                  startX: tbl.position.x,
+                  startY: tbl.position.y,
+                 })),
                  px: event.clientX,
                  py: event.clientY,
-                 x: t.position.x,
-                 y: t.position.y,
+                 isAdditive,
+                 isAlreadySelected,
                  moved: false,
                 };
                 event.currentTarget.setPointerCapture(event.pointerId);
@@ -1000,16 +1304,22 @@ export function DatabaseDiagram({
             editable
              ? event => {
                 const d = drag.current;
-                if (d?.id !== t.id) return;
-                if (!d.moved && Math.hypot(event.clientX - d.px, event.clientY - d.py) < 4) {
+                if (!d || d.primaryId !== t.id) return;
+                const deltaX = (event.clientX - d.px) / viewScale;
+                const deltaY = (event.clientY - d.py) / viewScale;
+                if (!d.moved && Math.hypot(deltaX, deltaY) < 3) {
                  return;
                 }
                 d.moved = true;
-                setMoving({
-                 id: t.id,
-                 x: Math.max(0, Math.min(6000, Math.round(d.x + (event.clientX - d.px) / zoom))),
-                 y: Math.max(0, Math.min(6000, Math.round(d.y + (event.clientY - d.py) / zoom))),
-                });
+                pendingMovingPositionsRef.current = databaseSelectionPositions(d.targets, deltaX, deltaY);
+                if (rafMoveRef.current === null) {
+                 rafMoveRef.current = requestAnimationFrame(() => {
+                  rafMoveRef.current = null;
+                  if (drag.current?.moved && pendingMovingPositionsRef.current) {
+                   setMovingPositions(pendingMovingPositionsRef.current);
+                  }
+                 });
+                }
                }
              : undefined
            }
@@ -1017,26 +1327,37 @@ export function DatabaseDiagram({
             editable
              ? event => {
                 const d = drag.current;
-                if (d?.id !== t.id) return;
+                if (!d || d.primaryId !== t.id) return;
                 drag.current = null;
-                setMoving(null);
+                if (rafMoveRef.current !== null) {
+                 cancelAnimationFrame(rafMoveRef.current);
+                 rafMoveRef.current = null;
+                }
+                pendingMovingPositionsRef.current = null;
+                setMovingPositions(null);
+                try {
+                 if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+                  event.currentTarget.releasePointerCapture(event.pointerId);
+                 }
+                } catch {}
+
                 if (d.moved && actions) {
                  suppressClick.current = true;
-                 actions.changeTable(t.id, {
-                  position: {
-                   x: Math.max(
-                    0,
-                    Math.min(6000, Math.round(d.x + (event.clientX - d.px) / zoom))
-                   ),
-                   y: Math.max(
-                    0,
-                    Math.min(6000, Math.round(d.y + (event.clientY - d.py) / zoom))
-                   ),
-                  },
-                 });
+                 const deltaX = (event.clientX - d.px) / viewScale;
+                 const deltaY = (event.clientY - d.py) / viewScale;
+                 const positions = databaseSelectionPositions(d.targets, deltaX, deltaY);
+                 actions.changeTables(Object.entries(positions).map(([id,position])=>({id,patch:{position}})));
                 } else {
-                 selectTable(t.id);
-                 setEditingTitleTableId(t.id);
+                 if (d.isAdditive) {
+                  if (d.isAlreadySelected) {
+                   const next = new Set(selectedTableSet);
+                   next.delete(t.id);
+                   setSelectedTablesState(next);
+                  }
+                 } else {
+                  setSelectedTablesState(new Set([t.id]));
+                  setEditingTitleTableId(t.id);
+                 }
                 }
                }
              : undefined
@@ -1045,7 +1366,12 @@ export function DatabaseDiagram({
             editable
              ? () => {
                 drag.current = null;
-                setMoving(null);
+                if (rafMoveRef.current !== null) {
+                 cancelAnimationFrame(rafMoveRef.current);
+                 rafMoveRef.current = null;
+                }
+                pendingMovingPositionsRef.current = null;
+                setMovingPositions(null);
                }
              : undefined
            }
@@ -1402,7 +1728,7 @@ export function DatabaseDiagram({
            <div className={s.cardReadFooter}>
             <span>총 {t.columns.length}개 칼럼</span>
             <span className={s.cardReadFooterHint}>
-             {activeTable === t.id ? '선택됨' : '클릭하여 상세 보기'}
+             {activeTables.has(t.id) ? '선택됨' : '클릭하여 상세 보기'}
             </span>
            </div>
           )}
@@ -1436,183 +1762,7 @@ export function DatabaseDiagram({
      </ul>
     </details>
    )}
-  </section>
- );
-}
-
-export function DatabaseSpecifications({
- schema,
- referenceSchema = schema,
- onExpand,
- onClose,
- hideNav = false,
- collapsedIds: controlledCollapsedIds,
- onToggleCollapse,
- initiallyCollapsed = true,
-}: {
- schema: DatabaseSchema;
- referenceSchema?: DatabaseSchema;
- onExpand?: () => void;
- onClose?: () => void;
- hideNav?: boolean;
- collapsedIds?: Set<string>;
- onToggleCollapse?: (id: string) => void;
- initiallyCollapsed?: boolean;
-}) {
- const [localCollapsedIds, setLocalCollapsedIds] = useState<Set<string>>(() => new Set(initiallyCollapsed ? schema.tables.map(table => table.id) : []));
- const collapsedIds = controlledCollapsedIds ?? localCollapsedIds;
- const isCollapseControlled = controlledCollapsedIds !== undefined;
-
- const toggleCollapse = (tableId: string) => {
-  if (onToggleCollapse) {
-   onToggleCollapse(tableId);
-   return;
-  }
-  setLocalCollapsedIds(prev => {
-   const next = new Set(prev);
-   if (next.has(tableId)) next.delete(tableId);
-   else next.add(tableId);
-   return next;
-  });
- };
-
- const toggleAll = () => {
-  const allCollapsed = schema.tables.length > 0 && schema.tables.every(table => collapsedIds.has(table.id));
-  if (isCollapseControlled) {
-   if (!onToggleCollapse) return;
-   for (const table of schema.tables) {
-    if (collapsedIds.has(table.id) === allCollapsed) onToggleCollapse(table.id);
-   }
-   return;
-  }
-  setLocalCollapsedIds(allCollapsed ? new Set() : new Set(schema.tables.map(table => table.id)));
- };
-
- return (
-  <div className={s.specifications}>
-   {!hideNav && schema.tables.length > 1 && (
-    <div className={s.specTopActions}>
-     <button
-      type="button"
-      className={s.specNavToggleAll}
-      onClick={toggleAll}
-     >
-      {schema.tables.length > 0 && schema.tables.every(table => collapsedIds.has(table.id)) ? '모두 펼치기' : '모두 접기'}
-     </button>
-    </div>
-   )}
-
-   {schema.tables.map((t, idx) => {
-    const color = DB_TABLE_COLORS[idx % DB_TABLE_COLORS.length];
-    const isCollapsed = collapsedIds.has(t.id);
-    const sorted = sortDbColumns(t.columns);
-    const pkCol = t.columns.find(c => c.primaryKey);
-
-    return (
-     <section
-      key={t.id}
-      id={`spec-view-${t.id}`}
-      aria-label={`${t.name} 테이블 명세`}
-      style={{ '--table-color': color } as React.CSSProperties}
-     >
-      <h3 style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-        <span className={s.tableIndexBadge}>{String(idx + 1).padStart(2, '0')}</span>
-        <span>{t.name}</span>
-        <span className={s.tableColCountBadge}>칼럼 {t.columns.length}개</span>
-       </span>
-       <div className={s.specHeaderActions}>
-        <button
-         type="button"
-         className={s.specCollapseBtn}
-         aria-expanded={!isCollapsed}
-         title={isCollapsed ? '테이블 펼치기' : '테이블 접기'}
-         onClick={() => toggleCollapse(t.id)}
-        >
-         {isCollapsed ? '펼치기 ▼' : '접기 ▲'}
-        </button>
-        {onClose && (
-         <button
-          type="button"
-          className={s.specCloseBtn}
-          aria-label="상세 닫기"
-          title="상세 닫기"
-          onClick={onClose}
-         >
-          ✕
-         </button>
-        )}
-       </div>
-      </h3>
-      {t.description && !isCollapsed && <p>{t.description}</p>}
-
-      {isCollapsed ? (
-       <div
-        className={s.specCollapsedSummary}
-        role="button"
-        tabIndex={0}
-        onClick={() => toggleCollapse(t.id)}
-        onKeyDown={e => e.key === 'Enter' && toggleCollapse(t.id)}
-        style={{ cursor: 'pointer' }}
-       >
-        <div className={s.specCollapsedInfo}>
-         <strong>{t.name}</strong>
-         {t.description && <span>· {t.description}</span>}
-         <span>(칼럼 {t.columns.length}개{pkCol ? ` · PK ${pkCol.name || 'id'}` : ''})</span>
-        </div>
-        <span style={{ fontSize: 11, color: 'var(--muted)' }}>클릭하여 명세 펼치기</span>
-       </div>
-      ) : (
-       <div className={s.specScroll} tabIndex={0}>
-        <table>
-         <caption>{t.name} 컬럼 명세</caption>
-         <thead>
-          <tr>
-           <th style={{ width: 46, textAlign: 'center' }}>구분</th>
-           <th style={{ width: 140 }}>속성명</th>
-           <th style={{ width: 145 }}>칼럼명</th>
-           <th style={{ width: 135 }}>데이터타입</th>
-           <th style={{ width: 100 }}>기본값</th>
-           <th style={{ width: 72, textAlign: 'center' }}>자동증가</th>
-           <th style={{ width: 72, textAlign: 'center' }}>NOT NULL</th>
-           <th style={{ width: 72, textAlign: 'center' }}>UQ</th>
-           <th style={{ minWidth: 260 }}>설명</th>
-          </tr>
-         </thead>
-         <tbody>
-          {sorted.map(c => {
-           const target = referenceSchema.tables.find(
-            tbl => tbl.id === c.reference?.tableId
-           );
-           const col = target?.columns.find(k => k.id === c.reference?.columnId);
-           const keyText = c.primaryKey ? 'PK' : c.reference ? 'FK' : '';
-           return (
-            <tr key={c.id}>
-             <td
-              style={{ textAlign: 'center', fontWeight: 700 }}
-              title={target && col ? `참조: ${target.name}.${col.name}` : undefined}
-             >
-              {keyText}
-             </td>
-             <td>{c.logicalName || '-'}</td>
-             <th scope="row">{c.name}</th>
-             <td>{c.dataType}</td>
-             <td>{c.defaultValue ?? ''}</td>
-             <td style={{ textAlign: 'center' }}>{c.autoIncrement ? '✓' : ''}</td>
-             <td style={{ textAlign: 'center' }}>{!c.nullable ? '✓' : ''}</td>
-             <td style={{ textAlign: 'center' }}>{c.unique ? '✓' : ''}</td>
-             <td>{c.description}</td>
-            </tr>
-           );
-          })}
-         </tbody>
-        </table>
-       </div>
-      )}
-     </section>
-    );
-   })}
-  </div>
+   </section>
  );
 }
 
