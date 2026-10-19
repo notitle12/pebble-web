@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {databaseSelectionPositions, databaseMarqueeTables, databaseTableSelection} from '../src/features/post/database-selection.ts';
+import {databaseSelectionPositions, databaseMarqueeTables, databaseTableSelection, databaseBendValue} from '../src/features/post/database-selection.ts';
 import {removeDbTables, parseDatabaseSchema} from '../src/features/post/database-schema.ts';
 
 const column=(id,reference=null)=>({id,name:id,dataType:'BIGINT',nullable:!!reference,primaryKey:!reference,unique:!reference,description:'',reference});
@@ -54,4 +54,26 @@ test('multi-delete keeps at least one table and ignores missing or repeated IDs 
  assert.equal(removeDbTables(schema,['a','b']),schema);
  assert.equal(removeDbTables(schema,['missing']),schema);
  assert.deepEqual(removeDbTables(schema,['a','a','missing']).tables.map(t=>t.id),['b']);
+});
+
+
+test('bend release uses the latest pointer coordinates even before the queued preview frame',()=>{
+ const drag={axis:'x',startCoord:100,startVal:300,min:100,max:600};
+ const preview=databaseBendValue(drag,{clientX:120,clientY:10},.5);
+ const release=databaseBendValue(drag,{clientX:145,clientY:10},.5);
+ assert.equal(preview,340);
+ assert.equal(release,390);
+});
+
+test('bend calculations follow the selected axis and current canvas zoom',()=>{
+ const drag={axis:'y',startCoord:100,startVal:300,min:100,max:600};
+ assert.equal(databaseBendValue(drag,{clientX:999,clientY:124},2),312);
+ assert.equal(databaseBendValue(drag,{clientX:999,clientY:124},.5),348);
+});
+
+test('bend calculations keep the route within limits and use integer coordinates',()=>{
+ const drag={axis:'x',startCoord:100,startVal:300,min:100,max:600};
+ assert.equal(databaseBendValue(drag,{clientX:-999,clientY:0},1),100);
+ assert.equal(databaseBendValue(drag,{clientX:999,clientY:0},1),600);
+ assert.equal(databaseBendValue(drag,{clientX:101,clientY:0},2),301);
 });
