@@ -5,14 +5,14 @@ import { validId } from "../../../lib/list-query.ts";
 export const HOME_SECTION_KEYS = ["ACTIVITY", "TECH_STACKS", "PROJECTS", "RECENT_POSTS"] as const;
 export type HomeSectionKey = typeof HOME_SECTION_KEYS[number];
 export type HomeSection = { key: HomeSectionKey; visible: boolean };
-export type BlogHomeSettings = { sections: HomeSection[]; techStacks: string[]; featuredProjectIds: string[]; activityDisplay?: "GRASS" | "STONES" };
+export type BlogHomeSettings = { sections: HomeSection[]; techStacks: string[]; featuredProjectIds: string[]; featuredProjectLimit: number; activityDisplay?: "GRASS" | "STONES" };
 export type BlogActivity = { from: string; to: string; timeZone: "Asia/Seoul"; days: { date: string; count: number }[] };
 export type PublicBlogHome = BlogHomeSettings & { activity: BlogActivity };
 
 const record = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null && !Array.isArray(value);
 const validDate = (value: unknown): value is string => typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(Date.parse(`${value}T00:00:00Z`)) && new Date(`${value}T00:00:00Z`).toISOString().slice(0, 10) === value;
 export const defaultBlogHomeSettings = (): BlogHomeSettings => ({
-  sections: HOME_SECTION_KEYS.map(key => ({ key, visible: true })), techStacks: [], featuredProjectIds: [], activityDisplay: "GRASS",
+  sections: HOME_SECTION_KEYS.map(key => ({ key, visible: true })), techStacks: [], featuredProjectIds: [], featuredProjectLimit: 6, activityDisplay: "GRASS",
 });
 
 export function visibleHomeDataLoads(settings: BlogHomeSettings) {
@@ -38,10 +38,12 @@ export function parseBlogHomeSettings(value: unknown): BlogHomeSettings {
     return item;
   });
   if (new Set(stacks.map(item => item.normalize("NFKC").toLocaleLowerCase("und"))).size !== stacks.length) throw new GuestApiError("response");
+  const featuredProjectLimit = data.featuredProjectLimit === undefined ? 6 : data.featuredProjectLimit;
+  if (typeof featuredProjectLimit !== "number" || !Number.isInteger(featuredProjectLimit) || featuredProjectLimit < 1 || featuredProjectLimit > 6) throw new GuestApiError("response");
   const ids = data.featuredProjectIds;
   if (!ids.every(id => typeof id === "string" && validId(id)) || new Set(ids).size !== ids.length) throw new GuestApiError("response");
   if (data.activityDisplay !== undefined && !["GRASS","STONES"].includes(data.activityDisplay as string)) throw new GuestApiError("response");
-  return { sections, techStacks: stacks, featuredProjectIds: ids as string[], ...(data.activityDisplay === undefined ? {} : {activityDisplay:data.activityDisplay as "GRASS"|"STONES"}) };
+  return { sections, techStacks: stacks, featuredProjectIds: ids as string[], featuredProjectLimit, ...(data.activityDisplay === undefined ? {} : {activityDisplay:data.activityDisplay as "GRASS"|"STONES"}) };
 }
 
 export function normalizeTechStacks(values: string[]): string[] {
@@ -87,7 +89,24 @@ export async function getMyBlogHome(request: (path: string) => Promise<unknown>)
 }
 
 export async function saveMyBlogHome(settings: BlogHomeSettings, request: (path: string, options: { method: string; body: unknown }) => Promise<unknown>): Promise<BlogHomeSettings> {
-  const payload = { sections: settings.sections, techStacks: normalizeTechStacks(settings.techStacks), featuredProjectIds: settings.featuredProjectIds, activityDisplay: settings.activityDisplay??"GRASS" };
+  const payload = { sections: settings.sections, techStacks: normalizeTechStacks(settings.techStacks), featuredProjectIds: settings.featuredProjectIds, featuredProjectLimit: settings.featuredProjectLimit??6, activityDisplay: settings.activityDisplay??"GRASS" };
   try { return parseBlogHomeSettings(await request("/members/me/blog-home", { method: "PUT", body: payload })); }
   catch (error) { if (error instanceof GuestApiError) throw new MemberApiError(0, "INVALID_RESPONSE", "저장 결과를 확인하지 못했습니다."); throw error; }
+}
+
+export function featuredProjectIdsForHome(settings: BlogHomeSettings): string[] {
+  return settings.featuredProjectIds.slice(0, settings.featuredProjectLimit ?? 6);
+}
+
+/** Change only this project's featured status; the API preserves all other home settings. */
+export async function setMyProjectFeatured(projectId: string, featured: boolean, request: (path: string, options: {method:string;body:unknown}) => Promise<unknown>): Promise<BlogHomeSettings> {
+  if (!validId(projectId) || typeof featured !== "boolean") throw new MemberApiError(400,"INVALID_REQUEST","프로젝트를 확인해 주세요.");
+  try {
+    const next=parseBlogHomeSettings(await request(`/members/me/projects/${projectId}/featured`,{method:"PUT",body:{featured}}));
+    if (next.featuredProjectIds.includes(projectId)!==featured) throw new GuestApiError("response");
+    return next;
+  } catch(error) {
+    if(error instanceof GuestApiError)throw new MemberApiError(0,"INVALID_RESPONSE","대표 프로젝트 저장 결과를 확인하지 못했습니다.");
+    throw error;
+  }
 }
