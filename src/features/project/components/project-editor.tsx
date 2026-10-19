@@ -3,15 +3,15 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { TechStackSelection } from "../../tech-stack/components/tech-stack-selection";
 import { RichBodyEditor } from "../../post/components/rich-body-editor";
-import { PostBody } from "../../post/components/post-body";
 import type { EditorBlock } from "../../post/post-editor-model";
 import { projectWriteFailure, type ProjectTechStack } from "../api/member-projects";
 import type { LinkInput, ProjectEditorValue, ProjectVisibility } from "../project-editor-model";
 import { PROJECT_SECTIONS, PROJECT_TEAM_ROLES, type ProjectSectionKey } from "../project-document";
 import styles from "./project-editor.module.css";
 import {ProjectDiagramSection} from "./project-diagram-section";
-import {ProjectTechnologySummary} from "./project-technology-summary";
 import {ProjectCoverImage} from "./project-cover-image";
+import {ProjectDocumentView} from "./project-document-view";
+import {safeExternalUrl} from "../api/project-list";
 
 type Props = {
   value: ProjectEditorValue;
@@ -33,7 +33,6 @@ const linkTypes: { value: LinkInput["linkType"]; label: string }[] = [
   { value: "GITHUB", label: "GitHub" }, { value: "DEPLOYMENT", label: "배포" },
   { value: "DOWNLOAD", label: "다운로드" }, { value: "OTHER", label: "기타" },
 ];
-const hasContent = (blocks: EditorBlock[]) => blocks.some(block => (block.type !== "HTML" && block.type !== "TEXT" && block.type !== "MARKDOWN") || block.content.replace(/<[^>]+>/g, "").replace(/&nbsp;/g, "").trim() || /<(img|table|iframe)\b|data-pebble-type|data-(table|architecture|database)/i.test(block.content));
 
 export function ProjectEditor({ value, onChange, busy, visibility, blocked, existingTechStacks = [], onSave, onTemporarySave, uploadImage, imagePreviews = {}, coverElement, coverPreviewUrl, representativeImageSrc, onSelectRepresentativeImage }: Props) {
   const id = useId();
@@ -139,83 +138,92 @@ export function ProjectEditor({ value, onChange, busy, visibility, blocked, exis
       </div>
     </footer>
     {!preview && <div className={styles.sharedBar}><div ref={setToolbarHost} className={styles.sharedHost}/></div>}
-    <div className={styles.layout}>
-      <nav className={styles.outline} aria-label="프로젝트 작성 목차">
-        <p>프로젝트 구성</p>
-        <button type="button" onClick={() => jump("name")}>프로젝트명</button>
-        {coverElement && <button type="button" onClick={() => jump("cover")}>대표 이미지</button>}
-        <button type="button" onClick={() => jump("overview")}>프로젝트 개요</button>
-        {sections.map(section => <button key={section.key} type="button" onClick={() => jump(section.key)}>{section.label}</button>)}
-        <div className={styles.foldActions}><button type="button" onClick={() => setClosed(new Set())}>모두 펼치기</button><button type="button" onClick={() => {setClosed(new Set(["overview", "execution", ...(coverElement?["cover"]:[]), ...sections.map(section => section.key)]));}}>모두 접기</button></div>
-      </nav>
-      <div className={styles.document}>
-        {preview ? <article className={styles.preview} aria-label="프로젝트 미리보기">
-          <header className={styles.previewHeader}>
-            <h1>{value.name || "프로젝트 이름"}</h1>
-            {value.summary && <p className={styles.summary}>{value.summary}</p>}
-            {coverPreviewUrl && <ProjectCoverImage src={coverPreviewUrl} alt="대표 이미지 미리보기" />}
-          </header>
-          <section>
-            <h2>프로젝트 개요</h2>
-            <dl className={styles.overviewPreview}>
-              {(value.startedOn || value.completedOn) && (
-                <>
-                  <dt>진행 기간</dt>
-                  <dd>
-                    {value.startedOn || "시작일 미등록"} ~{" "}
-                    {value.lifecycleStatus === "IN_PROGRESS"
-                      ? "진행 중"
-                      : value.completedOn || "완료일 미등록"}
-                  </dd>
-                </>
-              )}
-              <dt>인원</dt>
-              <dd>
-                {value.document.teamSize
-                  ? `${value.document.teamSize}명${
-                      value.document.teamComposition?.length
-                        ? ` (${value.document.teamComposition
-                            .filter(item => item.count > 0)
-                            .map(
-                              item =>
-                                `${PROJECT_TEAM_ROLES.find(job => job.key === item.role)?.label ?? item.role} ${item.count}명`
-                            )
-                            .join(", ")})`
-                        : ""
-                    }`
-                  : "미정"}
-              </dd>
-              {!!contribution && (
-                <>
-                  <dt>나의 역할</dt>
-                  <dd>{contribution}</dd>
-                </>
-              )}
-            </dl>
-            {value.techStackIds.length > 0 && (
-              <div>
-                <h3>기술 스택</h3>
-                <ProjectTechnologySummary selected={value.techStackIds} existing={existingTechStacks} />
+    <div className={`${styles.layout} ${preview ? styles.previewLayout : ""}`}>
+      {!preview && (
+        <nav className={styles.outline} aria-label="프로젝트 작성 목차">
+          <p>프로젝트 구성</p>
+          <button type="button" onClick={() => jump("name")}>프로젝트 정보</button>
+          {coverElement && <button type="button" onClick={() => jump("cover")}>대표 이미지</button>}
+          <button type="button" onClick={() => jump("overview")}>프로젝트 개요</button>
+          {sections.map(section => <button key={section.key} type="button" onClick={() => jump(section.key)}>{section.label}</button>)}
+          <div className={styles.foldActions}><button type="button" onClick={() => setClosed(new Set())}>모두 펼치기</button><button type="button" onClick={() => {setClosed(new Set(["overview", "execution", ...(coverElement?["cover"]:[]), ...sections.map(section => section.key)]));}}>모두 접기</button></div>
+        </nav>
+      )}
+      <div className={`${styles.document} ${preview ? styles.previewDocument : ""}`}>
+        {preview ? (
+          <div className="detail-shell">
+            <article className={`post-detail ${styles.preview}`} aria-label="프로젝트 미리보기">
+            <header>
+              <div className="post-heading-bar">
+                <div className="post-meta">
+                  <span className={`project-status ${value.lifecycleStatus === "COMPLETED" ? "completed" : ""}`}>
+                    {value.lifecycleStatus === "COMPLETED" ? "완료" : "진행 중"}
+                  </span>
+                </div>
               </div>
-            )}
-            {hasContent(
-              value.document.sections.find(section => section.key === "BACKGROUND")?.blocks ?? []
-            ) && (
-              <div>
-                <h3>배경 및 목적</h3>
-                <PostBody
-                  blocks={value.document.sections.find(section => section.key === "BACKGROUND")!.blocks}
-                  imagePreviews={imagePreviews}
-                />
-              </div>
-            )}
-          </section>
-          {sections.map(section => { const blocks = value.document.sections.find(item => item.key === section.key)?.blocks ?? []; return hasContent(blocks) ? <section key={section.key}><h2>{section.label}</h2><PostBody blocks={blocks.filter(block=>block.valid!==false)} imagePreviews={imagePreviews} /></section> : null; })}
-          {value.executionInstructions && <section><h2>실행 방법</h2><p className={styles.preservedText}>{value.executionInstructions}</p></section>}
-        </article> : <fieldset disabled={busy} className={styles.fields}>
+              <h1 title={value.name || "프로젝트 이름"}>{value.name || "프로젝트 이름"}</h1>
+              {value.summary && <p>{value.summary}</p>}
+              {coverPreviewUrl && <ProjectCoverImage src={coverPreviewUrl} alt="대표 이미지 미리보기" />}
+            </header>
+            <div className="post-body">
+              <ProjectDocumentView
+                document={value.document}
+                techStacks={existingTechStacks}
+                selectedTechStackIds={value.techStackIds}
+                period={{
+                  startedOn: value.startedOn || null,
+                  completedOn: value.completedOn || null,
+                  lifecycleStatus: value.lifecycleStatus,
+                }}
+                imagePreviews={imagePreviews}
+              />
+              {value.executionInstructions && (
+                <section className="text-block project-document-section">
+                  <h2>실행 방법</h2>
+                  <p style={{whiteSpace:"pre-wrap"}}>{value.executionInstructions}</p>
+                </section>
+              )}
+              {value.links.filter(l => l.url.trim()).length > 0 && (
+                <section className="text-block project-document-section">
+                  <h2>프로젝트 링크</h2>
+                  <ul className="project-links">
+                    {[...value.links]
+                      .filter(l => l.url.trim())
+                      .sort((a, b) => a.displayOrder - b.displayOrder)
+                      .map((link, idx) => {
+                        const href = safeExternalUrl(link.url);
+                        return (
+                          <li key={idx}>
+                            {href ? (
+                              <a href={href} target="_blank" rel="noopener noreferrer">
+                                {link.label || link.linkType} ↗<span className="sr-only"> (새 탭)</span>
+                              </a>
+                            ) : (
+                              <span>{link.label || link.url}</span>
+                            )}
+                          </li>
+                        );
+                      })}
+                  </ul>
+                </section>
+              )}
+            </div>
+          </article>
+        </div>
+        ) : <fieldset disabled={busy} className={styles.fields}>
           <div ref={element => { sectionRefs.current["name"] = element; }} className={styles.nameSection}>
             <label className={styles.nameLabel} htmlFor={`${id}-name`}>프로젝트명</label>
             <input className={styles.name} id={`${id}-name`} value={value.name} maxLength={120} placeholder="어떤 프로젝트를 만들었나요?" onChange={event => update("name", event.target.value)} />
+            <label className={styles.nameLabel} htmlFor={`${id}-summary`}>한 줄 요약</label>
+            <textarea
+              className={styles.summaryInput}
+              id={`${id}-summary`}
+              rows={2}
+              maxLength={500}
+              value={value.summary}
+              placeholder="프로젝트를 한 줄로 소개해 주세요. (목록 및 상세 상단에 표시됩니다)"
+              onChange={event => update("summary", event.target.value)}
+            />
           </div>
           {coverElement && details("cover", "대표 이미지", coverElement, "목록 및 상세 상단에 표시될 대표 이미지")}
           {details("overview", "프로젝트 개요", <>
@@ -237,10 +245,9 @@ export function ProjectEditor({ value, onChange, busy, visibility, blocked, exis
       <form onSubmit={event => void publish(event)}>
         <header className={styles.dialogHeading}><h2 id={`${id}-publish-title`}>프로젝트 발행</h2><button type="button" aria-label="발행 설정 닫기" onClick={() => setPublishing(false)}>×</button></header>
         <fieldset disabled={busy} className={styles.publishFields}>
-          <label>한 줄 요약<textarea rows={3} maxLength={500} value={value.summary} placeholder="목록에 보여줄 프로젝트 소개" onChange={event => update("summary", event.target.value)} /></label>
           <div><span className={styles.fieldTitle}>공개 설정</span><div className={styles.visibility}><label><input type="radio" name={`${id}-visibility`} checked={targetVisibility === "PUBLIC"} disabled={blocked && visibility !== "PUBLIC"} onChange={() => setTargetVisibility("PUBLIC")} />공개</label><label><input type="radio" name={`${id}-visibility`} checked={targetVisibility === "HIDDEN"} onChange={() => setTargetVisibility("HIDDEN")} />비공개</label></div></div>
           {blocked && <p className={styles.saveState}>차단된 프로젝트의 공개 전환은 제한돼요.</p>}
-          <section><div className={styles.linkHeading}><h3>외부 링크</h3><button type="button" onClick={() => update("links", [...value.links, {linkType:"OTHER",label:"",url:"",displayOrder:value.links.length}])}>링크 추가</button></div>{value.links.map((link, index) => <div className={styles.linkRow} key={index}><select aria-label={`${index + 1}번째 링크 종류`} value={link.linkType} onChange={event => update("links", value.links.map((item, i) => i === index ? {...item, linkType:event.target.value as LinkInput["linkType"]} : item))}>{linkTypes.map(type => <option key={type.value} value={type.value}>{type.label}</option>)}</select><input aria-label={`${index + 1}번째 링크 이름`} maxLength={100} placeholder="이름" value={link.label} onChange={event => update("links", value.links.map((item,i) => i === index ? {...item,label:event.target.value} : item))} /><input aria-label={`${index + 1}번째 링크 주소`} type="url" required placeholder="https://" value={link.url} onChange={event => update("links", value.links.map((item,i) => i === index ? {...item,url:event.target.value} : item))} /><button type="button" aria-label={`${index + 1}번째 링크 삭제`} onClick={() => update("links", value.links.filter((_,i) => i !== index).map((item, displayOrder) => ({...item,displayOrder})))}>삭제</button></div>)}</section>
+          <section><div className={styles.linkHeading}><h3>외부 링크</h3><button type="button" onClick={() => update("links", [...value.links, {linkType:"OTHER",label:"",url:"",displayOrder:value.links.length}])}>링크 추가</button></div>{value.links.map((link, index) => <div className={styles.linkRow} key={index}><select aria-label={`${index + 1}번째 링크 종류`} value={link.linkType} onChange={event => update("links", value.links.map((item, i) => i === index ? {...item, linkType:event.target.value as LinkInput["linkType"]} : item))}>{linkTypes.map(type => <option key={type.value} value={type.value}>{type.label}</option>)}</select><input aria-label={`${index + 1}번째 링크 이름`} maxLength={100} placeholder="이름" value={link.label} onChange={event => update("links", value.links.map((item,i) => i === index ? {...item,label:event.target.value} : item))} /><input aria-label={`${index + 1}번째 링크 주소`} type="url" required placeholder="https://" value={link.url} onChange={event => update("links", value.links.map((item,i) => i === index ? {...item,url:event.target.value} : item))} /><button type="button" className={styles.linkDeleteBtn} aria-label={`${index + 1}번째 링크 삭제`} onClick={() => update("links", value.links.filter((_,i) => i !== index).map((item, displayOrder) => ({...item,displayOrder})))}>×</button></div>)}</section>
         </fieldset>
         {publishError ? <p role="alert" className={styles.error}>{publishError}</p> : feedback ? <p role="status" className={styles.saveState}>{feedback}</p> : null}
         <footer className={styles.dialogActions}><button type="button" disabled={busy || !onTemporarySave} onClick={() => void temporarySave()}>임시저장</button><button type="submit" className={styles.primary} disabled={busy || (blocked && targetVisibility === "PUBLIC" && visibility !== "PUBLIC")}>{busy ? "저장 중…" : targetVisibility === "PUBLIC" ? "공개 발행" : "비공개 발행"}</button></footer>

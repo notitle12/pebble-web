@@ -7,6 +7,7 @@
 .zoom button,.editor button{font:inherit;border:1px solid #dce1e8;border-radius:6px;padding:5px 10px;background:white;color:#444c59;cursor:pointer;transition:background .15s ease,border-color .15s ease,color .15s ease}
 .zoom button:hover:not(:disabled),.editor button:hover:not(:disabled){border-color:#98afd2;background:#f7f9fc}
 .zoom button:disabled,.editor button:disabled{opacity:.4;cursor:default}
+.diagramExpandBtn{margin-left:auto;font-weight:600}
 
 /* Canvas stage with floating relation overlay (prevents vertical layout jump!) */
 .canvasStage{position:relative;width:100%}
@@ -23,6 +24,19 @@
 .card[data-selected=true]{border-color:var(--accent,#4770d6);box-shadow:0 0 0 2.5px var(--accent-soft,rgba(71,112,214,.2)),0 8px 20px rgba(15,23,42,.08)}
 .card[data-drop-table=true]{border-color:var(--accent,#4770d6);border-style:dashed;box-shadow:0 0 0 3px rgba(71,112,214,.28)}
 .card[data-muted=true]{opacity:.4}
+.card:not([data-editable=true]){cursor:pointer}
+.card:not([data-editable=true]):hover{border-color:var(--accent,#4770d6);box-shadow:0 6px 18px rgba(15,23,42,.1)}
+.card:not([data-editable=true]) .cardGrid{border-radius:0;overflow:hidden}
+.card:not([data-editable=true]) .cardRow:last-child{border-bottom:0}
+.card:not([data-editable=true]) .cardRow:not([data-expanded=true]) .cellType{padding-right:8px}
+
+.card:not([data-editable=true]) .cardHeading{padding:0;cursor:pointer;transition:background .15s ease}
+.card:not([data-editable=true]) .cardHeading:hover{background:#cbd5e1}
+.card:not([data-editable=true]) .inspectTable{display:flex;align-items:center;justify-content:center;width:100%;height:100%;min-height:38px;padding:0 12px;margin:0;cursor:pointer;user-select:none}
+
+.cardReadFooter{display:flex;align-items:center;justify-content:space-between;padding:5px 10px;background:#f8fafc;border-top:1px solid #cbd5e1;border-radius:0 0 8.5px 8.5px;font-size:11px;color:#64748b;user-select:none;transition:background .15s ease}
+.card:not([data-editable=true]):hover .cardReadFooter{background:#f1f5f9;color:#334155}
+.cardReadFooterHint{font-size:10.5px;color:var(--accent,#4770d6);font-weight:600}
 
 /* Gray Centered Header (Inventory style) with delete button at right */
 .card .cardHeading{display:flex;align-items:center;justify-content:center;position:relative;width:100%;height:38px;min-height:0;padding:0 32px;background:#e2e8f0;border:0;border-bottom:1.5px solid #94a3b8;border-radius:8.5px 8.5px 0 0;cursor:default;touch-action:none;font-size:13.5px;font-weight:700;color:#1e293b;gap:8px;box-sizing:border-box;user-select:none}
@@ -185,24 +199,19 @@
 .relations li>button{padding:5px 8px;border:1px solid transparent;border-radius:5px;background:transparent;color:var(--text);text-align:left;cursor:pointer;font:inherit}
 .relations li>button[aria-pressed=true]{border-color:var(--accent);background:var(--accent-soft)}
 
-/* Table Specification Navigation Bar */
-.specNav{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 12px;background:#f8fafc;border:1.5px solid #cbd5e1;border-radius:10px;margin-bottom:8px;box-sizing:border-box}
-.specNavScroll{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-width:0;flex:1}
-.specNavLabel{font-size:11.5px;font-weight:700;color:#475569;margin-right:2px;white-space:nowrap}
-.specNavChip{display:inline-flex;align-items:center;gap:6px;padding:3px 9px!important;border:1px solid #cbd5e1!important;border-radius:999px!important;background:#fff!important;color:#334155!important;font-size:11.5px!important;font-weight:600!important;cursor:pointer;transition:border-color .15s ease,background .15s ease,transform .12s ease;box-sizing:border-box}
-.specNavChip:hover{border-color:var(--table-color,#4770d6)!important;background:rgba(255,255,255,.95)!important;transform:translateY(-1px)}
-.specNavChipNum{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;border-radius:999px;background:var(--table-color,#4770d6);color:#fff;font-size:10px;font-weight:700;padding:0 3px}
-.specNavChipName{max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.specNavChipCount{font-size:10px;font-weight:600;color:#64748b;background:#f1f5f9;padding:1px 5px;border-radius:999px}
-.specNavActions{display:flex;align-items:center;gap:8px;flex-shrink:0}
+/* Table Specification Top Actions Bar */
+.specTopActions{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-bottom:8px}
 .specNavToggleAll{padding:4px 9px!important;border:1px solid #cbd5e1!important;border-radius:5px!important;background:#fff!important;color:#475569!important;font-size:11px!important;font-weight:600!important;cursor:pointer}
 .specNavToggleAll:hover{background:#f1f5f9!important;color:#1e293b!important}
 
 /* Table Section Card Accent & Numbering */
 .tableIndexBadge{display:inline-flex;align-items:center;justify-content:center;padding:2px 8px;border-radius:5px;background:var(--table-color,#4770d6);color:#fff;font-size:11px;font-weight:800;letter-spacing:0.5px;flex-shrink:0}
 .tableColCountBadge{font-size:11px;font-weight:600;color:#64748b;background:#f1f5f9;padding:2px 7px;border-radius:4px;white-space:nowrap}
+.specHeaderActions{display:inline-flex;align-items:center;gap:6px}
 .specCollapseBtn{display:inline-flex;align-items:center;gap:4px;font-size:11px!important;font-weight:600!important;padding:3px 8px!important;height:28px!important;min-height:28px!important;border:1px solid #cbd5e1!important;border-radius:5px!important;background:#fff!important;color:#475569!important;cursor:pointer;white-space:nowrap}
 .specCollapseBtn:hover{background:#f1f5f9!important;color:#0f172a!important;border-color:#94a3b8!important}
+.specCloseBtn{display:inline-flex;align-items:center;justify-content:center;width:28px!important;height:28px!important;min-height:28px!important;padding:0!important;border:1px solid #cbd5e1!important;border-radius:5px!important;background:#fff!important;color:#64748b!important;font-size:13px!important;font-weight:700!important;cursor:pointer;transition:background .12s ease,color .12s ease,border-color .12s ease}
+.specCloseBtn:hover{background:#fee2e2!important;color:#b91c1c!important;border-color:#fca5a5!important}
 
 /* Collapsed Table Summary Row */
 .specCollapsedSummary{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 14px;background:#f8fafc;font-size:12px;color:#64748b}
@@ -339,15 +348,23 @@
 .shapePicker span{font-size:10.5px;white-space:nowrap}
 
 .srOnly{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
-.inspectHint{margin:0 0 10px;font-size:13px;color:var(--muted)}
-.selectedSpecification{position:relative;margin-top:18px;padding:18px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--text)}
-.closeSpecification{display:block;margin-left:auto;padding:6px 10px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--text);cursor:pointer}
+/* Tab switcher bar at top of DatabaseSchemaBlock */
+.viewHeaderRow{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;flex-wrap:wrap}
+.viewTabBar{display:flex;align-items:center;gap:4px;padding:4px;background:#f1f5f9;border-radius:8px;width:fit-content;margin-bottom:0;border:1px solid #e2e8f0}
+.viewHeaderRow .specTopActions{margin-bottom:0;margin-left:auto}
+.viewTabBtn{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border:0!important;border-radius:6px!important;background:transparent!important;color:#64748b!important;font-size:12.5px!important;font-weight:600!important;cursor:pointer;transition:all .15s ease}
+.viewTabBtn:hover{color:#1e293b!important;background:rgba(255,255,255,.65)!important}
+.viewTabBtnActive{background:#fff!important;color:var(--accent,#4770d6)!important;box-shadow:0 1px 4px rgba(15,23,42,.08)!important;font-weight:700!important}
+
+.selectedSpecification{position:relative;margin-top:14px;padding:0;border:0;background:transparent}
+.closeSpecification{display:none}
 .viewport[data-preview=true]{overflow:hidden;max-height:none;overscroll-behavior:auto}
 .viewport[data-preview=true],
-.viewport[data-preview=true] :is(.card,.cardHeading,.inspectTable,.cardGrid,.cardRow,.cardSubHeader,svg){cursor:zoom-in}
+.viewport[data-preview=true] :is(.cardGrid,.cardRow,.cardSubHeader,svg){cursor:default}
+.viewport[data-preview=true] :is(.cardHeading,.inspectTable){cursor:pointer}
 :global(.diagram-lightbox) .viewport[data-preview=true],
-:global(.diagram-lightbox) .viewport[data-preview=true] :is(.card,.cardHeading,.inspectTable,.cardGrid,.cardRow,.cardSubHeader,svg){cursor:default}
-:global(.diagram-lightbox) .inspectTable{cursor:pointer}
+:global(.diagram-lightbox) .viewport[data-preview=true] :is(.cardGrid,.cardRow,.cardSubHeader,svg){cursor:default}
+:global(.diagram-lightbox) .viewport[data-preview=true] :is(.cardHeading,.inspectTable){cursor:pointer}
 
 .primaryToolbarBtn{background:var(--accent-soft,#eef4ff)!important;border-color:var(--accent,#4770d6)!important;color:var(--accent,#345b95)!important;font-weight:600}
 .historyButtons{display:inline-flex;gap:4px}
@@ -427,3 +444,12 @@
 :global(html[data-theme=dark]) .card .cardRow:hover{background:var(--block-heading)}
 :global(html[data-theme=dark]) .editor .rowDelete:not(:disabled):hover{background:#3d2426!important;color:#e4a19a!important}
 :global(html[data-theme=dark]) .helpBanner{background:var(--block-surface);border-color:var(--line);color:var(--text)}
+:global(html[data-theme=dark]) .viewTabBar{background:var(--block-surface);border-color:var(--line)}
+:global(html[data-theme=dark]) .viewTabBtn{color:var(--muted)!important}
+:global(html[data-theme=dark]) .viewTabBtn:hover{color:var(--text)!important;background:rgba(255,255,255,.06)!important}
+:global(html[data-theme=dark]) .viewTabBtnActive{background:var(--surface)!important;color:var(--focus,#60a5fa)!important;box-shadow:0 1px 4px rgba(0,0,0,.25)!important}
+:global(html[data-theme=dark]) .cardReadFooter{background:var(--block-heading);border-color:var(--line);color:var(--muted)}
+:global(html[data-theme=dark]) .card:not([data-editable=true]):hover .cardReadFooter{background:var(--block-surface);color:var(--text)}
+:global(html[data-theme=dark]) .cardReadFooterHint{color:var(--focus,#60a5fa)}
+:global(html[data-theme=dark]) .specCloseBtn{background:var(--surface)!important;border-color:var(--line)!important;color:var(--muted)!important}
+:global(html[data-theme=dark]) .specCloseBtn:hover{background:#451a1a!important;color:#f87171!important;border-color:#7f1d1d!important}
