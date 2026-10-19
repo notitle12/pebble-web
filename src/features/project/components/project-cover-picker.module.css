@@ -17,7 +17,7 @@
   padding: 0;
   border: 1px dashed var(--line);
   border-radius: 10px;
-  background: var(--surface-soft, #f8fafc);
+  background: var(--surface-soft, var(--surface, #f8fafc));
   color: var(--text);
   font-size: 14px;
   cursor: pointer;
@@ -191,4 +191,15 @@
   padding: 1px 4px;
   border-radius: 3px;
   font-weight: 600;
+}
+
+:global(html[data-theme=dark]) .choose {
+  background: var(--block-surface, var(--surface));
+  color: var(--text);
+  border-color: var(--line);
+}
+
+:global(html[data-theme=dark]) .choose:hover:not(:disabled) {
+  background: var(--accent-soft);
+  border-color: var(--accent);
 }

@@ -8,6 +8,7 @@ import {
  parseDatabaseSchema,
  removeDbColumn,
  removeDbTable,
+ removeDbTables,
  reorderDbColumns,
  sortDbColumns,
  updateDbColumn,
@@ -49,6 +50,7 @@ export function DatabaseSchemaEditor({
  const [from, setFrom] = useState<DbReference | null>(null);
  const [message, setMessage] = useState('');
  const [selectedTable, setSelectedTable] = useState<string | null>(null);
+ const [selectedTables, setSelectedTables] = useState<Set<string>>(new Set());
  const [selectedRelationId, setSelectedRelationId] = useState<string | null>(null);
  const [collapsedTableIds, setCollapsedTableIds] = useState<Set<string>>(() => new Set(schema.tables.map(t => t.id)));
 
@@ -158,6 +160,16 @@ export function DatabaseSchemaEditor({
     ...schema,
     tables: schema.tables.map(t => (t.id === tableId ? { ...t, ...patch } : t)),
    }),
+  changeTables: updates => {
+   const map = new Map(updates.map(u => [u.id, u.patch]));
+   update({
+    ...schema,
+    tables: schema.tables.map(t => {
+     const patch = map.get(t.id);
+     return patch ? { ...t, ...patch } : t;
+    }),
+   });
+  },
   changeColumn: (tableId, columnId, patch) =>
    update(updateDbColumn(schema, tableId, columnId, patch)),
   addColumn: (tableId, preset: DbColumnPreset = 'empty') =>
@@ -188,6 +200,13 @@ export function DatabaseSchemaEditor({
    update(removeDbTable(schema, tableId));
    setFrom(null);
    setSelectedTable(null);
+  },
+  removeTables: tableIds => {
+   update(removeDbTables(schema, tableIds));
+   setFrom(null);
+   setSelectedTable(null);
+   setSelectedTables(new Set());
+   setSelectedRelationId(null);
   },
   connect,
   connectPair: finishConnection,
@@ -318,19 +337,30 @@ export function DatabaseSchemaEditor({
      <DatabaseDiagram
       schema={schema}
       actions={actions}
-      statusMessage={message}
+      statusMessage={message || (selectedTables.size > 1 ? `선택된 테이블: ${selectedTables.size}개 (드래그하여 일괄 이동 · 방향키 이동)` : undefined)}
       selectedTable={selectedTable}
+      selectedTables={selectedTables}
+      onSelectTables={ids => {
+       setSelectedRelationId(null);
+       setSelectedTables(new Set(ids));
+       setSelectedTable(ids.length === 1 ? ids[0] : null);
+      }}
       selectedRelation={selectedRelationId}
       onSelectRelation={relId => {
        setSelectedRelationId(relId);
-       if (relId) setSelectedTable(null);
+       if (relId) {
+        setSelectedTable(null);
+        setSelectedTables(new Set());
+       }
       }}
       onSelectTable={tableId => {
        setSelectedRelationId(null);
        setSelectedTable(tableId);
+       setSelectedTables(tableId ? new Set([tableId]) : new Set());
       }}
       onClearSelection={() => {
        setSelectedTable(null);
+       setSelectedTables(new Set());
        setSelectedRelationId(null);
       }}
      />

@@ -18,12 +18,14 @@ import s from './database-schema.module.css';
 
 export type DatabaseEditActions = {
  changeTable: (id: string, patch: Partial<DbTable>) => void;
+ changeTables: (updates: { id: string; patch: Partial<DbTable> }[]) => void;
  changeColumn: (tableId: string, columnId: string, patch: Partial<DbColumn>) => void;
  addColumn: (id: string, preset?: DbColumnPreset) => void;
  moveColumn?: (tableId: string, columnId: string, direction: 'UP' | 'DOWN') => void;
  reorderColumn?: (tableId: string, sourceColId: string, targetColId: string) => void;
  removeColumn: (tableId: string, columnId: string) => void;
  removeTable: (id: string) => void;
+ removeTables: (ids: string[]) => void;
  connect?: (reference: DbReference) => void;
  connectPair?: (source: DbReference, target: DbReference) => void;
  connectToTable?: (source: DbReference, targetTableId: string) => void;
@@ -593,21 +595,7 @@ export function DatabaseSelectedRelationBar({
  const currentNotation = relation.notation === 'CHEN' ? 'CHEN' : 'IE';
 
  if (!actions) {
-  return (
-   <div className={s.relationFocus} role="status">
-    <strong>
-     {pkTable?.name || '새 테이블'}.{pkCol?.name || '새 컬럼'} → {fkTable.name || '새 테이블'}.
-     {fkCol.name || '새 컬럼'}
-    </strong>
-    <span className={s.relationBadge}>
-     {relation.targetRequired ? '1' : '0..1'} : {relation.sourceRequired ? '1' : '0'}..
-     {relation.many ? 'N' : '1'}
-    </span>
-    <button type="button" onClick={onClose}>
-     선택 해제
-    </button>
-   </div>
-  );
+  return null;
  }
 
  const applyShape = (shape: DbRelationShape, nextNotation: 'IE' | 'CHEN' = currentNotation) => {

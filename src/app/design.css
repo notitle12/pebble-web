@@ -704,7 +704,7 @@ body>.site-header,body>.site-footer{flex-shrink:0}
 .architecture-reader .architecture-scroll{max-height:560px;overscroll-behavior:auto}
 dialog.diagram-lightbox:not([open]){display:none!important}
 .diagram-lightbox{box-sizing:border-box;width:min(1500px,94vw);max-width:94vw;max-height:92vh;margin:auto;padding:20px 22px;border:1px solid var(--line);border-radius:12px;background:var(--surface,#fff);color:var(--text);overscroll-behavior:contain}
-.diagram-lightbox::backdrop{background:rgb(0 0 0 / .65);overscroll-behavior:contain}
+.diagram-lightbox::backdrop{background:rgb(0 0 0 / .65);overscroll-behavior:contain;cursor:pointer}
 .diagram-lightbox>header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:12px}
 .diagram-lightbox>header h2{margin:0;font-size:18px}
 .diagram-lightbox-close{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;min-height:0;padding:0;border:0;border-radius:6px;background:transparent;color:var(--muted,#64748b);cursor:pointer;transition:all .15s ease}
