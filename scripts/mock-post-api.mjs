@@ -32,7 +32,7 @@ export const mockProjects = Array.from({length:21},(_,i)=>({
   id:String(721389012345680000n+BigInt(i)),owner:{id:"721389012345679000",nickname:["수민","지우","민준"][i%3]},
   name:["Pebble 개발 기록 플랫폼","작은 팀을 위한 일정 관리","R2 이미지 아카이브"][i%3]+(i>2 ? ` (${i+1})` : ""),
   summary:["개발자의 글과 프로젝트를 한곳에 모아 공유하는 서비스입니다.","함께 작업할 때 필요한 일정과 기록을 간결하게 정리했습니다.","이미지를 저장하고 만료되는 URL을 안전하게 관리합니다."][i%3],
-  likeCount:0,likedByMe:false,description:"목 프로젝트 상세 소개",lifecycleStatus:i%2 ? "COMPLETED" : "IN_PROGRESS",
+  likeCount:[0,15,8,4,0,1][i%6],likedByMe:false,description:"목 프로젝트 상세 소개",lifecycleStatus:i%2 ? "COMPLETED" : "IN_PROGRESS",
   techStacks:[mockTags[i%mockTags.length]],thumbnailUrl:i===0?"http://127.0.0.1:3100/images/stone-garden/natural-parts.png":i===1?"http://127.0.0.1:3100/images/stone-garden/stone-varieties.png":null,publishedAt:new Date(Date.UTC(2026,9,3-i,3)).toISOString(),createdAt:new Date(Date.UTC(2026,9,3-i,3)).toISOString()
 }));
 
@@ -44,7 +44,7 @@ export function createMockApi(state = "normal") {
     const detail = url.pathname.match(/^\/api\/v1\/blogs\/([^/]+)\/posts\/([^/]+)$/);
     const numericPost = url.pathname.match(/^\/api\/v1\/posts\/([1-9]\d*)$/);
     const projectDetail=url.pathname.match(/^\/api\/v1\/projects\/([1-9]\d*)(\/posts)?$/);
-    if (request.method !== "GET" || (!projectDetail && !detail && !numericPost && !["/api/v1/posts", "/api/v1/posts/search", "/api/v1/tech-stacks", "/api/v1/categories", "/api/v1/projects", "/api/v1/projects/search"].includes(url.pathname))) {
+    if (request.method !== "GET" || (!projectDetail && !detail && !numericPost && !["/api/v1/posts", "/api/v1/posts/search", "/api/v1/posts/popular", "/api/v1/tech-stacks", "/api/v1/categories", "/api/v1/projects", "/api/v1/projects/search", "/api/v1/projects/popular"].includes(url.pathname))) {
       response.writeHead(404); response.end(JSON.stringify({ error: { code: "NOT_FOUND" } })); return;
     }
     if (state === "slow") await new Promise(resolve => setTimeout(resolve, 2500));
@@ -83,6 +83,17 @@ export function createMockApi(state = "normal") {
     const size = Number(url.searchParams.get("size") ?? "20");
     if (!Number.isSafeInteger(page) || page < 0 || size !== 20) {
       response.writeHead(400); response.end(JSON.stringify({ error: { code: "INVALID_REQUEST" } })); return;
+    }
+    if (url.pathname.endsWith("/popular")) {
+      if ([...url.searchParams.keys()].some(key=>!["page","size"].includes(key))) {
+        response.writeHead(400);response.end(JSON.stringify({error:{code:"INVALID_REQUEST"}}));return;
+      }
+      const source=url.pathname.startsWith("/api/v1/projects")?mockProjects:mockPosts;
+      const ranked=(state==="empty"?[]:source).filter(row=>(row.likeCount??0)>0).slice().sort((a,b)=>b.likeCount-a.likeCount
+        || (a.publishedAt===null?(b.publishedAt===null?0:1):b.publishedAt===null?-1:Date.parse(b.publishedAt)-Date.parse(a.publishedAt))
+        || (BigInt(b.id)>BigInt(a.id)?1:BigInt(b.id)<BigInt(a.id)?-1:0));
+      const totalPages=Math.ceil(ranked.length/size);
+      response.end(JSON.stringify({data:{content:ranked.slice(page*size,(page+1)*size),page,size,totalElements:ranked.length,totalPages,hasNext:page+1<totalPages,hasPrevious:page>0}}));return;
     }
     const q = url.searchParams.get("q")?.trim().toLocaleLowerCase() ?? "";
     if (url.pathname.endsWith("/search") && !q) { response.writeHead(400); response.end(JSON.stringify({ error: { code: "VALIDATION_ERROR" } })); return; }

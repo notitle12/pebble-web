@@ -34,7 +34,7 @@ export async function PostList({ query, listPath = "/" }: { query: PostQuery; li
     </section>;
   }
   return <section className="content-panel" aria-label="공개 게시글 목록">
-    <div className="list-heading"><h2>{filtered ? "검색 결과" : "새로운 기록"}</h2><span>총 {result.totalElements.toLocaleString("ko-KR")}개의 글</span></div>
+    <div className="list-heading"><h2>{filtered ? "검색 결과" : "최신 글"}</h2><span>총 {result.totalElements.toLocaleString("ko-KR")}개의 글</span></div>
     <PostCards posts={result.content} />
     <nav className="pagination" aria-label="게시글 페이지 이동">
       {result.hasPrevious ? <Link className="page-link" href={href(page - 1)} prefetch={false} aria-label="이전 페이지">← 이전</Link> : <span className="page-link disabled" aria-disabled="true">← 이전</span>}

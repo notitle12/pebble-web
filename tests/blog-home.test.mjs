@@ -5,7 +5,7 @@ import { defaultBlogHomeSettings, normalizeTechStacks, parseBlogHomeSettings, pa
 
 import {activityCalendar} from "../src/features/blog-home/activity-calendar.ts";
 
-const settings = { sections: ["ACTIVITY", "TECH_STACKS", "PROJECTS", "RECENT_POSTS"].map(key => ({ key, visible: true })), techStacks: ["Java", "Spring Boot"], featuredProjectIds: ["721389012345678901"] };
+const settings = { sections: ["ACTIVITY", "TECH_STACKS", "PROJECTS", "RECENT_POSTS"].map(key => ({ key, visible: true })), techStacks: ["Java", "Spring Boot"], featuredProjectIds: ["721389012345678901"], featuredProjectLimit: 6 };
 const activity = { from: "2025-10-10", to: "2026-10-10", timeZone: "Asia/Seoul", days: [{ date: "2025-11-02", count: 2 }, { date: "2026-01-01", count: 1 }] };
 
 test("blog home settings require four unique sections and unique bounded entries", () => {
