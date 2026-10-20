@@ -1,45 +1,15 @@
-.image {
-  box-sizing: border-box;
-  display: table;
-  margin: 1em 0;
-  max-width: 100%;
-  position: relative;
-  width: fit-content;
-}
-
-.image[data-align="center"] { margin-left: auto; margin-right: auto; }
-.image[data-align="right"] { margin-left: auto; margin-right: 0; }
-.image img { display: block; height: auto; max-width: 100%; width: auto; }
-
-.representativeButton {
-  background: #fff;
-  border: 1px solid #52525b;
-  box-shadow: 0 2px 8px #0004;
-  border-radius: 999px;
-  color: #18181b;
-  cursor: pointer;
-  font: inherit;
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 1.2;
-  inset: 8px auto auto 8px;
-  opacity: 1;
-  padding: 6px 9px;
-  pointer-events: auto;
-  position: absolute;
-  transition: opacity .12s ease;
-  z-index: 2;
-}
-
-.image .representativeButton:hover:not(:disabled) { background: #f4f4f5; color: #18181b; border-color: #52525b; }
-.image .representativeButton[aria-pressed="true"],
-.image .representativeButton[aria-pressed="true"]:hover:not(:disabled) { background: #18181b; color: #fff; border-color: #fff; }
-.representativeButton:focus-visible { outline: 3px solid #b45309; outline-offset: 2px; }
-.representativeButton:disabled { cursor: not-allowed; opacity: .5; }
-
-.image .deleteButton{position:absolute;top:8px;right:8px;z-index:3;display:grid;place-items:center;width:32px;height:32px;min-width:32px;min-height:32px;padding:0;border:1px solid var(--line);border-radius:50%;background:var(--surface);color:var(--text);box-shadow:0 2px 8px #0003;cursor:pointer}
-.image .deleteButton svg{width:18px;height:18px;stroke:currentColor;stroke-width:1.7;stroke-linecap:round}
-.image .deleteButton:hover:not(:disabled){background:var(--accent-soft);color:var(--accent);border-color:var(--accent)}
-.image .deleteButton:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
-.image .deleteButton:disabled{opacity:.5;cursor:default}
-@media(pointer:coarse){.image .deleteButton{width:44px;height:44px}}
+.image{box-sizing:border-box;display:table;margin:1em 0;max-width:100%;position:relative;width:fit-content}
+.image[data-align="center"]{margin-left:auto;margin-right:auto}
+.image[data-align="right"]{margin-left:auto;margin-right:0}
+.image img{display:block;height:auto;max-width:100%;width:auto}
+.tools{position:absolute;top:10px;right:10px;z-index:3;display:flex;align-items:center;gap:2px;padding:3px;border:1px solid var(--line);border-radius:8px;background:color-mix(in srgb,var(--surface) 94%,transparent);box-shadow:0 3px 12px #0002;backdrop-filter:blur(8px);opacity:0;pointer-events:none;transform:translateY(-3px);transition:opacity .12s ease,transform .12s ease}
+.image:hover .tools,.image:has(button:focus-visible) .tools{opacity:1;pointer-events:auto;transform:none}
+.image .tools button{display:inline-flex;align-items:center;justify-content:center;gap:6px;position:static;min-width:30px;min-height:30px;height:30px;margin:0;padding:0 8px;border:0;border-radius:5px;background:transparent;color:var(--muted);box-shadow:none;font-family:inherit;font-size:11px;font-weight:500;line-height:1.2;cursor:pointer;white-space:nowrap}
+.image .tools button svg{width:15px;height:15px;flex:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.image .tools .deleteButton{width:30px;padding:0}
+.image .tools button:hover:not(:disabled){background:var(--accent-soft);color:var(--accent)}
+.image .tools .representativeButton[aria-pressed="true"]{color:var(--accent)}
+.image .tools button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.image .tools button:disabled{opacity:.45;cursor:default}
+@media(hover:none){.image[data-selected="true"] .tools{opacity:1;pointer-events:auto;transform:none}.image .tools button{min-height:44px;height:44px}.image .tools .deleteButton{min-width:44px;width:44px}}
+@media(prefers-reduced-motion:reduce){.tools{transition:none}}
