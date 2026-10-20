@@ -173,3 +173,5 @@ html[data-theme=dark] .guest-comment-identity input::placeholder{color:var(--mut
 html[data-theme=dark] .comment-composer-card,html[data-theme=dark] .comment-composer-card:focus-within{background:transparent}
 html[data-theme=dark] .comment-composer-buttons .comment-composer-toggle{background:transparent;color:var(--muted)}
 html[data-theme=dark] .comment-composer-toggle[aria-pressed=true]{color:var(--accent)}
+
+.account-menu-heading>a{display:flex;align-items:center;flex:1;min-width:0;min-height:36px;padding:7px 10px;text-decoration:none}.account-menu-heading>a:hover{background:transparent;color:var(--accent)}.account-menu-heading>a:focus-visible{outline:2px solid var(--focus);outline-offset:-2px}.account-menu-heading strong{padding:0;font-weight:650;line-height:1.5}.account-menu-heading{gap:6px}
