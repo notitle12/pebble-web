@@ -1,3 +1,4 @@
+import {ContentPlaceholder} from "@/components/content-placeholder";
 import {LikeCount} from "@/features/like/components/like-count";
 import {safeMediaUrl} from "@/features/media/model";
 import Link from "next/link";
@@ -9,7 +10,7 @@ export function PostCards({posts,showAuthor=true,showTags=true,showEdit=false}:{
       const date = post.publishedAt ?? post.createdAt;
       return <li key={post.id}><article className="post-card">
         <div className="post-meta">{showAuthor&&<><Link className="post-author-link" href={`/blogs/${post.author.handle}`} prefetch={false}>{post.author.blogName??`${post.author.nickname}의 블로그`}</Link><span aria-hidden="true">·</span></>}<time dateTime={date}>{dateFormat.format(new Date(date))}</time><LikeCount count={post.likeCount}/>{post.visibilityStatus==="HIDDEN"&&<span className="post-private-badge">비공개</span>}{showEdit&&<Link className="blog-post-edit" href={`/posts/${post.id}/edit`} prefetch={false}>수정</Link>}</div>
-        {safeMediaUrl(post.thumbnailUrl??null)?<img className="content-thumbnail" src={safeMediaUrl(post.thumbnailUrl??null)!} alt="" loading="lazy"/>:<span className="content-thumbnail blog-post-placeholder" aria-hidden="true">{Array.from(post.title)[0]}</span>}
+        {safeMediaUrl(post.thumbnailUrl??null)?<img className="content-thumbnail" src={safeMediaUrl(post.thumbnailUrl??null)!} alt="" loading="lazy"/>:<ContentPlaceholder className="content-thumbnail blog-post-placeholder"/>}
         <h3><Link href={blogPostHref(post)} prefetch={false}>{post.title}</Link></h3>
         {post.summary && <p className="post-summary">{post.summary}</p>}
         {showTags && post.tags.length > 0 && <ul className="tag-list" aria-label="태그">{post.tags.map(tag => <li key={tag}>#{tag}</li>)}</ul>}
