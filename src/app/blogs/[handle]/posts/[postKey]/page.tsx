@@ -1,4 +1,3 @@
-import {safeMediaUrl} from "@/features/media/model";
 import {LikePanel} from "@/features/like/components/like-panel";
 import {CommentsPanel} from "@/features/comment/components/comments-panel";
 import { cache, Suspense } from "react";
@@ -24,19 +23,19 @@ export default async function PostPage({ params }: Props) {
   try { post = await readPost(handle, postKey); }
   catch (error) {
     if (error instanceof PostListError && error.kind === "not-found") notFound();
-    return <><SiteHeader /><main className="page-shell detail-shell"><section className="list-state" role="alert">
+    return <><SiteHeader /><main className="page-shell detail-shell post-reading-shell"><section className="list-state" role="alert">
       <h1>글을 불러오지 못했어요</h1><p>잠시 후 다시 시도해 주세요.</p>
       <a className="button" href={postHref(handle, postKey) ?? "/"}>다시 시도</a><Link className="button" href="/">글 목록으로</Link>
     </section></main></>;
   }
   const date = post.publishedAt ?? post.createdAt;
   return <><a className="skip-link" href="#main-content">본문으로 바로가기</a><SiteHeader />
-    <main id="main-content" className="page-shell detail-shell">
+    <main id="main-content" className="page-shell detail-shell post-reading-shell">
       <Link className="detail-back" href={`/blogs/${post.author.handle}`}>← {post.author.blogName??"블로그"}</Link>
       {process.env.NODE_ENV === "development" && process.env.PEBBLE_PREVIEW_MODE === "mock" && <p className="preview-notice">목 데이터 미리보기 · 실제 게시글이 아닙니다</p>}
       <article className="post-detail"><header><div className="post-heading-bar"><div className="post-meta"><span>{post.author.nickname}</span><time dateTime={date}>{new Intl.DateTimeFormat("ko-KR",{dateStyle:"long",timeZone:"Asia/Seoul"}).format(new Date(date))}</time></div><OwnPostEdit postId={post.id} authorId={post.author.id} title={post.title}/></div>
         <h1>{post.title}</h1>
-      {safeMediaUrl(post.thumbnailUrl??null)&&<img className="content-thumbnail" src={safeMediaUrl(post.thumbnailUrl??null)!} alt="글 대표 이미지"/>}</header>
+      </header>
         <PostBody blocks={post.blocks} />
         <div className="post-reactions">
           {post.tags.length>0&&<ul className="tag-list post-detail-tags" aria-label="태그">{post.tags.map(tag=><li key={tag}>{tag}</li>)}</ul>}
