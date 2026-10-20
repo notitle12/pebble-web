@@ -28,8 +28,6 @@ import { BlockAlignment } from "../block-alignment";
 import { ImageNodeView, RepresentativeImageProvider } from "./image-node-view";
 import { NaverLocationMap } from "./naver-location-map";
 import { buildNaverMapEmbed, parseNaverMapEmbed, type MapLocation } from "../naver-map";
-import { Plugin } from "@tiptap/pm/state";
-import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import { prepareImageAttachments } from "../image-attachments";
 
 type UploadResult = { src: string; previewUrl: string };
@@ -108,7 +106,7 @@ const RichImage = Image.extend({
     };
   },
   addNodeView() {
-    return ReactNodeViewRenderer(ImageNodeView, { stopEvent: ({ event }) => event.target instanceof Element && !!event.target.closest("[data-representative-image-control]") });
+    return ReactNodeViewRenderer(ImageNodeView, { stopEvent: ({ event }) => event.target instanceof Element && !!event.target.closest("[data-image-node-control]") });
   },
 });
 
@@ -130,15 +128,6 @@ const HeadingIds = Extension.create({
 });
 
 const isSafeMapEmbed = (src: string) => !!parseNaverMapEmbed(src) || isSafeOpenStreetMapEmbed(src);
-
-const EmptyParagraphHint = Extension.create({
-  name: "emptyParagraphHint",
-  addProseMirrorPlugins() { return [new Plugin({ props: { decorations(state) {
-    const decorations: Decoration[] = [];
-    state.doc.descendants((node, pos) => { if (node.type.name === "paragraph" && node.content.size === 0 && node === state.selection.$from.parent) decorations.push(Decoration.node(pos, pos + node.nodeSize, { "data-placeholder": "내용을 입력하세요.", class: styles.emptyParagraph })); });
-    return DecorationSet.create(state.doc, decorations);
-  } } })]; },
-});
 
 const MapEmbed = TiptapNode.create({
   name: "openStreetMapEmbed",
@@ -168,7 +157,7 @@ const extensionSet = [
   EditableToggle,
   TocNode,
   MapEmbed,
-  HeadingIds, EmptyParagraphHint,
+  HeadingIds,
 ];
 
 const isSafeHref = (value: string) => /^(https?:|mailto:)/i.test(value.trim());

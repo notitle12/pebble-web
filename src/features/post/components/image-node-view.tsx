@@ -24,7 +24,7 @@ export function RepresentativeImageProvider({ enabled = true, selectedSrc, disab
 
 const safeImageHref = (value: unknown) => typeof value === "string" && /^(?:https?:|blob:)/i.test(value.trim());
 
-export function ImageNodeView({ node, selected }: NodeViewProps) {
+export function ImageNodeView({ node, selected, deleteNode, editor }: NodeViewProps) {
   const representative = useContext(RepresentativeContext);
   const src = safeImageHref(node.attrs.src) ? node.attrs.src : "";
   const mediaSrc = safeImageHref(node.attrs.mediaSrc) ? node.attrs.mediaSrc : "";
@@ -40,9 +40,23 @@ export function ImageNodeView({ node, selected }: NodeViewProps) {
       aria-pressed={isRepresentative}
       disabled={representative.disabled}
       data-representative-image-control=""
+      data-image-node-control=""
       draggable={false}
       onClick={event => { event.stopPropagation(); representative.onSelect(stableSrc); }}
       onKeyDown={event => event.stopPropagation()}
     >{isRepresentative ? "✓ 대표 이미지" : "대표 이미지 선택"}</button>}
+    <button
+      className={styles.deleteButton}
+      type="button"
+      contentEditable={false}
+      aria-label="본문 이미지 삭제"
+      title="이미지 삭제"
+      disabled={representative.disabled || !editor.isEditable}
+      data-image-node-control=""
+      draggable={false}
+      onMouseDown={event => event.preventDefault()}
+      onClick={event => { event.stopPropagation(); if (!representative.disabled && editor.isEditable) deleteNode(); }}
+      onKeyDown={event => event.stopPropagation()}
+    ><svg aria-hidden="true" viewBox="0 0 20 20" fill="none"><path d="m5 5 10 10M15 5 5 15"/></svg></button>
   </NodeViewWrapper>;
 }
