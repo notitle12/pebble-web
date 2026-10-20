@@ -1,6 +1,6 @@
 "use client";
 import {useEffect,useId,useRef,useState,type PointerEvent} from "react";
-import {deleteSelectedPosts} from "../bulk-delete";
+import {deleteSelectedContent} from "@/features/content/bulk-delete";
 import dialogStyles from "@/features/content/components/content-management.module.css";
 import {ContentManagement} from "@/features/content/components/content-management";
 import Link from "next/link";
@@ -51,7 +51,7 @@ function Posts({member}:{member:Member}){
   lock.current=true;setBusy(true);setNotice("");setConfirmBulk(false);
   setData(ids.reduce((next,id)=>removeManagedRow(next,id),before));
   try{
-   const result=await deleteSelectedPosts(ids,(path,options)=>userSession.request(path,options),current);
+   const result=await deleteSelectedContent("posts",ids,(path,options)=>userSession.request(path,options),current);
    if(!current())return;
    const confirmed=result.deleted.reduce((next,id)=>removeManagedRow(next,id),before);
    setData(confirmed);setSelected([]);
