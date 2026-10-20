@@ -23,6 +23,7 @@ export const mockPosts = Array.from({ length: 21 }, (_, index) => {
     category:{id:["102","202","302"][index%3],name:["Spring","React","Cloudflare"][index%3]},
     tags: names,
     likeCount: [32,15,8,4,0,1][index % samples.length], likedByMe: false,
+    thumbnailUrl: index % 2 === 0 ? "http://127.0.0.1:3100/images/stone-garden/natural-parts.png" : "http://127.0.0.1:3100/images/stone-garden/stone-varieties.png",
     publishedAt: index === 5 ? null : new Date(Date.UTC(2026, 9, 3 - index, 3)).toISOString(),
     createdAt: new Date(Date.UTC(2026, 9, 3 - index, 3)).toISOString(),
   };
