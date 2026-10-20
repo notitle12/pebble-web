@@ -28,3 +28,16 @@
 .compactTeam{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.teamRow{display:grid;grid-template-columns:minmax(80px,130px) 58px auto 24px;align-items:center;gap:6px;border:1px solid var(--writer-border);border-radius:7px;padding:5px 7px}.editor .teamRow input{border:0;background:transparent;padding:7px 5px;min-width:0;width:100%;font-size:13px}.teamRow>span{font-size:12px;color:var(--writer-muted)}.teamRow>button{border:0;background:transparent;color:var(--writer-muted);padding:3px;font-size:18px}.addTeam{display:flex;align-items:center;gap:5px;border:0;background:transparent;color:var(--writer-muted);font-size:12px;padding:10px}.addTeam svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.5}.contribution{display:grid;gap:12px;font-size:14px;margin:26px 0}.contribution textarea{width:100%;line-height:1.8;resize:vertical}.overviewPreview dd{white-space:pre-wrap}@media(max-width:540px){.teamRow{grid-template-columns:minmax(80px,1fr) 58px auto 24px;flex:1 1 100%}}
 
 .outline{padding:14px 10px;background:var(--writer-subtle);border:1px solid var(--writer-border);border-radius:10px;box-sizing:border-box}.outline>p{padding:0 7px}.outline>a:focus-visible,.outline>button:focus-visible{outline-offset:0}.foldActions{padding-inline:5px}@media(max-width:850px){.outline{padding:10px;border-radius:8px}}
+
+/* The authoring tools sit beside the same 900px document used by the reader. */
+.layout{max-width:1073px;margin-inline:auto;grid-template-columns:145px minmax(0,900px)}
+.document{width:100%;max-width:900px}
+.previewLayout{display:block;max-width:996px}
+.previewDocument{max-width:996px}
+.previewDocument :global(.detail-shell){max-width:996px}
+.preview{max-width:996px}
+.section>summary{font-size:18px;font-weight:650;line-height:1.6;padding-bottom:20px}
+.sectionBody :global(.post-prose[role="textbox"]){padding:0}
+@media(max-width:1168px){.layout:not(.previewLayout){display:block;max-width:900px}.outline{position:static;display:flex;flex-wrap:wrap;gap:3px;margin-bottom:24px}.outline>p{width:100%}.outline>button{padding:6px 8px}.foldActions{width:100%;margin:0;padding:4px 5px;border:0}}
+
+.editor .name{letter-spacing:-.025em}

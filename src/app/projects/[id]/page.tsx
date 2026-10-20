@@ -27,12 +27,12 @@ export default async function ProjectDetail({params,searchParams}:Props) {
   let project;
   try {project=await readProject(id);} catch(error) {
     if(error instanceof GuestApiError && error.kind==="not-found") notFound();
-    return <><SiteHeader/><main className="page-shell detail-shell"><section className="list-state" role="alert"><h1>프로젝트를 불러오지 못했어요</h1><p>잠시 후 다시 시도해 주세요.</p><a className="button" href={projectHref(id,page??0)??"/projects"}>다시 시도</a><Link className="button" href="/projects">프로젝트 목록으로</Link></section></main></>;
+    return <><SiteHeader/><main className="page-shell detail-shell post-reading-shell project-reading-shell"><section className="list-state" role="alert"><h1>프로젝트를 불러오지 못했어요</h1><p>잠시 후 다시 시도해 주세요.</p><a className="button" href={projectHref(id,page??0)??"/projects"}>다시 시도</a><Link className="button" href="/projects">프로젝트 목록으로</Link></section></main></>;
   }
   const date=project.publishedAt??project.createdAt;
   const thumb = project.media.find(item => item.mediaRole === "THUMBNAIL");
   const coverUrl = safeMediaUrl(thumb?.url ?? project.thumbnailUrl ?? null);
-  return <><a className="skip-link" href="#main-content">본문으로 바로가기</a><SiteHeader/><main className="page-shell detail-shell" id="main-content"><Link className="detail-back" href="/projects">← 공개 프로젝트 목록</Link>
+  return <><a className="skip-link" href="#main-content">본문으로 바로가기</a><SiteHeader/><main className="page-shell detail-shell post-reading-shell project-reading-shell" id="main-content"><Link className="detail-back" href="/projects">← 공개 프로젝트 목록</Link>
     {process.env.NODE_ENV==="development" && process.env.PEBBLE_PREVIEW_MODE==="mock" && <p className="preview-notice">목 데이터 미리보기 · 실제 프로젝트가 아닙니다</p>}
     <article className="post-detail"><header><div className="post-heading-bar"><div className="post-meta"><span>{project.owner.nickname}</span><time dateTime={date}>{new Intl.DateTimeFormat("ko-KR",{dateStyle:"long",timeZone:"Asia/Seoul"}).format(new Date(date))}</time><span className={`project-status ${project.lifecycleStatus==="COMPLETED"?"completed":""}`}>{project.lifecycleStatus==="COMPLETED"?"완료":"진행 중"}</span></div><ProjectOwnerActions ownerId={project.owner.id} projectId={project.id} title={project.name}/></div><h1 title={project.name}>{project.name}</h1>{project.summary && <p>{project.summary}</p>}
       {coverUrl && <ProjectCoverImage src={coverUrl} alt={`${project.name} 대표 이미지`} />}
