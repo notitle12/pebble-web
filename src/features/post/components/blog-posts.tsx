@@ -47,7 +47,7 @@ export function BlogPosts({handle,authorId,initial,page=0,boardId,q,placement,va
       {post.tags&&post.tags.length>0&&<span className="blog-home-tags" aria-label="태그">{post.tags.slice(0,5).map(tag=><span key={tag}>#{tag}</span>)}</span>}
       </span>
     </span>
-    {safeMediaUrl(post.thumbnailUrl??null)?<img src={safeMediaUrl(post.thumbnailUrl??null)!} alt="" width={240} height={162}/>:<span className="blog-post-placeholder" aria-hidden="true"/>}
+    {safeMediaUrl(post.thumbnailUrl??null)?<img src={safeMediaUrl(post.thumbnailUrl??null)!} alt="" width={250} height={165}/>:<span className="blog-post-placeholder" aria-hidden="true"/>}
    </Link>
   </li>)}</ul>;
  }

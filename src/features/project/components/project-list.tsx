@@ -12,7 +12,7 @@ export async function ProjectList({query}: {query:ProjectQuery}) {
   if(!result.content.length) return <section className="list-state"><h2>{query.page>0 ? "이 페이지에는 프로젝트가 없어요" : filtered ? "조건에 맞는 프로젝트가 없어요" : "아직 공개된 프로젝트가 없어요"}</h2><p>{filtered ? "검색어나 필터를 바꿔서 다시 찾아보세요." : "새로운 프로젝트가 공개되면 이곳에서 만나볼 수 있어요."}</p>
     {query.page>0 && <Link className="button" href={projectPageHref(0,query)}>첫 페이지로</Link>}{filtered && <Link className="button" href="/projects">조건 초기화</Link>}</section>;
   return <section className="content-panel" aria-label="공개 프로젝트 목록"><div className="list-heading"><h2>{filtered ? "검색 결과" : "최신 프로젝트"}</h2><span>총 {result.totalElements.toLocaleString("ko-KR")}개의 프로젝트</span></div>
-    <ProjectCards projects={result.content} startIndex={query.page * 20 + 1}/>
+    <ProjectCards projects={result.content} startIndex={query.page * 20 + 1} variant="horizontal"/>
     <nav className="pagination" aria-label="프로젝트 페이지 이동">{result.hasPrevious ? <Link className="page-link" href={projectPageHref(query.page-1,query)} prefetch={false} aria-label="이전 페이지">← 이전</Link> : <span className="page-link disabled" aria-disabled="true">← 이전</span>}<span aria-current="page">{query.page+1} / {result.totalPages} 페이지</span>{result.hasNext ? <Link className="page-link" href={projectPageHref(query.page+1,query)} prefetch={false} aria-label="다음 페이지">다음 →</Link> : <span className="page-link disabled" aria-disabled="true">다음 →</span>}</nav>
   </section>;
 }
