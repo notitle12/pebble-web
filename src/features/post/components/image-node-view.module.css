@@ -36,3 +36,10 @@
 .image .representativeButton[aria-pressed="true"]:hover:not(:disabled) { background: #18181b; color: #fff; border-color: #fff; }
 .representativeButton:focus-visible { outline: 3px solid #b45309; outline-offset: 2px; }
 .representativeButton:disabled { cursor: not-allowed; opacity: .5; }
+
+.image .deleteButton{position:absolute;top:8px;right:8px;z-index:3;display:grid;place-items:center;width:32px;height:32px;min-width:32px;min-height:32px;padding:0;border:1px solid var(--line);border-radius:50%;background:var(--surface);color:var(--text);box-shadow:0 2px 8px #0003;cursor:pointer}
+.image .deleteButton svg{width:18px;height:18px;stroke:currentColor;stroke-width:1.7;stroke-linecap:round}
+.image .deleteButton:hover:not(:disabled){background:var(--accent-soft);color:var(--accent);border-color:var(--accent)}
+.image .deleteButton:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.image .deleteButton:disabled{opacity:.5;cursor:default}
+@media(pointer:coarse){.image .deleteButton{width:44px;height:44px}}
