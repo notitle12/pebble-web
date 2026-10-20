@@ -865,3 +865,11 @@ html[data-theme=dark] .architecture-auto-layout:hover:not(:disabled){border-colo
 .post-detail .post-reactions{margin-top:40px;padding-top:24px;border-top:1px solid var(--line)}
 .post-detail .post-reactions>.post-detail-tags{margin:0 0 16px;gap:8px}
 .detail-shell .post-detail .post-reactions>.like-panel{margin-top:0;padding:12px 0 8px;border:0;border-radius:0}
+
+/* Match the visual writer's 900px body and 48px/22px viewport gutters. */
+.post-reading-shell{max-width:996px;padding:30px 0 0}
+.post-reading-shell .post-detail{padding:44px 47px}
+.post-thumbnail-link{display:block;overflow:hidden;color:inherit;text-decoration:none}
+.post-thumbnail-link>img,.post-thumbnail-link>.blog-post-placeholder{display:block;width:100%;height:100%;max-height:none;margin:0;object-fit:cover;border-radius:inherit}
+.post-thumbnail-link:focus-visible{outline:2px solid var(--accent);outline-offset:4px}
+@media(max-width:720px){.post-reading-shell{padding:28px 0 0}.post-reading-shell .post-detail{padding:30px 21px}}
