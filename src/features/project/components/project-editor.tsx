@@ -25,6 +25,8 @@ type Props = {
   uploadImage?: (file: File) => Promise<{src: string; previewUrl: string}>;
   imagePreviews?: Record<string, string>;
   coverElement?: ReactNode;
+  featuredElement?: (visibility: ProjectVisibility) => ReactNode;
+  onPublishOpen?: () => void;
   coverPreviewUrl?: string | null;
   representativeImageSrc?: string | null;
   onSelectRepresentativeImage?: (src: string) => void;
@@ -34,7 +36,7 @@ const linkTypes: { value: LinkInput["linkType"]; label: string }[] = [
   { value: "DOWNLOAD", label: "다운로드" }, { value: "OTHER", label: "기타" },
 ];
 
-export function ProjectEditor({ value, onChange, busy, visibility, blocked, existingTechStacks = [], onSave, onTemporarySave, uploadImage, imagePreviews = {}, coverElement, coverPreviewUrl, representativeImageSrc, onSelectRepresentativeImage }: Props) {
+export function ProjectEditor({ value, onChange, busy, visibility, blocked, existingTechStacks = [], onSave, onTemporarySave, uploadImage, imagePreviews = {}, coverElement, featuredElement, onPublishOpen, coverPreviewUrl, representativeImageSrc, onSelectRepresentativeImage }: Props) {
   const id = useId();
   const currentValue = useRef(value);
   currentValue.current = value;
@@ -134,7 +136,7 @@ export function ProjectEditor({ value, onChange, busy, visibility, blocked, exis
       <div className={styles.actions}>
         <button type="button" disabled={busy || !onTemporarySave} onClick={() => void temporarySave()}>임시저장</button>
         <button type="button" disabled={busy} onClick={() => setPreview(previous => !previous)}>{preview ? "편집으로 돌아가기" : "미리보기"}</button>
-        <button type="button" className={styles.primary} disabled={busy} onClick={() => { setTargetVisibility(visibility); setFeedback(""); setPublishError(""); setPublishing(true); }}>발행하기</button>
+        <button type="button" className={styles.primary} disabled={busy} onClick={() => { setTargetVisibility(visibility); setFeedback(""); setPublishError(""); setPublishing(true); onPublishOpen?.(); }}>발행하기</button>
       </div>
     </footer>
     {!preview && <div className={styles.sharedBar}><div ref={setToolbarHost} className={styles.sharedHost}/></div>}
@@ -247,6 +249,7 @@ export function ProjectEditor({ value, onChange, busy, visibility, blocked, exis
         <fieldset disabled={busy} className={styles.publishFields}>
           <div><span className={styles.fieldTitle}>공개 설정</span><div className={styles.visibility}><label><input type="radio" name={`${id}-visibility`} checked={targetVisibility === "PUBLIC"} disabled={blocked && visibility !== "PUBLIC"} onChange={() => setTargetVisibility("PUBLIC")} />공개</label><label><input type="radio" name={`${id}-visibility`} checked={targetVisibility === "HIDDEN"} onChange={() => setTargetVisibility("HIDDEN")} />비공개</label></div></div>
           {blocked && <p className={styles.saveState}>차단된 프로젝트의 공개 전환은 제한돼요.</p>}
+          {featuredElement?.(targetVisibility)}
           <section><div className={styles.linkHeading}><h3>외부 링크</h3><button type="button" onClick={() => update("links", [...value.links, {linkType:"OTHER",label:"",url:"",displayOrder:value.links.length}])}>링크 추가</button></div>{value.links.map((link, index) => <div className={styles.linkRow} key={index}><select aria-label={`${index + 1}번째 링크 종류`} value={link.linkType} onChange={event => update("links", value.links.map((item, i) => i === index ? {...item, linkType:event.target.value as LinkInput["linkType"]} : item))}>{linkTypes.map(type => <option key={type.value} value={type.value}>{type.label}</option>)}</select><input aria-label={`${index + 1}번째 링크 이름`} maxLength={100} placeholder="이름" value={link.label} onChange={event => update("links", value.links.map((item,i) => i === index ? {...item,label:event.target.value} : item))} /><input aria-label={`${index + 1}번째 링크 주소`} type="url" required placeholder="https://" value={link.url} onChange={event => update("links", value.links.map((item,i) => i === index ? {...item,url:event.target.value} : item))} /><button type="button" className={styles.linkDeleteBtn} aria-label={`${index + 1}번째 링크 삭제`} onClick={() => update("links", value.links.filter((_,i) => i !== index).map((item, displayOrder) => ({...item,displayOrder})))}>×</button></div>)}</section>
         </fieldset>
         {publishError ? <p role="alert" className={styles.error}>{publishError}</p> : feedback ? <p role="status" className={styles.saveState}>{feedback}</p> : null}

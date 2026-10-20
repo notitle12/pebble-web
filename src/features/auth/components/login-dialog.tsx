@@ -1,16 +1,23 @@
 "use client";
+import {usePathname} from "next/navigation";
 import {useEffect,useRef,useState} from "react";
 import {NaverLoginButton} from "./naver-login-button";
 import {loginDestination} from "../login-destination";
 
 export const OPEN_LOGIN_DIALOG_EVENT = "pebble:open-login-dialog";
 
+let pendingLogin:{destination?:string}|null=null;
+
 export function openLoginDialog(destination?:string){
  if(typeof window==="undefined")return;
- window.dispatchEvent(new CustomEvent(OPEN_LOGIN_DIALOG_EVENT,{detail:{destination:destination===undefined?undefined:loginDestination(destination)}}));
+ pendingLogin={destination:destination===undefined?undefined:loginDestination(destination)};
+ window.dispatchEvent(new CustomEvent(OPEN_LOGIN_DIALOG_EVENT,{detail:pendingLogin}));
 }
 
+export function LoginTrigger(){return <button type="button" className="header-login" aria-haspopup="dialog" onClick={()=>openLoginDialog()}>로그인</button>;}
+
 export function LoginDialog({showTrigger=true}:{showTrigger?:boolean}){
+ const pathname=usePathname();
  const dialog=useRef<HTMLDialogElement>(null);
  const [open,setOpen]=useState(false);
  const [destination,setDestination]=useState<string|null>(null);
@@ -22,6 +29,7 @@ export function LoginDialog({showTrigger=true}:{showTrigger?:boolean}){
  },[open]);
  useEffect(()=>{
   const handleOpen=(event:Event)=>{
+   pendingLogin=null;
    const requested=(event as CustomEvent<{destination?:unknown}>).detail?.destination;
    setDestination(typeof requested==="string"?loginDestination(requested):null);
    if(dialog.current&&!dialog.current.open){
@@ -30,8 +38,15 @@ export function LoginDialog({showTrigger=true}:{showTrigger?:boolean}){
    setOpen(true);
   };
   window.addEventListener(OPEN_LOGIN_DIALOG_EVENT,handleOpen);
+  if(pendingLogin)handleOpen(new CustomEvent(OPEN_LOGIN_DIALOG_EVENT,{detail:pendingLogin}));
   return ()=>window.removeEventListener(OPEN_LOGIN_DIALOG_EVENT,handleOpen);
  },[]);
+ useEffect(()=>{
+  if(new URLSearchParams(window.location.search).get("login")!=="1")return;
+  const url=new URL(window.location.href);url.searchParams.delete("login");
+  window.history.replaceState(window.history.state,"",`${url.pathname}${url.search}${url.hash}`);
+  openLoginDialog("/me/blog");
+ },[pathname]);
  return <>
   {showTrigger&&<button type="button" className="header-login" aria-haspopup="dialog" onClick={()=>{setDestination(null);dialog.current?.showModal();setOpen(true);}}>로그인</button>}
   <dialog ref={dialog} className="login-dialog" aria-labelledby="login-dialog-title" aria-describedby="login-dialog-description" onClose={()=>{setOpen(false);setDestination(null);}} onClick={event=>{

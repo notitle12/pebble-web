@@ -7,7 +7,7 @@ type ProjectCoverProps = {
   imageUrl?: string | null;
 };
 
-export function ProjectCover({ title, techStacks = [], index, imageUrl }: ProjectCoverProps) {
+export function ProjectCover({ imageUrl }: ProjectCoverProps) {
   const safeUrl = safeMediaUrl(imageUrl ?? null);
   if (safeUrl) {
     return (
@@ -17,40 +17,13 @@ export function ProjectCover({ title, techStacks = [], index, imageUrl }: Projec
     );
   }
 
-  const firstTechStack = techStacks[0];
-  const isFrontend = techStacks.some((tag) => /react|frontend|front-end/i.test(tag));
-  const number = String(index).padStart(2, "0");
-
-  return (
-    <div className={`project-cover ${isFrontend ? "project-cover-frontend" : "project-cover-general"}`} aria-hidden="true">
-      <svg className="project-cover-art" viewBox="0 0 640 360" fill="none" focusable="false">
-        {isFrontend ? (
-          <>
-            <rect x="104" y="67" width="365" height="219" rx="14" />
-            <path d="M104 105h365M137 86h2m17 0h2m17 0h2" />
-            <rect x="142" y="131" width="123" height="122" rx="8" />
-            <path d="M164 157h78m-78 18h55m-55 18h68m-68 18h43" />
-            <rect x="284" y="131" width="151" height="51" rx="8" />
-            <path d="M303 151h91m-91 14h56" />
-            <rect x="284" y="194" width="151" height="59" rx="8" />
-            <path d="M303 216h113m-113 16h77" />
-            <path d="M478 105l44 35v121l-44 25" />
-            <circle cx="509" cy="94" r="5" />
-          </>
-        ) : (
-          <>
-            <path d="M126 119l158-61 189 72-158 62-189-73Z" />
-            <path d="M126 153l189 73 158-62v36l-158 63-189-73v-37Z" />
-            <path d="M126 198l189 73 158-63v37l-158 62-189-73v-36Z" />
-            <path d="M182 114l158-61m-99 92 158-61m-99 92 158-61" />
-            <circle cx="466" cy="85" r="7" />
-            <path d="M492 85h39m-19-19v38" />
-          </>
-        )}
-      </svg>
-      <span className="project-cover-index">PROJECT {number}</span>
-      <span className="project-cover-title">{title}</span>
-      {firstTechStack && <span className="project-cover-caption">{firstTechStack}</span>}
-    </div>
-  );
+  return <div className="project-cover project-cover-general" aria-hidden="true">
+    <svg className="project-cover-art" viewBox="0 0 640 360" fill="none" focusable="false">
+      <rect x="205" y="89" width="230" height="182" rx="22" opacity=".13" fill="currentColor" stroke="none"/>
+      <path d="M231 112h63l22 23h93v105a14 14 0 0 1-14 14H245a14 14 0 0 1-14-14V112Z" strokeWidth="3"/>
+      <path d="M258 172h124m-124 23h83" strokeWidth="3" opacity=".5"/>
+      <circle cx="366" cy="222" r="5" fill="currentColor" stroke="none" opacity=".65"/>
+      <circle cx="382" cy="222" r="5" fill="currentColor" stroke="none" opacity=".35"/>
+    </svg>
+  </div>;
 }

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import {LoginDialog} from "../features/auth/components/login-dialog";
 import {SiteFooter} from "../components/site-footer";
 import "./globals.css";
 import "./design.css";
@@ -20,7 +21,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <link rel="stylesheet" href="/fonts/pretendard/pretendard.css"/>
         <script dangerouslySetInnerHTML={{__html:themeBootstrap}}/>
       </head>
-      <body>{children}<SiteFooter/></body>
+      <body>{children}<SiteFooter/><LoginDialog showTrigger={false}/></body>
     </html>
   );
 }
