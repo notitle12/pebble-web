@@ -33,10 +33,10 @@ function Stacks({ items }: { items: string[] }) {
 function Projects({ projects, configured, failed }: { projects: ProjectDetail[]; configured: boolean; failed: boolean }) {
   if (!projects.length) return failed ? <p className="blog-home-empty" role="alert">대표 프로젝트를 불러오지 못했어요.</p> : <p className="blog-home-empty">{configured ? "대표 프로젝트가 공개 상태인지 확인해 주세요." : "아직 대표 프로젝트를 설정하지 않았어요."}</p>;
   return <ul className="blog-home-projects">{projects.map(project => {
-    const image = safeMediaUrl(project.media.find(item => item.mediaRole === "THUMBNAIL")?.url ?? null);
+    const image = safeMediaUrl(project.thumbnailUrl ?? project.media?.find(item => item.mediaRole === "THUMBNAIL")?.url ?? null);
     return <li key={project.id}><Link href={`/projects/${project.id}`} prefetch={false} className="blog-home-project">
-      {image ? <img src={image} alt="" width={112} height={76}/> : <span className="blog-project-placeholder" aria-hidden="true">{Array.from(project.name)[0]}</span>}
       <span className="blog-home-project-copy"><strong>{project.name}</strong>{project.summary && <span>{project.summary}</span>}<span className="blog-home-tags">{project.techStacks.map(tag => <span key={tag.id}>{tag.name}</span>)}</span></span>
+      {image ? <img src={image} alt="" width={250} height={165}/> : <span className="blog-project-placeholder" aria-hidden="true">{Array.from(project.name)[0]}</span>}
     </Link></li>;
   })}</ul>;
 }
