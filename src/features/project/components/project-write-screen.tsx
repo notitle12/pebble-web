@@ -18,9 +18,14 @@ import {projectImageValue,replaceProjectImageBlocks,projectImagePreviews} from '
 import {projectCoverFile} from '../project-cover-file';
 import {ProjectCoverPicker} from './project-cover-picker';
 import {ProjectEditor} from './project-editor';
+import {getMyBlogHome,type BlogHomeSettings} from '@/features/blog-home/api/blog-home';
+import {selectedFeaturedIds,saveProjectFeaturedSelection,type FeaturedSelection} from '../project-featured-selection';
+import {ProjectFeaturedPicker} from './project-featured-picker';
 function Writer({member,id,onLogout}:{member:Member;id?:string;onLogout:(hasChanges:boolean,memberId:string)=>void}){
  const router=useRouter();
  const [project,setProject]=useState<OwnProject|null>(null),[value,setValue]=useState<ProjectEditorValue>(emptyProject),[loading,setLoading]=useState(true),[error,setError]=useState(''),[busy,setBusy]=useState(false),[saved,setSaved]=useState(''),[attempt,setAttempt]=useState(0),[cover,setCover]=useState<File|null>(null),[coverPreview,setCoverPreview]=useState(''),[coverLoading,setCoverLoading]=useState(false),[selectedImageSrc,setSelectedImageSrc]=useState<string|null>(null),[imagePreviews,setImagePreviews]=useState<Record<string,string>>({}),[coverDeleted,setCoverDeleted]=useState(false);
+ const [featuredHome,setFeaturedHome]=useState<BlogHomeSettings|null>(null),[featuredSelection,setFeaturedSelection]=useState<FeaturedSelection>({featured:false,removedIds:[]}),[featuredNames,setFeaturedNames]=useState<Record<string,string>>({}),[featuredLoading,setFeaturedLoading]=useState(false),[featuredError,setFeaturedError]=useState(''),[featuredChanged,setFeaturedChanged]=useState(false);
+ const featuredLoad=useRef(0);
  const selectingCover=useRef(false),saving=useRef(false),mounted=useRef(false),pending=useRef(createPendingImages()),dirty=useRef(false),projectRef=useRef<OwnProject|null>(null),draftSlot=useRef(id);
  const current=()=>mounted.current&&userSession.snapshot().phase==='ready'&&userSession.snapshot().member?.id===member.id;
  useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;pending.current.dispose();};},[]);
@@ -63,10 +68,32 @@ function Writer({member,id,onLogout}:{member:Member;id?:string;onLogout:(hasChan
   }
  }
 
+ async function loadFeatured(){
+  if(saving.current||!current())return;
+  const generation=++featuredLoad.current;
+  setFeaturedLoading(true);setFeaturedError('');
+  try{
+   const home=await getMyBlogHome(path=>userSession.request(path));
+   if(!current()||generation!==featuredLoad.current)return;
+   setFeaturedHome(home);setFeaturedSelection({featured:home.featuredProjectIds.includes(projectRef.current?.id??''),removedIds:[]});setFeaturedChanged(false);
+   const names=await Promise.all(home.featuredProjectIds.filter(item=>item!==projectRef.current?.id).map(async item=>{
+    try{const row=parseOwnProject(await userSession.request(`/projects/${item}`),member.id,item);return [item,row.name] as const;}catch{return [item,'이름을 불러오지 못한 프로젝트'] as const;}
+   }));
+   if(current()&&generation===featuredLoad.current)setFeaturedNames(Object.fromEntries(names));
+  }catch{if(current()&&generation===featuredLoad.current){setFeaturedHome(null);setFeaturedError('대표 프로젝트 설정을 불러오지 못했어요. 설정을 바꾸려면 다시 불러와 주세요.');}}
+  finally{if(mounted.current&&generation===featuredLoad.current)setFeaturedLoading(false);}
+ }
+
  async function save(visibility:ProjectVisibility,temporary=false){
   if(saving.current||selectingCover.current||!current())return;saving.current=true;setBusy(true);setError('');setSaved('');
   try{
    let target=projectRef.current;let resolved=value;
+   if(!temporary&&featuredChanged){
+    if(featuredLoading||!featuredHome)throw new Error('대표 프로젝트 설정을 먼저 불러와 주세요.');
+    const latest=await getMyBlogHome(path=>userSession.request(path));
+    if(!current())return;
+    selectedFeaturedIds(latest,target?.id??'new',featuredSelection,visibility==='PUBLIC'&&!target?.isBlocked);
+   }
    if(!temporary)buildProjectSaveBody(value,target??undefined,visibility);
    if(pending.current.has(projectImageValue(value))){
     if(!target){target=parseOwnProject(await userSession.request('/projects',{method:'POST',body:{name:value.name.trim()||'제목 없는 프로젝트',lifecycleStatus:'IN_PROGRESS',visibilityStatus:'HIDDEN'}}),member.id);projectRef.current=target;if(current())setProject(target);}
@@ -93,6 +120,18 @@ function Writer({member,id,onLogout}:{member:Member;id?:string;onLogout:(hasChan
    if(!current())return;
    projectRef.current=next;setProject(next);setValue(projectEditorValue(next));setCover(null);setCoverDeleted(false);setSelectedImageSrc(null);setImagePreviews(projectImagePreviews(next.id,next.media));dirty.current=false;setSaved(visibility==='PUBLIC'?'프로젝트를 발행했어요.':'비공개로 발행했어요.');
    await projectDraft('remove',member.id,draftSlot.current).catch(()=>{});draftSlot.current=next.id;
+   if(featuredChanged){
+    try{
+     const updated=await saveProjectFeaturedSelection(next,featuredSelection,(path,options)=>userSession.request(path,options),current);
+     if(!updated)return;
+     setFeaturedHome(updated);
+     setFeaturedChanged(false);
+    }catch{
+     if(!current())return;
+     dirty.current=true;
+     throw new Error('프로젝트는 저장됐지만 대표 프로젝트 설정을 완료하지 못했어요. 발행 창에서 설정을 확인한 뒤 다시 발행해 주세요.');
+    }
+   }
    if(current())router.replace(next.visibilityStatus==='PUBLIC'&&!next.isBlocked?`/projects/${next.id}`:`/projects/${next.id}/view`);
   }catch(e){if(current())setError(projectWriteFailure(e));throw e;}finally{saving.current=false;if(mounted.current)setBusy(false);}
  }
@@ -121,6 +160,6 @@ function Writer({member,id,onLogout}:{member:Member;id?:string;onLogout:(hasChan
  const currentCoverPreview=coverDeleted?null:(coverPreview||safeMediaUrl(existingCover?.url??existingCover?.thumbnailUrl??null));
  const coverElement=<ProjectCoverPicker preview={currentCoverPreview} selected={!coverDeleted&&(!!cover||!!existingCover||!!selectedImageSrc)} selectedSrc={selectedImageSrc} disabled={busy||coverLoading} onChange={changeCover} onRemove={removeCover} candidateImages={candidateImages} onSelectCandidate={selectCandidateCover}/>;
 
- return <><div className="writer-identity"><span>{member.nickname}</span><AccountMenu member={member} logoutDisabled={busy||coverLoading} onLogout={()=>onLogout(dirty.current,member.id)}/></div><h1 className="writer-visually-hidden">프로젝트 작성</h1><div className="writer-status writer-visually-hidden"><Link href="/me/projects">← 내 프로젝트</Link><span>{saved}</span></div>{error&&<p role="alert">{error}</p>}<ProjectEditor value={value} onChange={next=>{setValue(next);setError('');dirty.current=true;}} busy={busy||coverLoading} visibility={project?.visibilityStatus??'PUBLIC'} blocked={project?.isBlocked??false} existingTechStacks={project?.techStacks} uploadImage={uploadImage} imagePreviews={imagePreviews} coverElement={coverElement} coverPreviewUrl={currentCoverPreview} representativeImageSrc={selectedImageSrc} onSelectRepresentativeImage={src=>void selectCandidateCover({src,previewUrl:imagePreviews[src]||src})} onTemporarySave={()=>save(project?.visibilityStatus??'HIDDEN',true)} onSave={save}/></>;
+ return <><div className="writer-identity"><span>{member.nickname}</span><AccountMenu member={member} logoutDisabled={busy||coverLoading} onLogout={()=>onLogout(dirty.current,member.id)}/></div><h1 className="writer-visually-hidden">프로젝트 작성</h1><div className="writer-status writer-visually-hidden"><Link href="/me/projects">← 내 프로젝트</Link><span>{saved}</span></div>{error&&<p role="alert">{error}</p>}<ProjectEditor value={value} onChange={next=>{setValue(next);setError('');dirty.current=true;}} busy={busy||coverLoading} visibility={project?.visibilityStatus??'PUBLIC'} blocked={project?.isBlocked??false} existingTechStacks={project?.techStacks} onPublishOpen={()=>void loadFeatured()} featuredElement={visibility=><ProjectFeaturedPicker home={featuredHome} selection={featuredSelection} projectId={project?.id} names={featuredNames} loading={featuredLoading} error={featuredError} disabled={busy||coverLoading} publicProject={visibility==='PUBLIC'&&!project?.isBlocked} onReload={()=>void loadFeatured()} onChange={selection=>{setFeaturedSelection(selection);setFeaturedChanged(true);dirty.current=true;}}/>} uploadImage={uploadImage} imagePreviews={imagePreviews} coverElement={coverElement} coverPreviewUrl={currentCoverPreview} representativeImageSrc={selectedImageSrc} onSelectRepresentativeImage={src=>void selectCandidateCover({src,previewUrl:imagePreviews[src]||src})} onTemporarySave={()=>save(project?.visibilityStatus??'HIDDEN',true)} onSave={save}/></>;
 }
 export function ProjectWriteScreen({id}:{id?:string}){return <WriterLogoutBoundary>{onLogout=><MemberGate profile preserveOnExpiry>{member=><Writer key={`${member.id}:${id??'new'}`} member={member} id={id} onLogout={onLogout}/>}</MemberGate>}</WriterLogoutBoundary>;}

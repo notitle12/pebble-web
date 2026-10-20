@@ -1,3 +1,4 @@
+import {ProjectCover} from "@/features/project/components/project-cover";
 import Link from "next/link";
 import {BlogPosts} from "../../post/components/blog-posts";
 import {BlogActivityDisplay} from "./blog-activity-display";
@@ -36,7 +37,7 @@ function Projects({ projects, configured, failed }: { projects: ProjectDetail[];
     const image = safeMediaUrl(project.thumbnailUrl ?? project.media?.find(item => item.mediaRole === "THUMBNAIL")?.url ?? null);
     return <li key={project.id}><Link href={`/projects/${project.id}`} prefetch={false} className="blog-home-project">
       <span className="blog-home-project-copy"><strong>{project.name}</strong>{project.summary && <span>{project.summary}</span>}<span className="blog-home-tags">{project.techStacks.map(tag => <span key={tag.id}>{tag.name}</span>)}</span></span>
-      {image ? <img src={image} alt="" width={250} height={165}/> : <span className="blog-project-placeholder" aria-hidden="true">{Array.from(project.name)[0]}</span>}
+      {image ? <img src={image} alt="" width={250} height={165}/> : <span className="blog-project-placeholder" aria-hidden="true"><ProjectCover title={project.name} index={1}/></span>}
     </Link></li>;
   })}</ul>;
 }

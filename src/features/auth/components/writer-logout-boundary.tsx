@@ -31,7 +31,8 @@ export function WriterLogoutBoundary({children}:{children:(requestLogout:Request
   try {
    await userSession.logout();
    const next=userSession.snapshot();
-   if(next.phase==="guest"||next.phase==="ready"&&next.member?.id!==target.current)router.replace("/");
+   if(next.phase==="guest")setLeaving(false);
+   else if(next.phase==="ready"&&next.member?.id!==target.current)router.replace("/");
    else setError(next.message||"로그아웃 완료를 확인하지 못했습니다. 다시 시도해 주세요.");
   } catch {setError("로그아웃 완료를 확인하지 못했습니다. 다시 시도해 주세요.");}
   finally{lock.current=false;}
@@ -44,7 +45,7 @@ export function WriterLogoutBoundary({children}:{children:(requestLogout:Request
   if(hasChanges)setConfirming(true);
   else startLogout();
  }
- if(leaving)return error?<section className="list-state"><h1>로그아웃 상태를 확인해 주세요</h1><p role="alert">{error}</p><button className="button" onClick={()=>void finishLogout()}>로그아웃 다시 시도</button><Link className="button" href="/">메인으로</Link></section>:<LoadingIndicator section label="로그아웃 후 메인 화면으로 이동하는 중"/>;
+ if(leaving)return error?<section className="list-state"><h1>로그아웃 상태를 확인해 주세요</h1><p role="alert">{error}</p><button className="button" onClick={()=>void finishLogout()}>로그아웃 다시 시도</button><Link className="button" href="/">메인으로</Link></section>:<LoadingIndicator section label="로그아웃하는 중"/>;
  return <>{children(requestLogout)}<dialog ref={dialog} className={styles.dialog} aria-labelledby={titleId} onCancel={()=>setConfirming(false)} onClose={()=>setConfirming(false)}>
   <h2 id={titleId}>작성 중인 내용이 있습니다</h2>
   <p>저장하지 않은 내용은 사라질 수 있습니다. 로그아웃하시겠어요?</p>
