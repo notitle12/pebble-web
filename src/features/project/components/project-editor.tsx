@@ -129,7 +129,7 @@ export function ProjectEditor({ value, onChange, busy, visibility, blocked, exis
     <div className={styles.sectionBody}>{content}</div>
   </details>;
 
-  return <div className={`${styles.editor} writer-composer`}>
+  return <div className={`${styles.editor} writer-composer project-editor`}>
     <footer className={`${styles.toolbar} writer-action-bar`} aria-label="프로젝트 저장 및 발행">
       <button type="button" className="writer-exit" disabled={busy} onClick={()=>window.location.assign("/me/projects")}>나가기</button>
       <span className={styles.saveState} role="status">{busy ? "저장 중…" : feedback || "프로젝트를 자유롭게 기록해 보세요."}</span>
@@ -153,7 +153,7 @@ export function ProjectEditor({ value, onChange, busy, visibility, blocked, exis
       )}
       <div className={`${styles.document} ${preview ? styles.previewDocument : ""}`}>
         {preview ? (
-          <div className="detail-shell">
+          <div className="detail-shell post-reading-shell project-reading-shell">
             <article className={`post-detail ${styles.preview}`} aria-label="프로젝트 미리보기">
             <header>
               <div className="post-heading-bar">
