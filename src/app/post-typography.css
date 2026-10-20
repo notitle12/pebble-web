@@ -10,3 +10,14 @@
 .post-reading-shell .post-detail>header h1{font-size:30px;font-weight:400;line-height:1.5;letter-spacing:-.04em;margin:20px 0 0}
 .post-reading-shell .post-detail>.post-body{padding-top:30px}
 @media(max-width:720px){.post-reading-shell .post-detail>header h1{font-size:26px}}
+
+/* Project inputs and rendered headings share metrics; form controls stay editor-only. */
+.project-reading-shell .post-detail>header h1{font-size:28px;font-weight:650;line-height:1.6;letter-spacing:-.025em}
+.project-reading-shell .post-detail>header>p{font-size:14px;line-height:1.6}
+.project-reading-shell .project-document-section>h2{font-size:18px;font-weight:650;line-height:1.6;margin:0 0 20px}
+.project-editor .inline-body-editor .rich-editor-canvas{padding:0 0 24px}
+.page-shell.project-writer-shell:has([aria-label="프로젝트 미리보기"]){padding-inline:0}
+@media(max-width:540px){.project-reading-shell .post-detail>header h1{font-size:24px}}
+
+.project-reading-shell :is(.project-document-background,.project-document-tech-stack)>h3{font-size:14px;font-weight:500;line-height:1.6;color:var(--muted);margin:0 0 12px}
+.project-reading-shell .project-document-section .post-body{padding-top:0}
