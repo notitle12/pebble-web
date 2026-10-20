@@ -217,7 +217,7 @@ export function RichBodyEditor({ blocks, onChangeBlocks, uploadImage, imagePrevi
     content: initialContent,
     immediatelyRender: false,
     editable: !disabled,
-    editorProps:{attributes:{role:"textbox","aria-label":"본문","aria-multiline":"true"},handleDrop(view,event,_slice,moved){
+    editorProps:{attributes:{class:"post-prose",role:"textbox","aria-label":"본문","aria-multiline":"true"},handleDrop(view,event,_slice,moved){
       const {selection,doc}=view.state,last=doc.lastChild;
       if(!moved||!(selection instanceof NodeSelection)||selection.$from.depth!==0||selection.node.type.name==="paragraph"||last?.type.name!=="paragraph"||last.content.size!==0)return false;
       const end=view.nodeDOM(doc.content.size-last.nodeSize);

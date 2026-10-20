@@ -1,0 +1,12 @@
+/* The editable document and sanitized reader share prose metrics. Inline author formatting wins. */
+.post-prose.post-prose{font-size:16px;line-height:1.8;overflow-wrap:anywhere}
+.post-prose.post-prose>*+*{margin-top:.85em}
+.post-prose.post-prose :is(p,h1,h2,h3){margin-block:0}
+.post-prose.post-prose h1{font-size:2rem;line-height:1.3}
+.post-prose.post-prose h2{font-size:1.55rem;line-height:1.8}
+.post-prose.post-prose h3{font-size:1.25rem;line-height:1.8}
+.post-prose.post-prose p:empty{min-height:1.8em}
+.post-reading-shell .post-detail>header{padding:20px 0 26px}
+.post-reading-shell .post-detail>header h1{font-size:30px;font-weight:400;line-height:1.5;letter-spacing:-.04em;margin:20px 0 0}
+.post-reading-shell .post-detail>.post-body{padding-top:30px}
+@media(max-width:720px){.post-reading-shell .post-detail>header h1{font-size:26px}}

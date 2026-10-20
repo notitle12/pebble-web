@@ -25,10 +25,6 @@
 .symbolMenu select { background: transparent; border: 0; color: inherit; font: inherit; min-width: 50px; }
 .editor { background: #fff; min-height: 55vh; padding: 0 0 36px; }
 .editor :global(.tiptap) { line-height: 1.8; min-height: 55vh; outline: none; }
-.editor :global(.tiptap > * + *), .preview :global(* + *) { margin-top: .85em; }
-.editor :global(.tiptap h1), .preview :global(h1) { font-size: 2rem; }
-.editor :global(.tiptap h2), .preview :global(h2) { font-size: 1.55rem; }
-.editor :global(.tiptap h3), .preview :global(h3) { font-size: 1.25rem; }
 .editor :global(.tiptap blockquote), .preview :global(blockquote) { border-left: 2px solid #c8cbd0; color: #5c6068; margin-left: 0; padding-left: 1rem; }
 .editor :global(.tiptap mark), .preview :global(mark) { border-radius: .12em; padding: 0 .08em; }
 .editor :global(.tiptap pre), .preview :global(pre) { background: #f6f6f6; overflow-x: auto; padding: .8rem; }
@@ -151,8 +147,6 @@
 .editor :global(.tiptap li:has(> p[style*="text-align: right"])),.rendered :global(li:has(> p[style*="text-align: right"])){text-align:right;list-style-position:inside}
 .editor :global(.tiptap li:has(> p[style*="text-align: center"]) > p:first-child),.editor :global(.tiptap li:has(> p[style*="text-align: right"]) > p:first-child),.rendered :global(li:has(> p[style*="text-align: center"]) > p:first-child),.rendered :global(li:has(> p[style*="text-align: right"]) > p:first-child){display:inline}
 /* Enter adds one new paragraph; keep default block margins from looking like a blank extra line. */
-.editor :global(.tiptap p),.editor :global(.tiptap h1),.editor :global(.tiptap h2),.editor :global(.tiptap h3){margin-block:0}
-.editor :global(.tiptap > p + p),.editor :global(.tiptap > h1 + p),.editor :global(.tiptap > h2 + p),.editor :global(.tiptap > h3 + p){margin-top:0}
 
 /* TableView owns the live DOM, so align both its wrapper and nested table after width defaults. */
 .editor :global(.tableWrapper[data-align="center"] table),.editor :global(.tiptap table[data-align="center"]){margin-left:auto;margin-right:auto;width:auto}
