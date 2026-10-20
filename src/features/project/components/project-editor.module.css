@@ -38,6 +38,6 @@
 .preview{max-width:996px}
 .section>summary{font-size:18px;font-weight:650;line-height:1.6;padding-bottom:20px}
 .sectionBody :global(.post-prose[role="textbox"]){padding:0}
-@media(max-width:1168px){.layout{display:block;max-width:900px}.outline{position:static;display:flex;flex-wrap:wrap;gap:3px;margin-bottom:24px}.outline>p{width:100%}.outline>button{padding:6px 8px}.foldActions{width:100%;margin:0;padding:4px 5px;border:0}}
+@media(max-width:1168px){.layout:not(.previewLayout){display:block;max-width:900px}.outline{position:static;display:flex;flex-wrap:wrap;gap:3px;margin-bottom:24px}.outline>p{width:100%}.outline>button{padding:6px 8px}.foldActions{width:100%;margin:0;padding:4px 5px;border:0}}
 
 .editor .name{letter-spacing:-.025em}
