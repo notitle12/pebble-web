@@ -1,3 +1,4 @@
+import {pageMetadata} from "@/features/seo/model";
 import {Suspense} from "react";
 import {redirect} from "next/navigation";
 import {SiteHeader} from "@/components/site-header";
@@ -7,7 +8,7 @@ import {PostList,PostListLoading,InvalidPage} from "@/features/post/components/p
 import {PopularPosts} from "@/features/post/components/popular-posts";
 import {searchHref} from "@/features/search/query";
 export const dynamic="force-dynamic";
-export const metadata={title:"게시글"};
+export async function generateMetadata({searchParams}:{searchParams:Promise<Record<string,string|string[]|undefined>>}){const raw=await searchParams,q=parsePostQuery(raw);return pageMetadata({path:q&&q.page>0?`/posts?page=${q.page}`:"/posts",title:"게시글",description:"개발자의 경험과 기술 기록을 읽고 나누세요.",noIndex:!q||!!q.q||!!q.categoryId});}
 export default async function PostsPage({searchParams}:{searchParams:Promise<Record<string,string|string[]|undefined>>}){
   const query=parsePostQuery(await searchParams);
   if(query?.q&&!query.categoryId)redirect(searchHref({...query,type:"posts"}));

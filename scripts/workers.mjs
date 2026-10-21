@@ -8,7 +8,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const mode = process.argv[2];
 if (!["build", "preview", "deploy"].includes(mode)) throw new Error("Use build, preview or deploy");
 // Child tools run outside the repository so Next/Wrangler cannot auto-load its secret files.
-const env = Object.fromEntries(["PATH", "HOME", "TMPDIR", "TMP", "TEMP", "USER", "LOGNAME", "CI", "TERM", "NO_COLOR"]
+const env = Object.fromEntries(["PATH", "HOME", "TMPDIR", "TMP", "TEMP", "USER", "LOGNAME", "CI", "TERM", "NO_COLOR", "NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION", "NEXT_PUBLIC_NAVER_SITE_VERIFICATION", "NEXT_PUBLIC_BING_SITE_VERIFICATION"]
   .filter(key => process.env[key] !== undefined).map(key => [key, process.env[key]]));
 env.NEXT_PUBLIC_API_BASE_URL = "https://api.pebble-log.com/api/v1";
 function run(args, cwd) {

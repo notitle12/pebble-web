@@ -1,3 +1,5 @@
+import {pageMetadata} from "@/features/seo/model";
+import {getPublicBlogProfile} from "@/features/post/api/public-blog";
 import {featuredProjectIdsForHome} from "@/features/blog-home/api/blog-home";
 import {loadBlogPageData} from "@/features/blog-tools/api/blog-page";
 import {BlogSidebar} from "@/features/blog-tools/components/blog-sidebar";
@@ -22,6 +24,7 @@ import { BlogHomeView } from "@/features/blog-home/components/blog-home-view";
 import { getPublicProject, type ProjectDetail } from "@/features/project/api/project-list";
 
 export const dynamic = "force-dynamic";
+export async function generateMetadata({params,searchParams}:{params:Promise<{handle:string}>;searchParams:Promise<Record<string,string|string[]|undefined>>}){try{const {handle}=await params;const author=await getPublicBlogProfile(handle,process.env.NEXT_PUBLIC_API_BASE_URL,fetch);const q=await searchParams;return pageMetadata({path:`/blogs/${handle}`,title:author.blogName,description:`${author.nickname}의 개발 기록과 프로젝트를 ${author.blogName}에서 만나보세요.`,noIndex:Object.keys(q).length>0});}catch{return {title:"블로그",robots:{index:false,follow:false}};}}
 const validHandle = (handle: string) => /^[a-z][a-z0-9_-]{1,28}[a-z0-9_]$/.test(handle);
 
 function InvalidPage({ search = false }: { search?: boolean }) {
