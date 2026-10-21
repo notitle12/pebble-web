@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {diagramZoomScroll, diagramFitScale} from '../src/features/post/diagram-viewport.ts';
+import {diagramZoomScroll, diagramFitScale, diagramZoomAnchor} from '../src/features/post/diagram-viewport.ts';
 
 test('zoom keeps the same diagram point under the cursor when the padded canvas opens', () => {
   const before = {scroll: 100, anchor: 250, scale: .5, padding: 0};
@@ -23,4 +23,12 @@ test('expanded diagram fit includes both unscaled gutters without overflowing th
   assert.ok(800 * scale + 96 <= 600);
   assert.equal(diagramFitScale(1200, 800, 900, 420), .525);
   assert.equal(diagramFitScale(100, 100, 900, 600, 48), 1);
+});
+
+test('zoom anchor stays inside a wide fitted ERD instead of the empty lower frame', () => {
+  const anchor = diagramZoomAnchor(494, 45, 48);
+  assert.equal(anchor, 70.5);
+  assert.equal(diagramZoomAnchor(494, 900, 48), 247);
+  const scroll = diagramZoomScroll(0, anchor, 10, 48, 48);
+  assert.equal((scroll + anchor - 48) / .5, (anchor - 48) / .05);
 });
