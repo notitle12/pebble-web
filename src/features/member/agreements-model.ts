@@ -1,7 +1,7 @@
 import { MemberApiError, responseData } from "../../lib/member-api.ts";
 import { isIsoInstant } from "../../lib/date-time.ts";
 
-export const memberAgreementVersions = { termsVersion: "2026-10-15", privacyVersion: "2026-10-15" } as const;
+export const memberAgreementVersions = { termsVersion: "2026-10-21", privacyVersion: "2026-10-21" } as const;
 export type MemberAgreementState = { termsVersion: string; privacyVersion: string; accepted: boolean; acceptedAt: string | null; available: boolean };
 export const memberAgreementAcceptance = {
   termsVersion: memberAgreementVersions.termsVersion,

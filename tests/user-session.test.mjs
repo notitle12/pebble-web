@@ -61,16 +61,16 @@ test('accepted agreements refresh the same member session before member function
   if(url.pathname.endsWith('/refresh'))return grant();
   if(url.pathname.endsWith('/members/me/agreements')){
    if(options.method==='POST'){submitted=JSON.parse(options.body);accepted=true;}
-   return json({termsVersion:'2026-10-15',privacyVersion:'2026-10-15',accepted,acceptedAt:accepted?'2026-10-15T01:00:00Z':null,available:true});
+   return json({termsVersion:'2026-10-21',privacyVersion:'2026-10-21',accepted,acceptedAt:accepted?'2026-10-21T01:00:00Z':null,available:true});
   }
   if(url.pathname.endsWith('/members/me'))return json({...member,agreementsAccepted:accepted});
   return json({});
  },direct,base);
  await session.ensure();assert.equal(session.snapshot().member.agreementsAccepted,false);
  await session.request('/members/me/agreements');
- await session.request('/members/me/agreements',{method:'POST',body:{termsVersion:'2026-10-15',privacyVersion:'2026-10-15',termsAccepted:true,privacyAccepted:true,ageConfirmed:true}});
+ await session.request('/members/me/agreements',{method:'POST',body:{termsVersion:'2026-10-21',privacyVersion:'2026-10-21',termsAccepted:true,privacyAccepted:true,ageConfirmed:true}});
  await session.reloadMember();
- assert.deepEqual(submitted,{termsVersion:'2026-10-15',privacyVersion:'2026-10-15',termsAccepted:true,privacyAccepted:true,ageConfirmed:true});
+ assert.deepEqual(submitted,{termsVersion:'2026-10-21',privacyVersion:'2026-10-21',termsAccepted:true,privacyAccepted:true,ageConfirmed:true});
  assert.equal(session.snapshot().member.agreementsAccepted,true);
  assert.deepEqual(paths.slice(-3).map(([path,method])=>[path.split('/api/v1').pop(),method]),[['/members/me/agreements','GET'],['/members/me/agreements','POST'],['/members/me','GET']]);
 });

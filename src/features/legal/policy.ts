@@ -1,4 +1,4 @@
-export const legalVersions = { termsVersion: "2026-10-15", privacyVersion: "2026-10-15" } as const;
+export const legalVersions = { termsVersion: "2026-10-21", privacyVersion: "2026-10-21" } as const;
 
 export function getLegalPolicyConfig(env: Record<string, string | undefined> = process.env) {
   const operator = env.PEBBLE_LEGAL_OPERATOR?.trim() || "Pebble 운영팀";

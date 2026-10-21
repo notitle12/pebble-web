@@ -1,4 +1,13 @@
-import {SiteHeader} from "@/components/site-header";
-import {LoginPanel} from "@/features/auth/components/login-panel";
-export const metadata={robots:{index:false,follow:false}};
-export default function Page(){return <><SiteHeader/><main className="page-shell detail-shell writer-shell"><LoginPanel/></main></>;}
+import { redirect } from "next/navigation";
+
+export const metadata = { robots: { index: false, follow: false } };
+
+export default async function Page({
+  searchParams,
+}: {
+  searchParams?: Promise<{ returnTo?: string }>;
+}) {
+  const params = searchParams ? await searchParams : undefined;
+  const returnTo = params?.returnTo ? `&returnTo=${encodeURIComponent(params.returnTo)}` : "";
+  redirect(`/?login=1${returnTo}`);
+}
