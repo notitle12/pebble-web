@@ -477,3 +477,6 @@
 
 /* Keep focus rings on editor controls, not the canvas used for Space panning. */
 .editor .viewport:focus,.editor .viewport:focus-visible,.diagram .viewport:focus,.diagram .viewport:focus-visible{outline:none;box-shadow:none}
+
+.zoom :global(.diagram-zoom-field){margin:0;gap:2px;font-size:11.5px}
+.editor .zoom :global(.diagram-zoom-field) input,.diagram .zoom :global(.diagram-zoom-field) input{box-sizing:content-box;width:4ch;min-width:0;height:24px;min-height:0;padding:0;border:0!important;border-radius:2px;background:transparent!important;color:inherit;font:inherit;text-align:right;box-shadow:none}

@@ -262,7 +262,7 @@ export function DatabaseSchemaEditor({
    }}
   >
    <div className={s.editorHeading}>
-    <EditorFullscreenButton control={fullscreen}/>
+    {tab === 'SPEC' && <EditorFullscreenButton control={fullscreen}/>}
     <div className={s.tabs} role="tablist" aria-label="DB 설계 편집 방식">
      <button
       id={`${id}-erd`}
@@ -334,6 +334,7 @@ export function DatabaseSchemaEditor({
      <DatabaseDiagram
       schema={schema}
       actions={actions}
+      toolbarAction={<EditorFullscreenButton control={fullscreen}/>}
       statusMessage={message || (selectedTables.size > 1 ? `선택된 테이블: ${selectedTables.size}개 (드래그하여 일괄 이동 · 방향키 이동)` : undefined)}
       selectedTable={selectedTable}
       selectedTables={selectedTables}
