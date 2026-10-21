@@ -1,4 +1,5 @@
 "use client";
+import { useSpacePan } from "./use-space-pan";
 import {
  useCallback,
  useEffect,
@@ -253,6 +254,7 @@ export function DatabaseDiagram({
  }, []);
 
  const editable = !!actions;
+ const spacePan = useSpacePan(viewport, editable);
  const defaultCardWidth = namingMode === 'both' ? 440 : 330;
  const cards = useRef(new Map<string, HTMLElement>());
  const [sizes, setSizes] = useState<Record<string, DbSize>>({});
@@ -679,7 +681,7 @@ export function DatabaseDiagram({
     ) : (editable || expanded) ? (
      <span className={s.inlineHint}>
       {editable
-       ? '상단 헤더 드래그로 이동(클릭 시 이름 수정) · 맨 앞 칸 클릭으로 PK·FK 설정 · Ctrl+휠 확대/축소'
+       ? '드래그 다중 선택 · Space+드래그 이동 · Ctrl+휠 확대/축소'
        : 'Ctrl+휠로 다이어그램을 확대/축소할 수 있습니다.'}
      </span>
     ) : null}
@@ -827,12 +829,25 @@ export function DatabaseDiagram({
     <div
      ref={viewport}
      className={`${s.viewport}${isPanning ? ` ${s.isPanning}` : ''}`}
+     data-space-pan={spacePan.active}
      data-preview={!editable}
      data-zoomed={userZoom !== null || viewScale !== fitted}
      data-connecting={Boolean(actions?.connecting || dragPreview)}
      style={{
       touchAction: !editable ? (expanded || userZoom !== null ? 'none' : 'pan-y') : undefined,
       userSelect: !editable ? 'none' : undefined,
+     }}
+     onPointerDownCapture={event => {
+      if (!editable || (event.button !== 1 && !(event.button === 0 && spacePan.pressed.current))) return;
+      if ((event.target as Element).closest('input,button,select,textarea')) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const view = event.currentTarget;
+      view.focus({preventScroll:true});
+      suppressClick.current = true;
+      panState.current = {startX:event.clientX,startY:event.clientY,scrollLeft:view.scrollLeft,scrollTop:view.scrollTop,active:true};
+      setIsPanning(true);
+      view.setPointerCapture(event.pointerId);
      }}
      onPointerDown={event => {
       if (event.pointerType === 'touch' && !expanded && !editable && userZoom === null) return;
@@ -996,6 +1011,7 @@ export function DatabaseDiagram({
        } catch {}
       }
      }}
+     onLostPointerCapture={() => { panState.current = null; setIsPanning(false); }}
      onKeyDown={event => {
       const target = event.target as HTMLElement;
       if (target.closest('input,select,textarea')) return;
@@ -1003,12 +1019,6 @@ export function DatabaseDiagram({
        clear();
        return;
       }
-      if ((event.key === ' ' || event.code === 'Space') && editable && !target.closest('button')) {
-       event.preventDefault();
-       fitToView();
-       return;
-      }
-
       // Arrow keys to move selected tables
       if (
        editable &&
