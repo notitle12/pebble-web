@@ -29,3 +29,13 @@ test('연결점 선택 범위(hit radius)가 원 근처(<=10px)로 제한되어 
   assert.ok(radius <= 10, `Hit radius ${radius} must be <= 10 to prevent accidental connection drags when moving cards`);
   assert.ok(radius >= 5, `Hit radius ${radius} must be >= visible dot radius 5`);
 });
+
+// Large ERDs can be fitted below the architecture editor's default 40% minimum.
+test('large ERD zoom changes smoothly below 40% and retains the configured limits',()=>{
+  assert.equal(architectureZoom(.08,0,.01),.08);
+  assert.ok(architectureZoom(.08,-100,.01)>.08);
+  assert.ok(architectureZoom(.08,-100,.01)<.4);
+  assert.ok(architectureZoom(.08,100,.01)<.08);
+  assert.equal(architectureZoom(.01,100,.01),.01);
+  assert.equal(architectureZoom(3,-100,.01),3);
+});

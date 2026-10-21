@@ -20,7 +20,7 @@ import {
  type DbReference,
 } from '../database-schema';
 import { databaseSelectionPositions, databaseMarqueeTables, databaseTableSelection, databaseBendValue } from '../database-selection';
-import { diagramZoomScroll } from '../diagram-viewport';
+import { diagramZoomAnchor, diagramZoomScroll } from '../diagram-viewport';
 import { architectureZoom } from '../architecture-interaction';
 import { databaseLinks, type DbSize } from '../database-relations';
 import { RelationshipEndMark } from './database-relation-symbols';
@@ -366,8 +366,9 @@ export function DatabaseDiagram({
   ),
   ...links.flatMap(l => l.points.map(p => p.y + 40))
  );
- const fitted = useDiagramFit(viewport, width, height, expanded, !editable);
+ const fitted = useDiagramFit(viewport, width, height, expanded, !editable, true);
  const [userZoom, setUserZoom] = useState<number | null>(null);
+ const minimumZoom = 0.01;
  const viewScale = userZoom !== null ? userZoom : (editable ? zoom : fitted);
  const canvasPadding = !editable && (userZoom !== null || expanded) ? 48 : 0;
 
@@ -380,10 +381,10 @@ export function DatabaseDiagram({
   }
   const bounds = getDatabaseContentBounds({ ...schema, tables }, sizes, defaultCardWidth);
   const pad = editable ? 64 : 96;
-  const availW = Math.max(320, el.clientWidth - pad);
-  const availH = Math.max(240, el.clientHeight - pad);
-  const scale = Math.min(1.25, Math.max(0.45, Math.min(availW / bounds.width, availH / bounds.height)));
-  const rounded = Math.round(scale * 20) / 20;
+  const availW = Math.max(1, el.clientWidth - pad);
+  const availH = Math.max(1, el.clientHeight - pad);
+  const scale = Math.min(1.25, Math.max(minimumZoom, Math.min(availW / bounds.width, availH / bounds.height)));
+  const rounded = Math.max(minimumZoom, Math.floor(scale * 100) / 100);
   if (editable) setZoom(rounded);
   else setUserZoom(rounded);
   requestAnimationFrame(() => {
@@ -404,7 +405,7 @@ export function DatabaseDiagram({
    const delta =
     event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? el.clientHeight : 1);
    const current = viewScale;
-   const next = architectureZoom(current, delta);
+   const next = architectureZoom(current, delta, minimumZoom);
    const rect = el.getBoundingClientRect();
    zoomAnchor.current = {
     x: event.clientX - rect.left,
@@ -423,7 +424,7 @@ export function DatabaseDiagram({
   };
   el.addEventListener('wheel', onWheel, { passive: false, capture: true });
   return () => el.removeEventListener('wheel', onWheel, { capture: true });
- }, [editable, viewScale, canvasPadding]);
+ }, [editable, viewScale, canvasPadding, minimumZoom]);
 
  useLayoutEffect(() => {
   const anchor = zoomAnchor.current;
@@ -732,15 +733,15 @@ export function DatabaseDiagram({
       <button
        type="button"
        aria-label="ERD 축소"
-       disabled={viewScale <= 0.4}
+       disabled={viewScale <= minimumZoom}
        onClick={() => {
-        const next = Math.max(0.4, Math.round((viewScale - 0.1) * 100) / 100);
+        const next = Math.max(minimumZoom, Math.round((viewScale - 0.1) * 100) / 100);
         const el = viewport.current;
         if (el) {
          const rect = el.getBoundingClientRect();
          zoomAnchor.current = {
-          x: rect.width / 2,
-          y: rect.height / 2,
+          x: diagramZoomAnchor(rect.width, width * viewScale, canvasPadding),
+          y: diagramZoomAnchor(rect.height, height * viewScale, canvasPadding),
           ratio: next / viewScale,
           left: el.scrollLeft,
           top: el.scrollTop,
@@ -754,13 +755,13 @@ export function DatabaseDiagram({
       >
        −
       </button>
-      <DiagramZoomInput zoom={viewScale} label="ERD 확대율 (%)" onChange={next => {
+      <DiagramZoomInput zoom={viewScale} minPercent={minimumZoom * 100} label="ERD 확대율 (%)" onChange={next => {
         const el = viewport.current;
         if (el && viewScale !== next) {
          const rect = el.getBoundingClientRect();
          zoomAnchor.current = {
-          x: rect.width / 2,
-          y: rect.height / 2,
+          x: diagramZoomAnchor(rect.width, width * viewScale, canvasPadding),
+          y: diagramZoomAnchor(rect.height, height * viewScale, canvasPadding),
           ratio: next / viewScale,
           left: el.scrollLeft,
           top: el.scrollTop,
@@ -781,8 +782,8 @@ export function DatabaseDiagram({
         if (el) {
          const rect = el.getBoundingClientRect();
          zoomAnchor.current = {
-          x: rect.width / 2,
-          y: rect.height / 2,
+          x: diagramZoomAnchor(rect.width, width * viewScale, canvasPadding),
+          y: diagramZoomAnchor(rect.height, height * viewScale, canvasPadding),
           ratio: next / viewScale,
           left: el.scrollLeft,
           top: el.scrollTop,
