@@ -1,4 +1,6 @@
 "use client";
+import { DiagramZoomInput } from "./diagram-zoom-input";
+import { useSpacePan } from "./use-space-pan";
 import {
  useCallback,
  useEffect,
@@ -8,6 +10,7 @@ import {
  useRef,
  useState,
  type CSSProperties,
+ type ReactNode,
 } from 'react';
 import {
  COMMON_DB_TYPES,
@@ -87,6 +90,7 @@ export function DatabaseDiagram({
  schema,
  actions,
  statusMessage,
+ toolbarAction,
  onSelectTable,
  selectedTable,
  selectedTables,
@@ -100,6 +104,7 @@ export function DatabaseDiagram({
  schema: DatabaseSchema;
  actions?: DatabaseEditActions;
  statusMessage?: string;
+ toolbarAction?: ReactNode;
  onSelectTable?: (id: string) => void;
  selectedTable?: string | null;
  selectedTables?: string[] | Set<string>;
@@ -129,9 +134,7 @@ export function DatabaseDiagram({
  } | null>(null);
  const [isPanning, setIsPanning] = useState(false);
  const typeListId = useId();
- const [namingMode, setNamingMode] = useState<'physical' | 'logical' | 'both'>(() =>
-  schema.tables.some(table => table.columns.some(column => column.logicalName?.trim())) ? 'both' : 'physical'
- );
+ const [namingMode, setNamingMode] = useState<'physical' | 'logical' | 'both'>('physical');
  const [zoom, setZoom] = useState(1);
  const [movingPositions, setMovingPositions] = useState<Record<string, { x: number; y: number }> | null>(null);
  const [localSelectedTables, setLocalSelectedTables] = useState<Set<string>>(new Set());
@@ -255,6 +258,7 @@ export function DatabaseDiagram({
  }, []);
 
  const editable = !!actions;
+ const spacePan = useSpacePan(viewport, editable);
  const defaultCardWidth = namingMode === 'both' ? 440 : 330;
  const cards = useRef(new Map<string, HTMLElement>());
  const [sizes, setSizes] = useState<Record<string, DbSize>>({});
@@ -681,10 +685,11 @@ export function DatabaseDiagram({
     ) : (editable || expanded) ? (
      <span className={s.inlineHint}>
       {editable
-       ? '상단 헤더 드래그로 이동(클릭 시 이름 수정) · 맨 앞 칸 클릭으로 PK·FK 설정 · Ctrl+휠 확대/축소'
+       ? '드래그 다중 선택 · Space+드래그 이동 · Ctrl+휠 확대/축소'
        : 'Ctrl+휠로 다이어그램을 확대/축소할 수 있습니다.'}
      </span>
     ) : null}
+    {toolbarAction}
     <div className={s.notationSwitch} role="group" aria-label="칼럼명 표기 방식">
      <button
       type="button"
@@ -749,7 +754,23 @@ export function DatabaseDiagram({
       >
        −
       </button>
-      <output>{Math.round(viewScale * 100)}%</output>
+      <DiagramZoomInput zoom={viewScale} label="ERD 확대율 (%)" onChange={next => {
+        const el = viewport.current;
+        if (el && viewScale !== next) {
+         const rect = el.getBoundingClientRect();
+         zoomAnchor.current = {
+          x: rect.width / 2,
+          y: rect.height / 2,
+          ratio: next / viewScale,
+          left: el.scrollLeft,
+          top: el.scrollTop,
+          padding: canvasPadding,
+          nextPadding: editable ? 0 : 48,
+         };
+        }
+        if (editable) setZoom(next);
+        else setUserZoom(next);
+      }}/>
       <button
        type="button"
        aria-label="ERD 확대"
@@ -774,28 +795,6 @@ export function DatabaseDiagram({
        }}
       >
        ＋
-      </button>
-      <button
-       type="button"
-       onClick={() => {
-        const el = viewport.current;
-        if (el && viewScale !== 1) {
-         const rect = el.getBoundingClientRect();
-         zoomAnchor.current = {
-          x: rect.width / 2,
-          y: rect.height / 2,
-          ratio: 1 / viewScale,
-          left: el.scrollLeft,
-          top: el.scrollTop,
-          padding: canvasPadding,
-          nextPadding: editable ? 0 : 48,
-         };
-        }
-        if (editable) setZoom(1);
-        else setUserZoom(1);
-       }}
-      >
-       100%
       </button>
       <button
        type="button"
@@ -829,12 +828,25 @@ export function DatabaseDiagram({
     <div
      ref={viewport}
      className={`${s.viewport}${isPanning ? ` ${s.isPanning}` : ''}`}
+     data-space-pan={spacePan.active}
      data-preview={!editable}
      data-zoomed={userZoom !== null || viewScale !== fitted}
      data-connecting={Boolean(actions?.connecting || dragPreview)}
      style={{
       touchAction: !editable ? (expanded || userZoom !== null ? 'none' : 'pan-y') : undefined,
       userSelect: !editable ? 'none' : undefined,
+     }}
+     onPointerDownCapture={event => {
+      if (!editable || (event.button !== 1 && !(event.button === 0 && spacePan.pressed.current))) return;
+      if ((event.target as Element).closest('input,button,select,textarea')) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const view = event.currentTarget;
+      view.focus({preventScroll:true});
+      suppressClick.current = true;
+      panState.current = {startX:event.clientX,startY:event.clientY,scrollLeft:view.scrollLeft,scrollTop:view.scrollTop,active:true};
+      setIsPanning(true);
+      view.setPointerCapture(event.pointerId);
      }}
      onPointerDown={event => {
       if (event.pointerType === 'touch' && !expanded && !editable && userZoom === null) return;
@@ -998,6 +1010,7 @@ export function DatabaseDiagram({
        } catch {}
       }
      }}
+     onLostPointerCapture={() => { panState.current = null; setIsPanning(false); }}
      onKeyDown={event => {
       const target = event.target as HTMLElement;
       if (target.closest('input,select,textarea')) return;
@@ -1005,12 +1018,6 @@ export function DatabaseDiagram({
        clear();
        return;
       }
-      if ((event.key === ' ' || event.code === 'Space') && editable && !target.closest('button')) {
-       event.preventDefault();
-       fitToView();
-       return;
-      }
-
       // Arrow keys to move selected tables
       if (
        editable &&

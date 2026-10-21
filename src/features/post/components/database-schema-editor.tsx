@@ -1,7 +1,6 @@
 "use client";
 import { useId, useRef, useState } from 'react';
 import {
- autoLayoutDbTables,
  moveDbColumnOrder,
  newDbPresetColumn,
  newDbTable,
@@ -33,6 +32,7 @@ import {
 } from './database-edit-table';
 import { TableTextInput } from './inline-block-views';
 import s from './database-schema.module.css';
+import { useEditorFullscreen, EditorFullscreenButton } from './use-editor-fullscreen';
 
 export function DatabaseSchemaEditor({
  value,
@@ -43,6 +43,7 @@ export function DatabaseSchemaEditor({
  initialTab?: 'ERD' | 'SPEC';
  onChange: (schema: DatabaseSchema) => void;
 }) {
+ const fullscreen = useEditorFullscreen();
  const schema = value;
  const id = useId();
  const [tab, setTab] = useState<'ERD' | 'SPEC'>(initialTab);
@@ -238,7 +239,8 @@ export function DatabaseSchemaEditor({
 
  return (
   <div
-   className={s.editor}
+   ref={fullscreen.ref}
+   className={`${s.editor} diagram-editor-fullscreen`}
    onKeyDown={event => {
     const target = event.target as HTMLElement;
     if (event.key === 'Escape' && connecting) {
@@ -260,6 +262,7 @@ export function DatabaseSchemaEditor({
    }}
   >
    <div className={s.editorHeading}>
+    {tab === 'SPEC' && <EditorFullscreenButton control={fullscreen}/>}
     <div className={s.tabs} role="tablist" aria-label="DB 설계 편집 방식">
      <button
       id={`${id}-erd`}
@@ -310,12 +313,6 @@ export function DatabaseSchemaEditor({
      ＋ 테이블 추가
     </button>
 
-    {tab === 'ERD' && (
-     <button type="button" onClick={() => update(autoLayoutDbTables(schema))}>
-      자동 배치
-     </button>
-    )}
-
     <label>
      본문 표시
      <select
@@ -332,11 +329,12 @@ export function DatabaseSchemaEditor({
     </label>
    </div>
 
-   <div id={`${id}-panel`} role="tabpanel" aria-labelledby={`${id}-${tab === 'ERD' ? 'erd' : 'spec'}`}>
+   <div className={s.editorPanel} id={`${id}-panel`} role="tabpanel" aria-labelledby={`${id}-${tab === 'ERD' ? 'erd' : 'spec'}`}>
     {tab === 'ERD' ? (
      <DatabaseDiagram
       schema={schema}
       actions={actions}
+      toolbarAction={<EditorFullscreenButton control={fullscreen}/>}
       statusMessage={message || (selectedTables.size > 1 ? `선택된 테이블: ${selectedTables.size}개 (드래그하여 일괄 이동 · 방향키 이동)` : undefined)}
       selectedTable={selectedTable}
       selectedTables={selectedTables}

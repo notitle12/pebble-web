@@ -1,9 +1,11 @@
 .block{margin:18px 0;color:#303640;max-width:100%}
 .diagram{border:1px solid #dfe5ee;border-radius:10px;overflow:hidden;background:#fff;box-shadow:0 2px 8px rgba(15,23,42,.03)}
-.zoom{display:flex;align-items:center;gap:8px;min-height:42px;padding:6px 12px;border-bottom:1px solid #e2e6eb;font-size:12px;background:#fff;flex-wrap:wrap;box-sizing:border-box}
+.zoom{display:flex;align-items:center;gap:8px;min-height:42px;padding:6px 12px;border-bottom:1px solid #e2e6eb;font-size:12px;background:#fff;flex-wrap:nowrap;white-space:nowrap;overflow-x:auto;box-sizing:border-box}
+.zoom>*{flex-shrink:0}
+.zoom output{min-width:4ch;text-align:center}
 .zoom>span:first-child{font-weight:600;color:#4b5565}
-.inlineHint{margin-right:auto;font-size:11.5px;color:#64748b;font-weight:400}
-.inlineStatusMsg{margin-right:auto;font-size:11.5px;color:var(--accent,#355996);font-weight:600}
+.inlineHint{flex:1 1 0;min-width:0;overflow:hidden;text-overflow:ellipsis;margin-right:auto;font-size:11.5px;color:#64748b;font-weight:400}
+.inlineStatusMsg{flex:1 1 0;min-width:0;overflow:hidden;text-overflow:ellipsis;margin-right:auto;font-size:11.5px;color:var(--accent,#355996);font-weight:600}
 .zoom button,.editor button{font:inherit;border:1px solid #dce1e8;border-radius:6px;padding:4px 8px;font-size:11.5px;height:28px;min-height:28px;background:white;color:#444c59;cursor:pointer;transition:background .15s ease,border-color .15s ease,color .15s ease}
 .zoom button:hover:not(:disabled),.editor button:hover:not(:disabled){border-color:#98afd2;background:#f7f9fc}
 .zoom button:disabled,.editor button:disabled{opacity:.4;cursor:default}
@@ -460,3 +462,21 @@
 :global(html[data-theme=dark]) .specCloseBtn:hover{background:#451a1a!important;color:#f87171!important;border-color:#7f1d1d!important}
 
 .marqueeBox{position:absolute;border:1.5px dashed var(--accent,#4770d6);background:rgba(71,112,214,.12);border-radius:4px;pointer-events:none;z-index:50}
+
+.editor:fullscreen{display:flex;flex-direction:column;gap:8px}
+.editor:fullscreen .editorHeading{flex-shrink:0;padding:0}
+.editor:fullscreen .editorPanel{flex:1;min-height:260px;display:flex;flex-direction:column}
+.editor:fullscreen .diagram{flex:1;min-height:0;display:flex;flex-direction:column}
+.editor:fullscreen .zoom{flex-shrink:0}
+.editor:fullscreen .canvasStage{flex:1;min-height:0;display:flex;flex-direction:column}
+.editor:fullscreen .viewport{flex:1;min-height:200px;max-height:none}
+.editor:fullscreen .editSpecifications{overflow:auto}
+
+.viewport[data-space-pan=true],.viewport[data-space-pan=true] *{cursor:grab!important;user-select:none}
+.viewport.isPanning,.viewport.isPanning *{cursor:grabbing!important}
+
+/* Keep focus rings on editor controls, not the canvas used for Space panning. */
+.editor .viewport:focus,.editor .viewport:focus-visible,.diagram .viewport:focus,.diagram .viewport:focus-visible{outline:none;box-shadow:none}
+
+.zoom :global(.diagram-zoom-field){margin:0;gap:2px;font-size:11.5px}
+.editor .zoom :global(.diagram-zoom-field) input,.diagram .zoom :global(.diagram-zoom-field) input{box-sizing:content-box;width:4ch;min-width:0;height:24px;min-height:0;padding:0;border:0!important;border-radius:2px;background:transparent!important;color:inherit;font:inherit;text-align:right;box-shadow:none}
