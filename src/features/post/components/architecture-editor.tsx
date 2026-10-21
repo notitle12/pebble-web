@@ -31,6 +31,16 @@ const fresh = (prefix: string, existing: string[]) => { let n = existing.length 
 const allIds = (spec: ArchitectureSpec) => [...spec.groups.map((item) => item.id), ...spec.nodes.map((item) => item.id), ...spec.edges.map((item) => item.id)];
 export function ArchitectureEditor({ onChange, initialValue, embedded = false, onDraftChange }: { onChange?: (value: ArchitectureSpec | null) => void; initialValue?: ArchitectureSpec; embedded?: boolean; onDraftChange?: (value:ArchitectureSpec,valid:boolean)=>void }) {
   const fullscreen = useEditorFullscreen();
+  const canvasToolbarRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const toolbar = canvasToolbarRef.current;
+    if (!toolbar) return;
+    const measure = () => fullscreen.ref.current?.style.setProperty("--architecture-toolbar-height", `${toolbar.offsetHeight}px`);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(toolbar);
+    return () => observer.disconnect();
+  }, [fullscreen.ref]);
   const [spec, setSpec] = useState<ArchitectureSpec>(() => normalizeArchitectureGroups(initialValue ?? sample));
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
@@ -393,7 +403,7 @@ export function ArchitectureEditor({ onChange, initialValue, embedded = false, o
     </aside>
     <div className={`architecture-workspace${hasSelection && inspectorOpen ? " has-sidebar" : ""}`}>
       <section className="architecture-canvas-panel architecture-canvas-fit" aria-label="아키텍처 캔버스">
-        <div className="architecture-canvas-toolbar">
+        <div ref={canvasToolbarRef} className="architecture-canvas-toolbar">
           <span className="architecture-canvas-title">시스템 구성도</span>
           <span className="architecture-canvas-hint">영역 드래그 다중 선택 · 연결점 드래그 연결 · Ctrl+휠 확대/축소</span>
           <div className="architecture-canvas-actions">
