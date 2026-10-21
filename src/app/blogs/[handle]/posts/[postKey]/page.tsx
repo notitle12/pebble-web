@@ -1,0 +1,52 @@
+import { PostReportButton } from "@/features/post/components/post-report-button";
+import {postSearchData} from "@/features/seo/model";
+import {StructuredData} from "@/features/seo/json-ld";
+import {LikePanel} from "@/features/like/components/like-panel";
+import {CommentsPanel} from "@/features/comment/components/comments-panel";
+import { cache, Suspense } from "react";
+import {LinkedProject} from "@/features/post/components/linked-project";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import type { Metadata } from "next";
+import { SiteHeader } from "@/components/site-header";
+import { getPublicPost, PostListError, postHref } from "@/features/post/api/post-list";
+import { PostBody } from "@/features/post/components/post-body";
+import { OwnPostEdit } from "@/features/post/components/own-post-edit";
+const readPost = cache(getPublicPost);
+type Props = { params: Promise<{ handle: string; postKey: string }> };
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { handle, postKey } = await params;
+  try { const post = await readPost(handle, postKey); return postSearchData(post).metadata; }
+  catch { return { title: "게시글",robots:{index:false,follow:false} }; }
+}
+export const dynamic = "force-dynamic";
+export default async function PostPage({ params }: Props) {
+  const { handle, postKey } = await params;
+  let post;
+  try { post = await readPost(handle, postKey); }
+  catch (error) {
+    if (error instanceof PostListError && error.kind === "not-found") notFound();
+    return <><SiteHeader /><main className="page-shell detail-shell post-reading-shell"><section className="list-state" role="alert">
+      <h1>글을 불러오지 못했어요</h1><p>잠시 후 다시 시도해 주세요.</p>
+      <a className="button" href={postHref(handle, postKey) ?? "/"}>다시 시도</a><Link className="button" href="/">글 목록으로</Link>
+    </section></main></>;
+  }
+  const date = post.publishedAt ?? post.createdAt;
+  return <><a className="skip-link" href="#main-content">본문으로 바로가기</a><SiteHeader />
+    <main id="main-content" className="page-shell detail-shell post-reading-shell">
+      <Link className="detail-back" href={`/blogs/${post.author.handle}`}>← {post.author.blogName??"블로그"}</Link>
+      {process.env.NODE_ENV === "development" && process.env.PEBBLE_PREVIEW_MODE === "mock" && <p className="preview-notice">목 데이터 미리보기 · 실제 게시글이 아닙니다</p>}
+      <StructuredData value={postSearchData(post).schema}/>
+      <article className="post-detail"><header><div className="post-heading-bar"><div className="post-meta"><span>{post.author.nickname}</span><time dateTime={date}>{new Intl.DateTimeFormat("ko-KR",{dateStyle:"long",timeZone:"Asia/Seoul"}).format(new Date(date))}</time></div><OwnPostEdit postId={post.id} authorId={post.author.id} title={post.title}/></div>
+        <h1>{post.title}</h1>
+      </header>
+        <PostBody blocks={post.blocks} />
+        <div className="post-reactions">
+          {post.tags.length>0&&<ul className="tag-list post-detail-tags" aria-label="태그">{post.tags.map(tag=><li key={tag}>{tag}</li>)}</ul>}
+          <LikePanel target="posts" contentId={post.id} initialCount={post.likeCount}/>
+          <PostReportButton postId={post.id}/>
+        </div>
+      </article>
+      {post.projectId&&<Suspense fallback={<section className="linked-project" role="status">연결 프로젝트를 불러오는 중…</section>}><LinkedProject id={post.projectId}/></Suspense>}
+      <CommentsPanel target="posts" contentId={post.id} ownerId={post.author.id}/></main></>;
+}
