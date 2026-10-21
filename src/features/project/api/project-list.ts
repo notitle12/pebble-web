@@ -3,7 +3,7 @@ import {parseProjectMedia,type ProjectMedia} from "../../media/model.ts";
 import { guestJson, GuestApiError } from "../../../lib/public-api.ts";
 import { parseListQuery, validId } from "../../../lib/list-query.ts";
 export type ProjectQuery = { page: number; q?: string; techStackId?: string; lifecycleStatus?: "IN_PROGRESS" | "COMPLETED" };
-export type ProjectSummary = { likeCount?:number;likedByMe?:boolean; id: string; name: string; summary: string | null; owner: { id: string; nickname: string }; techStacks: {id: string; name: string}[]; lifecycleStatus: "IN_PROGRESS" | "COMPLETED"; publishedAt: string | null; createdAt: string; thumbnailUrl?: string | null };
+export type ProjectSummary = { likeCount?:number;likedByMe?:boolean; id: string; name: string; summary: string | null; owner: { id: string; nickname: string }; techStacks: {id: string; name: string}[]; lifecycleStatus: "IN_PROGRESS" | "COMPLETED"; publishedAt: string | null; createdAt: string; thumbnailUrl?: string | null; updatedAt?:string };
 export type ProjectPage = { content: ProjectSummary[]; page: number; size: number; totalElements: number; totalPages: number; hasNext: boolean; hasPrevious: boolean };
 export function parseProjectQuery(params: Record<string,string|string[]|undefined>): ProjectQuery | null {
   const { lifecycleStatus, ...rest } = params;
@@ -23,7 +23,7 @@ const record = (value: unknown): value is Record<string,unknown> => typeof value
 const count = (value: unknown): value is number => typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
 const timestamp = (value: unknown) => typeof value === "string" && Number.isFinite(Date.parse(value));
 function isProject(value: unknown): value is ProjectSummary & Record<string,unknown> {
-  return record(value) && typeof value.id === "string" && validId(value.id) && typeof value.name === "string"
+  return record(value) && (value.updatedAt===undefined||timestamp(value.updatedAt)) && typeof value.id === "string" && validId(value.id) && typeof value.name === "string"
     && (value.summary === null || typeof value.summary === "string") && record(value.owner)
     && typeof value.owner.id === "string" && validId(value.owner.id) && typeof value.owner.nickname === "string"
     && ["IN_PROGRESS","COMPLETED"].includes(String(value.lifecycleStatus))

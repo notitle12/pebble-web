@@ -1,3 +1,4 @@
+import {pageMetadata} from "@/features/seo/model";
 import Link from "next/link";
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
@@ -8,6 +9,10 @@ import { HomeFeed } from "@/features/post/components/home-feed";
 import { KeywordSearch } from "@/features/search/components/keyword-search";
 import { searchHref } from "@/features/search/query";
 export const dynamic = "force-dynamic";
+export async function generateMetadata({searchParams}:{searchParams:Promise<Record<string,string|string[]|undefined>>}) {
+  const params=await searchParams;
+  return pageMetadata({path:"/",title:"Pebble — 작은 기록이 쌓이는 곳",noIndex:Object.keys(params).length>0});
+}
 export default async function HomePage({searchParams}:{searchParams:Promise<Record<string,string|string[]|undefined>>}) {
   const query=parsePostQuery(await searchParams);
   // 기존 키워드 검색 링크는 새 검색 화면으로 연결하되 분류 URL은 유지한다.

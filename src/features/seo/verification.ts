@@ -1,0 +1,2 @@
+// These are public verification tokens, never OAuth/API credentials.
+export function siteVerification(env:Record<string,string|undefined>){const token=(key:string)=>{const v=env[key]?.trim();return v&&/^[a-zA-Z0-9_-]{1,256}$/.test(v)?v:undefined;};const google=token('NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION'),naver=token('NEXT_PUBLIC_NAVER_SITE_VERIFICATION'),bing=token('NEXT_PUBLIC_BING_SITE_VERIFICATION');return {...(google?{google}:{}),other:{...(naver?{'naver-site-verification':naver}:{}),...(bing?{'msvalidate.01':bing}:{})}};}
