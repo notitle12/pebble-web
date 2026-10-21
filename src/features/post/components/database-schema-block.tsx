@@ -366,7 +366,7 @@ export function DatabaseDiagram({
   ),
   ...links.flatMap(l => l.points.map(p => p.y + 40))
  );
- const fitted = useDiagramFit(viewport, width, height, expanded, !editable, true);
+ const fitted = useDiagramFit(viewport, width, height, expanded, !editable, expanded);
  const [userZoom, setUserZoom] = useState<number | null>(null);
  const minimumZoom = 0.01;
  const viewScale = userZoom !== null ? userZoom : (editable ? zoom : fitted);
@@ -834,6 +834,7 @@ export function DatabaseDiagram({
      data-zoomed={userZoom !== null || viewScale !== fitted}
      data-connecting={Boolean(actions?.connecting || dragPreview)}
      style={{
+      height: !editable && !expanded ? height * fitted : undefined,
       touchAction: !editable ? (expanded || userZoom !== null ? 'none' : 'pan-y') : undefined,
       userSelect: !editable ? 'none' : undefined,
      }}
