@@ -363,7 +363,7 @@
 
 .selectedSpecification{position:relative;margin-top:14px;padding:0;border:0;background:transparent}
 .closeSpecification{display:none}
-.viewport[data-preview=true]{height:clamp(240px,60svh,420px);overflow:hidden;max-height:none;overscroll-behavior:auto;cursor:zoom-in}
+.viewport[data-preview=true]{height:auto;overflow:hidden;max-height:420px;overscroll-behavior:auto;cursor:zoom-in}
 .viewport[data-preview=true][data-zoomed=true]{overflow:auto!important;overscroll-behavior:auto!important;cursor:zoom-in}
 .viewport.isPanning{cursor:grabbing!important;user-select:none}
 .viewport[data-preview=true] :is(.cardGrid,.cardRow,.cardSubHeader,svg){cursor:default}
