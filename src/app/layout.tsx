@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import {SITE_ORIGIN,SITE_DESCRIPTION,SHARE_IMAGE} from "@/features/seo/model";
+import {siteVerification} from "@/features/seo/verification";
 import type { ReactNode } from "react";
 import {LoginDialog} from "../features/auth/components/login-dialog";
 import {SiteFooter} from "../components/site-footer";
@@ -10,7 +12,16 @@ import {themeBootstrap} from "../features/appearance/theme";
 
 export const metadata: Metadata = {
   title: { default: "Pebble", template: "%s | Pebble" },
-  description: "개발자의 기록과 프로젝트를 연결하는 공간",
+  metadataBase:new URL(SITE_ORIGIN),
+  description:SITE_DESCRIPTION,
+  applicationName:"Pebble",
+  openGraph:{type:"website",siteName:"Pebble",locale:"ko_KR",title:"Pebble",description:SITE_DESCRIPTION,images:[{url:SHARE_IMAGE,width:1200,height:630,alt:"Pebble"}]},
+  twitter:{card:"summary_large_image",title:"Pebble",description:SITE_DESCRIPTION,images:[SHARE_IMAGE]},
+  verification:siteVerification({
+    NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION:process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION,
+    NEXT_PUBLIC_NAVER_SITE_VERIFICATION:process.env.NEXT_PUBLIC_NAVER_SITE_VERIFICATION,
+    NEXT_PUBLIC_BING_SITE_VERIFICATION:process.env.NEXT_PUBLIC_BING_SITE_VERIFICATION,
+  }),
   icons: { icon: "/pebble-logo.svg" },
 };
 

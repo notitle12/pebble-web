@@ -10,6 +10,8 @@ export type PostSummary = {
   visibilityStatus?: "PUBLIC" | "HIDDEN";
   id: string;
   thumbnailUrl?:string|null;
+  thumbnailImageId?:string|null;
+  updatedAt?:string;
   likeCount?:number;
   likedByMe?:boolean;
   urlKey: string;
@@ -56,7 +58,7 @@ const timestamp = (value: unknown): value is string =>
 const count = (value: unknown): value is number => typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
 function isPost(value: unknown): value is PostSummary & Record<string, unknown> {
   if (!record(value) || !record(value.author)) return false;
-  return (value.thumbnailUrl===undefined||nullableText(value.thumbnailUrl)) && id(value.id) && typeof value.urlKey === "string" && validPostKey(value.urlKey)
+  return (value.updatedAt===undefined||timestamp(value.updatedAt)) && (value.thumbnailImageId===undefined||value.thumbnailImageId===null||id(value.thumbnailImageId)) && (value.thumbnailUrl===undefined||nullableText(value.thumbnailUrl)) && id(value.id) && typeof value.urlKey === "string" && validPostKey(value.urlKey)
     && typeof value.author.handle === "string" && validHandle(value.author.handle) && typeof value.title === "string" && nullableText(value.summary)
     && id(value.author.id) && typeof value.author.nickname === "string" && nullableText(value.author.blogName)
     && Array.isArray(value.tags) && value.tags.every(tag => typeof tag === "string" && tag.length > 0)
