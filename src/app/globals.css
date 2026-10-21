@@ -619,6 +619,7 @@ body:has(.writer-shell){background:#fff}
 .writer-existing-media{max-width:900px;margin:30px 0;font-size:12px}
 .writer-publish-dialog{border-radius:12px;max-width:600px;box-shadow:0 12px 60px #0003}
 .writer-publish-dialog form>footer>button:last-child{background:#171717;border-color:#171717}
+.writer-publish-dialog form>footer>button:last-child:hover:not(:disabled){background:var(--accent-hover);border-color:var(--accent-hover)}
 .writer-publish-fields fieldset label:has(input:checked){background:#f8f8f8;border-color:#555}
 .writer-publish-fields fieldset input{accent-color:#333}
 @media(max-width:720px){.writer-shell.page-shell{padding:92px 22px 130px}.writer-composer .writer-action-bar{padding:14px 22px;gap:14px;min-height:74px}.writer-action-bar>span{display:none}.writer-action-bar>div{margin-left:auto}.writer-action-bar button{min-width:84px}.writer-identity{display:none}.writer-composer .writer-title-field input{font-size:26px}.writer-composer .post-editor-block-row{flex-wrap:wrap}.writer-add-block>div{flex-wrap:wrap}}
