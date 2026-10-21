@@ -9,7 +9,7 @@ import Color from "@tiptap/extension-color";
 import FontFamily from "@tiptap/extension-font-family";
 import Highlight from "@tiptap/extension-highlight";
 import Image from "@tiptap/extension-image";
-import StarterKit from "@tiptap/starter-kit";
+import { RichTextStarterKit } from "../rich-text-starter-kit";
 import { TableKit } from "@tiptap/extension-table";
 import TextAlign from "@tiptap/extension-text-align";
 import { TextStyle } from "@tiptap/extension-text-style";
@@ -144,7 +144,7 @@ const MapEmbed = TiptapNode.create({
 });
 
 const extensionSet = [
-  StarterKit.configure({ codeBlock: false, heading: { levels: [1, 2, 3] }, link: { openOnClick: false, autolink: true, defaultProtocol: "https", HTMLAttributes: {target:null} } }),
+  RichTextStarterKit.configure({ codeBlock: false, heading: { levels: [1, 2, 3] }, link: { openOnClick: false, autolink: true, defaultProtocol: "https", HTMLAttributes: {target:null} } }),
   RichImage.configure({ inline: false, allowBase64: false }),
   TableKit.configure({ table: false }),
   ControllableTable, HeadingParagraphReset, InlineCode, InlineTableSpec, InlineArchitecture, InlineDatabase, AutomaticToc,
@@ -206,7 +206,16 @@ export function RichBodyEditor({ blocks, onChangeBlocks, uploadImage, imagePrevi
     content: initialContent,
     immediatelyRender: false,
     editable: !disabled,
-    editorProps:{attributes:{class:"post-prose",role:"textbox","aria-label":"본문","aria-multiline":"true"},handleDrop(view,event,_slice,moved){
+    editorProps:{attributes:{class:"post-prose",role:"textbox","aria-label":"본문","aria-multiline":"true"},handleKeyDown(view,event){
+      if(event.key!=="Tab")return false;
+      const {$from}=view.state.selection;
+      const inList=Array.from({length:$from.depth},(_,index)=>$from.node(index+1).type.name).some(name=>name==="bulletList"||name==="orderedList");
+      if(!inList)return false;
+      event.preventDefault();
+      if(event.shiftKey)editor?.commands.liftListItem("listItem");
+      else editor?.commands.sinkListItem("listItem");
+      return true;
+    },handleDrop(view,event,_slice,moved){
       const {selection,doc}=view.state,last=doc.lastChild;
       if(!moved||!(selection instanceof NodeSelection)||selection.$from.depth!==0||selection.node.type.name==="paragraph"||last?.type.name!=="paragraph"||last.content.size!==0)return false;
       const end=view.nodeDOM(doc.content.size-last.nodeSize);
