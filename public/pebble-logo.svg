@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" fill="none">
+ <defs>
+  <radialGradient id="stone" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(51 53) rotate(48) scale(112 132)">
+   <stop stop-color="#ACC4B5"/>
+   <stop offset=".48" stop-color="#83A491"/>
+   <stop offset="1" stop-color="#527962"/>
+  </radialGradient>
+ </defs>
+ <path d="M28 64C39 42 66 31 91 35C116 39 137 57 140 80C144 105 124 124 94 128C64 133 32 126 23 106C16 91 20 78 28 64Z" fill="url(#stone)"/>
+</svg>
