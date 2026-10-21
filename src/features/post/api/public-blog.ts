@@ -1,3 +1,4 @@
+import {cache} from "react";
 import { GuestApiError, guestJson } from "../../../lib/public-api.ts";
 import { PAGE_SIZE, parsePostPage, type PostPage } from "./post-list.ts";
 import { parsePage, validId } from "../../../lib/list-query.ts";
@@ -54,11 +55,11 @@ export function parsePublicBlogProfile(value: unknown, handle: string): PublicBl
   return { id: profile.id, handle, nickname: profile.nickname, blogName: profile.blogName, profileImageUrl: profile.profileImageUrl };
 }
 
-export async function getPublicBlogProfile(
+export const getPublicBlogProfile=cache(async function readPublicBlogProfile(
   handle: string,
   baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL,
   request: typeof fetch = fetch,
 ): Promise<PublicBlogProfile> {
   if (!validHandle(handle)) throw new GuestApiError("response");
   return parsePublicBlogProfile(await guestJson(`blogs/${encodeURIComponent(handle)}`, new URLSearchParams(), baseUrl, request), handle);
-}
+});
