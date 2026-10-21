@@ -103,28 +103,28 @@ export function PrivacyContent() {
             <thead>
               <tr>
                 <th>이용 업체와 문의처</th>
-                <th>위탁 업무 내용 및 이전 항목</th>
-                <th>보관 국가 및 이전 방법</th>
+                <th>이용 목적과 처리하는 정보</th>
+                <th>처리 위치·시점·방법</th>
                 <th>보유 및 이용 기간</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td>Oracle Corporation<br /><a href="https://www.oracle.com/legal/privacy/services-privacy-policy/" target="_blank" rel="noreferrer">개인정보 안내 및 문의</a></td>
+                <td>Oracle Corporation<br /><a href="https://www.oracle.com/legal/privacy/services-privacy-policy/" target="_blank" rel="noreferrer">개인정보 안내</a><br /><a href="https://www.oracle.com/legal/data-privacy-inquiry-form/" target="_blank" rel="noreferrer">개인정보 문의</a></td>
                 <td>클라우드 서버 운영 및 데이터베이스·백업 보관 (서비스 수집 항목 일체)</td>
                 <td>일본(도쿄 리전) / 서비스 이용 시 암호화된 네트워크를 통해 전송</td>
                 <td>각 수집 항목의 보유기간에 따르며, 삭제된 정보의 백업 보관·정리는 제5항에 안내</td>
               </tr>
               <tr>
-                <td>Cloudflare, Inc.<br /><a href="https://www.cloudflare.com/privacypolicy/" target="_blank" rel="noreferrer">개인정보 안내 및 문의</a></td>
-                <td>웹사이트 전송·보안 및 업로드 이미지 파일 보관. 문의 이메일 전달 시에는 발신·수신 이메일 주소, 메일 내용과 첨부파일 처리</td>
-                <td>미국 등 글로벌 분산 네트워크 / 서비스 이용 시 암호화된 네트워크를 통해 전송</td>
-                <td>파일 삭제, 회원 탈퇴 또는 위탁 계약 종료 시까지</td>
+                <td>Cloudflare, Inc.<br /><a href="https://www.cloudflare.com/cloudflare-customer-dpa/" target="_blank" rel="noreferrer">데이터 처리 조건</a><br /><a href="mailto:privacyquestions@cloudflare.com">개인정보 문의</a></td>
+                <td>웹사이트 전송·보안: IP 주소, 접속 정보와 웹 요청·응답 데이터. 이미지 보관: 이용자가 올린 프로필·게시글·프로젝트 이미지. 문의 메일 전달: 발신·수신 주소, 메일 내용과 첨부파일</td>
+                <td>이미지 저장소의 표시 위치는 아시아 태평양(APAC). 웹 전송·보안 및 메일 전달은 Cloudflare 네트워크에서 해당 기능을 이용할 때 처리되며, 이미지 보관 위치와 다를 수 있음</td>
+                <td>이미지는 파일 삭제·회원 탈퇴에 따른 삭제 절차까지 보관. 접속 정보와 이메일 전달 정보는 해당 서비스의 처리·삭제 조건에 따름</td>
               </tr>
               <tr>
-                <td>Google LLC (Gmail)<br /><a href="https://policies.google.com/privacy?hl=ko" target="_blank" rel="noreferrer">개인정보 안내</a><br /><a href="mailto:googlekrsupport@google.com">개인정보 문의</a></td>
+                <td>Google LLC (일반 무료 Gmail)<br /><a href="https://policies.google.com/privacy?hl=ko" target="_blank" rel="noreferrer">개인정보 안내</a><br /><a href="mailto:googlekrsupport@google.com">개인정보 문의</a></td>
                 <td>운영자 문의 메일함의 수신·보관 및 답변. 문의자의 이메일 주소, 메일 내용과 첨부파일 처리</td>
-                <td>미국 등 Google이 서버를 운영하는 국가 / 문의 메일 발송 시 Cloudflare를 거쳐 암호화된 네트워크로 전달</td>
+                <td>Google이 서버를 운영하는 국가 / 문의 메일을 보낼 때 Cloudflare를 거쳐 전달. 운영자는 무료 Gmail의 보관 국가를 특정 국가로 고정하지 않음</td>
                 <td>문의 처리와 필요한 후속 대응이 끝난 뒤 운영자 메일함에서 삭제. 서비스 제공자의 삭제 절차에 따라 잔존 사본 정리</td>
               </tr>
             </tbody>
@@ -134,7 +134,13 @@ export function PrivacyContent() {
           서비스 문의는 <a href="mailto:contact@pebble-log.com">contact@pebble-log.com</a>으로 접수합니다. 이 주소로 보낸 메일은 Cloudflare의 이메일 전달 기능을 거쳐 운영자의 Gmail 메일함에 도착합니다. Oracle은 Pebble 서버와 데이터베이스를 제공하는 업체이며, 서비스 문의 메일의 수신처가 아닙니다. 운영자는 Gmail 메일함에서 문의를 확인하고 답변할 수 있으며, 이 경우 답변의 발신 주소는 운영자의 Gmail 주소로 표시될 수 있습니다. 문의에 필요하지 않은 주민등록번호, 비밀번호 등 민감한 정보는 보내지 않도록 주의해 주세요.
         </p>
         <p>
-          외부 서비스의 정보 처리와 보관 장소는 이용하는 서비스와 계약·설정에 따라 달라질 수 있습니다. 각 업체의 개인정보 안내는 위 링크에서 확인할 수 있습니다. Pebble의 개인정보 처리에 관한 문의와 삭제 요청은 운영 문의 창구로 접수해 주세요.
+          문의 메일함은 일반 무료 Gmail 계정으로 운영합니다. 문의에 답하고 처리 기록을 관리하는 데 사용하며, Google의 서비스 약관과 개인정보 처리방침이 적용됩니다. 문의 메일이 대한민국이나 특정 국가에만 보관되는 것으로 보장되지 않습니다.
+        </p>
+        <p>
+          Cloudflare의 웹 전송·보안 서비스와 이미지 저장소(R2)는 처리 위치가 서로 다를 수 있습니다. 현재 이미지 저장소의 표시 위치는 아시아 태평양(APAC)입니다. 이는 여러 국가를 포함하는 지역 구분이며, 일본 등 하나의 국가에만 보관됨을 뜻하지 않습니다. 업체별 처리 조건은 <a href="https://www.cloudflare.com/gdpr/subprocessors/cloudflare-services/" target="_blank" rel="noreferrer">Cloudflare의 처리 업체·위치 안내</a>와 <a href="https://developers.cloudflare.com/r2/reference/data-location/" target="_blank" rel="noreferrer">R2 보관 위치 안내</a>에서 확인할 수 있습니다.
+        </p>
+        <p>
+          개인정보의 국외 처리에 관한 문의나 중단·삭제 요청은 <a href="mailto:contact@pebble-log.com">운영 문의 창구</a>로 접수할 수 있습니다. 계정 설정에서 회원 탈퇴를 신청할 수도 있습니다. 회원 정보의 해외 보관을 중단하면 계정을 유지하거나 글·프로젝트를 저장하는 회원 기능을 계속 제공하기 어렵습니다. 문의 메일 처리를 원하지 않으면 메일을 보내지 않을 수 있으며, 이미 보낸 문의는 삭제를 요청할 수 있습니다. 다른 정보주체 권리의 행사 방법은 제1항을 따릅니다.
         </p>
         <p>
           이용자는 회원가입을 하지 않거나 서비스 내 [회원 탈퇴]를 통해 언제든지 개인정보 처리를 중단하고 삭제할 수 있습니다. 법령에서 정한 경우 등 적법한 근거가 있는 경우를 제외하고 개인정보를 다른 목적으로 제3자에게 제공하지 않으며, 추가적인 처리가 필요한 경우 별도 안내와 동의를 먼저 진행합니다.
