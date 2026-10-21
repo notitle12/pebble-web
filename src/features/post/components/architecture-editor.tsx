@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { DiagramZoomInput } from "./diagram-zoom-input";
 import { useEditorFullscreen, EditorFullscreenButton } from "./use-editor-fullscreen";
 import { parseArchitectureSpec, type ArchitectureSpec, type ArchitectureSide, type ArchitectureEdge } from "../api/post-list";
 import {ARCHITECTURE_BRAND_ICONS,architectureBrandIcon,searchArchitectureIcons} from "../architecture-brand-icons";
@@ -406,7 +407,7 @@ export function ArchitectureEditor({ onChange, initialValue, embedded = false, o
             <button className="architecture-auto-layout" type="button" disabled={!future.current.length} onClick={()=>undo(true)} title="다시 적용">다시 적용</button>
             <div className="architecture-zoom-controls" aria-label="캔버스 확대 축소">
               <button className="architecture-auto-layout" type="button" aria-label="축소" disabled={zoom<=.4} onClick={()=>setZoom(value=>Math.max(.4,Math.round((value-.1)*100)/100))}>−</button>
-              <button className="architecture-auto-layout" type="button" aria-label="100% 원래 크기" onClick={()=>setZoom(1)} title="100% 기본 크기">{Math.round(zoom*100)}%</button>
+              <DiagramZoomInput zoom={zoom} onChange={setZoom} label="아키텍처 확대율 (%)"/>
               <button className="architecture-auto-layout" type="button" aria-label="확대" disabled={zoom>=3} onClick={()=>setZoom(value=>Math.min(3,Math.round((value+.1)*100)/100))}>＋</button>
             </div>
             <button className="architecture-auto-layout" type="button" onClick={()=>blockRef.current?blockRef.current.fitToView():setZoom(1)} title="현재 창 크기에 맞추기">화면 맞춤</button>

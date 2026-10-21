@@ -1,4 +1,5 @@
 "use client";
+import { DiagramZoomInput } from "./diagram-zoom-input";
 import { useSpacePan } from "./use-space-pan";
 import {
  useCallback,
@@ -9,6 +10,7 @@ import {
  useRef,
  useState,
  type CSSProperties,
+ type ReactNode,
 } from 'react';
 import {
  COMMON_DB_TYPES,
@@ -88,6 +90,7 @@ export function DatabaseDiagram({
  schema,
  actions,
  statusMessage,
+ toolbarAction,
  onSelectTable,
  selectedTable,
  selectedTables,
@@ -101,6 +104,7 @@ export function DatabaseDiagram({
  schema: DatabaseSchema;
  actions?: DatabaseEditActions;
  statusMessage?: string;
+ toolbarAction?: ReactNode;
  onSelectTable?: (id: string) => void;
  selectedTable?: string | null;
  selectedTables?: string[] | Set<string>;
@@ -685,6 +689,7 @@ export function DatabaseDiagram({
        : 'Ctrl+휠로 다이어그램을 확대/축소할 수 있습니다.'}
      </span>
     ) : null}
+    {toolbarAction}
     <div className={s.notationSwitch} role="group" aria-label="칼럼명 표기 방식">
      <button
       type="button"
@@ -749,7 +754,23 @@ export function DatabaseDiagram({
       >
        −
       </button>
-      <output>{Math.round(viewScale * 100)}%</output>
+      <DiagramZoomInput zoom={viewScale} label="ERD 확대율 (%)" onChange={next => {
+        const el = viewport.current;
+        if (el && viewScale !== next) {
+         const rect = el.getBoundingClientRect();
+         zoomAnchor.current = {
+          x: rect.width / 2,
+          y: rect.height / 2,
+          ratio: next / viewScale,
+          left: el.scrollLeft,
+          top: el.scrollTop,
+          padding: canvasPadding,
+          nextPadding: editable ? 0 : 48,
+         };
+        }
+        if (editable) setZoom(next);
+        else setUserZoom(next);
+      }}/>
       <button
        type="button"
        aria-label="ERD 확대"
@@ -774,28 +795,6 @@ export function DatabaseDiagram({
        }}
       >
        ＋
-      </button>
-      <button
-       type="button"
-       onClick={() => {
-        const el = viewport.current;
-        if (el && viewScale !== 1) {
-         const rect = el.getBoundingClientRect();
-         zoomAnchor.current = {
-          x: rect.width / 2,
-          y: rect.height / 2,
-          ratio: 1 / viewScale,
-          left: el.scrollLeft,
-          top: el.scrollTop,
-          padding: canvasPadding,
-          nextPadding: editable ? 0 : 48,
-         };
-        }
-        if (editable) setZoom(1);
-        else setUserZoom(1);
-       }}
-      >
-       100%
       </button>
       <button
        type="button"

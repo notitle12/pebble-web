@@ -796,3 +796,8 @@ body:has(.writer-shell){background:#fff}
 
 /* Canvas focus supports shortcuts without outlining the entire drawing area. */
 .architecture-scroll:focus,.architecture-scroll:focus-visible{outline:none;box-shadow:none}
+
+.diagram-zoom-field{display:inline-flex;align-items:center;gap:2px;height:28px;box-sizing:border-box;padding:0 6px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--text);font-size:12px;white-space:nowrap}
+.architecture-canvas-toolbar .diagram-zoom-field input{box-sizing:content-box;width:4ch;min-width:0;height:24px;min-height:0;padding:0;border:0;border-radius:2px;background:transparent;color:inherit;font:inherit;text-align:right;box-shadow:none}
+.diagram-zoom-field input{appearance:textfield}
+.diagram-zoom-field input::-webkit-inner-spin-button,.diagram-zoom-field input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
