@@ -33,6 +33,7 @@ import {
 } from './database-edit-table';
 import { TableTextInput } from './inline-block-views';
 import s from './database-schema.module.css';
+import { useEditorFullscreen, EditorFullscreenButton } from './use-editor-fullscreen';
 
 export function DatabaseSchemaEditor({
  value,
@@ -43,6 +44,7 @@ export function DatabaseSchemaEditor({
  initialTab?: 'ERD' | 'SPEC';
  onChange: (schema: DatabaseSchema) => void;
 }) {
+ const fullscreen = useEditorFullscreen();
  const schema = value;
  const id = useId();
  const [tab, setTab] = useState<'ERD' | 'SPEC'>(initialTab);
@@ -238,7 +240,8 @@ export function DatabaseSchemaEditor({
 
  return (
   <div
-   className={s.editor}
+   ref={fullscreen.ref}
+   className={`${s.editor} diagram-editor-fullscreen`}
    onKeyDown={event => {
     const target = event.target as HTMLElement;
     if (event.key === 'Escape' && connecting) {
@@ -260,6 +263,7 @@ export function DatabaseSchemaEditor({
    }}
   >
    <div className={s.editorHeading}>
+    <EditorFullscreenButton control={fullscreen}/>
     <div className={s.tabs} role="tablist" aria-label="DB 설계 편집 방식">
      <button
       id={`${id}-erd`}
@@ -332,7 +336,7 @@ export function DatabaseSchemaEditor({
     </label>
    </div>
 
-   <div id={`${id}-panel`} role="tabpanel" aria-labelledby={`${id}-${tab === 'ERD' ? 'erd' : 'spec'}`}>
+   <div className={s.editorPanel} id={`${id}-panel`} role="tabpanel" aria-labelledby={`${id}-${tab === 'ERD' ? 'erd' : 'spec'}`}>
     {tab === 'ERD' ? (
      <DatabaseDiagram
       schema={schema}

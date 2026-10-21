@@ -768,3 +768,17 @@ body:has(.writer-shell){background:#fff}
 @media(max-width:540px){.architecture-tech-icon-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
 @media(min-width:961px) and (max-width:1800px){.architecture-inspector.architecture-inspector-sidebar{left:auto;right:12px;top:76px;max-width:calc(100% - 24px)}}
+
+/* The same mounted editor expands; fullscreenchange also handles native Esc. */
+.editor-fullscreen-button{display:inline-flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap}
+.diagram-editor-fullscreen:fullscreen{box-sizing:border-box;width:100%;height:100%;max-width:none!important;max-height:none!important;padding:16px;background:var(--surface);color:var(--text);overflow:auto}
+.architecture-editor-layout:fullscreen{display:flex;flex-direction:column;gap:10px}
+.architecture-editor-layout:fullscreen>.architecture-palette{flex-shrink:0;margin:0}
+.architecture-editor-layout:fullscreen>.architecture-workspace{flex:1;min-height:300px;display:flex;box-sizing:border-box}
+.architecture-editor-layout:fullscreen .architecture-workspace.has-sidebar{padding-right:316px}
+.architecture-editor-layout:fullscreen .architecture-canvas-panel{display:flex;flex-direction:column;min-height:0}
+.architecture-editor-layout:fullscreen .architecture-block{flex:1;min-height:0;display:flex;flex-direction:column}
+.architecture-editor-layout:fullscreen .architecture-scroll{flex:1;height:auto!important;min-height:200px;max-height:none!important}
+.architecture-editor-layout:fullscreen .architecture-canvas-toolbar,.architecture-editor-layout:fullscreen .architecture-canvas-status{flex-shrink:0}
+.architecture-editor-layout:fullscreen .architecture-inspector-sidebar{position:absolute;left:auto;right:0;top:0;width:300px;max-height:100%;margin:0}
+@media(max-width:680px){.diagram-editor-fullscreen:fullscreen{padding:8px}.architecture-editor-layout:fullscreen .architecture-workspace.has-sidebar{padding-right:0}.architecture-editor-layout:fullscreen .architecture-inspector-sidebar{width:min(300px,90%);z-index:30}}

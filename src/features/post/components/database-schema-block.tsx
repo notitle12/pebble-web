@@ -129,9 +129,7 @@ export function DatabaseDiagram({
  } | null>(null);
  const [isPanning, setIsPanning] = useState(false);
  const typeListId = useId();
- const [namingMode, setNamingMode] = useState<'physical' | 'logical' | 'both'>(() =>
-  schema.tables.some(table => table.columns.some(column => column.logicalName?.trim())) ? 'both' : 'physical'
- );
+ const [namingMode, setNamingMode] = useState<'physical' | 'logical' | 'both'>('physical');
  const [zoom, setZoom] = useState(1);
  const [movingPositions, setMovingPositions] = useState<Record<string, { x: number; y: number }> | null>(null);
  const [localSelectedTables, setLocalSelectedTables] = useState<Set<string>>(new Set());

@@ -460,3 +460,12 @@
 :global(html[data-theme=dark]) .specCloseBtn:hover{background:#451a1a!important;color:#f87171!important;border-color:#7f1d1d!important}
 
 .marqueeBox{position:absolute;border:1.5px dashed var(--accent,#4770d6);background:rgba(71,112,214,.12);border-radius:4px;pointer-events:none;z-index:50}
+
+.editor:fullscreen{display:flex;flex-direction:column;gap:8px}
+.editor:fullscreen .editorHeading{flex-shrink:0;padding:0}
+.editor:fullscreen .editorPanel{flex:1;min-height:260px;display:flex;flex-direction:column}
+.editor:fullscreen .diagram{flex:1;min-height:0;display:flex;flex-direction:column}
+.editor:fullscreen .zoom{flex-shrink:0}
+.editor:fullscreen .canvasStage{flex:1;min-height:0;display:flex;flex-direction:column}
+.editor:fullscreen .viewport{flex:1;min-height:200px;max-height:none}
+.editor:fullscreen .editSpecifications{overflow:auto}
