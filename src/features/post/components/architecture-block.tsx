@@ -1,4 +1,5 @@
 "use client";
+import { useSpacePan } from "./use-space-pan";
 import {useDiagramFit} from "./use-diagram-fit";
 import {DiagramLightbox} from "./diagram-lightbox";
 import { useCallback, useEffect, forwardRef, useId, useImperativeHandle, useLayoutEffect, useRef, useState } from "react";
@@ -94,6 +95,7 @@ function ArchitectureBlockInner({ spec, title, expanded = false, interactive = f
   }
   const [hoveredEndpoint,setHoveredEndpoint]=useState<string|null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const spacePan = useSpacePan(scrollRef, !!interactive);
   const fit = useDiagramFit(scrollRef, width, height, expanded, !interactive);
   const [internalZoom, setInternalZoom] = useState<number | null>(null);
   const activeZoom = zoom ?? internalZoom;
@@ -675,6 +677,7 @@ function ArchitectureBlockInner({ spec, title, expanded = false, interactive = f
     {!collapsed && (
       <div
         ref={scrollRef}
+        data-space-pan={spacePan.active}
         className={`architecture-scroll${isPanning ? " is-panning" : ""}`}
         data-zoomed={activeZoom !== null}
         style={{
@@ -683,6 +686,19 @@ function ArchitectureBlockInner({ spec, title, expanded = false, interactive = f
             : undefined,
           touchAction: !interactive ? (expanded || activeZoom !== null ? "none" : "pan-y") : undefined,
           userSelect: !interactive ? "none" : undefined,
+        }}
+        onPointerDownCapture={event => {
+          if (!interactive || (event.button !== 1 && !(event.button === 0 && spacePan.pressed.current))) return;
+          const target = event.target as Element;
+          if (target.closest("input,textarea,select,button,a,foreignObject")) return;
+          event.preventDefault();
+          event.stopPropagation();
+          const view = event.currentTarget;
+          view.focus({preventScroll:true});
+          suppressClickRef.current = true;
+          panState.current = {startX:event.clientX,startY:event.clientY,scrollLeft:view.scrollLeft,scrollTop:view.scrollTop,active:true};
+          setIsPanning(true);
+          view.setPointerCapture(event.pointerId);
         }}
         onPointerDown={event => {
           if (interactive) {
@@ -748,6 +764,7 @@ function ArchitectureBlockInner({ spec, title, expanded = false, interactive = f
             } catch {}
           }
         }}
+        onLostPointerCapture={() => { panState.current = null; setIsPanning(false); }}
         onClick={event => {
           if (suppressClickRef.current) {
             suppressClickRef.current = false;
@@ -755,15 +772,6 @@ function ArchitectureBlockInner({ spec, title, expanded = false, interactive = f
           }
           if (!interactive && !expanded && activeZoom === null) {
             setViewerOpen(true);
-          }
-        }}
-        onKeyDown={event => {
-          if (interactive && (event.key === " " || event.code === "Space")) {
-            const target = event.target as HTMLElement;
-            if (target.closest("input,textarea,select,[contenteditable=true]")) return;
-            event.preventDefault();
-            event.stopPropagation();
-            fitToView();
           }
         }}
         role="region"

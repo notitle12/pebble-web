@@ -768,3 +768,36 @@ body:has(.writer-shell){background:#fff}
 @media(max-width:540px){.architecture-tech-icon-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
 @media(min-width:961px) and (max-width:1800px){.architecture-inspector.architecture-inspector-sidebar{left:auto;right:12px;top:76px;max-width:calc(100% - 24px)}}
+
+/* The same mounted editor expands; fullscreenchange also handles native Esc. */
+.editor-fullscreen-button{display:inline-flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap}
+.diagram-editor-fullscreen:fullscreen{box-sizing:border-box;width:100%;height:100%;max-width:none!important;max-height:none!important;padding:16px;background:var(--surface);color:var(--text);overflow:auto}
+.architecture-editor-layout:fullscreen{display:flex;flex-direction:column;gap:10px}
+.architecture-editor-layout:fullscreen>.architecture-palette{flex-shrink:0;margin:0}
+.architecture-editor-layout:fullscreen>.architecture-workspace{flex:1;min-height:300px;display:flex;box-sizing:border-box}
+.architecture-editor-layout:fullscreen .architecture-workspace.has-sidebar{padding-right:316px}
+.architecture-editor-layout:fullscreen .architecture-canvas-panel{display:flex;flex-direction:column;min-height:0}
+.architecture-editor-layout:fullscreen .architecture-block{flex:1;min-height:0;display:flex;flex-direction:column}
+.architecture-editor-layout:fullscreen .architecture-scroll{flex:1;height:auto!important;min-height:200px;max-height:none!important}
+.architecture-editor-layout:fullscreen .architecture-canvas-toolbar,.architecture-editor-layout:fullscreen .architecture-canvas-status{flex-shrink:0}
+.architecture-editor-layout:fullscreen .architecture-inspector-sidebar{position:absolute;left:auto;right:0;top:0;width:300px;max-height:100%;margin:0}
+@media(max-width:680px){.diagram-editor-fullscreen:fullscreen{padding:8px}.architecture-editor-layout:fullscreen .architecture-workspace.has-sidebar{padding-right:0}.architecture-editor-layout:fullscreen .architecture-inspector-sidebar{width:min(300px,90%);z-index:30}}
+
+/* Float tools over the canvas without reserving a separate strip. */
+.architecture-editor-layout:fullscreen>.architecture-palette{position:absolute;left:50%;top:calc(var(--architecture-toolbar-height,42px) + 28px);bottom:auto;transform:translateX(-50%);width:max-content;max-width:calc(100% - 32px);box-sizing:border-box;padding:10px 12px;border-radius:12px;box-shadow:0 6px 24px #0002;z-index:40}
+.architecture-editor-layout:fullscreen .architecture-library-toolbar,.architecture-editor-layout:fullscreen .architecture-library-triggers{justify-content:center}
+.architecture-editor-layout:fullscreen .architecture-tool-hint{display:none}
+.architecture-editor-layout:fullscreen .architecture-library-popup{top:calc(100% + 10px);bottom:auto;left:50%;transform:translateX(-50%);width:min(560px,calc(100vw - 32px));max-height:calc(100dvh - 150px);overflow:auto}
+.architecture-editor-layout:fullscreen .architecture-connection-menu{top:calc(100% + 10px);bottom:auto;left:auto;right:0}
+@media(max-width:420px){.architecture-editor-layout:fullscreen>.architecture-palette{padding:8px;top:calc(var(--architecture-toolbar-height,42px) + 20px)}.architecture-editor-layout:fullscreen .architecture-library-triggers{gap:4px}}
+
+.architecture-scroll[data-space-pan=true],.architecture-scroll[data-space-pan=true] *{cursor:grab!important;user-select:none}
+.architecture-scroll.is-panning,.architecture-scroll.is-panning *{cursor:grabbing!important}
+
+/* Canvas focus supports shortcuts without outlining the entire drawing area. */
+.architecture-scroll:focus,.architecture-scroll:focus-visible{outline:none;box-shadow:none}
+
+.diagram-zoom-field{display:inline-flex;align-items:center;gap:2px;height:28px;box-sizing:border-box;padding:0 6px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--text);font-size:12px;white-space:nowrap}
+.architecture-canvas-toolbar .diagram-zoom-field input{box-sizing:content-box;width:4ch;min-width:0;height:24px;min-height:0;padding:0;border:0;border-radius:2px;background:transparent;color:inherit;font:inherit;text-align:right;box-shadow:none}
+.diagram-zoom-field input{appearance:textfield}
+.diagram-zoom-field input::-webkit-inner-spin-button,.diagram-zoom-field input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
