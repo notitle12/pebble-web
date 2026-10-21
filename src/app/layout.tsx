@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   twitter:{card:"summary_large_image",title:"Pebble",description:SITE_DESCRIPTION,images:[SHARE_IMAGE]},
   verification:siteVerification({
     NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION:process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION,
-    NEXT_PUBLIC_NAVER_SITE_VERIFICATION:process.env.NEXT_PUBLIC_NAVER_SITE_VERIFICATION,
+    NEXT_PUBLIC_NAVER_SITE_VERIFICATION:process.env.NEXT_PUBLIC_NAVER_SITE_VERIFICATION ?? "d134afca81131eb73f949e28cae18435f36dea35",
     NEXT_PUBLIC_BING_SITE_VERIFICATION:process.env.NEXT_PUBLIC_BING_SITE_VERIFICATION,
   }),
   icons: { icon: "/pebble-logo.svg" },
