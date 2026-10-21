@@ -1,6 +1,7 @@
 "use client";
 import {useEffect,useRef,useState,useId} from "react";
 import Link from "next/link";
+import {ReportButton} from "@/features/report/components/report-button";
 import {useUserSession} from "@/features/auth/components/member-gate";
 import {memberRequiresAgreement,userSession,type SessionState} from "@/features/auth/user-session";
 import {safeMediaUrl} from "@/features/media/model";
@@ -73,6 +74,7 @@ function Comments({target,contentId,ownerId,session}:{target:CommentTarget;conte
         {own&&editing?.id===comment.id?<form onSubmit={e=>{e.preventDefault();void mutate("edit",comment);}}><label htmlFor={`${uid}-edit`}>댓글 수정</label><textarea id={`${uid}-edit`} value={editBody} onChange={e=>setEditBody(e.target.value)} disabled={busy} rows={4}/><p className="comment-count">{Array.from(editBody).length} / 2,000자</p><label className="comment-secret"><input type="checkbox" checked={editVisibility==="SECRET"} onChange={e=>setEditVisibility(e.target.checked?"SECRET":"PUBLIC")} disabled={busy}/>비밀 댓글</label><div className="comment-actions"><button className="button" disabled={busy}>수정 저장</button><button type="button" className="button" disabled={busy} onClick={()=>setEditing(null)}>수정 취소</button></div></form>:<p className="comment-body">{comment.body}</p>}
         {own&&editing?.id!==comment.id&&<div className="comment-actions">{deleting===comment.id?<><span>삭제하면 댓글 내용을 복구할 수 없어요.</span><button className="button" disabled={busy} onClick={()=>void mutate("delete",comment)}>댓글 삭제 확인</button><button className="button" disabled={busy} onClick={()=>setDeleting(null)}>삭제 취소</button></>:<><button className="button" disabled={busy} onClick={()=>{setEditing(comment);setEditBody(comment.body);setEditVisibility(comment.visibility);setDeleting(null);setNotice("");}}>수정</button><button className="button" disabled={busy} onClick={()=>{setDeleting(comment.id);setEditing(null);}}>삭제</button></>}</div>}
         {!own&&ownerOfContent&&<div className="comment-actions">{deleting===comment.id?<><span>삭제하면 댓글 내용을 복구할 수 없어요.</span><button className="button" disabled={busy} onClick={()=>void mutate("delete",comment)}>댓글 삭제 확인</button><button className="button" disabled={busy} onClick={()=>setDeleting(null)}>삭제 취소</button></>:<button className="button" disabled={busy} onClick={()=>setDeleting(comment.id)}>콘텐츠 작성자 삭제</button>}</div>}
+        {!comment.locked&&<ReportButton target={target==="posts"?"POST_COMMENT":"PROJECT_COMMENT"} contentId={contentId} targetId={comment.id}/>}
       </li>;
     })}</ul>}
     {data&&<nav className="comment-pagination" aria-label="댓글 페이지">
