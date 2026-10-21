@@ -13,6 +13,9 @@ test('루트 HTTP/HTTPS는 경로와 쿼리를 유지해 HTTPS www로 영구 이
 test('www, localhost 및 유사 도메인은 공개 페이지 proxy를 실행하지 않는다',()=>{
  for(const host of ['www.pebble-log.com','localhost:3000','api.pebble-log.com','pebble-log.com.evil.example','pebble-logXcom'])assert.equal(matches(`https://${host}/sitemap.xml`),false);
 });
+test('어댑터가 host matcher를 생략해도 공개 www 요청을 차단하지 않는다',()=>{
+ const r=proxy(new NextRequest('https://www.pebble-log.com/robots.txt'));assert.equal(r.headers.get('x-middleware-next'),'1');
+});
 test('기존 dev 전용 경로의 운영 차단과 개발 접근을 유지한다',()=>{
  const before=process.env.NODE_ENV;
  try{
