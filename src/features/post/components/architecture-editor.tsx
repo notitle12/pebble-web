@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { useEditorFullscreen, EditorFullscreenButton } from "./use-editor-fullscreen";
 import { parseArchitectureSpec, type ArchitectureSpec, type ArchitectureSide, type ArchitectureEdge } from "../api/post-list";
 import {ARCHITECTURE_BRAND_ICONS,architectureBrandIcon,searchArchitectureIcons} from "../architecture-brand-icons";
 import {ARCHITECTURE_ICONS,toolboxIcon,newArchitectureNode,newArchitectureGroup} from "../architecture-tools";
@@ -29,6 +30,7 @@ const groupTitle: Record<string, string> = { AWS: "AWS 클라우드", ORACLE_CLO
 const fresh = (prefix: string, existing: string[]) => { let n = existing.length + 1; while (existing.includes(`${prefix}-${n}`)) n++; return `${prefix}-${n}`; };
 const allIds = (spec: ArchitectureSpec) => [...spec.groups.map((item) => item.id), ...spec.nodes.map((item) => item.id), ...spec.edges.map((item) => item.id)];
 export function ArchitectureEditor({ onChange, initialValue, embedded = false, onDraftChange }: { onChange?: (value: ArchitectureSpec | null) => void; initialValue?: ArchitectureSpec; embedded?: boolean; onDraftChange?: (value:ArchitectureSpec,valid:boolean)=>void }) {
+  const fullscreen = useEditorFullscreen();
   const [spec, setSpec] = useState<ArchitectureSpec>(() => normalizeArchitectureGroups(initialValue ?? sample));
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
@@ -291,7 +293,7 @@ export function ArchitectureEditor({ onChange, initialValue, embedded = false, o
     if (connectMode && connectFrom) { connect(target,side); return; }
     setConnectMode(true); setConnectFrom(target); setConnectSide(side); setSelectedNode(null); setSelectedGroup(null); setSelectedNodes(new Set()); setSelectedGroups(new Set()); setSelectedEdge(null); setMessage("도착 카드 또는 경계의 연결 포인트를 선택하세요. Esc로 취소합니다.");
   };
-  return <div className="architecture-editor-layout" tabIndex={-1} onPointerDownCapture={event=>{if(!(event.target as Element).closest("input,textarea,select,[contenteditable=true]"))event.currentTarget.focus({preventScroll:true});}} onKeyDown={event => {
+  return <div ref={fullscreen.ref} className="architecture-editor-layout diagram-editor-fullscreen" tabIndex={-1} onPointerDownCapture={event=>{if(!(event.target as Element).closest("input,textarea,select,[contenteditable=true]"))event.currentTarget.focus({preventScroll:true});}} onKeyDown={event => {
     const target = event.target as HTMLElement;
     if (target.closest("input,textarea,select,[contenteditable=true]") || event.repeat) return;
     if ((event.key === " " || event.code === "Space") && !target.closest("button,a,[role=radio],[role=menuitem]")) {
@@ -395,6 +397,7 @@ export function ArchitectureEditor({ onChange, initialValue, embedded = false, o
           <span className="architecture-canvas-title">시스템 구성도</span>
           <span className="architecture-canvas-hint">영역 드래그 다중 선택 · 연결점 드래그 연결 · Ctrl+휠 확대/축소</span>
           <div className="architecture-canvas-actions">
+            <EditorFullscreenButton control={fullscreen}/>
             <button className="architecture-auto-layout" type="button" disabled={!past.current.length} onClick={()=>undo()} title="되돌리기">되돌리기</button>
             <button className="architecture-auto-layout" type="button" disabled={!future.current.length} onClick={()=>undo(true)} title="다시 적용">다시 적용</button>
             <div className="architecture-zoom-controls" aria-label="캔버스 확대 축소">
