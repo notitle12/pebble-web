@@ -3,6 +3,7 @@ import { useEffect, useState, useRef, type ReactNode, type FormEvent } from "rea
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { MemberApiError } from "@/lib/member-api";
+import { openLoginDialog } from "@/features/auth/components/login-dialog";
 import { loginDestination } from "@/features/auth/login-destination";
 import { useUserSession } from "@/features/auth/components/member-gate";
 import { userSession } from "@/features/auth/user-session";
@@ -70,7 +71,7 @@ export function MemberAgreements({ documentsReady = false, termsContent, privacy
   }
 
   if (session.phase === "loading") return <section className="list-state" role="status">로그인 상태를 확인하고 있어요.</section>;
-  if (session.phase !== "ready" || !session.member) return <section className="list-state"><h1>로그인이 필요해요</h1><p>{session.message || "로그인 후 약관 동의를 진행할 수 있습니다."}</p><Link className="button" href="/login">로그인</Link></section>;
+  if (session.phase !== "ready" || !session.member) return <section className="list-state"><h1>로그인이 필요해요</h1><p>{session.message || "로그인 후 약관 동의를 진행할 수 있습니다."}</p><button type="button" className="button" onClick={() => openLoginDialog("/agreements")}>로그인</button></section>;
   if (session.member.agreementsAccepted && state && isCurrentMemberAgreement(state)) return <section className="list-state"><h1>동의가 완료되었습니다</h1><p>필요한 서비스 기능을 이용할 수 있습니다.</p><Link className="button" href={session.member.profileCompleted ? destination : `/settings/profile?returnTo=${encodeURIComponent(destination)}`}>계속</Link></section>;
   if (!documentsReady || (state && !state.available)) return <section className="list-state"><h1>서비스 이용 동의를 준비하고 있어요</h1><p>약관 확인을 마친 뒤 다시 방문해 주세요.</p><p className="agreement-withdrawal"><Link href="/settings/account">계정 설정에서 탈퇴</Link>하거나 <button type="button" className="agreement-text-button" onClick={() => void userSession.logout()}>로그아웃</button>할 수 있습니다.</p></section>;
 

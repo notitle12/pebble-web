@@ -42,10 +42,14 @@ export function LoginDialog({showTrigger=true}:{showTrigger?:boolean}){
   return ()=>window.removeEventListener(OPEN_LOGIN_DIALOG_EVENT,handleOpen);
  },[]);
  useEffect(()=>{
-  if(new URLSearchParams(window.location.search).get("login")!=="1")return;
-  const url=new URL(window.location.href);url.searchParams.delete("login");
+  const params=new URLSearchParams(window.location.search);
+  if(params.get("login")!=="1")return;
+  const returnTo=params.get("returnTo");
+  const url=new URL(window.location.href);
+  url.searchParams.delete("login");
+  url.searchParams.delete("returnTo");
   window.history.replaceState(window.history.state,"",`${url.pathname}${url.search}${url.hash}`);
-  openLoginDialog("/me/blog");
+  openLoginDialog(returnTo||"/me/blog");
  },[pathname]);
  return <>
   {showTrigger&&<button type="button" className="header-login" aria-haspopup="dialog" onClick={()=>{setDestination(null);dialog.current?.showModal();setOpen(true);}}>로그인</button>}
