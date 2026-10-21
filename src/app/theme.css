@@ -127,7 +127,7 @@ html[data-theme=dark] :is(.comment-composer-avatar,.comment-composer-buttons but
 html[data-theme=dark] .comment-composer-buttons .comment-composer-toggle[aria-pressed=true]{background:var(--accent-soft);color:var(--accent)}
 html[data-theme=dark] :is(.comment-composer-buttons .comment-composer-send:not(:disabled),.comments-panel .comment-compose-row>.button){background:var(--accent);color:var(--background);border-color:var(--accent)}
 html[data-theme=dark] :is(.comment-composer-buttons .comment-composer-send:hover:not(:disabled),.comments-panel .comment-compose-row>.button:hover:not(:disabled)){background:var(--accent-hover);color:var(--background);border-color:var(--accent-hover)}
-html[data-theme=dark] .comment-secret-badge{background:#403822;color:#e5c884}
+html[data-theme=dark] .comment-secret-badge{background:var(--accent-soft);color:var(--accent)}
 html[data-theme=dark] .like-button{background:var(--block-surface);color:var(--text);border-color:var(--line)}
 html[data-theme=dark] .like-button[aria-pressed=true]{background:var(--accent-soft);color:var(--accent);border-color:var(--accent-border)}
 html[data-theme=dark] .comment-list>li{border-color:var(--line)}

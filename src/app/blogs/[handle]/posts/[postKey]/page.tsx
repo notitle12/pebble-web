@@ -1,3 +1,4 @@
+import { PostReportButton } from "@/features/post/components/post-report-button";
 import {postSearchData} from "@/features/seo/model";
 import {StructuredData} from "@/features/seo/json-ld";
 import {LikePanel} from "@/features/like/components/like-panel";
@@ -43,6 +44,7 @@ export default async function PostPage({ params }: Props) {
         <div className="post-reactions">
           {post.tags.length>0&&<ul className="tag-list post-detail-tags" aria-label="태그">{post.tags.map(tag=><li key={tag}>{tag}</li>)}</ul>}
           <LikePanel target="posts" contentId={post.id} initialCount={post.likeCount}/>
+          <PostReportButton postId={post.id}/>
         </div>
       </article>
       {post.projectId&&<Suspense fallback={<section className="linked-project" role="status">연결 프로젝트를 불러오는 중…</section>}><LinkedProject id={post.projectId}/></Suspense>}
