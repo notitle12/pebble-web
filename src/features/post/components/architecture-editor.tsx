@@ -406,7 +406,6 @@ export function ArchitectureEditor({ onChange, initialValue, embedded = false, o
               <button className="architecture-auto-layout" type="button" aria-label="확대" disabled={zoom>=3} onClick={()=>setZoom(value=>Math.min(3,Math.round((value+.1)*100)/100))}>＋</button>
             </div>
             <button className="architecture-auto-layout" type="button" onClick={()=>blockRef.current?blockRef.current.fitToView():setZoom(1)} title="현재 창 크기에 맞추기">화면 맞춤</button>
-            <button className="architecture-auto-layout" type="button" onClick={() => update((current) => ({ ...current, groups: current.groups.map(({bounds,...group})=>group), nodes: current.nodes.map(({ position, ...node }) => node) }))} title="자동 정렬">자동 정렬</button>
             {hasSelection && (
               <button
                 className={`architecture-auto-layout architecture-inspector-toggle${inspectorOpen ? " is-active" : ""}`}
