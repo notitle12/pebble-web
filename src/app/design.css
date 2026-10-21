@@ -720,14 +720,6 @@ body>.site-header,body>.site-footer{flex-shrink:0}
 }
 
 
-/* Guest comments use the member composer layout with a compact identity row. */
-.comment-composer.guest-comment-composer{padding:0;border:0;background:transparent}
-.guest-comment-composer .comment-composer-card{min-width:0}
-.guest-comment-composer .guest-comment-header{margin-bottom:9px}
-.guest-comment-composer .comment-composer-card textarea{margin-top:0}
-.guest-comment-composer .comment-composer-tools{grid-column:2}
-.guest-secret-read{max-width:520px}
-@media(max-width:480px){.guest-comment-composer{grid-template-columns:32px minmax(0,1fr)}.guest-comment-composer .guest-comment-header{gap:8px}.guest-comment-composer .guest-comment-identity{gap:6px}.guest-comment-composer .guest-comment-identity input{padding-inline:7px;font-size:13px}}
 
 .withdrawal-confirmation{display:grid;gap:12px;margin-top:24px}.withdrawal-confirmation label{font-size:14px;color:var(--muted)}.withdrawal-confirmation-phrase{margin:0;padding:14px 16px;border:1px solid var(--line);border-radius:8px;background:var(--accent-soft);color:var(--text);font-weight:600;overflow-wrap:anywhere}.withdrawal-confirmation input{width:100%;box-sizing:border-box;min-height:44px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--text);font:inherit}.withdrawal-confirmation input:focus{outline:2px solid var(--accent);outline-offset:2px}.withdrawal-confirmation .withdrawal-actions{margin-top:8px}
 
@@ -744,17 +736,23 @@ body>.site-header,body>.site-footer{flex-shrink:0}
 .post-heading-bar .blog-owner-actions{margin:0;flex-shrink:0;white-space:nowrap;align-items:center}.post-detail>header h1,.project-tile h3,.post-card h3,.blog-popular-title{display:block;min-width:0;white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;-webkit-line-clamp:unset}.post-card h3 a,.project-tile h3 a{display:block;overflow:visible;text-overflow:clip;white-space:normal}.post-detail>header h1{font-size:clamp(20px,2.1vw,28px)}.project-tile h3,.post-card h3,.home-shell .post-card h3,.personal-blog-content .post-card h3{font-size:20px}.own-post-row:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
 
 /* Pebble comment composer: a single outlined writing surface and text actions. */
-.comment-composer,.comment-composer.guest-comment-composer{display:flex;flex-wrap:wrap;gap:0;border:1px solid var(--line);border-radius:8px;padding:16px;background:transparent}
+.comment-composer{display:flex;flex-wrap:wrap;gap:0;border:1px solid var(--line);border-radius:8px;padding:16px;background:transparent}
 .comment-composer-avatar{display:none}
 .comment-composer-card{flex:0 0 100%;padding:0;border:0;border-radius:0;background:transparent}
 .comment-composer-card:focus-within{background:transparent}
 .comment-composer:focus-within{border-color:var(--accent)}
 .comment-composer-tools{width:100%;margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
-.comment-composer-buttons{gap:10px}
-.comment-composer-buttons button{display:inline-flex;align-items:center;justify-content:center;width:auto;min-height:36px;height:auto;padding:7px 13px;border-radius:5px;font:inherit;font-size:12px;background:transparent;color:var(--muted)}
-.comment-composer-toggle::before{content:'○';margin-right:6px}
-.comment-composer-toggle[aria-pressed=true]::before{content:'●'}
-.comment-composer-buttons .comment-composer-send:not(:disabled){background:var(--accent);color:var(--surface,#fff)}
+.comment-composer-buttons{display:flex;align-items:center;gap:8px}
+.comment-composer-buttons button{display:inline-flex;align-items:center;justify-content:center;width:auto;min-height:34px;height:34px;padding:0 13px;border:1px solid var(--line);border-radius:6px;font:inherit;font-size:13px;font-weight:500;background:var(--surface,#fff);color:var(--text);cursor:pointer;transition:all .15s ease}
+.comment-composer-buttons button:hover:not(:disabled){border-color:#94a3b8;background:#f8fafc;color:var(--text)}
+.comment-composer-buttons .comment-composer-toggle{color:var(--muted)}
+.comment-composer-buttons .comment-composer-toggle svg{width:15px;height:15px;margin-right:5px;stroke:currentColor}
+.comment-composer-buttons .comment-composer-toggle:hover{color:var(--text);border-color:#cbd5e1}
+.comment-composer-buttons .comment-composer-toggle[aria-pressed=true]{background:var(--accent-soft);border-color:var(--accent-border,var(--accent));color:var(--accent);font-weight:600}
+.comment-composer-buttons .comment-composer-toggle[aria-pressed=true] svg{stroke:currentColor}
+.comment-composer-buttons .comment-composer-send:disabled{background:#f1f5f9;border-color:var(--line);color:var(--muted);opacity:.7;cursor:not-allowed}
+.comment-composer-buttons .comment-composer-send:not(:disabled){background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+.comment-composer-buttons .comment-composer-send:hover:not(:disabled){background:var(--accent-hover,#20713b);border-color:var(--accent-hover,#20713b);color:#fff}
 .blog-owner-actions .content-management{display:inline-flex}
 .blog-owner-actions .content-management>.button{font:inherit;background:transparent;color:inherit;border:0;padding:0;text-decoration:underline;text-underline-offset:3px}
 

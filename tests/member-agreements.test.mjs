@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {isCurrentMemberAgreement,memberAgreementAcceptance,memberAgreementVersions,parseMemberAgreementState} from '../src/features/member/agreements-model.ts';
 import {MemberApiError} from '../src/lib/member-api.ts';
-const state={termsVersion:memberAgreementVersions.termsVersion,privacyVersion:memberAgreementVersions.privacyVersion,accepted:true,acceptedAt:'2026-10-15T00:00:00Z',available:true};
+const state={termsVersion:memberAgreementVersions.termsVersion,privacyVersion:memberAgreementVersions.privacyVersion,accepted:true,acceptedAt:'2026-10-21T00:00:00Z',available:true};
 
 test('agreement state requires a valid acceptance timestamp and published documents',()=>{
  assert.deepEqual(parseMemberAgreementState({data:state}),state);
@@ -15,5 +15,5 @@ test('agreement state requires a valid acceptance timestamp and published docume
 
 test('acceptance request has only the explicit required version and confirmation fields',()=>{
  assert.deepEqual(Object.keys(memberAgreementAcceptance).sort(),['ageConfirmed','privacyAccepted','privacyVersion','termsAccepted','termsVersion'].sort());
- assert.deepEqual(memberAgreementAcceptance,{termsVersion:'2026-10-15',privacyVersion:'2026-10-15',termsAccepted:true,privacyAccepted:true,ageConfirmed:true});
+ assert.deepEqual(memberAgreementAcceptance,{termsVersion:'2026-10-21',privacyVersion:'2026-10-21',termsAccepted:true,privacyAccepted:true,ageConfirmed:true});
 });
