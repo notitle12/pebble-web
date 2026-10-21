@@ -1,0 +1,43 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "pebble-web",
+  "account_id": "[REMOVED_CLOUDFLARE_ACCOUNT_ID]",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-10-04",
+  "compatibility_flags": [
+    "nodejs_compat",
+    "global_fetch_strictly_public"
+  ],
+  "workers_dev": false,
+  "preview_urls": false,
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "services": [
+    {
+      "binding": "WORKER_SELF_REFERENCE",
+      "service": "pebble-web"
+    }
+  ],
+  "vars": {
+    "NEXT_PUBLIC_API_BASE_URL": "https://api.pebble-log.com/api/v1",
+    "PEBBLE_LEGAL_TEST_MODE": "true",
+    "PEBBLE_LEGAL_PUBLISHED": "false",
+    "PEBBLE_LEGAL_OPERATOR": "Pebble 운영팀",
+    "PEBBLE_LEGAL_CONTACT_EMAIL": "contact@pebble-log.com"
+  },
+  "routes": [
+    {
+      "pattern": "www.pebble-log.com",
+      "custom_domain": true
+    },
+    {
+      "pattern": "pebble-log.com",
+      "custom_domain": true
+    }
+  ],
+  "observability": {
+    "enabled": false
+  }
+}

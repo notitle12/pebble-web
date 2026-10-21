@@ -1,0 +1,48 @@
+Pebble architecture technology icon notices — reviewed 2026-10-18
+
+These unmodified original logos identify the actual technologies in technical diagrams.
+They do not imply sponsorship, affiliation or endorsement of Pebble or its users.
+Commercial copyright use and redistribution are allowed subject to the linked attribution licenses.
+Trademark policies apply separately: use a logo only to accurately refer to that technology.
+No asset recoloring, cropping or tracing. Display size is adjusted proportionally.
+
+Git Logo — Jason Long — CC BY 3.0 Unported.
+Source: https://git-scm.com/community/logos
+Original asset: https://git-scm.com/images/logos/downloads/Git-Icon-1788C.svg
+License: https://creativecommons.org/licenses/by/3.0/
+Trademark policy: https://git-scm.com/about/trademark
+Git and the Git logo are either registered trademarks or trademarks of Software Freedom Conservancy, Inc., corporate home of the Git Project, in the United States and/or other countries.
+
+Rust Logo — Rust Foundation — CC BY 4.0 International.
+Source, copyright and trademark policy: https://rustfoundation.org/policies/logo-policy-and-media-guide/
+Original asset: https://rustfoundation.org/wp-content/uploads/2024/07/cropped-rust-lang-logo-black-150x150.png
+License: https://creativecommons.org/licenses/by/4.0/
+Rust and Cargo are trademarks of the Rust Foundation. This use is not official, affiliated or endorsed.
+
+The original asset files are unchanged. Git credit is provided as published on its official download page; Rust ownership and licensing are provided as published by the Rust Foundation.
+
+JavaScript Community Logo — Christopher Williams / JSConf — MIT.
+Copyright (c) 2011 Christopher Williams. The full notice is in javascript-license.txt.
+Source: https://github.com/voodootikigod/logo.js
+License: https://github.com/voodootikigod/logo.js/blob/master/LICENSE
+Usage grant: https://github.com/voodootikigod/logo.js/blob/master/README.md
+This is the JSConf community JS logo, not an Oracle corporate logo.
+
+Redux Logo — Matthew Johnston — CC0 1.0.
+Source: https://github.com/reduxjs/redux/tree/master/logo
+License: https://github.com/reduxjs/redux/blob/master/LICENSE-logo.md
+Usage guidance: https://github.com/reduxjs/redux/blob/master/logo/README.md
+The original logo is unchanged; the full CC0 notice is in redux-license.txt.
+
+Flask classic artwork — Copyright 2010 Pallets — Flask Artwork License.
+Source: https://github.com/pallets/flask/tree/1.1.4/artwork
+License and permitted use: https://github.com/pallets/flask/blob/1.1.4/artwork/LICENSE.rst
+The permission explicitly covers use by anyone to refer to Flask and redistribution in SVG or rendered formats.
+No endorsement is implied. Original logo-lineart.svg is unchanged; full notice in flask-license.txt.
+
+C++ Logo — Jeremy Kratz / Standard C++ Foundation — Standard C++ Logo Permission.
+Source: https://github.com/isocpp/logos
+Permission and trademark policy: https://isocpp.org/home/terms-of-use
+The unaltered logo is permitted with products and materials related to standardized C++.
+It must not imply endorsement or be used as part of another organization's logo.
+This is a purpose-limited logo permission, not an unrestricted software license.
