@@ -18,7 +18,7 @@
 .canvasStage{position:relative;width:100%}
 .floatingRelationOverlay{position:absolute;top:10px;left:12px;right:12px;z-index:25;pointer-events:auto;box-shadow:0 8px 24px rgba(15,23,42,.16);border-radius:8px;overflow:hidden;border:1px solid #cbdcf7}
 
-.viewport{overflow:auto;max-height:620px;background-color:#f8fafc;background-image:radial-gradient(#cbd5e1 1px,transparent 1px);background-size:16px 16px}
+.viewport{height:clamp(240px,65svh,620px);overflow:auto;max-height:620px;background-color:#f8fafc;background-image:radial-gradient(#cbd5e1 1px,transparent 1px);background-size:16px 16px}
 .world{position:relative;transform-origin:top left}
 .lines{position:absolute;inset:0;overflow:visible;pointer-events:none}
 .lines path{fill:none;stroke:#7e8ea6;stroke-width:1.85}
@@ -469,7 +469,7 @@
 .editor:fullscreen .diagram{flex:1;min-height:0;display:flex;flex-direction:column}
 .editor:fullscreen .zoom{flex-shrink:0}
 .editor:fullscreen .canvasStage{flex:1;min-height:0;display:flex;flex-direction:column}
-.editor:fullscreen .viewport{flex:1;min-height:200px;max-height:none}
+.editor:fullscreen .viewport{height:auto;flex:1;min-height:200px;max-height:none}
 .editor:fullscreen .editSpecifications{overflow:auto}
 
 .viewport[data-space-pan=true],.viewport[data-space-pan=true] *{cursor:grab!important;user-select:none}
