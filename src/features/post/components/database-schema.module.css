@@ -363,12 +363,12 @@
 
 .selectedSpecification{position:relative;margin-top:14px;padding:0;border:0;background:transparent}
 .closeSpecification{display:none}
-.viewport[data-preview=true]{overflow:hidden;max-height:none;overscroll-behavior:auto;cursor:zoom-in}
-.viewport[data-preview=true][data-zoomed=true]{overflow:auto!important;max-height:640px!important;overscroll-behavior:auto!important;cursor:zoom-in}
+.viewport[data-preview=true]{height:clamp(240px,60svh,420px);overflow:hidden;max-height:none;overscroll-behavior:auto;cursor:zoom-in}
+.viewport[data-preview=true][data-zoomed=true]{overflow:auto!important;overscroll-behavior:auto!important;cursor:zoom-in}
 .viewport.isPanning{cursor:grabbing!important;user-select:none}
 .viewport[data-preview=true] :is(.cardGrid,.cardRow,.cardSubHeader,svg){cursor:default}
 .viewport[data-preview=true] :is(.cardHeading,.inspectTable){cursor:pointer}
-:global(.diagram-lightbox) .viewport{max-height:72vh!important;width:100%;box-sizing:border-box;overflow:auto!important;overscroll-behavior:contain!important;cursor:grab}
+:global(.diagram-lightbox) .viewport{height:min(65svh,640px);max-height:72vh!important;width:100%;box-sizing:border-box;overflow:auto!important;overscroll-behavior:contain!important;cursor:grab}
 :global(.diagram-lightbox) .viewport.isPanning{cursor:grabbing!important;user-select:none}
 :global(.diagram-lightbox) .viewport[data-preview=true],
 :global(.diagram-lightbox) .viewport[data-preview=true] :is(.cardGrid,.cardRow,.cardSubHeader,svg){cursor:default}
