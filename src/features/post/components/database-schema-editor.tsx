@@ -1,7 +1,6 @@
 "use client";
 import { useId, useRef, useState } from 'react';
 import {
- autoLayoutDbTables,
  moveDbColumnOrder,
  newDbPresetColumn,
  newDbTable,
@@ -313,12 +312,6 @@ export function DatabaseSchemaEditor({
     >
      ＋ 테이블 추가
     </button>
-
-    {tab === 'ERD' && (
-     <button type="button" onClick={() => update(autoLayoutDbTables(schema))}>
-      자동 배치
-     </button>
-    )}
 
     <label>
      본문 표시

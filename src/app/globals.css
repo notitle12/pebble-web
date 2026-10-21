@@ -782,3 +782,12 @@ body:has(.writer-shell){background:#fff}
 .architecture-editor-layout:fullscreen .architecture-canvas-toolbar,.architecture-editor-layout:fullscreen .architecture-canvas-status{flex-shrink:0}
 .architecture-editor-layout:fullscreen .architecture-inspector-sidebar{position:absolute;left:auto;right:0;top:0;width:300px;max-height:100%;margin:0}
 @media(max-width:680px){.diagram-editor-fullscreen:fullscreen{padding:8px}.architecture-editor-layout:fullscreen .architecture-workspace.has-sidebar{padding-right:0}.architecture-editor-layout:fullscreen .architecture-inspector-sidebar{width:min(300px,90%);z-index:30}}
+
+/* Keep fullscreen tools close to the canvas, with menus opening upward. */
+.architecture-editor-layout:fullscreen{padding-bottom:84px}
+.architecture-editor-layout:fullscreen>.architecture-palette{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);width:max-content;max-width:calc(100% - 32px);box-sizing:border-box;padding:10px 12px;border-radius:12px;box-shadow:0 6px 24px #0002;z-index:40}
+.architecture-editor-layout:fullscreen .architecture-library-toolbar,.architecture-editor-layout:fullscreen .architecture-library-triggers{justify-content:center}
+.architecture-editor-layout:fullscreen .architecture-tool-hint{display:none}
+.architecture-editor-layout:fullscreen .architecture-library-popup{top:auto;bottom:calc(100% + 10px);left:50%;transform:translateX(-50%);width:min(560px,calc(100vw - 32px));max-height:calc(100dvh - 150px);overflow:auto}
+.architecture-editor-layout:fullscreen .architecture-connection-menu{top:auto;bottom:calc(100% + 10px);left:auto;right:0}
+@media(max-width:420px){.architecture-editor-layout:fullscreen{padding-bottom:116px}.architecture-editor-layout:fullscreen>.architecture-palette{padding:8px;bottom:12px}.architecture-editor-layout:fullscreen .architecture-library-triggers{gap:4px}}
