@@ -31,6 +31,10 @@
     {
       "pattern": "www.pebble-log.com",
       "custom_domain": true
+    },
+    {
+      "pattern": "pebble-log.com",
+      "custom_domain": true
     }
   ],
   "observability": {
