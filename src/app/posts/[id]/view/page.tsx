@@ -1,0 +1,4 @@
+import {SiteHeader} from "@/components/site-header";
+import {OwnPostView} from "@/features/post/components/own-post-view";
+export const metadata={title:"내 글 보기",robots:{index:false,follow:false}};
+export default async function Page({params}:{params:Promise<{id:string}>}){const {id}=await params;return <><SiteHeader/><main className="page-shell detail-shell post-reading-shell"><OwnPostView id={id}/></main></>;}

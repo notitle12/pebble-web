@@ -1,0 +1,18 @@
+.image{box-sizing:border-box;display:table;margin:1em 0;max-width:100%;position:relative;width:fit-content}
+.image[data-align="center"]{margin-left:auto;margin-right:auto}
+.image[data-align="right"]{margin-left:auto;margin-right:0}
+.image img{display:block;height:auto;max-width:100%;width:auto}
+.tools{position:absolute;top:10px;left:10px;right:10px;z-index:3;display:flex;align-items:center;justify-content:space-between;gap:10px;opacity:0;pointer-events:none;transform:translateY(-3px);transition:opacity .12s ease,transform .12s ease}
+.image:hover .tools,.image:has(button:focus-visible) .tools{opacity:1;transform:none}
+.image .tools button{display:inline-flex;align-items:center;justify-content:center;gap:6px;position:static;min-width:30px;min-height:30px;height:30px;margin:0;padding:0 8px;border:1px solid var(--line);border-radius:6px;background:color-mix(in srgb,var(--surface) 94%,transparent);color:var(--muted);box-shadow:0 2px 8px #0002;backdrop-filter:blur(8px);pointer-events:none;font-family:inherit;font-size:11px;font-weight:500;line-height:1.2;cursor:pointer;white-space:nowrap}
+.image .tools button svg{width:15px;height:15px;flex:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.image .tools .deleteButton{width:30px;padding:0;margin-left:auto}
+.image .tools button:hover:not(:disabled){background:var(--accent-soft);color:var(--accent)}
+.image .tools .representativeButton[aria-pressed="true"]{color:var(--accent)}
+.image .tools button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.image .tools button:disabled{opacity:.45;cursor:default}
+@media(hover:none){.image[data-selected="true"] .tools{opacity:1;transform:none}.image .tools button{min-height:44px;height:44px}.image .tools .deleteButton{min-width:44px;width:44px}}
+@media(prefers-reduced-motion:reduce){.tools{transition:none}}
+
+.image:hover .tools button,.image:has(button:focus-visible) .tools button{pointer-events:auto}
+@media(hover:none){.image[data-selected="true"] .tools button{pointer-events:auto}}
