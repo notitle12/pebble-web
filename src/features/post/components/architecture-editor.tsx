@@ -1,5 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { DiagramZoomInput } from "./diagram-zoom-input";
+import { useEditorFullscreen, EditorFullscreenButton } from "./use-editor-fullscreen";
 import { parseArchitectureSpec, type ArchitectureSpec, type ArchitectureSide, type ArchitectureEdge } from "../api/post-list";
 import {ARCHITECTURE_BRAND_ICONS,architectureBrandIcon,searchArchitectureIcons} from "../architecture-brand-icons";
 import {ARCHITECTURE_ICONS,toolboxIcon,newArchitectureNode,newArchitectureGroup} from "../architecture-tools";
@@ -29,6 +31,17 @@ const groupTitle: Record<string, string> = { AWS: "AWS 클라우드", ORACLE_CLO
 const fresh = (prefix: string, existing: string[]) => { let n = existing.length + 1; while (existing.includes(`${prefix}-${n}`)) n++; return `${prefix}-${n}`; };
 const allIds = (spec: ArchitectureSpec) => [...spec.groups.map((item) => item.id), ...spec.nodes.map((item) => item.id), ...spec.edges.map((item) => item.id)];
 export function ArchitectureEditor({ onChange, initialValue, embedded = false, onDraftChange }: { onChange?: (value: ArchitectureSpec | null) => void; initialValue?: ArchitectureSpec; embedded?: boolean; onDraftChange?: (value:ArchitectureSpec,valid:boolean)=>void }) {
+  const fullscreen = useEditorFullscreen();
+  const canvasToolbarRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const toolbar = canvasToolbarRef.current;
+    if (!toolbar) return;
+    const measure = () => fullscreen.ref.current?.style.setProperty("--architecture-toolbar-height", `${toolbar.offsetHeight}px`);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(toolbar);
+    return () => observer.disconnect();
+  }, [fullscreen.ref]);
   const [spec, setSpec] = useState<ArchitectureSpec>(() => normalizeArchitectureGroups(initialValue ?? sample));
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
@@ -291,15 +304,9 @@ export function ArchitectureEditor({ onChange, initialValue, embedded = false, o
     if (connectMode && connectFrom) { connect(target,side); return; }
     setConnectMode(true); setConnectFrom(target); setConnectSide(side); setSelectedNode(null); setSelectedGroup(null); setSelectedNodes(new Set()); setSelectedGroups(new Set()); setSelectedEdge(null); setMessage("도착 카드 또는 경계의 연결 포인트를 선택하세요. Esc로 취소합니다.");
   };
-  return <div className="architecture-editor-layout" tabIndex={-1} onPointerDownCapture={event=>{if(!(event.target as Element).closest("input,textarea,select,[contenteditable=true]"))event.currentTarget.focus({preventScroll:true});}} onKeyDown={event => {
+  return <div ref={fullscreen.ref} className="architecture-editor-layout diagram-editor-fullscreen" tabIndex={-1} onPointerDownCapture={event=>{if(!(event.target as Element).closest("input,textarea,select,[contenteditable=true]"))event.currentTarget.focus({preventScroll:true});}} onKeyDown={event => {
     const target = event.target as HTMLElement;
     if (target.closest("input,textarea,select,[contenteditable=true]") || event.repeat) return;
-    if ((event.key === " " || event.code === "Space") && !target.closest("button,a,[role=radio],[role=menuitem]")) {
-      event.preventDefault();
-      event.stopPropagation();
-      blockRef.current?.fitToView();
-      return;
-    }
     if ((event.ctrlKey || event.metaKey) && ["z","y"].includes(event.key.toLowerCase())) { event.preventDefault();event.stopPropagation(); undo(event.shiftKey || event.key.toLowerCase()==="y"); return; }
     if (event.metaKey || event.ctrlKey || event.altKey) return;
     if (event.key==="Delete" || event.key==="Backspace") {
@@ -391,19 +398,19 @@ export function ArchitectureEditor({ onChange, initialValue, embedded = false, o
     </aside>
     <div className={`architecture-workspace${hasSelection && inspectorOpen ? " has-sidebar" : ""}`}>
       <section className="architecture-canvas-panel architecture-canvas-fit" aria-label="아키텍처 캔버스">
-        <div className="architecture-canvas-toolbar">
+        <div ref={canvasToolbarRef} className="architecture-canvas-toolbar">
           <span className="architecture-canvas-title">시스템 구성도</span>
-          <span className="architecture-canvas-hint">영역 드래그 다중 선택 · 연결점 드래그 연결 · Ctrl+휠 확대/축소</span>
+          <span className="architecture-canvas-hint">드래그 다중 선택 · Space+드래그 이동 · Ctrl+휠 확대/축소</span>
           <div className="architecture-canvas-actions">
+            <EditorFullscreenButton control={fullscreen}/>
             <button className="architecture-auto-layout" type="button" disabled={!past.current.length} onClick={()=>undo()} title="되돌리기">되돌리기</button>
             <button className="architecture-auto-layout" type="button" disabled={!future.current.length} onClick={()=>undo(true)} title="다시 적용">다시 적용</button>
             <div className="architecture-zoom-controls" aria-label="캔버스 확대 축소">
               <button className="architecture-auto-layout" type="button" aria-label="축소" disabled={zoom<=.4} onClick={()=>setZoom(value=>Math.max(.4,Math.round((value-.1)*100)/100))}>−</button>
-              <button className="architecture-auto-layout" type="button" aria-label="100% 원래 크기" onClick={()=>setZoom(1)} title="100% 기본 크기">{Math.round(zoom*100)}%</button>
+              <DiagramZoomInput zoom={zoom} onChange={setZoom} label="아키텍처 확대율 (%)"/>
               <button className="architecture-auto-layout" type="button" aria-label="확대" disabled={zoom>=3} onClick={()=>setZoom(value=>Math.min(3,Math.round((value+.1)*100)/100))}>＋</button>
             </div>
             <button className="architecture-auto-layout" type="button" onClick={()=>blockRef.current?blockRef.current.fitToView():setZoom(1)} title="현재 창 크기에 맞추기">화면 맞춤</button>
-            <button className="architecture-auto-layout" type="button" onClick={() => update((current) => ({ ...current, groups: current.groups.map(({bounds,...group})=>group), nodes: current.nodes.map(({ position, ...node }) => node) }))} title="자동 정렬">자동 정렬</button>
             {hasSelection && (
               <button
                 className={`architecture-auto-layout architecture-inspector-toggle${inspectorOpen ? " is-active" : ""}`}
@@ -417,7 +424,7 @@ export function ArchitectureEditor({ onChange, initialValue, embedded = false, o
           </div>
         </div>
         <ArchitectureBlock ref={blockRef} onRenameGroupType={(id,label)=>rename("group",id,label,"typeLabel")} onClearSelection={clearSelection} onRenameNode={(id,label)=>rename("node",id,label)} onRenameGroup={(id,label)=>rename("group",id,label)} onRenameEdge={(id,label)=>updateEdge(id,{label:label.trim()||null})} zoom={zoom} onZoomChange={setZoom} onConnectNodes={addConnection} spec={spec} title={null} interactive selectedNode={connectFrom ?? selectedNode} onSelectNode={selectNode} onMoveNode={moveNode} selectedGroup={selectedGroup} selectedNodes={selectedNodes} selectedGroups={selectedGroups} onSelectRange={selectRange} onMoveSelection={moveSelection} connecting={connectMode} connectionDirection={connectionDirection} onSelectGroup={selectGroup} onConnect={connectPoint} onMoveGroup={moveGroup} onResizeGroup={resizeGroup} selectedEdge={selectedEdge} onSelectEdge={selectEdge} onDeleteEdge={deleteEdge} onDeleteNode={id=>{removeNode(id);setSingleNode(null);}} onDeleteGroup={id=>{removeGroup(id);setSingleGroup(null);}} onResetEdgeWaypoint={id=>updateEdge(id,{waypoint:null})} onMoveEdge={(id,point)=>updateEdge(id,{waypoint:{x:Math.max(0,Math.min(4200,Math.round(point.x))),y:Math.max(0,Math.min(4200,Math.round(point.y)))}})} onReconnectEdge={(id,end,target,side)=>updateEdge(id,end==="source"?{source:target,sourceSide:side,waypoint:null}:{target,targetSide:side,waypoint:null})} onInteractionStart={beginInteraction} onInteractionEnd={endInteraction} />
-        <div className="architecture-canvas-status" role="status">{message || "● 캔버스 드래그 다중 선택 · 방향키 일괄 이동 · Delete 삭제"}</div>
+        <div className="architecture-canvas-status" role="status">{message || "● 드래그 다중 선택 · Space+드래그 이동 · 방향키 이동 · Delete 삭제"}</div>
       </section>
 
       {hasSelection && inspectorOpen && (
