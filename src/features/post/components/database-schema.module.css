@@ -471,3 +471,6 @@
 .editor:fullscreen .canvasStage{flex:1;min-height:0;display:flex;flex-direction:column}
 .editor:fullscreen .viewport{flex:1;min-height:200px;max-height:none}
 .editor:fullscreen .editSpecifications{overflow:auto}
+
+.viewport[data-space-pan=true],.viewport[data-space-pan=true] *{cursor:grab!important;user-select:none}
+.viewport.isPanning,.viewport.isPanning *{cursor:grabbing!important}

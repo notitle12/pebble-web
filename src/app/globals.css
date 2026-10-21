@@ -790,3 +790,6 @@ body:has(.writer-shell){background:#fff}
 .architecture-editor-layout:fullscreen .architecture-library-popup{top:calc(100% + 10px);bottom:auto;left:50%;transform:translateX(-50%);width:min(560px,calc(100vw - 32px));max-height:calc(100dvh - 150px);overflow:auto}
 .architecture-editor-layout:fullscreen .architecture-connection-menu{top:calc(100% + 10px);bottom:auto;left:auto;right:0}
 @media(max-width:420px){.architecture-editor-layout:fullscreen>.architecture-palette{padding:8px;top:calc(var(--architecture-toolbar-height,42px) + 20px)}.architecture-editor-layout:fullscreen .architecture-library-triggers{gap:4px}}
+
+.architecture-scroll[data-space-pan=true],.architecture-scroll[data-space-pan=true] *{cursor:grab!important;user-select:none}
+.architecture-scroll.is-panning,.architecture-scroll.is-panning *{cursor:grabbing!important}

@@ -306,12 +306,6 @@ export function ArchitectureEditor({ onChange, initialValue, embedded = false, o
   return <div ref={fullscreen.ref} className="architecture-editor-layout diagram-editor-fullscreen" tabIndex={-1} onPointerDownCapture={event=>{if(!(event.target as Element).closest("input,textarea,select,[contenteditable=true]"))event.currentTarget.focus({preventScroll:true});}} onKeyDown={event => {
     const target = event.target as HTMLElement;
     if (target.closest("input,textarea,select,[contenteditable=true]") || event.repeat) return;
-    if ((event.key === " " || event.code === "Space") && !target.closest("button,a,[role=radio],[role=menuitem]")) {
-      event.preventDefault();
-      event.stopPropagation();
-      blockRef.current?.fitToView();
-      return;
-    }
     if ((event.ctrlKey || event.metaKey) && ["z","y"].includes(event.key.toLowerCase())) { event.preventDefault();event.stopPropagation(); undo(event.shiftKey || event.key.toLowerCase()==="y"); return; }
     if (event.metaKey || event.ctrlKey || event.altKey) return;
     if (event.key==="Delete" || event.key==="Backspace") {
@@ -405,7 +399,7 @@ export function ArchitectureEditor({ onChange, initialValue, embedded = false, o
       <section className="architecture-canvas-panel architecture-canvas-fit" aria-label="아키텍처 캔버스">
         <div ref={canvasToolbarRef} className="architecture-canvas-toolbar">
           <span className="architecture-canvas-title">시스템 구성도</span>
-          <span className="architecture-canvas-hint">영역 드래그 다중 선택 · 연결점 드래그 연결 · Ctrl+휠 확대/축소</span>
+          <span className="architecture-canvas-hint">드래그 다중 선택 · Space+드래그 이동 · Ctrl+휠 확대/축소</span>
           <div className="architecture-canvas-actions">
             <EditorFullscreenButton control={fullscreen}/>
             <button className="architecture-auto-layout" type="button" disabled={!past.current.length} onClick={()=>undo()} title="되돌리기">되돌리기</button>
@@ -429,7 +423,7 @@ export function ArchitectureEditor({ onChange, initialValue, embedded = false, o
           </div>
         </div>
         <ArchitectureBlock ref={blockRef} onRenameGroupType={(id,label)=>rename("group",id,label,"typeLabel")} onClearSelection={clearSelection} onRenameNode={(id,label)=>rename("node",id,label)} onRenameGroup={(id,label)=>rename("group",id,label)} onRenameEdge={(id,label)=>updateEdge(id,{label:label.trim()||null})} zoom={zoom} onZoomChange={setZoom} onConnectNodes={addConnection} spec={spec} title={null} interactive selectedNode={connectFrom ?? selectedNode} onSelectNode={selectNode} onMoveNode={moveNode} selectedGroup={selectedGroup} selectedNodes={selectedNodes} selectedGroups={selectedGroups} onSelectRange={selectRange} onMoveSelection={moveSelection} connecting={connectMode} connectionDirection={connectionDirection} onSelectGroup={selectGroup} onConnect={connectPoint} onMoveGroup={moveGroup} onResizeGroup={resizeGroup} selectedEdge={selectedEdge} onSelectEdge={selectEdge} onDeleteEdge={deleteEdge} onDeleteNode={id=>{removeNode(id);setSingleNode(null);}} onDeleteGroup={id=>{removeGroup(id);setSingleGroup(null);}} onResetEdgeWaypoint={id=>updateEdge(id,{waypoint:null})} onMoveEdge={(id,point)=>updateEdge(id,{waypoint:{x:Math.max(0,Math.min(4200,Math.round(point.x))),y:Math.max(0,Math.min(4200,Math.round(point.y)))}})} onReconnectEdge={(id,end,target,side)=>updateEdge(id,end==="source"?{source:target,sourceSide:side,waypoint:null}:{target,targetSide:side,waypoint:null})} onInteractionStart={beginInteraction} onInteractionEnd={endInteraction} />
-        <div className="architecture-canvas-status" role="status">{message || "● 캔버스 드래그 다중 선택 · 방향키 일괄 이동 · Delete 삭제"}</div>
+        <div className="architecture-canvas-status" role="status">{message || "● 드래그 다중 선택 · Space+드래그 이동 · 방향키 이동 · Delete 삭제"}</div>
       </section>
 
       {hasSelection && inspectorOpen && (
