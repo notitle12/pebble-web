@@ -793,3 +793,6 @@ body:has(.writer-shell){background:#fff}
 
 .architecture-scroll[data-space-pan=true],.architecture-scroll[data-space-pan=true] *{cursor:grab!important;user-select:none}
 .architecture-scroll.is-panning,.architecture-scroll.is-panning *{cursor:grabbing!important}
+
+/* Canvas focus supports shortcuts without outlining the entire drawing area. */
+.architecture-scroll:focus,.architecture-scroll:focus-visible{outline:none;box-shadow:none}

@@ -474,3 +474,6 @@
 
 .viewport[data-space-pan=true],.viewport[data-space-pan=true] *{cursor:grab!important;user-select:none}
 .viewport.isPanning,.viewport.isPanning *{cursor:grabbing!important}
+
+/* Keep focus rings on editor controls, not the canvas used for Space panning. */
+.editor .viewport:focus,.editor .viewport:focus-visible,.diagram .viewport:focus,.diagram .viewport:focus-visible{outline:none;box-shadow:none}
