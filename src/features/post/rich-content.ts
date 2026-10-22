@@ -96,15 +96,19 @@ export function escapeRichText(text: string): string {
   return escaped.split(/\n{2,}/).map(part => `<p>${part.replace(/\n/g, "<br>") || "<br>"}</p>`).join("");
 }
 
-function stableImages(html: string): string {
+function stableImages(html: string, imagePreviews?: Record<string, string>): string {
   return sanitizeHtml(html, {
     ...sanitizerOptions,
+    ...(imagePreviews ? { allowedAttributes: { ...sanitizerOptions.allowedAttributes, img: ["src", "alt", "title", "width", "height", "data-media-src", "data-align", "loading", "decoding"] } } : {}),
     transformTags: {
       ...sanitizerOptions.transformTags,
       img: (_tagName, attrs) => {
         const stableSrc = attrs["data-media-src"] || attrs.src || "";
         const { ["data-media-src"]: _mediaSrc, ...rest } = attrs;
-        return { tagName: "img", attribs: { ...withSafeAlignment(rest), src: stableSrc } };
+        return { tagName: "img", attribs: {
+          ...withSafeAlignment(rest), src: imagePreviews?.[stableSrc] ?? stableSrc,
+          ...(imagePreviews ? { loading: "lazy", decoding: "async" } : {}),
+        } };
       },
     },
   });
@@ -112,9 +116,7 @@ function stableImages(html: string): string {
 
 /** Safe HTML for preview/public rendering. Markdown output is always sanitized after parsing. */
 export function richContentHtml(content: string, format: RichBodyFormat, imagePreviews: Record<string,string> = {}): string {
-  const safe=stableImages(format==="TEXT"?escapeRichText(content):format==="MARKDOWN"?marked.parse(content,{async:false,gfm:true,breaks:true}):content);
-  if(!Object.keys(imagePreviews).length)return safe;
-  return sanitizeHtml(safe,{...sanitizerOptions,transformTags:{...sanitizerOptions.transformTags,img:(_tagName,attrs)=>({tagName:"img",attribs:{...withSafeAlignment(attrs),src:imagePreviews[attrs.src??""]??attrs.src??""}})}});
+  return stableImages(format === "TEXT" ? escapeRichText(content) : format === "MARKDOWN" ? marked.parse(content, { async: false, gfm: true, breaks: true }) : content, imagePreviews);
 }
 
 /** HTML to place in Tiptap: starts from sanitized content and substitutes short-lived owner previews. */
