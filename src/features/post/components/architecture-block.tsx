@@ -96,7 +96,7 @@ function ArchitectureBlockInner({ spec, title, expanded = false, interactive = f
   const [hoveredEndpoint,setHoveredEndpoint]=useState<string|null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const spacePan = useSpacePan(scrollRef, !!interactive);
-  const fit = useDiagramFit(scrollRef, width, height, expanded, !interactive);
+  const fit = useDiagramFit(scrollRef, width, height, expanded, !interactive, expanded);
   const [internalZoom, setInternalZoom] = useState<number | null>(null);
   const activeZoom = zoom ?? internalZoom;
   const handleZoomChange = useCallback((next: number | null) => {
@@ -683,7 +683,7 @@ function ArchitectureBlockInner({ spec, title, expanded = false, interactive = f
         style={{
           height: interactive
             ? `${Math.min(520, Math.max(340, Math.round(height * (zoom ?? 1) + 20)))}px`
-            : undefined,
+            : expanded ? "min(65svh, 640px)" : `${height * fit}px`,
           touchAction: !interactive ? (expanded || activeZoom !== null ? "none" : "pan-y") : undefined,
           userSelect: !interactive ? "none" : undefined,
         }}
