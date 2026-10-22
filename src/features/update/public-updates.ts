@@ -14,13 +14,13 @@ const text=(v:unknown,max:number):v is string=>typeof v==="string"&&Array.from(v
 const timestamp=(v:unknown):v is string=>typeof v==="string"&&/^\d{4}-\d{2}-\d{2}T/.test(v)&&Number.isFinite(Date.parse(v));
 const type=(v:unknown):v is UpdateType=>UPDATE_TYPES.includes(v as UpdateType);
 function summary(v:unknown):UpdateSummary {
-  if(!record(v)||typeof v.id!=="string"||!validId(v.id)||!text(v.title,160)||!v.title.trim()||!text(v.summary,300)||!type(v.type)||(v.version!==null&&typeof v.version!=="string")||!timestamp(v.publishedAt)||!timestamp(v.updatedAt))throw new GuestApiError("response");
+  if(!record(v)||typeof v.id!=="string"||!validId(v.id)||!text(v.title,160)||!v.title.trim()||!text(v.summary,300)||!type(v.type)||(v.version!==null&&!text(v.version,40))||!timestamp(v.publishedAt)||!timestamp(v.updatedAt))throw new GuestApiError("response");
   return {id:v.id,title:v.title,summary:v.summary,type:v.type,version:v.version,publishedAt:v.publishedAt,updatedAt:v.updatedAt};
 }
 export function parseUpdateQuery(params:Record<string,string|string[]|undefined>):UpdateQuery|null {
   if(Object.keys(params).some(key=>!["page","type"].includes(key)))return null;
   const page=parsePage(params.page);
-  if(page===null||(params.type!==undefined&&!type(params.type)))return null;
+  if(page===null||page>100000||(params.type!==undefined&&!type(params.type)))return null;
   return {page,...(params.type?{type:params.type as UpdateType}:{})};
 }
 export function updatesHref(query:UpdateQuery={page:0}):string {
