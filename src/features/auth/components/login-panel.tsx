@@ -8,7 +8,7 @@ import {consumeLoginReturn} from "../login-return-intent";
 import {memberActionDestination} from "../login-destination";
 import {callbackMode,withdrawalIntentKey} from "../withdrawal-intent";
 import {userSession} from "../user-session";
-export function LoginPanel(){return <section className="list-state login-panel"><p className="login-eyebrow">PEBBLE BLOG</p><h1>나만의 개발 기록을 시작하세요</h1><p>회원 가입은 네이버가 제공한 출생연도와 생일로 만 14세 이상임을 확인한 경우에 진행됩니다. 나이 확인에 사용한 생년 정보는 저장하지 않습니다. 로그인하면 <Link href="/terms" target="_blank" rel="noreferrer">이용약관</Link>과 <Link href="/privacy" target="_blank" rel="noreferrer">개인정보 처리방침</Link> 안내를 확인할 수 있습니다. 회원 탈퇴 시 계정과 콘텐츠는 즉시 삭제되며 복구할 수 없습니다.</p><NaverLoginButton className="naver-provider-button" providerIcon/><p><Link href="/">블로그 글 둘러보기</Link></p></section>;}
+export function LoginPanel(){return <section className="list-state login-panel"><p className="login-eyebrow">PEBBLE BLOG</p><h1>나만의 개발 기록을 시작하세요</h1><p>만 14세 이상만 가입할 수 있습니다. 네이버 로그인에서는 네이버 로그인 플러스의 연령 제한과 서비스 약관 동의를 사용합니다. 별도의 비밀번호나 생년월일은 수집·저장하지 않습니다. 로그인하면 <Link href="/terms" target="_blank" rel="noreferrer">이용약관</Link>과 <Link href="/privacy" target="_blank" rel="noreferrer">개인정보 처리방침</Link> 안내를 확인할 수 있습니다. 회원 탈퇴 시 계정과 콘텐츠는 즉시 삭제되며 복구할 수 없습니다.</p><NaverLoginButton className="naver-provider-button" providerIcon/><p><Link href="/">블로그 글 둘러보기</Link></p></section>;}
 export function NaverCallback(){
  const router=useRouter();
  const started=useRef(false),[error,setError]=useState(""),[withdrawn,setWithdrawn]=useState(false),[returnTo,setReturnTo]=useState("/me/blog");
