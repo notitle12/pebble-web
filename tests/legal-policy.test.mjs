@@ -11,7 +11,7 @@ test('정식 공개 선언과 실제 운영자·문의·처리 정보가 모두 
  assert.equal(team.officer,team.operator);
  assert.equal(team.ready,true);
  assert.equal(getLegalPolicyConfig({...env,PEBBLE_LEGAL_CONTACT_EMAIL:'invalid'}).ready,false);
- assert.deepEqual(legalVersions,{termsVersion:'2026-10-21',privacyVersion:'2026-10-21'});
+ assert.deepEqual(legalVersions,{termsVersion:'2026-10-22',privacyVersion:'2026-10-22'});
 });
 
 test('테스트 모드는 초안 동의 화면을 열지만 정식 공개를 대신하지 않는다',()=>{
