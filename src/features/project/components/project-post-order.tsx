@@ -8,12 +8,12 @@ type Drag={index:number;source:number;insertion:number;mode:'pointer'|'keyboard'
 type Props={projectId:string;memberId:string;disabled?:boolean;onSaved?:()=>void;onBusyChange?:(busy:boolean)=>void;onDirtyChange?:(dirty:boolean)=>void};
 export function ProjectPostOrder({projectId,memberId,disabled=false,onSaved,onBusyChange,onDirtyChange}:Props){
  const help=useId(),root=useRef<HTMLDivElement>(null);
- const [rows,setRows]=useState<ProjectOrderPost[]|null>(null),[baseline,setBaseline]=useState<string[]>([]),[page,setPage]=useState(0),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState(''),[uncertain,setUncertain]=useState(false),[attempt,setAttempt]=useState(0);
+ const [rows,setRows]=useState<ProjectOrderPost[]|null>(null),[baseline,setBaseline]=useState<string[]>([]),[visibleCount,setVisibleCount]=useState(10),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState(''),[uncertain,setUncertain]=useState(false),[attempt,setAttempt]=useState(0);
  const [dragging,setDragging]=useState<{source:number;insertion:number}|null>(null);
  const drag=useRef<Drag|null>(null),frame=useRef<number|null>(null),hold=useRef<ReturnType<typeof setTimeout>|null>(null);
  const dirty=rows!==null&&!sameProjectOrder(baseline,rows.map(row=>row.id));
- const total=rows?.length??0,totalPages=Math.ceil(total/20);
- const data=rows?{content:rows.slice(page*20,page*20+20),size:20,totalElements:total,totalPages,hasPrevious:page>0,hasNext:page+1<totalPages}:null;
+ const total=rows?.length??0;
+ const data=rows?{content:rows.slice(0,visibleCount),totalElements:total}:null;
  useEffect(()=>{onDirtyChange?.(dirty);return()=>onDirtyChange?.(false);},[dirty,onDirtyChange]);
  useEffect(()=>{const warn=(event:BeforeUnloadEvent)=>{if(dirty){event.preventDefault();event.returnValue='';}};window.addEventListener('beforeunload',warn);return()=>window.removeEventListener('beforeunload',warn);},[dirty]);
  const mounted=useRef(false),lock=useRef(false),generation=useRef(0);
@@ -29,7 +29,7 @@ export function ProjectPostOrder({projectId,memberId,disabled=false,onSaved,onBu
   try{
    const result=await getProjectOrderSnapshot(projectId,memberId,(path,options)=>userSession.request(path,options));
    if(!current()||epoch!==generation.current)return;
-   setRows(result);setBaseline(result.map(row=>row.id));setPage(0);setUncertain(false);
+   setRows(result);setBaseline(result.map(row=>row.id));setVisibleCount(10);setUncertain(false);
   }catch(e){if(current()&&epoch===generation.current){setError(e instanceof MemberApiError&&e.status===404?'프로젝트가 없거나 본인 프로젝트가 아니에요.':'관련 게시글을 불러오지 못했어요. 다시 불러와 주세요.');setUncertain(true);}}
   finally{if(mounted.current&&epoch===generation.current)setLoading(false);}
  }
@@ -74,7 +74,7 @@ export function ProjectPostOrder({projectId,memberId,disabled=false,onSaved,onBu
  function pointerDown(event:PointerEvent<HTMLLIElement>,index:number){
   if(blocked||event.button!==0||drag.current||!data)return;
   if(event.pointerType!=='touch')event.preventDefault();event.currentTarget.focus({preventScroll:true});event.currentTarget.setPointerCapture(event.pointerId);
-  const source=page*data.size+index;drag.current={index,source,insertion:source,mode:'pointer',x:event.clientX,y:event.clientY,startY:event.clientY,active:false,touch:event.pointerType==='touch'};
+  const source=index;drag.current={index,source,insertion:source,mode:'pointer',x:event.clientX,y:event.clientY,startY:event.clientY,active:false,touch:event.pointerType==='touch'};
   if(event.pointerType==='touch')hold.current=setTimeout(()=>{const d=drag.current;if(d){d.active=true;showDrag(d);frame.current=requestAnimationFrame(tick);}},350);
  }
  function pointerMove(event:PointerEvent<HTMLLIElement>){
@@ -86,7 +86,7 @@ export function ProjectPostOrder({projectId,memberId,disabled=false,onSaved,onBu
  function keyDown(event:KeyboardEvent<HTMLLIElement>,index:number){
   if(blocked||!data)return;
   if(event.key==='Escape'&&drag.current){event.preventDefault();event.stopPropagation();cancelDrag();return;}
-  const source=page*data.size+index;
+  const source=index;
   if(event.key===' '||event.key==='Enter'){
    event.preventDefault();event.stopPropagation();
    if(drag.current?.mode==='keyboard'){commitDrag();return;}
@@ -94,7 +94,7 @@ export function ProjectPostOrder({projectId,memberId,disabled=false,onSaved,onBu
   }else if(drag.current?.mode==='keyboard'&&['ArrowUp','ArrowDown'].includes(event.key)){
    event.preventDefault();const d=drag.current;const target=projectPostDropTarget(d.source,d.insertion,data.totalElements)??d.source;
    const next=Math.max(0,Math.min(data.totalElements-1,target+(event.key==='ArrowUp'?-1:1)));
-   d.insertion=next>d.source?next+1:next;showDrag(d);
+   if(next>=visibleCount)setVisibleCount(Math.min(total,Math.ceil((next+1)/10)*10));d.insertion=next>d.source?next+1:next;showDrag(d);
   }else if(event.key==='Tab'&&drag.current?.mode==='keyboard')cancelDrag();
  }
  const blocked=disabled||busy||loading||uncertain;
@@ -104,16 +104,14 @@ export function ProjectPostOrder({projectId,memberId,disabled=false,onSaved,onBu
   {(error||uncertain)&&<button type="button" className="button" disabled={disabled||busy||loading} onClick={reload}>목록 다시 불러오기</button>}
   <span className={s.srOnly} role="status">{busy?'순서를 저장하고 있어요.':dragging?`${(projectPostDropTarget(dragging.source,dragging.insertion,total)??dragging.source)+1}번째 위치`:''}</span>
   {loading?<p role="status">관련 게시글을 불러오고 있어요.</p>:data&&!data.content.length?<p>아직 연결된 게시글이 없어요. 게시글 발행 설정에서 이 프로젝트를 연결할 수 있어요.</p>:data&&<>
-   {data.hasPrevious&&<div data-order-gap={page*data.size-1} className={`${s.pageDrop} ${dragging?.insertion===page*data.size-1?s.dropBefore:''}`}>이전 페이지 마지막으로 옮기려면 여기에 놓으세요</div>}
-   <ol className={s.list} start={page*data.size+1} aria-label="관련 게시글 표시 순서">{data.content.map((post,index)=>{
-    const position=page*data.size+index;
+   <ol className={s.list} start={1} aria-label="관련 게시글 표시 순서">{data.content.map((post,index)=>{
+    const position=index;
     return <li key={post.id} role="button" tabIndex={blocked?-1:0} aria-disabled={blocked} aria-label={`${post.title}: 순서 이동`} aria-describedby={help} aria-pressed={dragging?.source===position} data-order-index={position} className={`${s.row} ${dragging?.source===position?s.dragging:''} ${dragging?.insertion===position?s.dropBefore:''} ${dragging?.insertion===position+1&&index===data.content.length-1?s.dropAfter:''}`} onKeyDown={event=>keyDown(event,index)} onPointerDown={event=>pointerDown(event,index)} onPointerMove={pointerMove} onPointerUp={event=>{if(drag.current?.mode!=='pointer')return;pointerMove(event);if(drag.current?.active&&hitTest(drag.current))commitDrag();else cancelDrag();if(event.currentTarget.hasPointerCapture(event.pointerId))event.currentTarget.releasePointerCapture(event.pointerId);}} onPointerCancel={cancelDrag} onLostPointerCapture={()=>{if(drag.current?.mode==='pointer')cancelDrag();}} onDragStart={event=>event.preventDefault()}>
      <span className={s.number} aria-hidden="true">{position+1}</span><div className={s.content}><span className={s.title}>{post.title}</span><span className={s.status}>{post.visibilityStatus==='HIDDEN'?'비공개':'공개'}{post.isBlocked?' · 차단':''}{post.draft?' · 임시 글':''}</span></div>
     </li>;
    })}</ol>
-   {data.hasNext&&<div data-order-gap={(page+1)*data.size+1} className={`${s.pageDrop} ${dragging?.insertion===(page+1)*data.size+1?s.dropBefore:''}`}>다음 페이지 처음으로 옮기려면 여기에 놓으세요</div>}
   </>}
-  {data&&data.totalPages>1&&<nav className={s.pagination} aria-label="관련 게시글 순서 페이지"><button type="button" className="button" disabled={blocked||dragging!==null||!data.hasPrevious} onClick={()=>setPage(n=>n-1)}>이전</button><span>{page+1} / {data.totalPages}</span><button type="button" className="button" disabled={blocked||dragging!==null||!data.hasNext} onClick={()=>setPage(n=>n+1)}>다음</button></nav>}
+  {rows&&visibleCount<total&&<div className={s.loadMore}><button type="button" className="button" disabled={blocked||dragging!==null} onClick={()=>setVisibleCount(count=>Math.min(total,count+10))}>더 불러오기</button></div>}
   {rows&&<div className={s.actions}><button type="button" className="button" disabled={blocked||!!dragging||!dirty} onClick={()=>{const byId=new Map(rows.map(row=>[row.id,row]));setRows(baseline.map(id=>byId.get(id)!));setError('');}}>되돌리기</button><button type="button" className="button" disabled={blocked||!!dragging||!dirty} onClick={()=>void save()}>{busy?'저장 중…':'저장'}</button></div>}
  </div>;
 }
