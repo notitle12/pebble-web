@@ -30,7 +30,7 @@ import {
  DatabaseTableFooter,
  type DatabaseEditActions,
 } from './database-edit-table';
-import { TableTextInput } from './inline-block-views';
+import { TableTextInput } from './table-text-input';
 import s from './database-schema.module.css';
 import { useEditorFullscreen, EditorFullscreenButton } from './use-editor-fullscreen';
 
