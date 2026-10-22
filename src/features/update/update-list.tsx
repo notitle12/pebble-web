@@ -1,0 +1,9 @@
+import Link from "next/link";
+import {getPublicUpdates,UPDATE_LABELS,updateDate,updatesHref,type UpdateQuery} from "./public-updates";
+import styles from "./updates.module.css";
+export async function UpdateList({query}:{query:UpdateQuery}) {
+  let result;
+  try{result=await getPublicUpdates(query);}catch{return <section className="list-state" role="alert"><h2>업데이트를 불러오지 못했어요</h2><p>잠시 후 다시 시도해 주세요.</p><a className="button" href={updatesHref(query)}>다시 시도</a></section>;}
+  if(!result.items.length)return <section className="list-state"><h2>{query.page>0?"이 페이지에는 업데이트가 없어요":query.type?"이 분류에는 아직 업데이트가 없어요":"아직 등록된 업데이트가 없어요"}</h2>{(query.page>0||query.type)&&<Link className="button" href={updatesHref({page:0,...(query.page>0&&query.type?{type:query.type}:{})})}>{query.page>0?"첫 페이지로":"전체 업데이트"}</Link>}</section>;
+  return <section aria-label="업데이트 목록"><ul className={styles.list}>{result.items.map(item=><li className={styles.item} key={item.id}><div className={styles.meta}><span className={styles.badge}>{UPDATE_LABELS[item.type]}</span>{item.version&&<span>{item.version}</span>}<time dateTime={item.publishedAt}>{updateDate(item.publishedAt)}</time></div><h2><Link href={`/updates/${item.id}`}>{item.title}</Link></h2>{item.summary&&<p>{item.summary}</p>}</li>)}</ul><nav className="pagination" aria-label="업데이트 페이지 이동">{query.page>0?<Link className="page-link" href={updatesHref({...query,page:query.page-1})} prefetch={false}>← 이전</Link>:<span className="page-link disabled" aria-disabled="true">← 이전</span>}<span aria-current="page">{query.page+1} / {result.totalPages} 페이지</span>{query.page+1<result.totalPages?<Link className="page-link" href={updatesHref({...query,page:query.page+1})} prefetch={false}>다음 →</Link>:<span className="page-link disabled" aria-disabled="true">다음 →</span>}</nav></section>;
+}
