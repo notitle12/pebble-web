@@ -25,10 +25,10 @@ export function NaverCallback(){
   let mode;try{mode=callbackMode(stored,state);}catch(error){setError(error instanceof Error?error.message:"요청을 확인하지 못했습니다.");return;}
   const action=mode==="withdrawal"?userSession.completeWithdrawal(code,state):userSession.complete(code,state);
   void action.then(result=>{
-    if(mode==="withdrawal"){setWithdrawn(result===true);if(result!==true)setError("탈퇴 결과를 확인하지 못했습니다.");}
+    if(mode==="withdrawal"){if(result===true){setWithdrawn(true);router.replace("/");}else setError("탈퇴 결과를 확인하지 못했습니다.");}
     else if(userSession.snapshot().phase==="ready"){const member=userSession.snapshot().member;if(member)router.replace(memberActionDestination(destination,member));}
     else setError("로그인 상태가 변경되었습니다. 다시 로그인해 주세요.");
   }).catch(error=>{setError(error instanceof Error?error.message:"요청을 완료하지 못했습니다.");});
  },[router]);
- return <section className="list-state login-panel">{withdrawn?<><h1>회원 탈퇴가 완료되었어요</h1><p>회원 정보와 작성한 내용을 사용 중인 서비스에서 삭제했습니다. 관련 사진 파일도 순차적으로 삭제합니다.</p><Link href="/">블로그 둘러보기</Link></>:error?<><h1>요청을 완료하지 못했어요</h1><p role="alert">{error}</p><NaverLoginButton label="다시 로그인" destination={returnTo}/><Link href="/settings/account">계정 설정으로 돌아가기</Link></>:<LoadingIndicator section label="로그인 후 이동하는 중"/>}</section>;
+ return <section className="list-state login-panel">{error?<><h1>요청을 완료하지 못했어요</h1><p role="alert">{error}</p><NaverLoginButton label="다시 로그인" destination={returnTo}/><Link href="/settings/account">계정 설정으로 돌아가기</Link></>:<LoadingIndicator section label={withdrawn?"메인으로 이동하는 중":"로그인 후 이동하는 중"}/>}</section>;
 }
