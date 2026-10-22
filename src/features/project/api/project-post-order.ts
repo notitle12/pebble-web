@@ -25,3 +25,10 @@ export async function moveProjectPost(projectId:string,postId:string,displayOrde
  const result=await request(`${endpoint}/${postId}/order`,{method:'PATCH',body:{displayOrder}});
  if(result!==null)throw new MemberApiError(0,'INVALID_RESPONSE','순서 저장 결과를 확인하지 못했어요. 목록을 다시 불러와 주세요.');
 }
+
+/** Translate an insertion gap (before removing the dragged row) to the API position. */
+export function projectPostDropTarget(source:number,insertion:number,total:number):number|null {
+ if(!Number.isSafeInteger(total)||total<1||!Number.isSafeInteger(source)||source<0||source>=total||!Number.isSafeInteger(insertion)||insertion<0||insertion>total)return null;
+ const target=insertion>source?insertion-1:insertion;
+ return target===source?null:target;
+}
