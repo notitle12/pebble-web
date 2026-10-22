@@ -5,14 +5,16 @@ const item={id:"900000000000000001",title:"새로운 기능",summary:"성능을 
 const page=(items=[item])=>({data:{items,page:0,size:10,totalElements:items.length,totalPages:items.length?1:0}});
 test("업데이트 조회 조건과 링크는 분류·페이지를 보존하고 잘못된 조건을 거부",()=>{
  assert.deepEqual(parseUpdateQuery({}),{page:0});assert.deepEqual(parseUpdateQuery({type:"FIX",page:"2"}),{page:2,type:"FIX"});
+ assert.deepEqual(parseUpdateQuery({page:"100000"}),{page:100000});
  assert.equal(updatesHref({page:2,type:"FIX"}),"/updates?type=FIX&page=2");assert.equal(updatesHref(),"/updates");
- for(const params of [{page:"-1"},{page:"01"},{page:["1"]},{type:["FIX"]},{type:"DRAFT"},{size:"100"},{page:"9999999999999999999999"}])assert.equal(parseUpdateQuery(params),null);
+ for(const params of [{page:"100001"},{page:"-1"},{page:"01"},{page:["1"]},{type:["FIX"]},{type:"DRAFT"},{size:"100"},{page:"9999999999999999999999"}])assert.equal(parseUpdateQuery(params),null);
 });
 test("공개 업데이트 파서는 문자열 BIGINT와 페이징 계약을 확인하며 관리자 정보를 노출하지 않는다",()=>{
  const result=parseUpdatePage(page([{...item,status:"PUBLISHED",revision:3,adminId:"1"}]),0);
  assert.deepEqual(result.items[0],item);assert.deepEqual(parseUpdatePage(page([]),0).items,[]);
  assert.equal(parseUpdatePage(page([{...item,version:null,summary:""}]),0).items[0].version,null);
- for(const changed of [{id:900000000000000001},{id:"9223372036854775808"},{id:"0"},{id:"../admin"},{type:"DRAFT"},{title:" "},{title:"a".repeat(161)},{summary:"a".repeat(301)},{publishedAt:"invalid"},{updatedAt:null},{version:2}])assert.throws(()=>parseUpdatePage(page([{...item,...changed}]),0));
+ assert.equal(parseUpdatePage(page([{...item,version:"😀".repeat(40)}]),0).items[0].version,"😀".repeat(40));
+ for(const changed of [{version:"a".repeat(41)},{version:"😀".repeat(41)},{id:900000000000000001},{id:"9223372036854775808"},{id:"0"},{id:"../admin"},{type:"DRAFT"},{title:" "},{title:"a".repeat(161)},{summary:"a".repeat(301)},{publishedAt:"invalid"},{updatedAt:null},{version:2}])assert.throws(()=>parseUpdatePage(page([{...item,...changed}]),0));
  for(const changed of [{size:20},{page:1},{totalPages:2},{totalElements:-1},{totalElements:0}])assert.throws(()=>parseUpdatePage({data:{...page().data,...changed}},0));
  assert.throws(()=>parseUpdatePage(page([item,item]),0));
 });
