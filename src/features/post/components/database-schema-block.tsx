@@ -1,4 +1,5 @@
 "use client";
+import {useDiagramPinch} from "./use-diagram-pinch";
 import { DiagramZoomInput } from "./diagram-zoom-input";
 import { useSpacePan } from "./use-space-pan";
 import {
@@ -371,6 +372,8 @@ export function DatabaseDiagram({
  const minimumZoom = 0.01;
  const viewScale = userZoom !== null ? userZoom : (editable ? zoom : fitted);
  const canvasPadding = !editable && (userZoom !== null || expanded) ? 48 : 0;
+ useDiagramPinch(viewport,{enabled:!editable,zoom:viewScale,padding:canvasPadding,nextPadding:48,
+  onZoom:setUserZoom,onStart:()=>{panState.current=null;setIsPanning(false);zoomAnchor.current=null;}});
 
  const fitToView = useCallback(() => {
   const el = viewport.current;
