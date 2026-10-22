@@ -1,4 +1,5 @@
 "use client";
+import {useDiagramPinch} from "./use-diagram-pinch";
 import { useSpacePan } from "./use-space-pan";
 import {useDiagramFit} from "./use-diagram-fit";
 import {DiagramLightbox} from "./diagram-lightbox";
@@ -232,6 +233,8 @@ function ArchitectureBlockInner({ spec, title, expanded = false, interactive = f
   const [endpointPreview,setEndpointPreview] = useState<{id:string;end:"source"|"target";point:ArchPoint}|null>(null);
   const edgeDragRef = useRef<EdgeDrag | null>(null);
   const suppressClickRef = useRef(false);
+  useDiagramPinch(scrollRef,{enabled:!interactive&&!collapsed,zoom:viewScale,padding:canvasPadding,nextPadding:48,
+    onZoom:handleZoomChange,onStart:()=>{panState.current=null;setIsPanning(false);zoomAnchor.current=null;}});
   const [marquee, setMarquee] = useState<{ start: ArchPoint; current: ArchPoint } | null>(null);
   const marqueeDragRef = useRef<{ pointerId: number; start: ArchPoint; current: ArchPoint; isShift: boolean; moved: boolean } | null>(null);
   const selectedNodeSet = new Set<string>(
