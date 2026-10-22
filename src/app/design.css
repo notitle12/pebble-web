@@ -772,7 +772,7 @@ dialog.diagram-lightbox:not([open]){display:none!important}
 .diagram-lightbox .database-reader [class*="viewport"],.diagram-lightbox [class*="canvasStage"] [class*="viewport"]{max-height:72vh!important;width:100%;box-sizing:border-box;overflow:auto!important;overscroll-behavior:contain!important;display:block!important;cursor:grab}
 .diagram-lightbox .database-reader [class*="viewport"].is-panning,.diagram-lightbox [class*="viewport"][class*="isPanning"]{cursor:grabbing!important;user-select:none}
 .diagram-lightbox .architecture-description-details{border-top:1px solid #e2e6eb}
-html[data-theme=dark] .diagram-lightbox{background:var(--bg)}
+html[data-theme=dark] .diagram-lightbox{background:var(--surface,#17211b)}
 html[data-theme=dark] .diagram-lightbox-close{background:transparent;border:0;color:var(--muted)}
 html[data-theme=dark] .diagram-lightbox-close:hover{background:rgba(255,255,255,.08);color:var(--text)}
 html[data-theme=dark] .comment-composer-card,html[data-theme=dark] .comment-composer-card:focus-within{background:transparent}
