@@ -33,5 +33,5 @@ export function AccountSettings(){
  const [pending,setPending]=useState(false),[deleted,setDeleted]=useState(false);
  if(deleted)return <LoadingIndicator section label="메인으로 이동하는 중"/>;
  // 탈퇴 성공 직후 guest 전환이 완료 콜백보다 먼저 전달되어도 로그인 창을 열지 않는다.
- return <MemberGate requireAgreements={false} fallback={pending?<LoadingIndicator section label="탈퇴 결과를 확인하는 중"/>:undefined}>{member=><Withdrawal key={member.id} member={member} onPending={setPending} onDeleted={()=>{setDeleted(true);router.replace("/");}}/>}</MemberGate>;
+ return <MemberGate requireAgreements={false} preserveOnRefresh fallback={pending?<LoadingIndicator section label="탈퇴 결과를 확인하는 중"/>:undefined}>{member=><Withdrawal key={member.id} member={member} onPending={setPending} onDeleted={()=>{setDeleted(true);router.replace("/");}}/>}</MemberGate>;
 }
