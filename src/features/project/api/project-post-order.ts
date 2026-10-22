@@ -14,16 +14,32 @@ export async function getProjectOrderPosts(projectId:string,page:number,memberId
  for(const post of result.content){const row=post as ProjectOrderPost;if(row.author.id!==memberId||!['PUBLIC','HIDDEN'].includes(row.visibilityStatus)||typeof row.isBlocked!=='boolean'||row.draft!==undefined&&typeof row.draft!=='boolean')throw invalid();}
  return result as ProjectOrderPage;
 }
-export function projectPostMoveTarget(page:ProjectOrderPage,index:number,direction:-1|1):number|null{
- if(!Number.isInteger(index)||index<0||index>=page.content.length)return null;
- const target=page.page*page.size+index+direction;
- return target>=0&&target<page.totalElements?target:null;
+export const MAX_PROJECT_ORDER_POSTS=10000;
+export async function getProjectOrderSnapshot(projectId:string,memberId:string,request:ProjectOrderRequest):Promise<ProjectOrderPost[]>{
+ const first=await getProjectOrderPosts(projectId,0,memberId,request);
+ if(first.totalElements>MAX_PROJECT_ORDER_POSTS)throw invalid();
+ const rows=[...first.content];
+ for(let page=1;page<first.totalPages;page++){
+  const next=await getProjectOrderPosts(projectId,page,memberId,request);
+  if(next.totalElements!==first.totalElements||next.totalPages!==first.totalPages)throw invalid();
+  if(rows.length!==page*20)throw invalid();
+  rows.push(...next.content);
+ }
+ if(rows.length!==first.totalElements||new Set(rows.map(row=>row.id)).size!==rows.length)throw invalid();
+ return rows;
 }
-export async function moveProjectPost(projectId:string,postId:string,displayOrder:number,request:ProjectOrderRequest):Promise<void>{
- const endpoint=path(projectId);
- if(!validId(postId)||!Number.isSafeInteger(displayOrder)||displayOrder<0||displayOrder>2147483647)throw new MemberApiError(400,'INVALID_REQUEST','게시글 순서를 확인해 주세요.');
- const result=await request(`${endpoint}/${postId}/order`,{method:'PATCH',body:{displayOrder}});
+export function sameProjectOrder(a:readonly string[],b:readonly string[]):boolean{return a.length===b.length&&a.every((id,index)=>id===b[index]);}
+export function reorderProjectPosts<T>(rows:readonly T[],source:number,target:number):T[]{
+ if(!Number.isInteger(source)||!Number.isInteger(target)||source<0||target<0||source>=rows.length||target>=rows.length)throw new Error('Invalid order position');
+ const next=[...rows];const [post]=next.splice(source,1);next.splice(target,0,post);return next;
+}
+export async function saveProjectPostOrder(projectId:string,expectedPostIds:string[],postIds:string[],request:ProjectOrderRequest):Promise<boolean>{
+ const endpoint=path(projectId),expectedSet=new Set(expectedPostIds);
+ if(expectedPostIds.length>MAX_PROJECT_ORDER_POSTS||postIds.length!==expectedPostIds.length||!expectedPostIds.every(validId)||!postIds.every(validId)||new Set(expectedPostIds).size!==expectedPostIds.length||new Set(postIds).size!==postIds.length||postIds.some(id=>!expectedSet.has(id)))throw new MemberApiError(400,'INVALID_REQUEST','게시글 순서를 확인해 주세요.');
+ if(sameProjectOrder(expectedPostIds,postIds))return false;
+ const result=await request(`${endpoint}/order`,{method:'PUT',body:{expectedPostIds,postIds}});
  if(result!==null)throw new MemberApiError(0,'INVALID_RESPONSE','순서 저장 결과를 확인하지 못했어요. 목록을 다시 불러와 주세요.');
+ return true;
 }
 
 /** Translate an insertion gap (before removing the dragged row) to the API position. */
