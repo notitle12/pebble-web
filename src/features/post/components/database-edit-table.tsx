@@ -13,7 +13,7 @@ import {
 } from '../database-schema';
 import { changeDbRelationShape, type DbRelationShape } from '../database-relationship-choice';
 import { DatabaseNotationPicker, DatabaseRelationShapePicker } from './database-notation-picker';
-import { TableTextInput } from './inline-block-views';
+import { TableTextInput } from './table-text-input';
 import s from './database-schema.module.css';
 
 export type DatabaseEditActions = {

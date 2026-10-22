@@ -1,14 +1,14 @@
 "use client";
 import { PrimaryKeyNote } from "./primary-key-note";
 
-import { useEffect, useId, useRef, useState, type InputHTMLAttributes } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { NodeViewContent, NodeViewWrapper, useEditorState, type NodeViewProps } from "@tiptap/react";
 import { parseArchitectureSpec, parseTableSpec, type ArchitectureSpec, type TableColumn, type TableSpec } from "../api/post-list";
 import { ArchitectureBlock } from "./architecture-block";
 import { ArchitectureEditor } from "./architecture-editor";
 import styles from "./inline-block-views.module.css";
-import { transitionTableInputComposition, type TableInputCompositionState } from "./table-input-composition";
+import { TableTextInput } from "./table-text-input";
 
 const languages = ["JAVA", "JAVASCRIPT", "TYPESCRIPT", "PYTHON", "HTML", "CSS", "SQL", "JSON", "YAML", "MARKDOWN", "BASH", "SHELL"];
 export const defaultInlineTableSpec = (): TableSpec => ({ schemaVersion: 1, tableName: "", columns: [{ name: "", dataType: "", primaryKey: false, nullable: true }] });
@@ -26,23 +26,6 @@ function tableError(spec: TableSpec): string {
     if (new Set(names).size !== names.length) return "컬럼명은 중복될 수 없습니다.";
     return "테이블명·컬럼명·자료형을 입력해 주세요. 이름·자료형은 100자, 참조는 200자, 설명은 500자까지 입력할 수 있으며 기본 키는 NULL을 허용하지 않습니다.";
   }
-}
-
-export function TableTextInput({ value, disabled, onCommit, onBlur, ...props }: Omit<InputHTMLAttributes<HTMLInputElement>, "value" | "onChange" | "onCompositionStart" | "onCompositionEnd"> & { value: string; onCommit: (value: string) => void }) {
-  const [draft, setDraft] = useState(value);
-  const composition = useRef<TableInputCompositionState>({ composing: false });
-  useEffect(() => { if (!composition.current.composing) setDraft(value); }, [value]);
-  const handleComposition = (event: Parameters<typeof transitionTableInputComposition>[1]) => {
-    const result = transitionTableInputComposition(composition.current, event);
-    composition.current = result.state;
-    if ("value" in event) setDraft(event.value);
-    if (result.commit !== undefined) onCommit(result.commit);
-  };
-  return <input {...props} disabled={disabled} value={draft}
-    onCompositionStart={() => handleComposition({ type: "compositionstart" })}
-    onChange={event => handleComposition({ type: "change", value: event.currentTarget.value })}
-    onCompositionEnd={event => handleComposition({ type: "compositionend", value: event.currentTarget.value })}
-    onBlur={event => { handleComposition({ type: "blur", value: event.currentTarget.value }); onBlur?.(event); }} />;
 }
 
 export function InlineCodeView({ node, editor, updateAttributes, deleteNode }: NodeViewProps) {
