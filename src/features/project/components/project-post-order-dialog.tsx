@@ -28,7 +28,7 @@ function OrderDialog({projectId,memberId,trigger,onClose}:{projectId:string;memb
  const dialog=useRef<HTMLDialogElement>(null);
  const heading=useId();
  const backdropPressed=useRef(false);
- const [busy,setBusy]=useState(false);
+ const [busy,setBusy]=useState(false),[dirty,setDirty]=useState(false);
  useEffect(()=>{
   const element=dialog.current,opener=trigger.current;
   element?.showModal();
@@ -40,7 +40,7 @@ function OrderDialog({projectId,memberId,trigger,onClose}:{projectId:string;memb
    if(opener?.isConnected)opener.focus();
   };
  },[trigger]);
- function close(){if(!busy){onClose();router.refresh();}}
+ function close(){if(!busy&&(!dirty||window.confirm('저장하지 않은 순서 변경을 버리고 닫을까요?')))onClose();}
  function outside(event:PointerEvent<HTMLDialogElement>|MouseEvent<HTMLDialogElement>){
   const rect=event.currentTarget.getBoundingClientRect();
   return event.target===event.currentTarget&&(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom);
@@ -50,6 +50,6 @@ function OrderDialog({projectId,memberId,trigger,onClose}:{projectId:string;memb
   onPointerDown={event=>{backdropPressed.current=outside(event);}}
   onClick={event=>{if(backdropPressed.current&&outside(event))close();backdropPressed.current=false;}}>
   <div className={s.header}><h2 id={heading}>관련 게시글 순서 편집</h2><button type="button" className={s.close} aria-label="관련 게시글 순서 편집 닫기" disabled={busy} autoFocus onClick={close}>×</button></div>
-  <div className={s.body}><ProjectPostOrder projectId={projectId} memberId={memberId} onSaved={()=>router.refresh()} onBusyChange={setBusy}/></div>
+  <div className={s.body}><ProjectPostOrder projectId={projectId} memberId={memberId} onSaved={()=>router.refresh()} onBusyChange={setBusy} onDirtyChange={setDirty}/></div>
  </dialog>,document.body);
 }
