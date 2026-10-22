@@ -109,3 +109,20 @@ test('image and HTML table alignment survive sanitization while invalid alignmen
  assert.match(safe,/<table[^>]*data-align="right"/);
  assert.doesNotMatch(safe,/data-align="fixed"/);
 });
+
+
+test("reader images defer loading without changing dimensions, alignment or persisted content", () => {
+  const source = '<img src="https://images.example/diagram.png" alt="Diagram" width="1200" height="800" data-align="center">';
+  const html = richContentHtml(source, "HTML");
+  assert.match(html, /loading="lazy"/);
+  assert.match(html, /decoding="async"/);
+  assert.match(html, /width="1200" height="800"/);
+  assert.match(html, /data-align="center"/);
+  for (const output of [richEditorHtml(source, "HTML"), persistedRichHtml(html)]) {
+    assert.doesNotMatch(output, /loading=|decoding=/);
+    assert.match(output, /width="1200" height="800"/);
+  }
+  const markdown = richContentHtml('![Diagram](https://images.example/diagram.png)', 'MARKDOWN');
+  assert.match(markdown, /loading="lazy"/);
+  assert.match(markdown, /alt="Diagram"/);
+});
