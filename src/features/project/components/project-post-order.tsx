@@ -111,10 +111,12 @@ export function ProjectPostOrder({projectId,memberId,disabled=false,onSaved,onBu
     </li>;
    })}</ol>
   </>}
-  {rows&&total>10&&<div className={s.loadMore}>
+  {rows&&<div className={s.footer}>
+  <div className={s.loadMore}>
    {visibleCount<total&&<button type="button" className="button" disabled={blocked||dragging!==null} onClick={()=>setVisibleCount(count=>Math.min(total,count+10))}>더 불러오기</button>}
    {visibleCount>10&&<button type="button" className="button" disabled={blocked||dragging!==null} onClick={()=>{setVisibleCount(10);requestAnimationFrame(()=>{const first=root.current?.querySelector<HTMLElement>('[data-order-index="0"]');first?.scrollIntoView({block:'nearest'});first?.focus({preventScroll:true});});}}>접기</button>}
+  </div>
+  <div className={s.actions}><button type="button" className="button" disabled={blocked||!!dragging||!dirty} onClick={()=>{const byId=new Map(rows.map(row=>[row.id,row]));setRows(baseline.map(id=>byId.get(id)!));setError('');}}>되돌리기</button><button type="button" className="button" disabled={blocked||!!dragging||!dirty} onClick={()=>void save()}>{busy?'저장 중…':'저장'}</button></div>
   </div>}
-  {rows&&<div className={s.actions}><button type="button" className="button" disabled={blocked||!!dragging||!dirty} onClick={()=>{const byId=new Map(rows.map(row=>[row.id,row]));setRows(baseline.map(id=>byId.get(id)!));setError('');}}>되돌리기</button><button type="button" className="button" disabled={blocked||!!dragging||!dirty} onClick={()=>void save()}>{busy?'저장 중…':'저장'}</button></div>}
  </div>;
 }
