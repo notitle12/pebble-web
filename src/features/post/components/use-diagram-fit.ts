@@ -6,7 +6,8 @@ export function useDiagramFit(ref:RefObject<HTMLElement|null>,width:number,heigh
  const [scale,setScale]=useState(1);
  useLayoutEffect(()=>{
   const viewport=ref.current;if(!enabled||!viewport)return;
-  const measure=()=>{const available=viewport.clientWidth;if(available>0)setScale(diagramFitScale(width,height,available,fixedFrame?viewport.clientHeight:(expanded?window.innerHeight*.65:420),expanded?48:0));};
+  // Scrollbar appearance must not change the inline frame’s natural aspect ratio.
+  const measure=()=>{const available=fixedFrame?viewport.clientWidth:viewport.offsetWidth;if(available>0)setScale(diagramFitScale(width,height,available,fixedFrame?viewport.clientHeight:(expanded?window.innerHeight*.65:420),expanded?48:0));};
   measure();const observer=new ResizeObserver(measure);observer.observe(viewport);window.addEventListener("resize",measure);
   return()=>{observer.disconnect();window.removeEventListener("resize",measure);};
  },[ref,width,height,expanded,enabled,fixedFrame]);

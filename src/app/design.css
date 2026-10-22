@@ -873,3 +873,6 @@ html[data-theme=dark] .architecture-auto-layout:hover:not(:disabled){border-colo
 .post-thumbnail-link>img,.post-thumbnail-link>.blog-post-placeholder{display:block;width:100%;height:100%;max-height:none;margin:0;object-fit:cover;border-radius:inherit}
 .post-thumbnail-link:focus-visible{outline:2px solid var(--accent);outline-offset:4px}
 @media(max-width:720px){.post-reading-shell{padding:28px 0 0}.post-reading-shell .post-detail{padding:30px 21px}}
+
+.project-reading-shell>.detail-back{margin-inline:47px}
+@media(max-width:720px){.project-reading-shell>.detail-back{margin-inline:21px}}
