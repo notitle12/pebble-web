@@ -25,6 +25,7 @@ type Props = {
   uploadImage?: (file: File) => Promise<{src: string; previewUrl: string}>;
   imagePreviews?: Record<string, string>;
   coverElement?: ReactNode;
+  relatedPostsElement?: ReactNode;
   featuredElement?: (visibility: ProjectVisibility) => ReactNode;
   onPublishOpen?: () => void;
   coverPreviewUrl?: string | null;
@@ -36,11 +37,11 @@ const linkTypes: { value: LinkInput["linkType"]; label: string }[] = [
   { value: "DOWNLOAD", label: "다운로드" }, { value: "OTHER", label: "기타" },
 ];
 
-export function ProjectEditor({ value, onChange, busy, visibility, blocked, existingTechStacks = [], onSave, onTemporarySave, uploadImage, imagePreviews = {}, coverElement, featuredElement, onPublishOpen, coverPreviewUrl, representativeImageSrc, onSelectRepresentativeImage }: Props) {
+export function ProjectEditor({ value, onChange, busy, visibility, blocked, existingTechStacks = [], onSave, onTemporarySave, uploadImage, imagePreviews = {}, coverElement, relatedPostsElement, featuredElement, onPublishOpen, coverPreviewUrl, representativeImageSrc, onSelectRepresentativeImage }: Props) {
   const id = useId();
   const currentValue = useRef(value);
   currentValue.current = value;
-  const [closed, setClosed] = useState<Set<string>>(()=>new Set(["technologies","execution",...PROJECT_SECTIONS.filter(section=>section.key!=="BACKGROUND").map(section=>section.key)]));
+  const [closed, setClosed] = useState<Set<string>>(()=>new Set(["relatedPosts","technologies","execution",...PROJECT_SECTIONS.filter(section=>section.key!=="BACKGROUND").map(section=>section.key)]));
   const [toolbarHost,setToolbarHost]=useState<HTMLDivElement|null>(null);
   const [activeSection,setActiveSection]=useState<ProjectSectionKey|null>("BACKGROUND");
   const [preview, setPreview] = useState(false);
@@ -148,7 +149,8 @@ export function ProjectEditor({ value, onChange, busy, visibility, blocked, exis
           {coverElement && <button type="button" onClick={() => jump("cover")}>대표 이미지</button>}
           <button type="button" onClick={() => jump("overview")}>프로젝트 개요</button>
           {sections.map(section => <button key={section.key} type="button" onClick={() => jump(section.key)}>{section.label}</button>)}
-          <div className={styles.foldActions}><button type="button" onClick={() => setClosed(new Set())}>모두 펼치기</button><button type="button" onClick={() => {setClosed(new Set(["overview", "execution", ...(coverElement?["cover"]:[]), ...sections.map(section => section.key)]));}}>모두 접기</button></div>
+          {relatedPostsElement && <button type="button" onClick={() => jump("relatedPosts")}>관련 게시글 순서</button>}
+          <div className={styles.foldActions}><button type="button" onClick={() => setClosed(new Set())}>모두 펼치기</button><button type="button" onClick={() => {setClosed(new Set(["relatedPosts", "overview", "execution", ...(coverElement?["cover"]:[]), ...sections.map(section => section.key)]));}}>모두 접기</button></div>
         </nav>
       )}
       <div className={`${styles.document} ${preview ? styles.previewDocument : ""}`}>
@@ -239,6 +241,7 @@ export function ProjectEditor({ value, onChange, busy, visibility, blocked, exis
             <section className={styles.background}><h3>배경 및 목적</h3>{backgroundEditor}</section>
           </>, value.techStackIds.length ? `기간 · 인원 · 역할 · 기술 스택(${value.techStackIds.length}) · 배경 및 목적` : "기간 · 인원 · 역할 · 기술 스택 · 배경 및 목적")}
           {sections.map(section => details(section.key, section.label, section.key==="ARCHITECTURE"||section.key==="DATABASE"?<ProjectDiagramSection key={section.key} kind={section.key} blocks={value.document.sections.find(item=>item.key===section.key)?.blocks??[]} onChangeBlocks={blocks=>updateBlocks(section.key,blocks)} toolbarHost={toolbarHost} toolbarActive={!preview&&activeSection===section.key} onActivate={()=>activate(section.key)} uploadImage={uploadImage} imagePreviews={imagePreviews} disabled={busy}/>:<RichBodyEditor toolbarHost={toolbarHost} toolbarActive={!preview && activeSection===section.key} onActivate={()=>activate(section.key)} toolbarMode="inline" allowRepresentativeImage={true} representativeImageSrc={representativeImageSrc} onSelectRepresentativeImage={onSelectRepresentativeImage} blocks={value.document.sections.find(item => item.key === section.key)?.blocks ?? []} onChangeBlocks={blocks => updateBlocks(section.key, blocks)} uploadImage={uploadImage} imagePreviews={imagePreviews} disabled={busy} />))}
+          {relatedPostsElement && details("relatedPosts", "관련 게시글 순서", relatedPostsElement, "드래그하여 읽기 순서 변경")}
           {value.executionInstructions && details("execution", "실행 방법", <label>실행 방법<textarea value={value.executionInstructions} rows={5} onChange={event => update("executionInstructions", event.target.value)} /></label>, "기존 내용")}
         </fieldset>}
       </div>
