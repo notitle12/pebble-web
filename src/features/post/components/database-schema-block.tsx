@@ -30,7 +30,7 @@ import {
  DatabaseSelectedRelationBar,
  type DatabaseEditActions,
 } from './database-edit-table';
-import { TableTextInput } from './inline-block-views';
+import { TableTextInput } from './table-text-input';
 import { DatabaseSpecifications } from './database-specifications';
 import s from './database-schema.module.css';
 import { useDiagramFit } from './use-diagram-fit';
