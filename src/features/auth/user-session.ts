@@ -66,6 +66,13 @@ export function createUserSession(request: typeof fetch = fetch, exclusive: Excl
         throw e;
       }
     },
+    async trackContentView(kind:"posts"|"projects",id:string) {
+      if(!["posts","projects"].includes(kind) || !/^[1-9]\d*$/.test(id))return;
+      if(state.phase!=="guest" && state.phase!=="ready")return;
+      if(state.phase==="ready" && (!access || Date.now()>=expiresAt))return;
+      // Analytics must never refresh, replay a write, or change the reading session.
+      await raw(`/content-views/${kind}/${id}`,{method:"POST",cookies:true,token:state.phase==="ready"?access:undefined});
+    },
     invalidate(){clear();publish({phase:"guest",member:null,message:"다른 탭에서 로그인 상태가 변경되었습니다. 다시 로그인해 주세요."});},
     async authorization(){
       listenSessionChanges();
