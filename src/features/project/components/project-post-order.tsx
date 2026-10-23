@@ -5,13 +5,15 @@ import {MemberApiError} from '@/lib/member-api';
 import {getProjectOrderSnapshot,saveProjectPostOrder,sameProjectOrder,reorderProjectPosts,projectPostDropTarget,type ProjectOrderPost} from '../api/project-post-order';
 import s from './project-post-order.module.css';
 type Drag={index:number;source:number;insertion:number;mode:'pointer'|'keyboard';x:number;y:number;startY:number;active:boolean;touch?:boolean};
-type Props={projectId:string;memberId:string;disabled?:boolean;onSaved?:()=>void;onBusyChange?:(busy:boolean)=>void;onDirtyChange?:(dirty:boolean)=>void};
-export function ProjectPostOrder({projectId,memberId,disabled=false,onSaved,onBusyChange,onDirtyChange}:Props){
+export type ProjectOrderPreviewState={posts:ProjectOrderPost[]|null;loading:boolean;error:string};
+type Props={projectId:string;memberId:string;disabled?:boolean;onSaved?:()=>void;onBusyChange?:(busy:boolean)=>void;onDirtyChange?:(dirty:boolean)=>void;onPreviewChange?:(state:ProjectOrderPreviewState)=>void};
+export function ProjectPostOrder({projectId,memberId,disabled=false,onSaved,onBusyChange,onDirtyChange,onPreviewChange}:Props){
  const help=useId(),root=useRef<HTMLDivElement>(null);
  const [rows,setRows]=useState<ProjectOrderPost[]|null>(null),[baseline,setBaseline]=useState<string[]>([]),[visibleCount,setVisibleCount]=useState(10),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState(''),[uncertain,setUncertain]=useState(false),[attempt,setAttempt]=useState(0);
  const [dragging,setDragging]=useState<{source:number;insertion:number}|null>(null);
  const drag=useRef<Drag|null>(null),frame=useRef<number|null>(null),hold=useRef<ReturnType<typeof setTimeout>|null>(null);
  const dirty=rows!==null&&!sameProjectOrder(baseline,rows.map(row=>row.id));
+ useEffect(()=>{onPreviewChange?.({posts:rows,loading,error});},[rows,loading,error,onPreviewChange]);
  const total=rows?.length??0;
  const data=rows?{content:rows.slice(0,visibleCount),totalElements:total}:null;
  useEffect(()=>{onDirtyChange?.(dirty);return()=>onDirtyChange?.(false);},[dirty,onDirtyChange]);

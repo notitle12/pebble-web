@@ -26,6 +26,9 @@ type Props = {
   imagePreviews?: Record<string, string>;
   coverElement?: ReactNode;
   relatedPostsElement?: ReactNode;
+  relatedPostsPreviewElement?: ReactNode;
+  onExit?: () => void;
+  navigationBusy?: boolean;
   featuredElement?: (visibility: ProjectVisibility) => ReactNode;
   onPublishOpen?: () => void;
   coverPreviewUrl?: string | null;
@@ -37,7 +40,7 @@ const linkTypes: { value: LinkInput["linkType"]; label: string }[] = [
   { value: "DOWNLOAD", label: "다운로드" }, { value: "OTHER", label: "기타" },
 ];
 
-export function ProjectEditor({ value, onChange, busy, visibility, blocked, existingTechStacks = [], onSave, onTemporarySave, uploadImage, imagePreviews = {}, coverElement, relatedPostsElement, featuredElement, onPublishOpen, coverPreviewUrl, representativeImageSrc, onSelectRepresentativeImage }: Props) {
+export function ProjectEditor({ value, onChange, busy, visibility, blocked, existingTechStacks = [], onSave, onTemporarySave, uploadImage, imagePreviews = {}, coverElement, relatedPostsElement, relatedPostsPreviewElement, onExit, navigationBusy = false, featuredElement, onPublishOpen, coverPreviewUrl, representativeImageSrc, onSelectRepresentativeImage }: Props) {
   const id = useId();
   const currentValue = useRef(value);
   currentValue.current = value;
@@ -132,12 +135,12 @@ export function ProjectEditor({ value, onChange, busy, visibility, blocked, exis
 
   return <div className={`${styles.editor} writer-composer project-editor`}>
     <footer className={`${styles.toolbar} writer-action-bar`} aria-label="프로젝트 저장 및 발행">
-      <button type="button" className="writer-exit" disabled={busy} onClick={()=>window.location.assign("/me/projects")}>나가기</button>
+      <button type="button" className="writer-exit" disabled={busy||navigationBusy} onClick={()=>onExit?onExit():window.location.assign("/me/projects")}>나가기</button>
       <span className={styles.saveState} role="status">{busy ? "저장 중…" : feedback || "프로젝트를 자유롭게 기록해 보세요."}</span>
       <div className={styles.actions}>
-        <button type="button" disabled={busy || !onTemporarySave} onClick={() => void temporarySave()}>임시저장</button>
-        <button type="button" disabled={busy} onClick={() => setPreview(previous => !previous)}>{preview ? "편집으로 돌아가기" : "미리보기"}</button>
-        <button type="button" className={styles.primary} disabled={busy} onClick={() => { setTargetVisibility(visibility); setFeedback(""); setPublishError(""); setPublishing(true); onPublishOpen?.(); }}>발행하기</button>
+        <button type="button" disabled={busy || navigationBusy || !onTemporarySave} onClick={() => void temporarySave()}>임시저장</button>
+        <button type="button" disabled={busy||navigationBusy} onClick={() => setPreview(previous => !previous)}>{preview ? "편집으로 돌아가기" : "미리보기"}</button>
+        <button type="button" className={styles.primary} disabled={busy||navigationBusy} onClick={() => { setTargetVisibility(visibility); setFeedback(""); setPublishError(""); setPublishing(true); onPublishOpen?.(); }}>발행하기</button>
       </div>
     </footer>
     {!preview && <div className={styles.sharedBar}><div ref={setToolbarHost} className={styles.sharedHost}/></div>}
@@ -154,7 +157,7 @@ export function ProjectEditor({ value, onChange, busy, visibility, blocked, exis
         </nav>
       )}
       <div className={`${styles.document} ${preview ? styles.previewDocument : ""}`}>
-        {preview ? (
+        {preview && (
           <div className="detail-shell post-reading-shell project-reading-shell">
             <article className={`post-detail ${styles.preview}`} aria-label="프로젝트 미리보기">
             <header>
@@ -212,9 +215,11 @@ export function ProjectEditor({ value, onChange, busy, visibility, blocked, exis
                 </section>
               )}
             </div>
+            {relatedPostsPreviewElement}
           </article>
         </div>
-        ) : <fieldset disabled={busy} className={styles.fields}>
+        )}
+        <fieldset disabled={busy} hidden={preview} className={`${styles.fields} ${preview?styles.hiddenFields:""}`}>
           <div ref={element => { sectionRefs.current["name"] = element; }} className={styles.nameSection}>
             <label className={styles.nameLabel} htmlFor={`${id}-name`}>프로젝트명</label>
             <input className={styles.name} id={`${id}-name`} value={value.name} maxLength={120} placeholder="어떤 프로젝트를 만들었나요?" onChange={event => update("name", event.target.value)} />
@@ -243,7 +248,7 @@ export function ProjectEditor({ value, onChange, busy, visibility, blocked, exis
           {sections.map(section => details(section.key, section.label, section.key==="ARCHITECTURE"||section.key==="DATABASE"?<ProjectDiagramSection key={section.key} kind={section.key} blocks={value.document.sections.find(item=>item.key===section.key)?.blocks??[]} onChangeBlocks={blocks=>updateBlocks(section.key,blocks)} toolbarHost={toolbarHost} toolbarActive={!preview&&activeSection===section.key} onActivate={()=>activate(section.key)} uploadImage={uploadImage} imagePreviews={imagePreviews} disabled={busy}/>:<RichBodyEditor toolbarHost={toolbarHost} toolbarActive={!preview && activeSection===section.key} onActivate={()=>activate(section.key)} toolbarMode="inline" allowRepresentativeImage={true} representativeImageSrc={representativeImageSrc} onSelectRepresentativeImage={onSelectRepresentativeImage} blocks={value.document.sections.find(item => item.key === section.key)?.blocks ?? []} onChangeBlocks={blocks => updateBlocks(section.key, blocks)} uploadImage={uploadImage} imagePreviews={imagePreviews} disabled={busy} />))}
           {relatedPostsElement && details("relatedPosts", "관련 게시글 순서", relatedPostsElement, "드래그하여 읽기 순서 변경")}
           {value.executionInstructions && details("execution", "실행 방법", <label>실행 방법<textarea value={value.executionInstructions} rows={5} onChange={event => update("executionInstructions", event.target.value)} /></label>, "기존 내용")}
-        </fieldset>}
+        </fieldset>
       </div>
     </div>
     <dialog ref={dialogRef} className={styles.publishDialog} aria-labelledby={`${id}-publish-title`} onCancel={() => setPublishing(false)} onClose={() => setPublishing(false)}>
