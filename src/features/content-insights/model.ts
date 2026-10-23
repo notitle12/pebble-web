@@ -50,22 +50,32 @@ export const CONTENT_KINDS = ["posts", "projects"] as const;
 export type ContentKind = typeof CONTENT_KINDS[number];
 export const CONTENT_SOURCES = ["UNKNOWN", "DIRECT", "INTERNAL", "GOOGLE", "NAVER", "BING", "DAUM", "GITHUB", "KAKAO", "OTHER"] as const;
 export type ContentSource = typeof CONTENT_SOURCES[number];
-export type InsightItemsPage = { kind: ContentKind; page: number; size: 10; totalElements: number; totalPages: number; items: InsightItem[] };
+export const INSIGHT_SORTS = ["LATEST", "VIEWS", "POPULAR"] as const;
+export type InsightSort = typeof INSIGHT_SORTS[number];
+export type InsightDirection = "ASC" | "DESC";
+export type InsightItemsPage = { kind: ContentKind; page: number; size: 10; totalElements: number; totalPages: number; items: InsightItem[]; sort: InsightSort; direction: InsightDirection; likeCounts: Record<string, number> };
 export type ContentInsightDetail = { kind: ContentKind; days: InsightDays; item: InsightItem; totalViews: number; fromDate: string | null; toDate: string; timeZone: "Asia/Seoul"; trackingStartedAt: string; sourceTrackingStartedAt: string; sourceDays: 7; sourceFromDate: string; monthlyCoverageFrom: string; chartDays: number; daily: { date: string; views: number }[]; monthly: { month: string; views: number }[]; sources: { source: ContentSource; views: number }[] };
 const validKind = (value: unknown): value is ContentKind => value === "posts" || value === "projects";
 const timestamp = (value: unknown): string => { if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(value) || !Number.isFinite(Date.parse(value))) invalid(); return value as string; };
 export function insightDetailHref(kind: ContentKind, id: string): string { return `/settings/blog/insights/${kind}/${id}`; }
-export function parseInsightItemsPage(value: unknown, kind: ContentKind, page: number): InsightItemsPage {
+export function parseInsightItemsPage(value: unknown, kind: ContentKind, page: number, sort: InsightSort = "LATEST", direction: InsightDirection = "DESC"): InsightItemsPage {
   const d = responseData(value), totalElements = count(d.totalElements), totalPages = count(d.totalPages);
   if (d.kind !== kind || d.page !== page || d.size !== 10 || totalPages !== Math.ceil(totalElements / 10)) invalid();
   const rows = parseInsightItems(d.items, true);
   if (rows.length !== Math.max(0, Math.min(10, totalElements - page * 10))) invalid();
-  return { kind, page, size: 10, totalElements, totalPages, items: rows };
+  if (d.sort !== sort || d.direction !== direction) invalid();
+  const rawCounts = record(d.likeCounts), likeCounts: Record<string, number> = {};
+  const keys = Object.keys(rawCounts);
+  if (sort === "POPULAR" ? keys.length !== rows.length || keys.some(id => !rows.some(row => row.id === id)) : keys.length !== 0) invalid();
+  for (const id of keys) likeCounts[id] = count(rawCounts[id]);
+  return { kind, page, size: 10, totalElements, totalPages, items: rows, sort, direction, likeCounts };
 }
-export async function getInsightItems(kind: ContentKind, page: number, query: string, request: (path: string) => Promise<unknown>): Promise<InsightItemsPage> {
-  if (!validKind(kind) || !Number.isInteger(page) || page < 0 || page > 10000 || query.length > 100) throw new MemberApiError(0, "INVALID_QUERY", "콘텐츠 검색 조건을 확인해 주세요.");
-  return parseInsightItemsPage(await request(`/members/me/content-insights/items?kind=${kind}&page=${page}&query=${encodeURIComponent(query)}`), kind, page);
+export async function getInsightItems(kind: ContentKind, page: number, query: string, request: (path: string) => Promise<unknown>, options: { sort?: InsightSort; direction?: InsightDirection } = {}): Promise<InsightItemsPage> {
+  const sort = options.sort ?? "LATEST", direction = options.direction ?? "DESC";
+  if (!validKind(kind) || !Number.isInteger(page) || page < 0 || page > 10000 || query.length > 100 || !(INSIGHT_SORTS as readonly string[]).includes(sort) || !["ASC", "DESC"].includes(direction)) throw new MemberApiError(0, "INVALID_QUERY", "콘텐츠 검색 조건을 확인해 주세요.");
+  return parseInsightItemsPage(await request(`/members/me/content-insights/items?kind=${kind}&page=${page}&query=${encodeURIComponent(query)}&sort=${sort}&direction=${direction}`), kind, page, sort, direction);
 }
+
 export function parseContentInsightDetail(value: unknown, kind: ContentKind, id: string, days: InsightDays): ContentInsightDetail {
   const d = responseData(value), chartDays = days || 90, toDate = date(d.toDate), fromDate = d.fromDate === null ? null : date(d.fromDate);
   if (d.kind !== kind || d.days !== days || d.chartDays !== chartDays || d.timeZone !== "Asia/Seoul" || !Array.isArray(d.daily) || d.daily.length !== chartDays || !Array.isArray(d.monthly) || d.monthly.length !== 12 || !Array.isArray(d.sources) || d.sources.length > CONTENT_SOURCES.length) invalid();
