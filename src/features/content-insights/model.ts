@@ -51,7 +51,7 @@ export type ContentKind = typeof CONTENT_KINDS[number];
 export const CONTENT_SOURCES = ["UNKNOWN", "DIRECT", "INTERNAL", "GOOGLE", "NAVER", "BING", "DAUM", "GITHUB", "KAKAO", "OTHER"] as const;
 export type ContentSource = typeof CONTENT_SOURCES[number];
 export type InsightItemsPage = { kind: ContentKind; page: number; size: 10; totalElements: number; totalPages: number; items: InsightItem[] };
-export type ContentInsightDetail = { kind: ContentKind; days: InsightDays; item: InsightItem; totalViews: number; fromDate: string | null; toDate: string; timeZone: "Asia/Seoul"; trackingStartedAt: string; sourceTrackingStartedAt: string; monthlyCoverageFrom: string; chartDays: number; daily: { date: string; views: number }[]; monthly: { month: string; views: number }[]; sources: { source: ContentSource; views: number }[] };
+export type ContentInsightDetail = { kind: ContentKind; days: InsightDays; item: InsightItem; totalViews: number; fromDate: string | null; toDate: string; timeZone: "Asia/Seoul"; trackingStartedAt: string; sourceTrackingStartedAt: string; sourceDays: 7; sourceFromDate: string; monthlyCoverageFrom: string; chartDays: number; daily: { date: string; views: number }[]; monthly: { month: string; views: number }[]; sources: { source: ContentSource; views: number }[] };
 const validKind = (value: unknown): value is ContentKind => value === "posts" || value === "projects";
 const timestamp = (value: unknown): string => { if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(value) || !Number.isFinite(Date.parse(value))) invalid(); return value as string; };
 export function insightDetailHref(kind: ContentKind, id: string): string { return `/settings/blog/insights/${kind}/${id}`; }
@@ -70,13 +70,15 @@ export function parseContentInsightDetail(value: unknown, kind: ContentKind, id:
   const d = responseData(value), chartDays = days || 90, toDate = date(d.toDate), fromDate = d.fromDate === null ? null : date(d.fromDate);
   if (d.kind !== kind || d.days !== days || d.chartDays !== chartDays || d.timeZone !== "Asia/Seoul" || !Array.isArray(d.daily) || d.daily.length !== chartDays || !Array.isArray(d.monthly) || d.monthly.length !== 12 || !Array.isArray(d.sources) || d.sources.length > CONTENT_SOURCES.length) invalid();
   if (days === 0 ? fromDate !== null : fromDate !== new Date(Date.parse(toDate + "T00:00:00Z") - (days - 1) * 86400000).toISOString().slice(0, 10)) invalid();
+  const sourceFromDate = date(d.sourceFromDate);
+  if (d.sourceDays !== 7 || sourceFromDate !== new Date(Date.parse(toDate + "T00:00:00Z") - 6 * 86400000).toISOString().slice(0, 10)) invalid();
   const item = parseInsightItems([d.item], true)[0]; if (item.id !== id) invalid();
   const daily = (d.daily as unknown[]).map((value, index) => { const row = record(value), day = date(row.date); if (day !== new Date(Date.parse(toDate + "T00:00:00Z") - (chartDays - index - 1) * 86400000).toISOString().slice(0, 10)) invalid(); return { date: day, views: count(row.views) }; });
   const [year, month] = toDate.split("-").map(Number);
   const monthly = (d.monthly as unknown[]).map((value, index) => { const row = record(value), expected = new Date(Date.UTC(year, month - 12 + index, 1)).toISOString().slice(0, 7); if (row.month !== expected) invalid(); return { month: expected, views: count(row.views) }; });
   const seen = new Set<string>();
   const sources = (d.sources as unknown[]).map(value => { const row = record(value), source = row.source; if (typeof source !== "string" || !(CONTENT_SOURCES as readonly string[]).includes(source) || seen.has(source)) invalid(); seen.add(source as string); const views = count(row.views); if (views === 0) invalid(); return { source: source as ContentSource, views }; });
-  return { kind, days, item, totalViews: count(d.totalViews), fromDate, toDate, timeZone: "Asia/Seoul", trackingStartedAt: timestamp(d.trackingStartedAt), sourceTrackingStartedAt: timestamp(d.sourceTrackingStartedAt), monthlyCoverageFrom: date(d.monthlyCoverageFrom), chartDays, daily, monthly, sources };
+  return { kind, days, item, totalViews: count(d.totalViews), fromDate, toDate, timeZone: "Asia/Seoul", trackingStartedAt: timestamp(d.trackingStartedAt), sourceTrackingStartedAt: timestamp(d.sourceTrackingStartedAt), sourceDays: 7, sourceFromDate, monthlyCoverageFrom: date(d.monthlyCoverageFrom), chartDays, daily, monthly, sources };
 }
 export async function getContentInsightDetail(kind: ContentKind, id: string, days: InsightDays, request: (path: string) => Promise<unknown>): Promise<ContentInsightDetail> {
   if (!validKind(kind) || !/^[1-9]\d*$/.test(id) || !(INSIGHT_DAYS as readonly number[]).includes(days)) throw new MemberApiError(0, "INVALID_QUERY", "콘텐츠 조회 조건을 확인해 주세요.");
