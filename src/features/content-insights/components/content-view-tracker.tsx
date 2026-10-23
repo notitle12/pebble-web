@@ -3,6 +3,7 @@ import { useEffect, useRef } from "react";
 import { useUserSession } from "../../auth/components/member-gate";
 import { userSession } from "../../auth/user-session";
 import { startContentViewTracking } from "../tracking";
+import { contentSourceContext } from "../source";
 
 export function ContentViewTracker({ kind, id, ownerId }: { kind: "posts" | "projects"; id: string; ownerId: string }) {
   const session = useUserSession();
@@ -15,7 +16,7 @@ export function ContentViewTracker({ kind, id, ownerId }: { kind: "posts" | "pro
       return attempted.current !== key && ["ready", "guest"].includes(current.phase) && current.member?.id !== ownerId;
     }, () => {
       attempted.current = key;
-      void userSession.trackContentView(kind, id).catch(() => {});
+      void userSession.trackContentView(kind, id, contentSourceContext.source()).catch(() => {});
     });
   }, [kind, id, ownerId, session.phase, session.member?.id]);
   return null;

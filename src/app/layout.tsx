@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import {SITE_ORIGIN,SITE_DESCRIPTION,SHARE_IMAGE} from "@/features/seo/model";
 import {siteVerification} from "@/features/seo/verification";
-import type { ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
+import {ContentSourceContext} from "../features/content-insights/components/content-source-context";
 import {LoginDialog} from "../features/auth/components/login-dialog";
 import {SiteFooter} from "../components/site-footer";
 import "./globals.css";
@@ -33,7 +34,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <link rel="stylesheet" href="/fonts/pretendard/pretendard.css"/>
         <script dangerouslySetInnerHTML={{__html:themeBootstrap}}/>
       </head>
-      <body>{children}<SiteFooter/><LoginDialog showTrigger={false}/></body>
+      <body><Suspense fallback={null}><ContentSourceContext/></Suspense>{children}<SiteFooter/><LoginDialog showTrigger={false}/></body>
     </html>
   );
 }
