@@ -5,9 +5,9 @@ import { classifyContentSource, createContentSourceContext } from "../src/featur
 const item = { id: "9007199254740993", title: "조회 없는 글", urlKey: null, views: 0, visibilityStatus: "HIDDEN", isBlocked: false, draft: true };
 const detail = (days = 7) => ({ data: { kind: "posts", days, item: { ...item }, totalViews: 45, fromDate: days ? new Date(Date.UTC(2026, 9, 23) - (days - 1) * 86400000).toISOString().slice(0, 10) : null, toDate: "2026-10-23", timeZone: "Asia/Seoul", trackingStartedAt: "2026-10-23T00:00:00Z", sourceTrackingStartedAt: "2026-10-23T01:00:00Z", sourceDays: 7, sourceFromDate: "2026-10-17", monthlyCoverageFrom: "2026-10-01", chartDays: days || 90, daily: Array.from({ length: days || 90 }, (_, index) => ({ date: new Date(Date.UTC(2026, 9, 23) - ((days || 90) - 1 - index) * 86400000).toISOString().slice(0, 10), views: 0 })), monthly: Array.from({ length: 12 }, (_, i) => ({ month: new Date(Date.UTC(2026, -2 + i, 1)).toISOString().slice(0, 7), views: i === 11 ? 45 : 0 })), sources: [] } });
 test("all-content search permits zero views and drafts, sends one encoded ten-item page", async () => {
-  const calls = []; const value = { data: { kind: "posts", page: 0, size: 10, totalElements: 1, totalPages: 1, items: [{ ...item }] } };
+  const calls = []; const value = { data: { kind: "posts", page: 0, size: 10, totalElements: 1, totalPages: 1, items: [{ ...item }], sort: "LATEST", direction: "DESC", likeCounts: {} } };
   const parsed = await getInsightItems("posts", 0, "검색 & 단어", async path => { calls.push(path); return value; });
-  assert.equal(parsed.items[0].views, 0); assert.equal(parsed.items[0].draft, true); assert.equal(calls[0], `/members/me/content-insights/items?kind=posts&page=0&query=${encodeURIComponent("검색 & 단어")}`);
+  assert.equal(parsed.items[0].views, 0); assert.equal(parsed.items[0].draft, true); assert.equal(calls[0], `/members/me/content-insights/items?kind=posts&page=0&query=${encodeURIComponent("검색 & 단어")}&sort=LATEST&direction=DESC`);
   await assert.rejects(getInsightItems("posts", 10001, "", async () => { throw new Error("must not request"); }));
   await assert.rejects(getInsightItems("posts", 0, "a".repeat(101), async () => { throw new Error("must not request"); }));
   assert.throws(() => parseInsightItemsPage({ data: { ...value.data, kind: "projects" } }, "posts", 0));
@@ -44,4 +44,21 @@ test("source coverage is always seven days independently of selected content per
     assert.equal(parsed.sourceDays, 7); assert.equal(parsed.sourceFromDate, "2026-10-17"); assert.equal(parsed.sources[0].views, 3);
   }
   const missing = detail(); delete missing.data.sourceDays; assert.throws(() => parseContentInsightDetail(missing, "posts", item.id, 7));
+});
+
+test("content ordering sends only explicit server sort and direction with ten-item page requests", async () => {
+  for (const sort of ["LATEST", "VIEWS", "POPULAR"]) for (const direction of ["ASC", "DESC"]) {
+    let sent; const value = { data: { kind: "posts", page: 0, size: 10, totalElements: 1, totalPages: 1, items: [{ ...item }], sort, direction, likeCounts: sort === "POPULAR" ? { [item.id]: 0 } : {} } };
+    const parsed = await getInsightItems("posts", 0, "", async path => { sent = path; return value; }, { sort, direction });
+    assert.equal(parsed.sort, sort); assert.equal(parsed.direction, direction); assert.ok(sent.endsWith(`&sort=${sort}&direction=${direction}`)); assert.equal(parsed.items[0].id, item.id);
+    if (sort === "POPULAR") assert.equal(parsed.likeCounts[item.id], 0); else assert.deepEqual(parsed.likeCounts, {});
+  }
+  let calls = 0; for (const options of [{ sort: "TITLE" }, { direction: "DOWN" }]) await assert.rejects(getInsightItems("posts", 0, "", async () => { calls++; }, options)); assert.equal(calls, 0);
+});
+test("content sorting rejects mismatched order contracts and incomplete or foreign like counts", () => {
+  const base = { kind: "posts", page: 0, size: 10, totalElements: 1, totalPages: 1, items: [{ ...item }], sort: "POPULAR", direction: "DESC", likeCounts: { [item.id]: 4 } };
+  for (const change of [d => d.sort = "VIEWS", d => d.direction = "ASC", d => d.likeCounts = {}, d => d.likeCounts = { [item.id]: -1 }, d => d.likeCounts = { "1": 4 }, d => d.likeCounts = { [item.id]: 4, "1": 0 }]) {
+    const value = structuredClone(base); change(value); assert.throws(() => parseInsightItemsPage({ data: value }, "posts", 0, "POPULAR", "DESC"));
+  }
+  assert.throws(() => parseInsightItemsPage({ data: { ...base, sort: "LATEST" } }, "posts", 0));
 });
