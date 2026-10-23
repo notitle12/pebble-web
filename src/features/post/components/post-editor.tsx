@@ -15,7 +15,7 @@ type ImageUpload={src:string;previewUrl:string};
 
 const initial = (): PostEditorValue => ({ title: "", summary: "", categoryId:null,projectId:null,boardId:null,tags:[],blocks: [createEditorBlock("HTML")] });
 
-export function PostEditor({ memberId, initialValue, onSave, busy = false, visibility = "HIDDEN", blocked = false, existingCategory, existingPost, uploadImage, initialNotice, onDirtyChange }: { memberId:string; initialValue?: PostEditorValue; onSave: (value: PostEditorValue, action:PostSaveAction) => Promise<"server"|"local">; busy?:boolean; visibility?:PostVisibility; blocked?:boolean;existingCategory?:Classification|null;existingPost?:{draft:boolean;urlKey:string;id:string};uploadImage?:(file:File,value:PostEditorValue)=>Promise<ImageUpload>;initialNotice?:string;onDirtyChange?:(dirty:boolean)=>void }) {
+export function PostEditor({ memberId, initialValue, onSave, busy = false, visibility = "HIDDEN", blocked = false, existingCategory, existingPost, uploadImage, initialNotice, onDirtyChange, onExit }: { memberId:string; initialValue?: PostEditorValue; onSave: (value: PostEditorValue, action:PostSaveAction) => Promise<"server"|"local">; busy?:boolean; visibility?:PostVisibility; blocked?:boolean;existingCategory?:Classification|null;existingPost?:{draft:boolean;urlKey:string;id:string};uploadImage?:(file:File,value:PostEditorValue)=>Promise<ImageUpload>;initialNotice?:string;onDirtyChange?:(dirty:boolean)=>void;onExit?:()=>void }) {
   const startingValue = useRef<PostEditorValue>(initialValue ?? initial());
   const [value, setValue] = useState<PostEditorValue>(() => startingValue.current);
   const [publishRevision,setPublishRevision]=useState(0);
@@ -55,7 +55,7 @@ export function PostEditor({ memberId, initialValue, onSave, busy = false, visib
     } catch(error) { setSaveError(error instanceof Error?error.message:"저장하지 못했습니다."); }
   };
 
-  const leave=()=>{if((dirty||busy)&&!window.confirm("저장되지 않은 변경 사항이 있습니다. 이 페이지를 나갈까요?"))return;window.location.assign("/me/posts");};
+  const leave=()=>{if((dirty||busy)&&!window.confirm("저장되지 않은 변경 사항이 있습니다. 이 페이지를 나갈까요?"))return;if(onExit)onExit();else window.location.assign("/me/posts");};
 
   return <section className="post-editor writer-composer" aria-label="게시글 작성기">
     <header className="writer-action-bar"><button type="button" className="writer-exit" disabled={busy} onClick={leave}>나가기</button><span aria-live="polite">{busy?"저장 중…":saveMessage|| (dirty?"저장되지 않은 변경 사항":"변경 사항 없음")}</span><div><button type="button" className="secondary" disabled={busy||temporaryErrors.length>0} onClick={()=>void save({kind:"temporary"})}>{busy?"저장 중…":"임시저장"}</button><button type="button" disabled={busy||errors.length>0} onClick={()=>{setSaveMessage("");setSaveError("");setPublishRevision(n=>n+1);setReview(true);}}>완료</button></div></header>
