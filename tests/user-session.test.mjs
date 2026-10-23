@@ -156,3 +156,10 @@ test('expired ready sessions skip content views without refresh or guest downgra
  const originalNow=Date.now;let now=originalNow();Date.now=()=>now;
  try{let calls=0;const session=createUserSession(async url=>{calls++;return url.pathname.endsWith('/refresh')?grant():json(member);},direct,base);await session.ensure();const before=calls;now+=901000;await session.trackContentView('posts','42');assert.equal(calls,before);assert.equal(session.snapshot().phase,'ready');}finally{Date.now=originalNow;}
 });
+
+test('content source recording transmits only the fixed enum in optional JSON and rejects unknown values',async()=>{
+ const calls=[];const session=createUserSession(async(url,options)=>{calls.push([url.pathname,options]);return url.pathname.endsWith('/refresh')?denial(401):new Response(null,{status:204});},direct,base);
+ await session.ensure();await session.trackContentView('posts','42','GOOGLE');assert.deepEqual(JSON.parse(calls.at(-1)[1].body),{source:'GOOGLE'});assert.equal(calls.at(-1)[1].credentials,'include');
+ const count=calls.length;await session.trackContentView('posts','42','https://google.com/search?q=private');assert.equal(calls.length,count);
+ await session.trackContentView('posts','42');assert.equal(calls.at(-1)[1].body,undefined);
+});
