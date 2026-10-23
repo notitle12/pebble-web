@@ -48,3 +48,6 @@ export function projectPostDropTarget(source:number,insertion:number,total:numbe
  const target=insertion>source?insertion-1:insertion;
  return target===source?null:target;
 }
+
+/** 공개 상세와 같은 조건으로 숨김 글을 제외하며 편집 중 순서를 보존한다. */
+export function projectOrderPreviewPosts(rows:readonly ProjectOrderPost[]):ProjectOrderPost[]{return rows.filter(post=>post.visibilityStatus==='PUBLIC'&&!post.isBlocked&&!post.draft);}
