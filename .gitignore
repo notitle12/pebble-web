@@ -16,3 +16,5 @@ node_modules/
 *.md
 *.mdx
 !/.github/**/*.md
+
+!.env.deploy.example
