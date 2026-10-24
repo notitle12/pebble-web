@@ -3,6 +3,7 @@ import Link from "next/link";
 import { MemberGate } from "@/features/auth/components/member-gate";
 
 const destinations = [
+  ["인사이트", "/settings/blog/insights", "게시글과 프로젝트의 조회 추이와 인기 콘텐츠를 확인합니다."],
   ["홈 구성", "/settings/blog/home", "공개 블로그 홈의 섹션과 대표 프로젝트를 정합니다."],
   ["외부 링크", "/settings/blog/links", "GitHub와 사이트 링크를 관리합니다."],
   ["게시판 관리", "/me/boards", "블로그의 게시판과 글 분류를 관리합니다."],

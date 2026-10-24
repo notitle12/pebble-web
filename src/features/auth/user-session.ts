@@ -1,3 +1,4 @@
+import {CONTENT_SOURCES, type ContentSource} from "../content-insights/model.ts";
 import { memberJson, MemberApiError, responseData } from "../../lib/member-api.ts";
 export type Member = { id: string; nickname: string; handle: string | null; blogName: string | null; profileImageUrl: string | null; profileCompleted: boolean; agreementsAccepted: boolean; status: "ACTIVE" };
 export type SessionState = { phase: "loading" | "ready" | "guest" | "error"; member: Member | null; message: string };
@@ -65,6 +66,14 @@ export function createUserSession(request: typeof fetch = fetch, exclusive: Excl
         if(e instanceof MemberApiError && e.status===401 && epoch===generation){clear();publish({phase:"guest",member:state.member,message:"로그인이 만료되었습니다. 입력 내용을 확인한 뒤 다시 로그인해 주세요."});}
         throw e;
       }
+    },
+    async trackContentView(kind:"posts"|"projects",id:string,source?:ContentSource) {
+      if(!["posts","projects"].includes(kind) || !/^[1-9]\d*$/.test(id))return;
+      if(source!==undefined && !(CONTENT_SOURCES as readonly string[]).includes(source))return;
+      if(state.phase!=="guest" && state.phase!=="ready")return;
+      if(state.phase==="ready" && (!access || Date.now()>=expiresAt))return;
+      // Analytics must never refresh, replay a write, or change the reading session.
+      await raw(`/content-views/${kind}/${id}`,{method:"POST",cookies:true,token:state.phase==="ready"?access:undefined,...(source===undefined?{}:{body:{source}})});
     },
     invalidate(){clear();publish({phase:"guest",member:null,message:"다른 탭에서 로그인 상태가 변경되었습니다. 다시 로그인해 주세요."});},
     async authorization(){

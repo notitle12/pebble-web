@@ -138,3 +138,28 @@ test('토큰 갱신 중 회원이 바뀌면 이전 회원의 대기 중 쓰기�
  await assert.rejects(session.request('/posts/10',{method:'DELETE'}),e=>e instanceof MemberApiError&&e.code==='SESSION_CHANGED');
  assert.equal(writes,0);assert.equal(session.snapshot().phase,'ready');assert.equal(session.snapshot().member.id,'2');
 });
+
+test('content views use cookie credentials and optional in-memory Bearer without refreshing or logging out on failure',async()=>{
+ const calls=[];const session=createUserSession(async(url,options)=>{calls.push([url.pathname,options]);if(url.pathname.endsWith('/refresh'))return grant();if(url.pathname.endsWith('/members/me'))return json(member);return denial(401);},direct,base);
+ await session.trackContentView('posts','42');assert.equal(calls.length,0);
+ await session.ensure();const before=calls.length;
+ await assert.rejects(session.trackContentView('projects','42'));assert.equal(calls.length,before+1);assert.equal(session.snapshot().phase,'ready');
+ const options=calls.at(-1)[1];assert.equal(options.credentials,'include');assert.equal(options.headers.Authorization,'Bearer test-memory-only');
+ await session.trackContentView('posts','../bad');assert.equal(calls.length,before+1);
+});
+test('guest content views do not send Bearer and analytics failures do not alter the session',async()=>{
+ const calls=[];const session=createUserSession(async(url,options)=>{calls.push([url.pathname,options]);return denial(401);},direct,base);
+ await session.ensure();assert.equal(session.snapshot().phase,'guest');const before=calls.length;
+ await assert.rejects(session.trackContentView('posts','42'));assert.equal(calls.length,before+1);assert.equal(session.snapshot().phase,'guest');assert.equal(calls.at(-1)[1].headers.Authorization,undefined);assert.equal(calls.at(-1)[1].credentials,'include');
+});
+test('expired ready sessions skip content views without refresh or guest downgrade',async()=>{
+ const originalNow=Date.now;let now=originalNow();Date.now=()=>now;
+ try{let calls=0;const session=createUserSession(async url=>{calls++;return url.pathname.endsWith('/refresh')?grant():json(member);},direct,base);await session.ensure();const before=calls;now+=901000;await session.trackContentView('posts','42');assert.equal(calls,before);assert.equal(session.snapshot().phase,'ready');}finally{Date.now=originalNow;}
+});
+
+test('content source recording transmits only the fixed enum in optional JSON and rejects unknown values',async()=>{
+ const calls=[];const session=createUserSession(async(url,options)=>{calls.push([url.pathname,options]);return url.pathname.endsWith('/refresh')?denial(401):new Response(null,{status:204});},direct,base);
+ await session.ensure();await session.trackContentView('posts','42','GOOGLE');assert.deepEqual(JSON.parse(calls.at(-1)[1].body),{source:'GOOGLE'});assert.equal(calls.at(-1)[1].credentials,'include');
+ const count=calls.length;await session.trackContentView('posts','42','https://google.com/search?q=private');assert.equal(calls.length,count);
+ await session.trackContentView('posts','42');assert.equal(calls.at(-1)[1].body,undefined);
+});
