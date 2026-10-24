@@ -3,16 +3,16 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { MemberGate } from "../../auth/components/member-gate";
 import { userSession, type Member } from "../../auth/user-session";
-import { getContentInsights, INSIGHT_DAYS, insightDetailHref, insightHref, insightPoints, type ContentInsights as InsightsData, type InsightDays, type InsightItem } from "../model";
+import { getContentInsights, INSIGHT_DAYS, insightDetailHref, insightPoints, type ContentInsights as InsightsData, type InsightDays, type InsightItem } from "../model";
 import styles from "./content-insights.module.css";
 import { InsightsNavigation } from "./insights-navigation";
 
 const number = (value: number) => value.toLocaleString("ko-KR");
 const label = (days: InsightDays) => days === 0 ? "전체" : `${days}일`;
-function Ranking({ kind, rows, handle }: { kind: "posts" | "projects"; rows: InsightItem[]; handle: string | null }) {
+function Ranking({ kind, rows }: { kind: "posts" | "projects"; rows: InsightItem[] }) {
   const name = kind === "posts" ? "게시글" : "프로젝트";
   return <section className={styles.ranking} aria-labelledby={`insight-${kind}-title`}><div className={styles.sectionHeading}><h2 id={`insight-${kind}-title`}>인기 {name}</h2><span>최대 10개</span></div>
-    {rows.length === 0 ? <p className={styles.empty}>이 기간에 조회된 {name}이 없어요.</p> : <ol>{rows.map((item, index) => <li key={item.id}><span className={styles.rank}>{index + 1}</span><div className={styles.item}><Link href={insightHref(kind, item, handle)}>{item.title || "제목 없음"}</Link>{(item.visibilityStatus === "HIDDEN" || item.isBlocked || item.draft) && <small>{[item.draft && "임시 저장", item.visibilityStatus === "HIDDEN" && "비공개", item.isBlocked && "이용 제한"].filter(Boolean).join(" · ")}</small>}</div><div className={styles.rankingMeta}><span className={styles.views}>{number(item.views)}<small>회</small></span><Link className={styles.detailLink} href={insightDetailHref(kind, item.id)}>상세 통계</Link></div></li>)}</ol>}
+    {rows.length === 0 ? <p className={styles.empty}>이 기간에 조회된 {name}이 없어요.</p> : <ol>{rows.map((item, index) => <li key={item.id}><span className={styles.rank}>{index + 1}</span><div className={styles.item}><Link prefetch={false} href={insightDetailHref(kind, item.id)}>{item.title || "제목 없음"}</Link>{(item.visibilityStatus === "HIDDEN" || item.isBlocked || item.draft) && <small>{[item.draft && "임시 저장", item.visibilityStatus === "HIDDEN" && "비공개", item.isBlocked && "이용 제한"].filter(Boolean).join(" · ")}</small>}</div><div className={styles.rankingMeta}><span className={styles.views}>{number(item.views)}<small>회</small></span></div></li>)}</ol>}
   </section>;
 }
 function Trend({ data }: { data: InsightsData }) {
@@ -37,7 +37,7 @@ function Dashboard({ member }: { member: Member }) {
     <InsightsNavigation active="overview"/><div className={styles.tabs} role="tablist" aria-label="조회 기간">{INSIGHT_DAYS.map((value, index) => <button id={`insight-tab-${value}`} key={value} role="tab" type="button" aria-selected={days === value} aria-controls="insight-panel" tabIndex={days === value ? 0 : -1} onClick={() => setDays(value)} onKeyDown={event => { const key = event.key; if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(key)) return; event.preventDefault(); const next = key === "Home" ? 0 : key === "End" ? INSIGHT_DAYS.length - 1 : (index + (key === "ArrowRight" ? 1 : -1) + INSIGHT_DAYS.length) % INSIGHT_DAYS.length; setDays(INSIGHT_DAYS[next]); document.getElementById(`insight-tab-${INSIGHT_DAYS[next]}`)?.focus(); }}>{label(value)}</button>)}</div>
     <div id="insight-panel" role="tabpanel" aria-labelledby={`insight-tab-${days}`} aria-busy={loading}>{loading ? <p className={styles.state} role="status">조회 통계를 불러오고 있어요.</p> : !data ? <div className={styles.state}><p role="alert">{state.error}</p><button type="button" className="button" onClick={() => setAttempt(value => value + 1)}>다시 불러오기</button></div> : <>
       <p className={styles.period}>{data.fromDate ? `${data.fromDate} – ${data.toDate}` : `집계 시작 – ${data.toDate}`} · 한국시간 기준</p><dl className={styles.summary}><div><dt>게시글 조회</dt><dd>{number(data.postViews)}<small>회</small></dd></div><div><dt>프로젝트 조회</dt><dd>{number(data.projectViews)}<small>회</small></dd></div></dl>
-      <Trend data={data}/><div className={styles.rankings}><Ranking kind="posts" rows={data.posts} handle={member.handle}/><Ranking kind="projects" rows={data.projects} handle={member.handle}/></div>
+      <Trend data={data}/><div className={styles.rankings}><Ranking kind="posts" rows={data.posts}/><Ranking kind="projects" rows={data.projects}/></div>
       <aside className={styles.note}><p>{new Intl.DateTimeFormat("ko-KR", { dateStyle: "long", timeZone: "Asia/Seoul" }).format(new Date(data.trackingStartedAt))}부터 집계하며, 이전 조회는 포함하지 않습니다.</p><p>공개 콘텐츠를 3초 이상 읽은 방문을 브라우저별·콘텐츠별 하루 한 번 집계합니다. 로그인한 작성자 본인의 조회는 제외하며, 브라우저·기기·쿠키 설정에 따라 실제 독자 수와 다를 수 있어요.</p><p>유입 경로는 최근 7일만 보관한 뒤 삭제합니다. 출처를 제외한 조회 수는 일별 90일, 월별 24개월 보관하고 그 이전은 연도별 합계로 통합합니다. 전체 조회는 누적으로 보여줍니다. 비공개·이용 제한 콘텐츠의 이전 조회는 유지되며, 삭제한 콘텐츠는 제외됩니다.</p></aside>
     </>}</div></section>;
 }
