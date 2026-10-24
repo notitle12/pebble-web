@@ -1,7 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "pebble-web",
-  "account_id": "[REMOVED_CLOUDFLARE_ACCOUNT_ID]",
   "main": ".open-next/worker.js",
   "compatibility_date": "2026-10-04",
   "compatibility_flags": [
