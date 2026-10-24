@@ -26,7 +26,7 @@ if (mode === "build") {
     cpSync(join(root, name), join(stage, name), { recursive: true,
       filter: source => !/(?:^|\/)(?:\.env[^/]*|\.dev\.vars[^/]*)$/.test(source) });
   }
-  run(["ci"], stage);
+  run(["ci", "--cache", join(stage, ".npm-cache"), "--prefer-online"], stage);
   run(["exec", "--", "opennextjs-cloudflare", "build"], stage);
   writeFileSync(marker, stage + "\n");
   console.log("Isolated Workers build:", stage);
