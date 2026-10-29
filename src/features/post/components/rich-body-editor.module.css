@@ -178,3 +178,81 @@
 .inlineRoot button[aria-label="추가 삽입 도구"]{width:auto;min-width:66px;white-space:nowrap}
 
 .sharedTools{min-height:0}.sharedTools .sharedToolbar{position:static;inset:auto;z-index:auto;height:auto;min-height:48px;padding:0 10px;border-bottom:0}.sharedToolbar .toolrow{flex-wrap:wrap;overflow:visible;padding:6px 0;white-space:normal}.sharedTools button[aria-label="추가 삽입 도구"]{width:auto;min-width:66px;white-space:nowrap}
+
+.slashMenu{position:fixed;z-index:1004;width:min(320px,calc(100vw - 24px));max-height:320px;overflow:auto;padding:8px;border:1px solid var(--line,#dfe3e8);border-radius:10px;background:var(--surface,#fff);box-shadow:0 8px 28px #17243d24}
+.slashMenu small{display:block;padding:6px 10px;color:var(--muted);font-size:12px}
+.slashMenu button{display:block;width:100%;padding:9px 12px;border:0;border-radius:6px;background:transparent;color:inherit;text-align:left;font:inherit;cursor:pointer}
+.slashMenu button:hover,.slashMenu button[aria-selected=true]{background:var(--accent-soft,#eef3ff);color:var(--accent)}
+
+.root .dividerMenu{width:240px;grid-template-columns:1fr}
+.dividerMenu button{gap:16px}
+.dividerMenu hr{flex:1;border:0;border-top:1px solid #c8cbd0;margin:0}
+.dividerMenu :global(hr.post-divider-dashed){border-top:2px dashed #c8cbd0}
+.dividerMenu :global(hr.post-divider-double){border-top:4px double #c8cbd0}
+.dividerMenu :global(hr.post-divider-short){flex:0 0 25%}
+
+
+.sourceTabs{display:flex;flex:0 0 auto;align-items:stretch;gap:24px;border-bottom:1px solid var(--line,#e7e7e7)}
+.root .sourceTabs button{min-height:44px;padding:10px 2px;border:0;border-bottom:2px solid transparent;border-radius:0;background:transparent;color:var(--muted,#5c6068);font:inherit;font-size:14px;white-space:nowrap;cursor:pointer}
+.root .sourceTabs button[aria-selected=true]{border-bottom-color:var(--accent,#34775d);color:var(--text,#33363b);font-weight:600}
+.root .sourceTabs button:focus-visible{outline:2px solid var(--accent,#7c9ed0);outline-offset:2px}
+.sourceWorkspace{min-width:0;padding-bottom:80px}
+.inlineRoot .sourceWorkspace{padding-bottom:0}
+.sourceWorkspace .sourceGrid{padding-bottom:24px}
+.sourceWorkspace .sourceSingle{grid-template-columns:minmax(0,1fr)}
+.sourceGrid>[hidden]{display:none}
+.sourceGrid textarea,.sourceGrid>section{scroll-margin-top:100px}
+.sourceSingle>section{padding-inline:0}
+:global(.writer-shell .writer-composer):has(.sourceSingle){max-width:980px}
+@media(max-width:540px){.root .sourceTabs button{font-size:13px}.sourceTabs{gap:18px}.sourceGrid textarea,.sourceGrid>section{scroll-margin-top:80px}}
+@media(max-width:720px){.sticky:has(.sourceTabs){padding-inline:12px}}
+
+/* Tables stay in the document; cell tools appear only beside a cell selection. */
+.editor :global(.tableWrapper).editableTable{margin:24px 0;max-width:100%;overflow-x:auto;padding-bottom:6px}
+.tableBubble{position:fixed;z-index:1010;display:flex;align-items:center;gap:2px;padding:4px;border:1px solid var(--line,#e0e3e7);border-radius:9px;background:var(--surface,#fff);color:var(--text,#333);box-shadow:0 4px 18px #0002}
+.tableBubble[hidden],.tableBubble [hidden]{display:none}
+.tableBubble>button{display:grid;place-items:center;width:32px;height:32px;min-height:0;padding:7px;border:0;border-radius:5px;background:transparent;color:inherit;cursor:pointer}
+.tableBubble svg{width:18px;height:18px}
+.tableBubble button:hover,.tableBubble button[aria-pressed=true],.tableBubble button[aria-expanded=true]{background:var(--hover,#edf1f4);color:var(--accent,#34775d)}
+.tableBubble button:focus-visible,.tableBubble input:focus-visible{outline:2px solid var(--accent,#34775d);outline-offset:1px}
+.tableBubbleDivider{height:18px;width:1px;margin:0 3px;background:var(--line,#e0e3e7)}
+.tableSwatches,.tableContextMenu{position:absolute;top:calc(100% + 6px);right:0;padding:8px;border:1px solid var(--line,#e0e3e7);border-radius:9px;background:var(--surface,#fff);color:var(--text,#333);box-shadow:0 6px 20px #0002}
+.tableSwatches{display:grid;grid-template-columns:repeat(6,24px);gap:6px}
+.tableSwatches button{width:24px;height:24px;min-height:0;border:1px solid #8883;border-radius:5px;padding:0;cursor:pointer}
+.tableSwatches button:nth-last-of-type(1){grid-column:span 5;width:auto;font:inherit;font-size:11px;background:transparent;color:inherit}
+.tableSwatches input[type=color]{width:24px;height:24px;min-height:0;padding:1px;border:1px solid var(--line,#ddd);border-radius:5px;background:transparent;cursor:pointer}
+.tableContextMenu{width:190px;max-height:min(390px,50vh);overflow:auto;display:flex;flex-direction:column;gap:2px}
+.tableContextMenu button{border:0;border-radius:4px;background:transparent;color:inherit;text-align:left;font:inherit;font-size:12px;padding:7px 9px;min-height:28px;cursor:pointer}
+.tableContextMenu button:disabled{opacity:.35;cursor:default}
+.editor :global(.tiptap td),.editor :global(.tiptap th){position:relative;min-width:48px}
+.editor :global(.tiptap .selectedCell)::after{content:"";position:absolute;inset:0;pointer-events:none;background:rgba(80,135,220,.18);box-shadow:inset 0 0 0 2px #6798dd;z-index:2}
+.editor :global(.tiptap .column-resize-handle){position:absolute;right:-1px;top:0;bottom:0;width:2px;background:var(--line,#b8c0cc);pointer-events:none;z-index:3}
+.editor :global(.tiptap.resize-cursor){cursor:col-resize}
+.cellDropMarker{position:fixed;z-index:1009;pointer-events:none;border:2px solid var(--accent,#34775d);background:color-mix(in srgb,var(--accent,#34775d) 12%,transparent);box-sizing:border-box;border-radius:2px}
+.cellDropMarker[hidden]{display:none}
+.cellMoveStatus{position:fixed;left:50%;bottom:84px;transform:translateX(-50%);z-index:1011;max-width:calc(100vw - 32px);padding:8px 12px;border-radius:6px;background:var(--surface,#fff);color:var(--text,#333);font-size:12px;box-shadow:0 3px 12px #0002;pointer-events:none}
+.cellMoveStatus:empty{display:none}
+.tableEdgeAdd{position:fixed;z-index:1008;display:grid;place-items:center;width:26px;height:26px;min-height:0;padding:0;border:1px solid var(--line,#dfe3e8);border-radius:6px;background:var(--surface,#fff);color:var(--muted,#697280);font:20px/1 sans-serif;box-shadow:0 2px 6px #0001;cursor:pointer}
+.tableEdgeAdd[hidden]{display:none}
+.tableEdgeAdd:hover{color:var(--accent,#34775d);background:var(--hover,#edf1f4)}
+.tableEdgeAdd:focus-visible{outline:2px solid var(--accent,#34775d);outline-offset:2px}
+.editor :global(.tiptap.post-prose) :is(:global(td),:global(th)){vertical-align:middle}
+
+/* Width dragging adjusts geometry without painting the selected cells or native text. */
+.editor :global(.tiptap[data-column-resizing=true] .selectedCell)::after{background:transparent;box-shadow:none}
+.editor :global(.tiptap[data-column-resizing=true])::selection,.editor :global(.tiptap[data-column-resizing=true] *)::selection{background:transparent;color:inherit}
+
+.editor :global(.tiptap.post-prose) :is(:global(td),:global(th)),.preview :is(:global(td),:global(th)),.rendered :is(:global(td),:global(th)){padding-block:2px;line-height:1.25}
+.tableContextMenu{width:max-content;min-width:240px;max-width:calc(100vw - 24px)}
+.tableContextMenu button{display:flex;align-items:center;justify-content:space-between;gap:18px}
+.tableContextMenu kbd{color:var(--muted,#697280);font-family:inherit;font-size:10px;line-height:1.4;white-space:nowrap}
+.tableBandGrip{position:fixed;z-index:1008;display:grid;place-items:center;width:20px;height:20px;min-height:0;padding:0;border:0;border-radius:4px;background:var(--surface,#fff);color:var(--muted,#697280);font:16px/1 sans-serif;cursor:grab;opacity:.7}
+.tableBandGrip[hidden]{display:none}.tableBandGrip:hover{opacity:1;background:var(--hover,#edf1f4);color:var(--accent,#34775d)}
+.tableBandGrip:active{cursor:grabbing}
+.tableMenuSection{border-top:1px solid var(--line,#e0e3e7);margin-top:3px;padding-top:3px}
+.tableMenuSection summary{padding:7px 9px;font-size:12px;cursor:pointer;list-style-position:inside}
+.tableMenuSection summary:hover{background:var(--hover,#edf1f4);border-radius:4px}
+.tableMenuSection>div{padding-left:6px;display:flex;flex-direction:column}
+.tableBorderFields{display:flex;align-items:center;gap:6px;padding:5px 9px}
+.tableBorderFields input[type=color]{width:28px;height:28px;min-height:0;padding:2px;border:1px solid var(--line,#ddd);border-radius:4px;background:transparent}
+.tableBorderFields select{font:inherit;font-size:11px;min-height:28px;border:1px solid var(--line,#ddd);border-radius:4px;color:inherit;background:var(--surface,#fff)}

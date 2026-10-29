@@ -139,9 +139,14 @@ export function htmlToMarkdown(html: string): string {
       return "\n";
     }
 
+    if (tag === "div" && node.attribs.class === "post-text-block") {
+      return `\n\n${serializeRawHtml(node)}\n\n`;
+    }
+
     // Horizontal rule
     if (tag === "hr") {
-      return "\n\n---\n\n";
+      return /^post-divider-(dashed|double|short)$/.test(node.attribs.class || "")
+        ? `\n\n<hr class="${node.attribs.class}">\n\n` : "\n\n---\n\n";
     }
 
     // Bold
@@ -261,6 +266,14 @@ export function htmlToMarkdown(html: string): string {
 
     // Tables
     if (tag === "table") {
+      const hasFormatting = (element: Element): boolean =>
+        (element.name === "td" && /text-align\s*:/i.test(element.attribs.style || ""))
+        ||
+        Object.keys(element.attribs).some(attr => ["colwidth", "data-diagonal", "data-align", "rowspan", "colspan"].includes(attr))
+        || !!element.attribs.style?.replace(/text-align\s*:\s*(left|center|right)\s*;?/gi, "").trim()
+        || element.children.some(child => isElement(child) && hasFormatting(child));
+      // GFM cannot represent merged cells, widths, colors, or diagonal headers.
+      if (hasFormatting(node)) return `\n\n${serializeRawHtml(node)}\n\n`;
       const rows: { cells: string[]; alignments: ("left" | "center" | "right" | null)[]; isHeader: boolean }[] = [];
       const traverseTable = (tableChildren: ChildNode[], inThead = false) => {
         for (const child of tableChildren) {
