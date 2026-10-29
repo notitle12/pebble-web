@@ -404,4 +404,4 @@ export const ControllableTable = Table.extend({
       update(view) { view.dom.dispatchEvent(new Event("pebble-table-selection")); },
     }) })];
   },
-}).configure({ resizable: true, lastColumnResizable: false, handleWidth: 7, cellMinWidth: 48, View: EditableTableView });
+}).configure({ resizable: true, lastColumnResizable: true, handleWidth: 7, cellMinWidth: 48, View: EditableTableView });
