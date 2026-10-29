@@ -3,7 +3,7 @@ import {parseDatabaseSchema,newDatabaseSchema} from "../database-schema";
 import {InlineDatabaseSchema} from "./inline-database-schema";
 import { Extension, Node as TiptapNode } from "@tiptap/core";
 import { NodeViewWrapper, NodeViewContent, useEditorState, ReactNodeViewRenderer, type NodeViewProps } from "@tiptap/react";
-import { Table, TableView } from "@tiptap/extension-table";
+export { ControllableTable } from "./editable-table-view";
 import { Plugin } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import type { DOMOutputSpec, Node as PMNode } from "@tiptap/pm/model";
@@ -153,39 +153,5 @@ export const AutomaticToc = Extension.create({
     return tr.docChanged ? tr.setMeta("addToHistory", false) : null;
   } })]; },
 });
-
-export const ControllableTable = Table.extend({
-  addNodeView() { return ({ node, view, HTMLAttributes, getPos }) => {
-    const base = new TableView(node, this.options.cellMinWidth, view, HTMLAttributes);
-    base.dom.classList.add(styles.editableTable);
-    const syncAlignment = (next: PMNode) => {
-      const align = ["left", "center", "right"].includes(next.attrs.align) ? next.attrs.align : "left";
-      base.dom.setAttribute("data-align", align);
-      base.contentDOM.closest("table")?.setAttribute("data-align", align);
-    };
-    syncAlignment(node);
-    const columns = document.createElement("div"), rows = document.createElement("div"), remove = document.createElement("div");
-    columns.className = styles.columnTools; rows.className = styles.rowTools; remove.className = styles.tableDelete;
-    const buttons: HTMLButtonElement[] = [];
-    const action = (command: "addColumnAfter" | "deleteColumn" | "addRowAfter" | "deleteRow" | "deleteTable") => {
-      const pos = getPos(); if (typeof pos !== "number" || !this.editor.isEditable) return;
-      const table = this.editor.state.doc.nodeAt(pos); if (!table) return;
-      let rowOffset = 0, cellOffset = 0;
-      table.forEach((row, offset, index) => { if (index === table.childCount - 1) { rowOffset = offset; row.forEach((_cell, cell, i) => { if (i === row.childCount - 1) cellOffset = cell; }); } });
-      const chain = this.editor.chain().focus().setTextSelection(pos + rowOffset + cellOffset + 4);
-      chain[command]().run();
-    };
-    const makeButton = (target: HTMLElement, text: string, label: string, command: Parameters<typeof action>[0]) => {
-      const button = document.createElement("button"); button.type = "button"; button.textContent = text; button.setAttribute("aria-label", label); button.title = label; button.contentEditable = "false";
-      button.addEventListener("mousedown", event => event.preventDefault()); button.addEventListener("click", () => action(command)); target.append(button); buttons.push(button); return button;
-    };
-    makeButton(columns, "+", "열 추가", "addColumnAfter"); const removeColumn = makeButton(columns, "−", "마지막 열 삭제", "deleteColumn");
-    makeButton(rows, "+", "행 추가", "addRowAfter"); const removeRow = makeButton(rows, "−", "마지막 행 삭제", "deleteRow"); makeButton(remove, "×", "표 삭제", "deleteTable");
-    columns.contentEditable = "false"; rows.contentEditable = "false"; remove.contentEditable = "false"; base.dom.append(columns, rows, remove);
-    const refresh = (next: PMNode) => { for (const button of buttons) button.disabled = !this.editor.isEditable; removeColumn.disabled ||= next.firstChild?.childCount === 1; removeRow.disabled ||= next.childCount === 1; };
-    refresh(node);
-    return { dom: base.dom, contentDOM: base.contentDOM, update: (next: PMNode) => { const result = base.update(next); if (result) { syncAlignment(next); refresh(next); } return result; }, ignoreMutation: mutation => !base.contentDOM.contains(mutation.target) || base.ignoreMutation(mutation), stopEvent: event => columns.contains(event.target as globalThis.Node) || rows.contains(event.target as globalThis.Node) || remove.contains(event.target as globalThis.Node) };
-  }; },
-}).configure({ resizable: false });
 
 export const InlineDatabase = structured("databaseSchema", "DB_SCHEMA");

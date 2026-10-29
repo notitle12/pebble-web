@@ -16,15 +16,33 @@ const allowedStyles: NonNullable<IOptions["allowedStyles"]> = {
     width: [/^(?:[1-9]\d?|100)%$/],
   },
 };
+// TableView stores column sizes in both colgroup styles and cell attributes.
+allowedStyles.table = { width: [/^(?:[1-9]\d{0,5})px$/, /^(?:[1-9]\d?|100)%$/], "min-width": [/^[1-9]\d{0,5}px$/] };
+allowedStyles.tr = { height: [/^(?:[2-9]\d|[1-9]\d{2}|1[01]\d{2}|1200)px$/] };
+allowedStyles.col = { width: [/^[1-9]\d{0,3}px$/], "min-width": [/^[1-9]\d{0,3}px$/] };
+
+const cellBorder = /^(?:[0-4]px\s+)?(?:solid|dashed|dotted|hidden|none)(?:\s+(?:#[0-9a-f]{3,8}|rgba?\([\d.% ,]+\)|[a-z]{3,20}))?$/i;
+for (const tag of ["td", "th"]) allowedStyles[tag] = {
+  "vertical-align": [/^(?:top|middle|bottom)$/],
+  ...Object.fromEntries(["top", "right", "bottom", "left"].map(side => [`border-${side}`, [cellBorder]])),
+};
+
 const withSafeAlignment = (attrs: sanitizeHtml.Attributes): sanitizeHtml.Attributes => {
   const result = { ...attrs };
   if (!["left", "center", "right"].includes(result["data-align"] || "")) delete result["data-align"];
   return result;
 };
 
+function safeCellAttributes(attrs: sanitizeHtml.Attributes): sanitizeHtml.Attributes {
+  const result = { ...attrs };
+  if (result["data-diagonal"] !== "backslash") delete result["data-diagonal"];
+  if (!/^(?:0|[1-9]\d{0,3})(?:,(?:0|[1-9]\d{0,3}))*$/.test(result.colwidth || "")) delete result.colwidth;
+  return result;
+}
+
 const sanitizerOptions: IOptions = {
   allowedTags: [
-    "a", "abbr", "b", "blockquote", "br", "caption", "code", "del", "details", "div", "em", "figcaption", "figure", "h1", "h2", "h3", "h4", "h5", "h6", "hr", "i", "img", "iframe", "li", "mark", "nav", "ol", "p", "pre", "s", "small", "span", "strong", "sub", "summary", "sup", "table", "tbody", "td", "th", "thead", "tr", "u", "ul",
+    "a", "abbr", "b", "blockquote", "br", "caption", "col", "colgroup", "code", "del", "details", "div", "em", "figcaption", "figure", "h1", "h2", "h3", "h4", "h5", "h6", "hr", "i", "img", "iframe", "li", "mark", "nav", "ol", "p", "pre", "s", "small", "span", "strong", "sub", "summary", "sup", "table", "tbody", "td", "th", "thead", "tr", "u", "ul",
   ],
   allowedAttributes: {
     a: ["href", "name", "target", "rel", "title"],
@@ -33,17 +51,21 @@ const sanitizerOptions: IOptions = {
     mark: ["data-color"],
     div: ["data-details-content", "data-pebble-type", "data-pebble-spec", "data-pebble-title", "data-align"],
     table: ["data-align"],
+    td: ["colwidth", "data-diagonal"],
+    th: ["colwidth", "data-diagonal"],
     pre: ["data-language", "data-align"],
     "*": ["id", "class", "style", "colspan", "rowspan", "open", "aria-label", "data-level"],
   },
   allowedStyles,
-  allowedClasses: { nav: ["post-toc"], span: [/^hl-[a-z-]+$/], pre: ["code-block", /^language-/], code: [/^language-/], "*": [] },
+  allowedClasses: { nav: ["post-toc"], div: ["post-text-block"], hr: [/^post-divider-(solid|dashed|double|short)$/], span: [/^hl-[a-z-]+$/], pre: ["code-block", /^language-/], code: [/^language-/], "*": [] },
   allowedSchemes: ["http", "https", "mailto"],
   allowedSchemesByTag: { img: ["http", "https"] },
   allowedIframeHostnames: ["www.openstreetmap.org"],
   allowIframeRelativeUrls: true,
   allowProtocolRelative: false,
   transformTags: {
+    td: (_tagName, attrs) => ({ tagName: "td", attribs: safeCellAttributes(attrs) }),
+    th: (_tagName, attrs) => ({ tagName: "th", attribs: safeCellAttributes(attrs) }),
     div: (_tagName, attrs) => {
       const type = attrs["data-pebble-type"];
       if (!type) return { tagName: "div", attribs: attrs };
