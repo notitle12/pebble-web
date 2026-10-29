@@ -2,6 +2,7 @@ import { cursorInTableCell } from "./table-tools.ts";
 import { Plugin, PluginKey, type EditorState, type Transaction } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
+import { resizeTableSegments } from "./table-resize.ts";
 
 export function setTableRowHeight(state: EditorState, pos: number, height: number): Transaction | null {
   const row = state.doc.nodeAt(pos);
@@ -21,22 +22,15 @@ export function normalizeRowHeights(measured: number[]) {
   return heights;
 }
 
-/** Only the two rows sharing an internal boundary exchange height. */
-export function pairedRowHeights(measured: number[], boundary: number, delta: number, minimums = measured.map(() => 20)) {
+export function resizeRowHeights(measured: number[], boundary: number, delta: number, minimums = measured.map(() => 20)) {
   const heights = normalizeRowHeights(measured);
-  if (!heights || !Number.isInteger(boundary) || boundary < 0 || boundary >= heights.length - 1 || !Number.isFinite(delta)
-    || minimums.length !== heights.length || minimums.some(height => !Number.isFinite(height) || height < 0)) return null;
+  if (!heights || minimums.length !== heights.length || minimums.some(height => !Number.isFinite(height) || height < 0)) return null;
   // Never increase a minimum beyond the already rendered height because of subpixel rounding.
-  const minimum = (index: number) => Math.max(20, Math.min(heights[index], Math.ceil(minimums[index])));
-  const lower = Math.max(minimum(boundary) - heights[boundary], heights[boundary + 1] - 1200);
-  const upper = Math.min(heights[boundary + 1] - minimum(boundary + 1), 1200 - heights[boundary]);
-  const change = Math.max(lower, Math.min(upper, Math.round(delta)));
-  heights[boundary] += change; heights[boundary + 1] -= change;
-  return heights;
+  return resizeTableSegments(heights, boundary, delta, heights.map((height, index) => Math.max(20, Math.min(height, Math.ceil(minimums[index])))), 1200);
 }
 
-export function resizeTableRowBoundary(state: EditorState, tablePos: number, measured: number[], boundary: number, delta: number, minimums?: number[]): Transaction | null {
-  const table = state.doc.nodeAt(tablePos), heights = pairedRowHeights(measured, boundary, delta, minimums);
+export function freezeTableRowHeights(state: EditorState, tablePos: number, measured: number[]): Transaction | null {
+  const table = state.doc.nodeAt(tablePos), heights = normalizeRowHeights(measured);
   if (table?.type.spec.tableRole !== "table" || !heights || table.childCount !== heights.length) return null;
   const tr = state.tr;
   // Freeze the other rendered heights so browser table layout cannot redistribute spare space.
@@ -44,6 +38,11 @@ export function resizeTableRowBoundary(state: EditorState, tablePos: number, mea
     if (row.attrs.height !== heights[index]) tr.setNodeMarkup(tablePos + 1 + offset, undefined, { ...row.attrs, height: heights[index] });
   });
   return tr.docChanged ? tr : null;
+}
+
+export function resizeTableRowBoundary(state: EditorState, tablePos: number, measured: number[], boundary: number, delta: number, minimums?: number[]): Transaction | null {
+  const heights = resizeRowHeights(measured, boundary, delta, minimums);
+  return heights ? freezeTableRowHeights(state, tablePos, heights) : null;
 }
 
 type Resize = { tablePos: number; positions: number[]; boundary: number; startY: number; initial: number[]; minimums: number[]; heights: number[]; cellPos: number; moved: boolean };
@@ -70,7 +69,7 @@ function boundary(view: EditorView, event: PointerEvent) {
   // Column resizing takes priority at intersections of horizontal and vertical borders.
   if (Math.abs(event.clientX - cellRect.right) < 7) return null;
   const rows = Array.from(table.rows);
-  const row = rows.slice(0, -1).find(element => Math.abs(event.clientY - element.getBoundingClientRect().bottom) <= 5);
+  const row = rows.find(element => Math.abs(event.clientY - element.getBoundingClientRect().bottom) <= 5);
   if (!row) return null;
   const pos = view.posAtDOM(row, 0) - 1;
   return view.state.doc.nodeAt(pos)?.type.spec.tableRole === "row" ? { table, rows, index: rows.indexOf(row) } : null;
@@ -121,19 +120,22 @@ export function tableRowResizing() {
       const move = (event: PointerEvent) => {
         const active = key.getState(view.state); if (!active) return;
         if (!view.editable) { cancel(); return; }
-        if (!event.buttons) { finish(); return; }
+        if (!event.buttons) { finish(event); return; }
         event.preventDefault(); view.dom.style.cursor = "row-resize";
-        const heights = pairedRowHeights(active.initial, active.boundary, event.clientY - active.startY, active.minimums);
+        const initial = normalizeRowHeights(active.initial)!;
+        const heights = resizeRowHeights(active.heights, active.boundary, initial[active.boundary] + event.clientY - active.startY - active.heights[active.boundary], active.minimums);
         if (heights) view.dispatch(view.state.tr.setMeta(key, { ...active, moved: active.moved || Math.abs(event.clientY - active.startY) > 3, heights }).setMeta("addToHistory", false));
       };
-      const finish = () => {
+      const finish = (event?: PointerEvent) => {
         const active = key.getState(view.state); if (!active) return;
         const initial = normalizeRowHeights(active.initial)!;
-        const changed = active.heights.some((height, index) => height !== initial[index]);
-        const tr = !view.editable ? null : active.moved
-          ? changed ? resizeTableRowBoundary(view.state, active.tablePos, active.initial, active.boundary, active.heights[active.boundary] - initial[active.boundary], active.minimums) : null
+        const heights = event ? resizeRowHeights(active.heights, active.boundary, initial[active.boundary] + event.clientY - active.startY - active.heights[active.boundary], active.minimums)! : active.heights;
+        const moved = active.moved || !!event && Math.abs(event.clientY - active.startY) > 3;
+        const changed = heights.some((height, index) => height !== initial[index]);
+        const tr = !view.editable ? null : moved
+          ? changed ? freezeTableRowHeights(view.state, active.tablePos, heights) : null
           : cursorInTableCell(view.state.tr, active.cellPos);
-        if (tr) { view.dispatch(tr.setMeta(key, null)); if (!active.moved) view.focus(); } else cancel();
+        if (tr) { view.dispatch(tr.setMeta(key, null)); if (!moved) view.focus(); } else cancel();
         view.dom.style.cursor = "";
       };
       const escape = (event: KeyboardEvent) => { if (event.key === "Escape") cancel(); };
