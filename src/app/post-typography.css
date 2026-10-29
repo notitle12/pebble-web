@@ -21,3 +21,23 @@
 
 .project-reading-shell :is(.project-document-background,.project-document-tech-stack)>h3{font-size:14px;font-weight:500;line-height:1.6;color:var(--muted);margin:0 0 12px}
 .project-reading-shell .project-document-section .post-body{padding-top:0}
+
+:is(.post-prose,.post-rich-content) .post-text-block{padding:18px 22px;border:1px solid var(--line,#dfe3e8);border-radius:10px;background:var(--surface,#f7f8fa);margin-block:1em}
+:is(.post-prose,.post-rich-content) .post-text-block>:first-child{margin-top:0}
+:is(.post-prose,.post-rich-content) .post-text-block>:last-child{margin-bottom:0}
+:is(.post-prose,.post-rich-content) hr[class*="post-divider-"]{border:0;border-top:1px solid var(--line,#dfe3e8);margin:2em 0}
+:is(.post-prose,.post-rich-content) hr.post-divider-dashed{border-top:2px dashed var(--line,#dfe3e8)}
+:is(.post-prose,.post-rich-content) hr.post-divider-double{border-top:4px double var(--line,#dfe3e8)}
+:is(.post-prose,.post-rich-content) hr.post-divider-short{width:25%;margin-inline:auto;border-top-width:2px}
+
+/* Match paragraphs by type: column resize widgets are temporarily appended after them. */
+:is(.post-prose,.post-rich-content,.tiptap) :is(td,th)[data-diagonal="backslash"][data-diagonal]{min-width:80px;height:auto;background-image:linear-gradient(to top right,transparent calc(50% - .6px),var(--muted,#9aa4b2) 50%,transparent calc(50% + .6px));vertical-align:top}
+:is(.post-prose,.post-rich-content,.tiptap) :is(td,th)[data-diagonal="backslash"][data-diagonal]>p:first-of-type{text-align:right;margin:0;min-height:1.2em}
+:is(.post-prose,.post-rich-content,.tiptap) :is(td,th)[data-diagonal="backslash"][data-diagonal]>p:last-of-type{text-align:left;margin:0;min-height:1.2em}
+:is(.post-prose.post-prose,.post-rich-content.post-rich-content) :is(td,th){vertical-align:middle}
+
+/* Compact table rhythm is shared by the editor and published content. */
+:is(.post-prose.post-prose,.post-rich-content.post-rich-content) :is(td,th){padding-block:2px;line-height:1.25}
+:is(.post-prose.post-prose,.post-rich-content.post-rich-content) :is(td,th)>p{margin-block:0;min-height:1.25em;line-height:1.25}
+:is(.post-prose.post-prose,.post-rich-content.post-rich-content) :is(td,th)>p+p{margin-top:0}
+:is(.post-prose.post-prose,.post-rich-content.post-rich-content) :is(td,th)>p:empty{min-height:1.25em}
