@@ -228,6 +228,7 @@
 .editor :global(.tiptap .selectedCell)::after{content:"";position:absolute;inset:0;pointer-events:none;background:rgba(80,135,220,.18);box-shadow:inset 0 0 0 2px #6798dd;z-index:2}
 .editor :global(.tiptap .column-resize-handle){position:absolute;right:-1px;top:0;bottom:0;width:2px;background:var(--line,#b8c0cc);pointer-events:none;z-index:3}
 .editor :global(.tiptap.resize-cursor){cursor:col-resize}
+.editor :global(.tiptap tr[data-row-resizing=true]){height:var(--pebble-row-preview-height)!important}
 .cellDropMarker{position:fixed;z-index:1009;pointer-events:none;border:2px solid var(--accent,#34775d);background:color-mix(in srgb,var(--accent,#34775d) 12%,transparent);box-sizing:border-box;border-radius:2px}
 .cellDropMarker[hidden]{display:none}
 .cellMoveStatus{position:fixed;left:50%;bottom:84px;transform:translateX(-50%);z-index:1011;max-width:calc(100vw - 32px);padding:8px 12px;border-radius:6px;background:var(--surface,#fff);color:var(--text,#333);font-size:12px;box-shadow:0 3px 12px #0002;pointer-events:none}
