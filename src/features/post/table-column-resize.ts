@@ -3,6 +3,7 @@ import type { EditorView } from "@tiptap/pm/view";
 import type { Node as PMNode } from "@tiptap/pm/model";
 import { Plugin, type EditorState } from "@tiptap/pm/state";
 import { columnResizingPluginKey, TableMap } from "@tiptap/pm/tables";
+import { resizeTableSegments } from "./table-resize.ts";
 
 /** Give every column its current rendered width before changing one of them. */
 export function freezeTableColumnWidths(state: EditorState, tablePos: number, measured: number[]) {
@@ -31,20 +32,18 @@ export function normalizeColumnWidths(measured: number[]) {
   return widths;
 }
 
-export function pairedColumnWidths(measured: number[], boundary: number, delta: number) {
-  if (!Number.isInteger(boundary) || boundary < 0 || boundary >= measured.length - 1 || !Number.isFinite(delta) || measured.some(width => !Number.isFinite(width) || width <= 0)) return null;
+export function resizeColumnWidths(measured: number[], boundary: number, delta: number) {
+  if (measured.some(width => !Number.isFinite(width) || width <= 0)) return null;
   const widths = normalizeColumnWidths(measured);
-  const change = Math.max(48 - widths[boundary], Math.min(widths[boundary + 1] - 48, Math.round(delta)));
-  widths[boundary] += change; widths[boundary + 1] -= change;
-  return widths;
+  return resizeTableSegments(widths, boundary, delta, widths.map(() => 48));
 }
 
 export function resizeTableBoundary(state: EditorState, tablePos: number, measured: number[], boundary: number, delta: number) {
-  const widths = pairedColumnWidths(measured, boundary, delta);
+  const widths = resizeColumnWidths(measured, boundary, delta);
   return widths ? freezeTableColumnWidths(state, tablePos, widths) : null;
 }
 
-type ResizeSession = { doc: PMNode; tablePos: number; table: HTMLTableElement; colgroup: HTMLTableColElement; widths: number[]; boundary: number; startX: number; delta: number };
+type ResizeSession = { doc: PMNode; tablePos: number; table: HTMLTableElement; colgroup: HTMLTableColElement; initial: number[]; widths: number[]; boundary: number; startX: number; moved: boolean };
 export function stableTableColumnResizing() {
   let session: ResizeSession | null = null;
   const restore = (view: EditorView, active: ResizeSession) => {
@@ -58,7 +57,7 @@ export function stableTableColumnResizing() {
       const $cell = view.state.doc.resolve(resize.activeHandle), tableNode = $cell.node(-1), map = TableMap.get(tableNode);
       const start = $cell.start(-1), boundary = map.colCount(resize.activeHandle - start) + $cell.nodeAfter!.attrs.colspan - 1;
       const cellDOM = view.nodeDOM(resize.activeHandle) as Element | null;
-      if (boundary >= map.width - 1 || !cellDOM || Math.abs(event.clientX - cellDOM.getBoundingClientRect().right) > 8) {
+      if (!cellDOM || Math.abs(event.clientX - cellDOM.getBoundingClientRect().right) > 8) {
         view.dispatch(view.state.tr.setMeta(columnResizingPluginKey, { setHandle: -1 }).setMeta("addToHistory", false));
         return false;
       }
@@ -67,7 +66,8 @@ export function stableTableColumnResizing() {
       if (!table || !colgroup) return false;
       const measured = Array.from(colgroup.children).map(col => col.getBoundingClientRect().width);
       if (measured.length !== map.width || measured.some(width => !Number.isFinite(width) || width <= 0)) return false;
-      session = { doc: view.state.doc, tablePos: start - 1, table, colgroup, widths: normalizeColumnWidths(measured), boundary, startX: event.clientX, delta: 0 };
+      const widths = normalizeColumnWidths(measured);
+      session = { doc: view.state.doc, tablePos: start - 1, table, colgroup, initial: widths, widths, boundary, startX: event.clientX, moved: false };
       event.preventDefault();
       view.dispatch(view.state.tr.setMeta(columnResizingPluginKey, { setDragging: { startX: event.clientX, startWidth: session.widths[boundary] } }).setMeta("addToHistory", false));
       return true;
@@ -84,8 +84,10 @@ export function stableTableColumnResizing() {
       const active = session; session = null;
       if (!active || view.isDestroyed) return;
       const delta = event.clientX - active.startX;
-      const tr = view.editable && view.state.doc === active.doc && Math.abs(delta) > 2
-        ? resizeTableBoundary(view.state, active.tablePos, active.widths, active.boundary, delta) : null;
+      const widths = resizeColumnWidths(active.widths, active.boundary, active.initial[active.boundary] + delta - active.widths[active.boundary])!;
+      const changed = widths.some((width, index) => width !== active.initial[index]);
+      const tr = view.editable && view.state.doc === active.doc && (active.moved || Math.abs(delta) > 2) && changed
+        ? freezeTableColumnWidths(view.state, active.tablePos, widths) : null;
       if (tr) view.dispatch(tr.setMeta(columnResizingPluginKey, { setDragging: null }));
       else {
         restore(view, active);
@@ -96,8 +98,13 @@ export function stableTableColumnResizing() {
       const active = session; if (!active) return;
       if (!view.editable || view.state.doc !== active.doc) { cancel(); return; }
       if (!event.buttons) { finish(event); return; }
-      event.preventDefault(); active.delta = event.clientX - active.startX;
-      const widths = pairedColumnWidths(active.widths, active.boundary, active.delta)!;
+      event.preventDefault();
+      const delta = event.clientX - active.startX;
+      active.moved ||= Math.abs(delta) > 2;
+      // Use the current total while following the pointer's absolute boundary position.
+      // Returning from an expansion gives space to the neighbor instead of pulling the outer edge in.
+      const widths = resizeColumnWidths(active.widths, active.boundary, active.initial[active.boundary] + delta - active.widths[active.boundary])!;
+      active.widths = widths;
       // Preview only the colgroup. Commit one undoable document transaction on release.
       Array.from(active.colgroup.children).forEach((col, index) => {
         (col as HTMLElement).style.width = `${widths[index]}px`; (col as HTMLElement).style.minWidth = "";
