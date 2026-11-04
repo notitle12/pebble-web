@@ -510,7 +510,7 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
             </> : tool === "text" ? <div className={styles.textSettings} data-image-text-control="">
               <label className={styles.rangeLabel}>글자 크기 <input type="range" min="16" max="160" step="2" value={textFontSize} onChange={event => {const fontSize=Number(event.currentTarget.value);setTextFontSize(fontSize);if(textDraftRef.current)updateTextDraft({...textDraftRef.current,fontSize});}} disabled={saving} /></label>
               <label className={styles.colorLabel}>글자색 <input type="color" value={textColor} onChange={event => {const color=event.currentTarget.value;setTextColor(color);if(textDraftRef.current)updateTextDraft({...textDraftRef.current,color});}} disabled={saving} /></label>
-            </div> : tool === "pen" ? <>
+            </div> : tool === "eraser" ? <label className={styles.rangeLabel}>지우개 크기 <input type="range" min="4" max="128" step="2" value={eraserWidth} onChange={event=>setEraserWidth(Number(event.currentTarget.value))} disabled={saving}/></label> : tool === "pen" ? <>
               <label className={styles.rangeLabel}>펜 굵기 <input type="range" min="1" max="64" value={penWidth} onChange={event => setPenWidth(Number(event.currentTarget.value))} disabled={saving} /></label>
               <label className={styles.colorLabel}>펜 색상 <input type="color" value={penColor} onChange={event => setPenColor(event.currentTarget.value)} disabled={saving} /></label>
             </> : null}
