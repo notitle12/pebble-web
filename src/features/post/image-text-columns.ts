@@ -1,3 +1,4 @@
+import { closeHistory } from "@tiptap/pm/history";
 import { Node, mergeAttributes } from "@tiptap/core";
 
 import {safeColumnRatio,columnRatioStyle,columnLeftPercent,ratioFromPercent,ratioAtPointer} from "./column-ratio.ts";
@@ -31,7 +32,7 @@ export const ImageTextLayout = Node.create({
       const sync=()=>{showRatio(node.attrs.ratio);separator.tabIndex=editor.isEditable?0:-1;separator.hidden=!editor.isEditable;};
       const commit=(ratio:string)=>{
         const pos=getPos();
-        if(typeof pos==="number"&&editor.isEditable&&!editor.isDestroyed&&safeColumnRatio(node.attrs.ratio)!==ratio)editor.view.dispatch(editor.state.tr.setNodeMarkup(pos,undefined,{...node.attrs,ratio}));
+        if(typeof pos==="number"&&editor.isEditable&&!editor.isDestroyed&&safeColumnRatio(node.attrs.ratio)!==ratio)editor.view.dispatch(closeHistory(editor.state.tr).setNodeMarkup(pos,undefined,{...node.attrs,ratio}));
         else sync();
       };
       const cancel=()=>{drag=null;delete dom.dataset.resizing;sync();};
@@ -52,6 +53,9 @@ export const ImageTextLayout = Node.create({
       });
       separator.addEventListener("pointercancel",cancel);separator.addEventListener("lostpointercapture",()=>{if(drag)cancel();});
       separator.addEventListener("keydown",event=>{
+        if((event.ctrlKey||event.metaKey)&&!event.altKey&&(event.key.toLowerCase()==="z"||event.code==="KeyZ")&&!event.isComposing){
+          event.preventDefault();event.stopPropagation();if(editor.isEditable){if(event.shiftKey)editor.commands.redo();else editor.commands.undo();}return;
+        }
         if(event.key==="Escape"&&drag){event.preventDefault();event.stopPropagation();cancel();return;}
         if(!editor.isEditable||!["ArrowLeft","ArrowRight","Home","End"].includes(event.key))return;
         event.preventDefault();event.stopPropagation();const step=event.shiftKey?10:2;
