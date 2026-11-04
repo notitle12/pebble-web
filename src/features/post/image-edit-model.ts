@@ -1,6 +1,6 @@
 export type CropOperation = { type: "crop"; x: number; y: number; width: number; height: number };
 export type MosaicOperation = { type: "mosaic"; x: number; y: number; width: number; height: number; blockSize: number };
-export type TextOperation = { type: "text"; text: string; x: number; y: number; fontSize: number; color: string; maxWidth?: number };
+export type TextOperation = { type: "text"; id?: string; text: string; x: number; y: number; fontSize: number; color: string; maxWidth?: number };
 export type PenPoint = { x: number; y: number };
 export type PenOperation = { type: "pen"; points: PenPoint[]; color: string; width: number };
 export type ImageEditOperation = CropOperation | MosaicOperation | TextOperation | PenOperation;
@@ -82,4 +82,21 @@ export function imageTextLines(text:string,maxWidth:number,measure:(text:string)
   lines.push(line);
  }
  return lines;
+}
+
+export type PlacedImageText={index:number;operation:TextOperation;sourceSize:PixelSize;offsetX:number;offsetY:number;x:number;y:number;width:number;height:number};
+/** Track text through later crops so its editing target stays on the visible glyphs. */
+export function placedImageTexts(operations:ImageEditOperation[],sourceSize:PixelSize,measure:(text:string,fontSize:number)=>number):PlacedImageText[]{
+ const placed:PlacedImageText[]=[];let size=sourceSize;
+ operations.forEach((operation,index)=>{
+  if(operation.type==='crop'){size={width:operation.width,height:operation.height};return;}
+  if(operation.type!=='text')return;
+  const width=Math.max(1,Math.min(operation.maxWidth??size.width,size.width-operation.x));
+  const lines=imageTextLines(operation.text,width,text=>measure(text,operation.fontSize));
+  const height=lines.length*Math.round(operation.fontSize*1.25);
+  let offsetX=0,offsetY=0;
+  for(const later of operations.slice(index+1))if(later.type==='crop'){offsetX+=later.x;offsetY+=later.y;}
+  placed.push({index,operation,sourceSize:{...size},offsetX,offsetY,x:operation.x-offsetX,y:operation.y-offsetY,width,height});
+ });
+ return placed.filter(region=>region.x+region.width>0&&region.y+region.height>0&&region.x<size.width&&region.y<size.height);
 }
