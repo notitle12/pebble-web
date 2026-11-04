@@ -622,7 +622,7 @@ export function RichBodyEditor({ blocks, onChangeBlocks, onSplitViewChange, uplo
       <button type="button" role="menuitem" onClick={() => openForm("html")}>HTML</button>
       <button type="button" role="menuitem" onClick={() => insertAction(() => insertBlock("CODE"))}>코드</button>
       <button type="button" role="menuitem" onClick={() => insertAction(() => insertBlock("ARCHITECTURE"))}>아키텍처</button>
-      <button type="button" role="menuitem" onClick={() => insertAction(() => insertBlock("DB_SCHEMA"))}>DB 설계 · ERD · 테이블 명세</button>
+      <button type="button" role="menuitem" aria-label="DB 설계 · ERD · 테이블 명세" title="ERD · 테이블 명세" onClick={() => insertAction(() => insertBlock("DB_SCHEMA"))}>DB 설계</button>
       <button type="button" role="menuitem" onClick={addToggle}>접는 글</button>
     </div>}
 
