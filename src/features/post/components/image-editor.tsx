@@ -3,7 +3,7 @@
 import { createPortal } from "react-dom";
 import { useCallback, useEffect, useRef, useState } from "react";
 import styles from "./image-editor.module.css";
-import { clampCropRect, createMosaicOperation, createPenOperation, createTextOperation, safeBitmapSize, type CropOperation, type ImageEditOperation, type PenPoint, type TextOperation } from "../image-edit-model";
+import { adjustCrop, fullImageCrop, hasCropChanges, clampCropRect, createMosaicOperation, createPenOperation, createTextOperation, safeBitmapSize, type CropOperation, type CropHandle, type ImageEditOperation, type PenPoint, type TextOperation } from "../image-edit-model";
 
 type ActionName = "crop" | "mosaic" | "text" | "pen" | "undo" | "redo" | "check" | "cancel";
 const actionPaths: Record<ActionName, string[]> = {
@@ -116,6 +116,9 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
   const [loadError, setLoadError] = useState("");
   const [operations, setOperations] = useState<ImageEditOperation[]>([]);
   const [cursor, setCursor] = useState(0);
+  const [cropRect, setCropRect] = useState<CropOperation | null>(null);
+  const [cropRedo, setCropRedo] = useState<CropOperation | null>(null);
+  const cropDrag = useRef<{ handle: CropHandle; rect: CropOperation; x: number; y: number } | null>(null);
   const [selection, setSelection] = useState<CropSelection | null>(null);
   const [pointerStart, setPointerStart] = useState<{ x: number; y: number } | null>(null);
   const [saving, setSaving] = useState(false);
@@ -183,6 +186,8 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
     if (workingRef.current) { workingRef.current.width = 0; workingRef.current.height = 0; }
     workingRef.current = working;
     setCanvasSize({ width: working.width, height: working.height });
+    setCropRect(fullImageCrop(working));
+    setCropRedo(null);
     const display = displayRef.current;
     display.width = working.width;
     display.height = working.height;
@@ -209,15 +214,13 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
     return () => window.removeEventListener("keydown", keydown);
   }, []);
 
-  const addCrop = () => {
-    if (!selection || !workingRef.current) return;
-    const crop = cropBounds(selection, workingRef.current.width, workingRef.current.height);
-    if (!crop) { setNotice("자르기 영역을 조금 더 크게 선택하세요."); return; }
-    setOperations(previous => [...previous.slice(0, cursor), crop]);
-    setCursor(cursor + 1);
-    setSelection(null);
-    setPointerStart(null);
-    setNotice("자르기를 적용했습니다. 실행 취소로 되돌릴 수 있습니다.");
+  const selectTool = (next: Tool) => {
+    if (next === tool) return;
+    if (tool === "crop" && hasCropChanges(cropRect, canvasSize)) {
+      setOperations(previous => [...previous.slice(0, cursor), cropRect!]);
+      setCursor(cursor + 1);
+    }
+    cropDrag.current = null; setCropRedo(null); setSelection(null); setPointerStart(null); setTool(next); setNotice("");
   };
   const addMosaic = () => {
     if (!selection || !workingRef.current) return;
@@ -229,8 +232,8 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
     setPointerStart(null);
     setNotice("모자이크를 적용했습니다. 실행 취소로 되돌릴 수 있습니다.");
   };
-  const undo = () => { setCursor(value => Math.max(0, value - 1)); setSelection(null); setNotice(""); };
-  const redo = () => { setCursor(value => Math.min(operations.length, value + 1)); setSelection(null); setNotice(""); };
+  const undo = () => { if (tool === "crop" && hasCropChanges(cropRect, canvasSize)) { setCropRedo(cropRect); setCropRect(fullImageCrop(canvasSize)); return; } setCursor(value => Math.max(0, value - 1)); setSelection(null); setNotice(""); };
+  const redo = () => { if (cropRedo) { setCropRect(cropRedo); setCropRedo(null); return; } setCursor(value => Math.min(operations.length, value + 1)); setSelection(null); setNotice(""); };
 
   const pointerCoordinates = (event: React.PointerEvent<HTMLDivElement>) => {
     const canvas = displayRef.current;
@@ -241,8 +244,20 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
       y: Math.max(0, Math.min(canvas.height, (event.clientY - rect.top) * canvas.height / Math.max(1, rect.height))),
     };
   };
+  const startCropDrag = (event: React.PointerEvent<HTMLElement>, handle: CropHandle) => {
+    if (saving || !cropRect) return;
+    const point = pointerCoordinates(event as React.PointerEvent<HTMLDivElement>);
+    if (!point) return;
+    event.preventDefault(); event.stopPropagation(); event.currentTarget.setPointerCapture(event.pointerId);
+    cropDrag.current = {handle, rect: cropRect, ...point}; setCropRedo(null);
+  };
+  const cropKeys = (event: React.KeyboardEvent<HTMLElement>, handle: CropHandle) => {
+    if (saving || !cropRect || !["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(event.key)) return;
+    event.preventDefault(); event.stopPropagation(); const step = event.shiftKey ? 10 : 1;
+    setCropRect(adjustCrop(cropRect, handle, event.key === "ArrowLeft" ? -step : event.key === "ArrowRight" ? step : 0, event.key === "ArrowUp" ? -step : event.key === "ArrowDown" ? step : 0, canvasSize)); setCropRedo(null);
+  };
   const pointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (!workingRef.current || saving) return;
+    if (!workingRef.current || saving || tool === "crop") return;
     const point = pointerCoordinates(event);
     if (!point) return;
     if (tool === "text") {
@@ -263,6 +278,11 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
     setNotice("");
   };
   const pointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (cropDrag.current) {
+      const point = pointerCoordinates(event), drag = cropDrag.current;
+      if (point) setCropRect(adjustCrop(drag.rect, drag.handle, point.x-drag.x, point.y-drag.y, canvasSize));
+      return;
+    }
     if (tool === "pen" && strokePreview) {
       const point = pointerCoordinates(event);
       if (point) setStrokePreview(previous => {
@@ -278,6 +298,7 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
     if (point) setSelection({ startX: pointerStart.x, startY: pointerStart.y, endX: point.x, endY: point.y });
   };
   const pointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (cropDrag.current) { pointerMove(event); cropDrag.current = null; return; }
     if (tool === "pen" && strokePreview && workingRef.current) {
       const point = pointerCoordinates(event);
       const points = point ? [...strokePreview, point] : strokePreview;
@@ -296,8 +317,10 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
   };
 
   const apply = async () => {
-    const canvas = workingRef.current;
-    if (!canvas || saving) return;
+    if (!bitmap || saving) return;
+    const exported = operations.slice(0, cursor);
+    if (tool === "crop" && hasCropChanges(cropRect, canvasSize)) exported.push(cropRect!);
+    const canvas = replayHistory(bitmap, exported, exported.length);
     setSaving(true);
     setSaveError("");
     try {
@@ -307,36 +330,40 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : "이미지 저장에 실패했습니다.");
       setSaving(false);
-    }
+    } finally { canvas.width = 0; canvas.height = 0; }
   };
 
   if (!mounted) return null;
   const current = workingRef.current;
-  const bounds = selection && current ? cropBounds(selection, current.width, current.height) : null;
+  const bounds = tool === "crop" ? cropRect : selection && current ? cropBounds(selection, current.width, current.height) : null;
+  const pendingCrop = tool === "crop" && hasCropChanges(cropRect, canvasSize);
   return createPortal(<div className={styles.backdrop} onMouseDown={event => { if (event.target === event.currentTarget) requestCancel(); }}>
     <section ref={dialogRef} inert={confirmCancel} className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby="image-editor-title" aria-describedby="image-editor-help" tabIndex={-1}>
       <header className={styles.header}>
-        <div><h2 id="image-editor-title">이미지 편집</h2><p id="image-editor-help">{tool === "text" ? "문구와 모양을 정한 뒤 이미지 위치를 클릭해 배치하세요." : tool === "pen" ? "색과 굵기를 정한 뒤 이미지 위에 그리세요." : "영역을 드래그해 선택하고 도구를 적용하세요. 원본은 편집 중 보존됩니다."}</p></div>
+        <div><h2 id="image-editor-title">이미지 편집</h2><p id="image-editor-help">{tool === "text" ? "문구와 모양을 정한 뒤 이미지 위치를 클릭해 배치하세요." : tool === "pen" ? "색과 굵기를 정한 뒤 이미지 위에 그리세요." : tool === "crop" ? "테두리의 조절점을 움직여 남길 영역을 정하세요." : "모자이크할 영역을 드래그해 선택하세요."}</p></div>
 
       </header>
       {loadError ? <div className={styles.error} role="alert">{loadError}</div> : !bitmap ? <p className={styles.status} role="status">이미지를 불러오는 중…</p> : <>
         <div className={styles.toolStrip} role="toolbar" aria-label="이미지 편집 도구">
           <div className={styles.toolChoices}>
-            {([["crop", "자르기"], ["mosaic", "모자이크"], ["text", "글씨"], ["pen", "펜"]] as const).map(([value, label]) => <button key={value} type="button" className="editor-action" aria-label={label} aria-pressed={tool === value} onClick={() => { setTool(value); setSelection(null); }} disabled={saving}><ActionIcon name={value}/><span>{label}</span></button>)}
+            {([["crop", "자르기"], ["mosaic", "모자이크"], ["text", "글씨"], ["pen", "펜"]] as const).map(([value, label]) => <button key={value} type="button" className="editor-action" aria-label={label} aria-pressed={tool === value} onClick={() => selectTool(value)} disabled={saving}><ActionIcon name={value}/><span>{label}</span></button>)}
           </div>
           <div className={styles.historyActions}>
-            <button type="button" className="editor-action" title="실행 취소" aria-label="실행 취소" onClick={undo} disabled={cursor === 0 || saving}><ActionIcon name="undo"/></button>
-            <button type="button" className="editor-action" title="다시 실행" aria-label="다시 실행" onClick={redo} disabled={cursor >= operations.length || saving}><ActionIcon name="redo"/></button>
+            <button type="button" className="editor-action" title="실행 취소" aria-label="실행 취소" onClick={undo} disabled={cursor === 0 && !pendingCrop || saving}><ActionIcon name="undo"/></button>
+            <button type="button" className="editor-action" title="다시 실행" aria-label="다시 실행" onClick={redo} disabled={cursor >= operations.length && !cropRedo || saving}><ActionIcon name="redo"/></button>
           </div>
         </div>
-        <div className={styles.stage} onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={() => { setPointerStart(null); setStrokePreview(null); }}>
+        <div className={styles.stage} onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={() => { if (cropDrag.current) setCropRect(cropDrag.current.rect); cropDrag.current = null; setPointerStart(null); setStrokePreview(null); }}>
           <canvas ref={displayRef} className={styles.canvas} aria-label="편집할 이미지" />
-          {bounds && current && <div className={styles.cropMarquee} aria-hidden="true" style={{ left: `${bounds.x / current.width * 100}%`, top: `${bounds.y / current.height * 100}%`, width: `${bounds.width / current.width * 100}%`, height: `${bounds.height / current.height * 100}%` }} />}
+          {bounds && current && (tool === "crop" ? <div className={styles.cropFrame} role="group" aria-label="자르기 영역 이동" tabIndex={0} onPointerDown={event => startCropDrag(event, "move")} onKeyDown={event => cropKeys(event, "move")} style={{left:`${bounds.x/current.width*100}%`,top:`${bounds.y/current.height*100}%`,width:`${bounds.width/current.width*100}%`,height:`${bounds.height/current.height*100}%`}}>
+            <div className={styles.cropGrid} aria-hidden="true"/>
+            {([["nw","왼쪽 위"],["n","위"],["ne","오른쪽 위"],["e","오른쪽"],["se","오른쪽 아래"],["s","아래"],["sw","왼쪽 아래"],["w","왼쪽"]] as const).map(([handle,label])=><button key={handle} type="button" className={styles.cropHandle} data-handle={handle} aria-label={`자르기 ${label} 조절점`} disabled={saving} onPointerDown={event=>startCropDrag(event,handle)} onKeyDown={event=>cropKeys(event,handle)}/>)}
+          </div> : <div className={styles.cropMarquee} aria-hidden="true" style={{ left: `${bounds.x / current.width * 100}%`, top: `${bounds.y / current.height * 100}%`, width: `${bounds.width / current.width * 100}%`, height: `${bounds.height / current.height * 100}%` }} />)}
           {strokePreview?.length && current && <svg className={styles.penPreview} viewBox={`0 0 ${current.width} ${current.height}`} preserveAspectRatio="none" aria-hidden="true"><polyline className={styles.penLine} points={strokePreview.map(point => `${point.x},${point.y}`).join(" ")} fill="none" stroke={penColor} strokeWidth={penWidth} strokeLinecap="round" strokeLinejoin="round" /></svg>}
         </div>
         <div className={styles.toolbar}>
           <div className={styles.actions}>
-            {tool === "crop" ? <button type="button" className="editor-action" onClick={addCrop} disabled={!bounds || saving}><ActionIcon name="check"/><span>자르기 적용</span></button> : tool === "mosaic" ? <>
+            {tool === "crop" ? <span className={styles.dimensions}>남길 영역 {bounds?.width} × {bounds?.height}px</span> : tool === "mosaic" ? <>
               <label className={styles.rangeLabel}>모자이크 크기 <input type="range" min="4" max="48" step="2" value={mosaicBlockSize} onChange={event => setMosaicBlockSize(Number(event.currentTarget.value))} disabled={saving} /></label>
               <button type="button" className="editor-action" onClick={addMosaic} disabled={!bounds || saving}><ActionIcon name="check"/><span>모자이크 적용</span></button>
             </> : tool === "text" ? <>
@@ -356,7 +383,7 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
       <footer className={styles.footer}>
         {saving && <span className={styles.status} role="status">편집한 이미지를 저장하는 중…</span>}
         <button type="button" className="editor-action" onClick={requestCancel} disabled={saving}><ActionIcon name="cancel"/><span>취소</span></button>
-        <button type="button" className={`editor-action ${styles.primary}`} onClick={() => void apply()} disabled={!bitmap || !canvasSize.width || saving || cursor === 0}><ActionIcon name="check"/><span>저장</span></button>
+        <button type="button" className={`editor-action ${styles.primary}`} onClick={() => void apply()} disabled={!bitmap || !canvasSize.width || saving || cursor === 0 && !pendingCrop}><ActionIcon name="check"/><span>저장</span></button>
       </footer>
     </section>
     {confirmCancel && <section ref={confirmationRef} className={styles.confirmation} role="alertdialog" aria-modal="true" aria-labelledby="image-discard-title" aria-describedby="image-discard-description" tabIndex={-1}>

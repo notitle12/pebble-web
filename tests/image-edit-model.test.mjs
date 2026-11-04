@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { clampCropRect, createMosaicOperation, createPenOperation, createTextOperation, safeBitmapSize } from "../src/features/post/image-edit-model.ts";
+import { adjustCrop, fullImageCrop, hasCropChanges, clampCropRect, createMosaicOperation, createPenOperation, createTextOperation, safeBitmapSize } from "../src/features/post/image-edit-model.ts";
 
 test("bitmap dimensions follow the API edge and pixel limits", () => {
   assert.equal(safeBitmapSize(8000, 2500), true);
@@ -33,4 +33,16 @@ test("crop geometry is normalized and clamped to bitmap pixels", () => {
   assert.deepEqual(clampCropRect(90, 70, 10, 20, { width: 100, height: 80 }), { type: "crop", x: 10, y: 20, width: 80, height: 50 });
   assert.deepEqual(clampCropRect(-10, 10, 40, 100, { width: 100, height: 80 }), { type: "crop", x: 0, y: 10, width: 40, height: 70 });
   assert.equal(clampCropRect(1, 1, 2, 2, { width: 100, height: 80 }), null);
+});
+
+test('crop handles start at the image perimeter and keep opposite edges within the bitmap',()=>{
+ const size={width:100,height:80},full=fullImageCrop(size);
+ assert.equal(hasCropChanges(full,size),false);
+ const selected=adjustCrop(full,'nw',20,10,size);
+ assert.deepEqual(selected,{type:'crop',x:20,y:10,width:80,height:70});
+ assert.equal(hasCropChanges(selected,size),true);
+ assert.deepEqual(adjustCrop(selected,'se',-200,-200,size),{type:'crop',x:20,y:10,width:2,height:2});
+ assert.deepEqual(adjustCrop(selected,'move',-500,500,size),{...selected,x:0,y:10});
+ assert.deepEqual(adjustCrop(selected,'e',500,0,size),selected);
+ assert.equal(adjustCrop(selected,'n',NaN,1,size),selected);
 });

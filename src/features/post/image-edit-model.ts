@@ -52,3 +52,20 @@ export function createPenOperation(points: PenPoint[], size: PixelSize, width: n
   return { type: "pen", points: safePoints, color: safeColor, width: Math.max(1, Math.min(128, Math.round(width))) };
 }
 
+
+export type CropHandle = 'n'|'s'|'e'|'w'|'nw'|'ne'|'sw'|'se'|'move';
+export const fullImageCrop = (size:PixelSize):CropOperation => ({type:'crop',x:0,y:0,width:size.width,height:size.height});
+export const hasCropChanges = (rect:CropOperation|null,size:PixelSize) => !!rect&&(rect.x!==0||rect.y!==0||rect.width!==size.width||rect.height!==size.height);
+/** Keep the opposite edge fixed and never flip or escape the source bitmap. */
+export function adjustCrop(rect:CropOperation,handle:CropHandle,dx:number,dy:number,size:PixelSize):CropOperation {
+ if(!Number.isFinite(dx)||!Number.isFinite(dy))return rect;
+ const clamp=(n:number,min:number,max:number)=>Math.max(min,Math.min(max,Math.round(n)));
+ if(handle==='move')return {...rect,x:clamp(rect.x+dx,0,size.width-rect.width),y:clamp(rect.y+dy,0,size.height-rect.height)};
+ let left=rect.x,top=rect.y,right=rect.x+rect.width,bottom=rect.y+rect.height;
+ const minWidth=Math.min(2,size.width),minHeight=Math.min(2,size.height);
+ if(handle.includes('w'))left=clamp(left+dx,0,right-minWidth);
+ if(handle.includes('e'))right=clamp(right+dx,left+minWidth,size.width);
+ if(handle.includes('n'))top=clamp(top+dy,0,bottom-minHeight);
+ if(handle.includes('s'))bottom=clamp(bottom+dy,top+minHeight,size.height);
+ return {type:'crop',x:left,y:top,width:right-left,height:bottom-top};
+}
