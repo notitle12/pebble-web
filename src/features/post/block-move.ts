@@ -1,7 +1,7 @@
 import { Fragment, type Node } from "@tiptap/pm/model";
 import type { Transaction } from "@tiptap/pm/state";
 
-export const movableContainerNames = new Set(["doc", "textPanel", "details"]);
+export const movableContainerNames = new Set(["doc", "textPanel", "details", "imageTextColumn"]);
 
 export type MovableBlock = { pos: number; end: number; parentPos: number; parentType: string; node: Node };
 export type BlockGap = { parentPos: number; parentType: string; before: number | null; after: number | null; pos: number };
@@ -10,11 +10,15 @@ export type BlockGap = { parentPos: number; parentType: string; before: number |
 export function movableBlocks(doc: Node): MovableBlock[] {
   const result: MovableBlock[] = [];
   const visit = (parent: Node, parentPos: number) => {
+    if (parent.type.name === "imageTextLayout") {
+      parent.forEach((column, offset) => visit(column, parentPos + 1 + offset));
+      return;
+    }
     if (!movableContainerNames.has(parent.type.name)) return;
     parent.forEach((node, offset) => {
       const pos = parentPos + 1 + offset;
       result.push({ pos, end: pos + node.nodeSize, parentPos, parentType: parent.type.name, node });
-      if (movableContainerNames.has(node.type.name)) visit(node, pos);
+      if (movableContainerNames.has(node.type.name) || node.type.name === "imageTextLayout") visit(node, pos);
     });
   };
   visit(doc, -1);

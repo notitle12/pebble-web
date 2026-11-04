@@ -1,0 +1,36 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {getSchema, Node} from '@tiptap/core';
+import {EditorState} from '@tiptap/pm/state';
+import {history,undo,redo} from '@tiptap/pm/history';
+import {ImageTextLayout,ImageTextColumn,newImageTextLayout} from '../src/features/post/image-text-columns.ts';
+import {moveBodyBlock,movableBlocks} from '../src/features/post/block-move.ts';
+import {richContentHtml} from '../src/features/post/rich-content.ts';
+import {htmlToMarkdown} from '../src/features/post/html-to-markdown.ts';
+const schema=getSchema([ImageTextLayout,ImageTextColumn,Node.create({name:'doc',topNode:true,content:'block+'}),Node.create({name:'paragraph',group:'block',content:'text*'}),Node.create({name:'text',group:'inline'}),Node.create({name:'pebbleCode',group:'block',content:'text*'})]);
+test('two columns preserve their fixed structure when moving code in and out with undo',()=>{
+ const layout=schema.nodeFromJSON(newImageTextLayout());
+ let state=EditorState.create({schema,doc:schema.node('doc',null,[layout,schema.node('pebbleCode',null,schema.text('code'))]),plugins:[history()]});
+ const original=state.doc;
+ const code=movableBlocks(state.doc).find(x=>x.node.type.name==='pebbleCode');
+ state=state.apply(moveBodyBlock(state.tr,code.pos,2));
+ assert.equal(state.doc.firstChild.firstChild.firstChild.type.name,'pebbleCode');
+ assert.equal(state.doc.firstChild.childCount,2);
+ const columnPos=1;
+ assert.equal(moveBodyBlock(state.tr,columnPos,state.doc.content.size),null);
+ assert.equal(moveBodyBlock(state.tr,0,1),null);
+ assert.equal(undo(state,tr=>state=state.apply(tr)),true);assert.ok(state.doc.eq(original));
+ assert.equal(redo(state,tr=>state=state.apply(tr)),true);
+ const nestedCode=movableBlocks(state.doc).find(x=>x.node.type.name==='pebbleCode');
+ state=state.apply(moveBodyBlock(state.tr,nestedCode.pos,state.doc.content.size));
+ assert.equal(state.doc.firstChild.firstChild.firstChild.type.name,'paragraph');
+});
+test('safe HTML and Markdown retain columns, ratio, image and text while stripping unsafe attrs',()=>{
+ const source='<div class="post-columns" data-ratio="1:2" onclick="evil()"><div class="post-column"><p><img src="https://example.test/image.webp"></p></div><div class="post-column"><p>설명</p></div></div>';
+ const safe=richContentHtml(source,'HTML');
+ assert.match(safe,/class="post-columns" data-ratio="1:2"/);
+ assert.doesNotMatch(safe,/onclick/);
+ const restored=richContentHtml(htmlToMarkdown(safe),'MARKDOWN');
+ assert.match(restored,/post-columns/);assert.match(restored,/data-ratio="1:2"/);assert.match(restored,/설명/);assert.match(restored,/image.webp/);
+ assert.doesNotMatch(richContentHtml(source.replace('1:2','evil'),'HTML'),/data-ratio/);
+});

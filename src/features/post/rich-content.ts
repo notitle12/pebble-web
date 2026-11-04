@@ -49,7 +49,7 @@ const sanitizerOptions: IOptions = {
     img: ["src", "alt", "title", "width", "height", "data-media-src", "data-align"],
     iframe: ["src", "width", "height", "title", "loading", "sandbox", "allowfullscreen", "referrerpolicy"],
     mark: ["data-color"],
-    div: ["data-details-content", "data-pebble-type", "data-pebble-spec", "data-pebble-title", "data-align"],
+    div: ["data-ratio", "data-details-content", "data-pebble-type", "data-pebble-spec", "data-pebble-title", "data-align"],
     table: ["data-align"],
     td: ["colwidth", "data-diagonal"],
     th: ["colwidth", "data-diagonal"],
@@ -57,7 +57,7 @@ const sanitizerOptions: IOptions = {
     "*": ["id", "class", "style", "colspan", "rowspan", "open", "aria-label", "data-level"],
   },
   allowedStyles,
-  allowedClasses: { nav: ["post-toc"], div: ["post-text-block"], hr: [/^post-divider-(solid|dashed|double|short)$/], span: [/^hl-[a-z-]+$/], pre: ["code-block", /^language-/], code: [/^language-/], "*": [] },
+  allowedClasses: { nav: ["post-toc"], div: ["post-text-block", "post-columns", "post-column"], hr: [/^post-divider-(solid|dashed|double|short)$/], span: [/^hl-[a-z-]+$/], pre: ["code-block", /^language-/], code: [/^language-/], "*": [] },
   allowedSchemes: ["http", "https", "mailto"],
   allowedSchemesByTag: { img: ["http", "https"] },
   allowedIframeHostnames: ["www.openstreetmap.org"],
@@ -67,6 +67,7 @@ const sanitizerOptions: IOptions = {
     td: (_tagName, attrs) => ({ tagName: "td", attribs: safeCellAttributes(attrs) }),
     th: (_tagName, attrs) => ({ tagName: "th", attribs: safeCellAttributes(attrs) }),
     div: (_tagName, attrs) => {
+      if (!["1:1", "1:2", "2:1"].includes(attrs["data-ratio"] || "")) delete attrs["data-ratio"];
       const type = attrs["data-pebble-type"];
       if (!type) return { tagName: "div", attribs: attrs };
       try {

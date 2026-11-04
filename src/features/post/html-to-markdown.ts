@@ -139,7 +139,7 @@ export function htmlToMarkdown(html: string): string {
       return "\n";
     }
 
-    if (tag === "div" && node.attribs.class === "post-text-block") {
+    if (tag === "div" && ["post-text-block", "post-columns", "post-column"].includes(node.attribs.class)) {
       return `\n\n${serializeRawHtml(node)}\n\n`;
     }
 
