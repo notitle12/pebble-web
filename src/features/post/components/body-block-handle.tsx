@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { moveBodyBlock } from "../block-move";
 import styles from "./body-block-handle.module.css";
 
-type Block = { pos: number; end: number; rect: DOMRect };
+type Block = { pos: number; end: number; rect: DOMRect; table: boolean };
 type Drag = { source: number; doc: Node; gap: number; started: boolean; y: number };
 
 export function BodyBlockHandle({ editor, disabled }: { editor: Editor | null; disabled: boolean }) {
@@ -18,7 +18,7 @@ export function BodyBlockHandle({ editor, disabled }: { editor: Editor | null; d
       const result: Block[] = [];
       editor.state.doc.forEach((node, pos) => {
         const dom = editor.view.nodeDOM(pos);
-        if (dom instanceof HTMLElement) result.push({ pos, end: pos + node.nodeSize, rect: dom.getBoundingClientRect() });
+        if (dom instanceof HTMLElement) result.push({ pos, end: pos + node.nodeSize, rect: dom.getBoundingClientRect(), table: node.type.spec.tableRole === "table" });
       });
       return result;
     };
@@ -37,6 +37,8 @@ export function BodyBlockHandle({ editor, disabled }: { editor: Editor | null; d
         event.preventDefault(); return;
       }
       if (event.target instanceof Element && event.target.closest("[data-body-block-handle]")) return;
+      // Table row/column controls own the cell gutter. Offer whole-block movement farther left.
+      if (event.target instanceof Element && event.target.closest("td,th,[data-table-band-control]")) { setHover(null); return; }
       setHover(items.find(item => event.clientY >= item.rect.top && event.clientY <= item.rect.bottom
         && event.clientX >= item.rect.left - 40 && event.clientX <= item.rect.right) ?? null);
     };
@@ -58,7 +60,7 @@ export function BodyBlockHandle({ editor, disabled }: { editor: Editor | null; d
   }, [editor, disabled]);
   if (!editor || disabled) return null;
   return <>{hover && <button data-body-block-handle type="button" className={styles.handle}
-    style={{ left: Math.max(0, hover.rect.left - 30), top: Math.max(74, hover.rect.top) }}
+    style={{ left: Math.max(0, hover.rect.left - (hover.table ? 58 : 30)), top: Math.max(74, hover.rect.top) }}
     aria-label="본문 블록 이동" title="드래그해서 이동 · Alt+↑/↓"
     onPointerDown={event => { if (event.button !== 0) return; event.preventDefault(); event.currentTarget.setPointerCapture(event.pointerId);
       drag.current = { source: hover.pos, doc: editor.state.doc, gap: hover.pos, started: false, y: event.clientY }; }}
