@@ -7,7 +7,7 @@
 .image .tools button{display:inline-flex;align-items:center;justify-content:center;gap:6px;position:static;min-width:30px;min-height:30px;height:30px;margin:0;padding:0 8px;border:1px solid var(--line);border-radius:6px;background:color-mix(in srgb,var(--surface) 94%,transparent);color:var(--muted);box-shadow:0 2px 8px #0002;backdrop-filter:blur(8px);pointer-events:none;font-family:inherit;font-size:11px;font-weight:500;line-height:1.2;cursor:pointer;white-space:nowrap}
 .image .tools button svg{width:15px;height:15px;flex:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
 .image .tools .deleteButton{width:30px;padding:0;margin-left:auto}
-.resizeHandle{display:none;position:absolute;right:-7px;bottom:-7px;z-index:4;width:16px;height:16px;padding:0;border:2px solid white;border-radius:50%;background:var(--accent);box-shadow:0 1px 5px #0006;cursor:nwse-resize;touch-action:none}
+.image button.resizeHandle{box-sizing:border-box;min-width:0;min-height:0;margin:0;line-height:1;font-size:0;display:none;position:absolute;right:-7px;bottom:-7px;z-index:4;width:16px;height:16px;padding:0;border:2px solid white;border-radius:50%;background:var(--accent);box-shadow:0 1px 5px #0006;cursor:nwse-resize;touch-action:none}
 .image[data-selected="true"] .resizeHandle{display:block}
 .resizeHandle:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
 .image .tools button:hover:not(:disabled){background:var(--accent-soft);color:var(--accent)}
@@ -15,7 +15,7 @@
 .image .tools button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .image .tools button:disabled{opacity:.45;cursor:default}
 @media(hover:none){.image[data-selected="true"] .tools{opacity:1;transform:none}.image .tools button{min-height:44px;height:44px}.image .tools .deleteButton{min-width:44px;width:44px}}
-@media(hover:none){.image[data-selected="true"] .resizeHandle{width:20px;height:20px;right:-9px;bottom:-9px}}
+@media(hover:none){.image[data-selected="true"] button.resizeHandle{min-height:0;width:20px;height:20px;right:-9px;bottom:-9px}}
 @media(prefers-reduced-motion:reduce){.tools{transition:none}}
 
 .image:hover .tools button,.image:has(button:focus-visible) .tools button{pointer-events:auto}
