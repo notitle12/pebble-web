@@ -25,6 +25,7 @@ import { BodyBlockHandle } from "./body-block-handle";
 import { PostBody } from "./post-body";
 import styles from "./rich-body-editor.module.css";
 import { BlockAlignment } from "../block-alignment";
+import { CodeBlockSelection } from "../code-block-selection";
 import { ImageNodeView, RepresentativeImageProvider } from "./image-node-view";
 import { NaverLocationMap } from "./naver-location-map";
 import { buildNaverMapEmbed, parseNaverMapEmbed, type MapLocation } from "../naver-map";
@@ -149,7 +150,7 @@ const extensionSet = [
   TableKit.configure({ table: false }),
   ControllableTable, HeadingParagraphReset, InlineCode, InlineTableSpec, InlineArchitecture, InlineDatabase, AutomaticToc,
   FontSize,
-  BlockAlignment,
+  BlockAlignment, CodeBlockSelection,
   FontFamily,
   Color,
   Highlight.configure({ multicolor: true }),
