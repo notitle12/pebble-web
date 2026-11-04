@@ -75,3 +75,24 @@ test('custom column widths round-trip through safe HTML and Markdown, with bound
  const restored=richContentHtml(htmlToMarkdown(safe),'MARKDOWN');assert.match(restored,/data-ratio="37:63"/);assert.match(restored,/--column-left:37fr/);
  assert.doesNotMatch(richContentHtml(raw.replace('37:63','evil'),'HTML'),/data-ratio/);
 });
+
+test('unwrap a saved layout keeps all blocks and code in reading order, and undo/redo restores its ratio',async()=>{
+ const {unwrapColumnLayout}=await import('../src/features/post/column-layout.ts');
+ const p=value=>schema.node('paragraph',null,value?schema.text(value):null);
+ const code=schema.node('pebbleCode',null,schema.text('keep code'));
+ const row=schema.node('imageTextLayout',{ratio:'37:63'},[schema.node('imageTextColumn',null,[p('left'),p(''),code]),schema.node('imageTextColumn',null,[p('right')])]);
+ let state=EditorState.create({schema,doc:schema.node('doc',null,[row]),plugins:[history()]});
+ const original=state.doc;state=state.apply(unwrapColumnLayout(state.tr,0));
+ assert.deepEqual(state.doc.content.toJSON(),[p('left'),p(''),code,p('right')].map(node=>node.toJSON()));state.doc.check();
+ assert.equal(undo(state,tr=>state=state.apply(tr)),true);assert.ok(state.doc.eq(original));
+ assert.equal(redo(state,tr=>state=state.apply(tr)),true);assert.equal(state.doc.childCount,4);
+ assert.equal(unwrapColumnLayout(state.tr,0),null);assert.equal(unwrapColumnLayout(state.tr,-1),null);
+});
+test('unwrapping empty columns leaves a valid writable paragraph and skips only empty column placeholders',async()=>{
+ const {unwrapColumnLayout}=await import('../src/features/post/column-layout.ts');
+ const empty=schema.nodeFromJSON(newImageTextLayout());
+ let state=EditorState.create({schema,doc:schema.node('doc',null,[empty])});
+ const tr=unwrapColumnLayout(state.tr,0);tr.doc.check();assert.equal(tr.doc.childCount,1);assert.equal(tr.doc.firstChild.type.name,'paragraph');
+ const row=schema.node('imageTextLayout',null,[empty.firstChild,schema.node('imageTextColumn',null,[schema.node('pebbleCode',null,schema.text('only'))])]);
+ state=EditorState.create({schema,doc:schema.node('doc',null,[row])});assert.equal(unwrapColumnLayout(state.tr,0).doc.childCount,1);
+});

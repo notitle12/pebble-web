@@ -12,3 +12,8 @@
 .post-columns-separator:hover::after,.post-columns-separator:focus-visible::after,.post-columns-editor[data-resizing]>.post-columns-separator::after{background:var(--accent);opacity:1;width:3px}
 .post-columns-separator:focus-visible{outline:1px dashed var(--focus);outline-offset:-3px;border-radius:4px}
 @media(max-width:640px){.post-columns-separator{display:none}}
+
+.post-columns-actions{position:absolute;z-index:5;right:0;top:-28px;display:flex;align-items:center}
+.post-columns-actions[hidden]{display:none}
+.post-columns-actions .post-columns-unwrap{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:5px;height:24px;min-height:24px;margin:0;padding:0 7px;border:1px solid var(--line);border-radius:5px;background:var(--surface);color:var(--muted);font-family:inherit;font-size:11px;font-weight:500;line-height:1.2;cursor:pointer}
+.post-columns-unwrap svg{width:13px;height:13px;flex:none}.post-columns-unwrap:hover{color:var(--text);background:var(--accent-soft)}.post-columns-unwrap:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
