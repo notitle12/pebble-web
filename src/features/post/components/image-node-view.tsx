@@ -112,7 +112,6 @@ export function ImageNodeView({ node, selected, deleteNode, editor, updateAttrib
     {src && <img ref={imageRef} src={src} alt={typeof node.attrs.alt === "string" ? node.attrs.alt : ""} width={displaySize.width ?? undefined} height={displaySize.height ?? undefined} style={{ width: previewWidth !== null ? `${previewWidth}px` : displaySize.width ? `${displaySize.width}px` : "auto", height: "auto" }} draggable="true" />}
     {selected && editable && <button className={styles.resizeHandle} type="button" contentEditable={false} data-image-node-control="" draggable={false} aria-label="이미지 너비 조절" aria-valuemin={80} aria-valuemax={1600} aria-valuenow={Math.round(previewWidth ?? displaySize.width ?? imageRef.current?.getBoundingClientRect().width ?? 0)} aria-valuetext={`${Math.round(previewWidth ?? displaySize.width ?? imageRef.current?.getBoundingClientRect().width ?? 0)} 픽셀`} role="slider" onPointerDown={startResize} onKeyDown={resizeByKeyboard} onClick={event => event.stopPropagation()} />}
     <div className={styles.tools} role="group" aria-label="이미지 편집" contentEditable={false} data-image-node-control="">
-    {imageEditing.prepare && <button type="button" className="editor-action" disabled={!editable || imageEditing.disabled} data-image-node-control="" draggable={false} onMouseDown={event => event.preventDefault()} onClick={event => { event.stopPropagation(); setEditing(true); }} onKeyDown={event => event.stopPropagation()}>이미지 편집</button>}
     {representative.enabled !== false && selectableRepresentativeImage(stableSrc) && <button
       className={styles.representativeButton}
       type="button"
@@ -126,6 +125,7 @@ export function ImageNodeView({ node, selected, deleteNode, editor, updateAttrib
       onClick={event => { event.stopPropagation(); representative.onSelect(stableSrc); }}
       onKeyDown={event => event.stopPropagation()}
     ><svg aria-hidden="true" viewBox="0 0 20 20" fill="none">{isRepresentative ? <path d="m4 10 4 4 8-8"/> : <><rect x="3" y="3" width="14" height="14" rx="2"/><path d="m3 14 4-4 3 3 3-4 4 5"/></>}</svg><span>대표 이미지</span></button>}
+    {imageEditing.prepare && <button type="button" className="editor-action" disabled={!editable || imageEditing.disabled} data-image-node-control="" draggable={false} onMouseDown={event => event.preventDefault()} onClick={event => { event.stopPropagation(); setEditing(true); }} onKeyDown={event => event.stopPropagation()}>이미지 편집</button>}
     <button
       className={styles.deleteButton}
       type="button"
