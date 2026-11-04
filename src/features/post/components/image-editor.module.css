@@ -9,6 +9,7 @@
 .toolbar,.actions,.footer{display:flex;align-items:center;gap:8px}
 .toolbar{justify-content:space-between;margin-top:12px}
 .actions{flex-wrap:wrap}
+.rangeLabel{display:inline-flex;align-items:center;gap:7px;color:var(--muted,#68707b);font-size:12px;line-height:1.2}.rangeLabel input{width:100px;accent-color:var(--accent,#4770d6)}
 .dimensions{margin:0;color:var(--muted,#68707b);font-size:12px;font-variant-numeric:tabular-nums}
 .footer{justify-content:flex-end;margin-top:18px;padding-top:14px;border-top:1px solid var(--line,#dfe3e8)}
 .footer .status{margin-right:auto}

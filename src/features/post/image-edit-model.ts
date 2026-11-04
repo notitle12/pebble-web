@@ -1,4 +1,6 @@
 export type CropOperation = { type: "crop"; x: number; y: number; width: number; height: number };
+export type MosaicOperation = { type: "mosaic"; x: number; y: number; width: number; height: number; blockSize: number };
+export type ImageEditOperation = CropOperation | MosaicOperation;
 
 export type PixelSize = { width: number; height: number };
 
@@ -19,4 +21,8 @@ export function clampCropRect(startX: number, startY: number, endX: number, endY
 
 export function dimensionsAfterCrop(size: PixelSize, operation: CropOperation): PixelSize {
   return { width: Math.min(size.width, operation.width), height: Math.min(size.height, operation.height) };
+}
+
+export function createMosaicOperation(rect: CropOperation, blockSize: number): MosaicOperation {
+  return { ...rect, type: "mosaic", blockSize: Math.max(4, Math.min(48, Math.round(blockSize))) };
 }

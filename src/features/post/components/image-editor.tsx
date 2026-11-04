@@ -3,7 +3,7 @@
 import { createPortal } from "react-dom";
 import { useCallback, useEffect, useRef, useState } from "react";
 import styles from "./image-editor.module.css";
-import { clampCropRect, safeBitmapSize, type CropOperation } from "../image-edit-model";
+import { clampCropRect, createMosaicOperation, safeBitmapSize, type CropOperation, type ImageEditOperation } from "../image-edit-model";
 
 export type ImageEditorProps = {
   src: string;
@@ -13,17 +13,39 @@ export type ImageEditorProps = {
 };
 
 type CropSelection = { startX: number; startY: number; endX: number; endY: number };
+type Tool = "crop" | "mosaic";
 
 function cropBounds(selection: CropSelection, width: number, height: number): CropOperation | null {
   return clampCropRect(selection.startX, selection.startY, selection.endX, selection.endY, { width, height });
 }
 
-function replayCropHistory(source: ImageBitmap, operations: CropOperation[], cursor: number): HTMLCanvasElement {
+function replayHistory(source: ImageBitmap, operations: ImageEditOperation[], cursor: number): HTMLCanvasElement {
   let current = document.createElement("canvas");
   current.width = source.width;
   current.height = source.height;
   current.getContext("2d")!.drawImage(source, 0, 0);
   for (const operation of operations.slice(0, cursor)) {
+    if (operation.type === "mosaic") {
+      const small = document.createElement("canvas");
+      small.width = Math.max(1, Math.ceil(operation.width / operation.blockSize));
+      small.height = Math.max(1, Math.ceil(operation.height / operation.blockSize));
+      const smallContext = small.getContext("2d")!;
+      smallContext.imageSmoothingEnabled = true;
+      smallContext.drawImage(current, operation.x, operation.y, operation.width, operation.height, 0, 0, small.width, small.height);
+      const next = document.createElement("canvas");
+      next.width = current.width;
+      next.height = current.height;
+      next.getContext("2d")!.drawImage(current, 0, 0);
+      const outputContext = next.getContext("2d")!;
+      outputContext.imageSmoothingEnabled = false;
+      outputContext.drawImage(small, 0, 0, small.width, small.height, operation.x, operation.y, operation.width, operation.height);
+      current.width = 0;
+      current.height = 0;
+      small.width = 0;
+      small.height = 0;
+      current = next;
+      continue;
+    }
     const next = document.createElement("canvas");
     next.width = operation.width;
     next.height = operation.height;
@@ -40,13 +62,15 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
   const [bitmap, setBitmap] = useState<ImageBitmap | null>(null);
   const [loadError, setLoadError] = useState("");
-  const [operations, setOperations] = useState<CropOperation[]>([]);
+  const [operations, setOperations] = useState<ImageEditOperation[]>([]);
   const [cursor, setCursor] = useState(0);
   const [selection, setSelection] = useState<CropSelection | null>(null);
   const [pointerStart, setPointerStart] = useState<{ x: number; y: number } | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [notice, setNotice] = useState("");
+  const [tool, setTool] = useState<Tool>("crop");
+  const [mosaicBlockSize, setMosaicBlockSize] = useState(12);
   const displayRef = useRef<HTMLCanvasElement>(null);
   const workingRef = useRef<HTMLCanvasElement | null>(null);
   const bitmapRef = useRef<ImageBitmap | null>(null);
@@ -94,7 +118,7 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
 
   const redraw = useCallback(() => {
     if (!bitmap || !displayRef.current) return;
-    const working = replayCropHistory(bitmap, operations, cursor);
+    const working = replayHistory(bitmap, operations, cursor);
     if (workingRef.current) { workingRef.current.width = 0; workingRef.current.height = 0; }
     workingRef.current = working;
     setCanvasSize({ width: working.width, height: working.height });
@@ -132,6 +156,16 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
     setSelection(null);
     setPointerStart(null);
     setNotice("자르기를 적용했습니다. 실행 취소로 되돌릴 수 있습니다.");
+  };
+  const addMosaic = () => {
+    if (!selection || !workingRef.current) return;
+    const rect = cropBounds(selection, workingRef.current.width, workingRef.current.height);
+    if (!rect) { setNotice("모자이크 영역을 조금 더 크게 선택하세요."); return; }
+    setOperations(previous => [...previous.slice(0, cursor), createMosaicOperation(rect, mosaicBlockSize)]);
+    setCursor(cursor + 1);
+    setSelection(null);
+    setPointerStart(null);
+    setNotice("모자이크를 적용했습니다. 실행 취소로 되돌릴 수 있습니다.");
   };
 
   const undo = () => { setCursor(value => Math.max(0, value - 1)); setSelection(null); setNotice(""); };
@@ -200,7 +234,12 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
           <div className={styles.actions}>
             <button type="button" className="editor-action" onClick={undo} disabled={cursor === 0 || saving}>실행 취소</button>
             <button type="button" className="editor-action" onClick={redo} disabled={cursor >= operations.length || saving}>다시 실행</button>
-            <button type="button" className="editor-action" onClick={addCrop} disabled={!bounds || saving}>자르기 적용</button>
+            <button type="button" className="editor-action" aria-pressed={tool === "crop"} onClick={() => { setTool("crop"); setSelection(null); }} disabled={saving}>자르기</button>
+            <button type="button" className="editor-action" aria-pressed={tool === "mosaic"} onClick={() => { setTool("mosaic"); setSelection(null); }} disabled={saving}>모자이크</button>
+            {tool === "crop" ? <button type="button" className="editor-action" onClick={addCrop} disabled={!bounds || saving}>자르기 적용</button> : <>
+              <label className={styles.rangeLabel}>모자이크 크기 <input type="range" min="4" max="48" step="2" value={mosaicBlockSize} onChange={event => setMosaicBlockSize(Number(event.currentTarget.value))} disabled={saving} /></label>
+              <button type="button" className="editor-action" onClick={addMosaic} disabled={!bounds || saving}>모자이크 적용</button>
+            </>}
           </div>
           <p className={styles.dimensions}>{canvasSize.width} × {canvasSize.height}px</p>
         </div>
