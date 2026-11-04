@@ -55,3 +55,6 @@
 .dialog button.textHitArea{position:absolute;z-index:3;display:block;min-height:0;min-width:0;margin:0;padding:0;border:0;border-radius:2px;background:transparent;cursor:text;touch-action:manipulation}
 .dialog button.textHitArea:hover:not(:disabled),.dialog button.textHitArea:focus-visible{background:transparent;border:0;outline:1px dashed var(--accent,#2f6b50);outline-offset:2px}
 .textSettings{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+
+.dialog button.textDelete{position:absolute;z-index:6;box-sizing:border-box;display:grid;place-items:center;width:18px;height:18px;min-width:0;min-height:0;margin:0;padding:0;border:1px solid var(--line,#ccd5ce);border-radius:50%;background:var(--surface,#fff);color:var(--muted,#65736a);box-shadow:0 1px 4px #0002;transform:translate(-50%,-50%)}
+.dialog .textDelete svg{width:11px;height:11px}
