@@ -128,6 +128,7 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
   const [saveError, setSaveError] = useState("");
   const [notice, setNotice] = useState("");
   const [tool, setTool] = useState<Tool>("crop");
+  const [activeMosaicIndex, setActiveMosaicIndex] = useState<number | null>(null);
   const [mosaicBlockSize, setMosaicBlockSize] = useState(12);
   const [textValue, setTextValue] = useState("");
   const [textFontSize, setTextFontSize] = useState(32);
@@ -220,20 +221,15 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
       setOperations(previous => [...previous.slice(0, cursor), cropRect!]);
       setCursor(cursor + 1);
     }
-    cropDrag.current = null; setCropRedo(null); setSelection(null); setPointerStart(null); setTool(next); setNotice("");
+    cropDrag.current = null; setCropRedo(null); setSelection(null); setPointerStart(null); setActiveMosaicIndex(null); setTool(next); setNotice("");
   };
-  const addMosaic = () => {
-    if (!selection || !workingRef.current) return;
-    const rect = cropBounds(selection, workingRef.current.width, workingRef.current.height);
-    if (!rect) { setNotice("모자이크 영역을 조금 더 크게 선택하세요."); return; }
-    setOperations(previous => [...previous.slice(0, cursor), createMosaicOperation(rect, mosaicBlockSize)]);
-    setCursor(cursor + 1);
-    setSelection(null);
-    setPointerStart(null);
-    setNotice("모자이크를 적용했습니다. 실행 취소로 되돌릴 수 있습니다.");
+  const updateMosaicSize = (size: number) => {
+    setMosaicBlockSize(size);
+    if (activeMosaicIndex === null || activeMosaicIndex >= cursor) return;
+    setOperations(previous => previous.map((operation, index) => index === activeMosaicIndex && operation.type === "mosaic" ? createMosaicOperation({ ...operation, type: "crop" }, size) : operation));
   };
-  const undo = () => { if (tool === "crop" && hasCropChanges(cropRect, canvasSize)) { setCropRedo(cropRect); setCropRect(fullImageCrop(canvasSize)); return; } setCursor(value => Math.max(0, value - 1)); setSelection(null); setNotice(""); };
-  const redo = () => { if (cropRedo) { setCropRect(cropRedo); setCropRedo(null); return; } setCursor(value => Math.min(operations.length, value + 1)); setSelection(null); setNotice(""); };
+  const undo = () => { if (tool === "crop" && hasCropChanges(cropRect, canvasSize)) { setCropRedo(cropRect); setCropRect(fullImageCrop(canvasSize)); return; } setActiveMosaicIndex(null); setCursor(value => Math.max(0, value - 1)); setSelection(null); setNotice(""); };
+  const redo = () => { if (cropRedo) { setCropRect(cropRedo); setCropRedo(null); return; } if (tool === "mosaic" && operations[cursor]?.type === "mosaic") { setActiveMosaicIndex(cursor); setMosaicBlockSize((operations[cursor] as Extract<ImageEditOperation,{type:"mosaic"}>).blockSize); } setCursor(value => Math.min(operations.length, value + 1)); setSelection(null); setNotice(""); };
 
   const pointerCoordinates = (event: React.PointerEvent<HTMLDivElement>) => {
     const canvas = displayRef.current;
@@ -312,8 +308,19 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
     }
     if (!pointerStart) return;
     const point = pointerCoordinates(event);
-    if (point) setSelection({ startX: pointerStart.x, startY: pointerStart.y, endX: point.x, endY: point.y });
-    setPointerStart(null);
+    if (point && tool === "mosaic" && workingRef.current) {
+      // A click covers a small patch; a drag uses the exact selected rectangle.
+      const clicked = Math.hypot(point.x-pointerStart.x,point.y-pointerStart.y)<2;
+      const rect = clicked
+        ? clampCropRect(point.x-40,point.y-40,point.x+40,point.y+40,workingRef.current)
+        : clampCropRect(pointerStart.x,pointerStart.y,point.x,point.y,workingRef.current);
+      if (rect) {
+        setOperations(previous=>[...previous.slice(0,cursor),createMosaicOperation(rect,mosaicBlockSize)]);
+        setActiveMosaicIndex(cursor); setCursor(cursor+1);
+        setNotice("모자이크 크기를 조절하면 선택한 영역에 바로 반영됩니다.");
+      }
+    }
+    setSelection(null); setPointerStart(null);
   };
 
   const apply = async () => {
@@ -336,11 +343,12 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
   if (!mounted) return null;
   const current = workingRef.current;
   const bounds = tool === "crop" ? cropRect : selection && current ? cropBounds(selection, current.width, current.height) : null;
+  const activeMosaic = activeMosaicIndex !== null && activeMosaicIndex < cursor && operations[activeMosaicIndex]?.type === "mosaic" ? operations[activeMosaicIndex] as Extract<ImageEditOperation,{type:"mosaic"}> : null;
   const pendingCrop = tool === "crop" && hasCropChanges(cropRect, canvasSize);
   return createPortal(<div className={styles.backdrop} onMouseDown={event => { if (event.target === event.currentTarget) requestCancel(); }}>
     <section ref={dialogRef} inert={confirmCancel} className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby="image-editor-title" aria-describedby="image-editor-help" tabIndex={-1}>
       <header className={styles.header}>
-        <div><h2 id="image-editor-title">이미지 편집</h2><p id="image-editor-help">{tool === "text" ? "문구와 모양을 정한 뒤 이미지 위치를 클릭해 배치하세요." : tool === "pen" ? "색과 굵기를 정한 뒤 이미지 위에 그리세요." : tool === "crop" ? "테두리의 조절점을 움직여 남길 영역을 정하세요." : "모자이크할 영역을 드래그해 선택하세요."}</p></div>
+        <div><h2 id="image-editor-title">이미지 편집</h2><p id="image-editor-help">{tool === "text" ? "문구와 모양을 정한 뒤 이미지 위치를 클릭해 배치하세요." : tool === "pen" ? "색과 굵기를 정한 뒤 이미지 위에 그리세요." : tool === "crop" ? "테두리의 조절점을 움직여 남길 영역을 정하세요." : "영역을 지정하면 바로 모자이크됩니다. 슬라이더로 크기를 조절하세요."}</p></div>
 
       </header>
       {loadError ? <div className={styles.error} role="alert">{loadError}</div> : !bitmap ? <p className={styles.status} role="status">이미지를 불러오는 중…</p> : <>
@@ -359,13 +367,13 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
             <div className={styles.cropGrid} aria-hidden="true"/>
             {([["nw","왼쪽 위"],["n","위"],["ne","오른쪽 위"],["e","오른쪽"],["se","오른쪽 아래"],["s","아래"],["sw","왼쪽 아래"],["w","왼쪽"]] as const).map(([handle,label])=><button key={handle} type="button" className={styles.cropHandle} data-handle={handle} aria-label={`자르기 ${label} 조절점`} disabled={saving} onPointerDown={event=>startCropDrag(event,handle)} onKeyDown={event=>cropKeys(event,handle)}/>)}
           </div> : <div className={styles.cropMarquee} aria-hidden="true" style={{ left: `${bounds.x / current.width * 100}%`, top: `${bounds.y / current.height * 100}%`, width: `${bounds.width / current.width * 100}%`, height: `${bounds.height / current.height * 100}%` }} />)}
+          {tool === "mosaic" && activeMosaic && current && <div className={styles.mosaicOutline} aria-hidden="true" style={{left:`${activeMosaic.x/current.width*100}%`,top:`${activeMosaic.y/current.height*100}%`,width:`${activeMosaic.width/current.width*100}%`,height:`${activeMosaic.height/current.height*100}%`}}/>}
           {strokePreview?.length && current && <svg className={styles.penPreview} viewBox={`0 0 ${current.width} ${current.height}`} preserveAspectRatio="none" aria-hidden="true"><polyline className={styles.penLine} points={strokePreview.map(point => `${point.x},${point.y}`).join(" ")} fill="none" stroke={penColor} strokeWidth={penWidth} strokeLinecap="round" strokeLinejoin="round" /></svg>}
         </div>
         <div className={styles.toolbar}>
           <div className={styles.actions}>
             {tool === "crop" ? <span className={styles.dimensions}>남길 영역 {bounds?.width} × {bounds?.height}px</span> : tool === "mosaic" ? <>
-              <label className={styles.rangeLabel}>모자이크 크기 <input type="range" min="4" max="48" step="2" value={mosaicBlockSize} onChange={event => setMosaicBlockSize(Number(event.currentTarget.value))} disabled={saving} /></label>
-              <button type="button" className="editor-action" onClick={addMosaic} disabled={!bounds || saving}><ActionIcon name="check"/><span>모자이크 적용</span></button>
+              <label className={styles.rangeLabel}>모자이크 크기 <input type="range" min="4" max="48" step="2" value={mosaicBlockSize} onChange={event => updateMosaicSize(Number(event.currentTarget.value))} disabled={saving} /></label>
             </> : tool === "text" ? <>
               <label className={styles.rangeLabel}>글자 크기 <input type="range" min="16" max="160" step="2" value={textFontSize} onChange={event => setTextFontSize(Number(event.currentTarget.value))} disabled={saving} /></label>
               <label className={styles.colorLabel}>글자색 <input type="color" value={textColor} onChange={event => setTextColor(event.currentTarget.value)} disabled={saving} /></label>
