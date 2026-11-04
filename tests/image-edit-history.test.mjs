@@ -40,3 +40,22 @@ test('reopening text reads ImageBitmap dimensions through their non-enumerable g
  assert.equal(edited.text,'수정 후 유지');
  assert.equal(createTextOperation('손상 데이터',0,0,{},20,'#000000'),null);
 });
+
+test('mosaic targets follow crops, re-edit in source pixels and retain undo/redo',async()=>{
+ const {placedImageMosaics,replaceImageMosaic}=await import('../src/features/post/image-edit-model.ts');
+ const mosaic={type:'mosaic',x:20,y:30,width:100,height:80,blockSize:12};
+ const crop={type:'crop',x:40,y:20,width:150,height:100};
+ const commands=[mosaic,crop,text];
+ const [region]=placedImageMosaics(commands,{width:300,height:200});
+ assert.deepEqual({x:region.x,y:region.y,width:region.width,height:region.height},{x:0,y:10,width:80,height:80});
+ const rect={type:'crop',x:5,y:15,width:60,height:50};
+ const edited=replaceImageMosaic(commands,0,rect,24,{x:region.offsetX,y:region.offsetY});
+ assert.deepEqual(edited[0],{type:'mosaic',x:45,y:35,width:60,height:50,blockSize:24});
+ assert.equal(edited[1],crop);assert.equal(edited[2],text);assert.equal(commands[0],mosaic);
+ let history=commitImageEdit(emptyImageHistory(),commands);history=commitImageEdit(history,edited);
+ assert.deepEqual(undoImageEdit(history).present,commands);
+ assert.deepEqual(redoImageEdit(undoImageEdit(history)).present,edited);
+ const deleted=replaceImageMosaic(edited,0,null,12);assert.deepEqual(deleted,[crop,text]);
+ assert.equal(replaceImageMosaic(commands,2,rect,24),commands);
+ assert.deepEqual(placedImageMosaics([mosaic,{...crop,x:200}],{width:300,height:200}),[]);
+});

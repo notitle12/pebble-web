@@ -101,3 +101,22 @@ export function placedImageTexts(operations:ImageEditOperation[],sourceSize:Pixe
  });
  return placed.filter(region=>region.x+region.width>0&&region.y+region.height>0&&region.x<size.width&&region.y<size.height);
 }
+
+export type PlacedImageMosaic = {index:number;operation:MosaicOperation;offsetX:number;offsetY:number;x:number;y:number;width:number;height:number};
+/** Coordinates remain attached to the original command even after subsequent crops. */
+export function placedImageMosaics(operations:ImageEditOperation[], sourceSize:PixelSize):PlacedImageMosaic[] {
+ let width=sourceSize.width,height=sourceSize.height;
+ for(const operation of operations)if(operation.type==='crop'){width=operation.width;height=operation.height;}
+ return operations.flatMap((operation,index)=>{
+  if(operation.type!=='mosaic')return [];
+  let offsetX=0,offsetY=0;
+  for(const later of operations.slice(index+1))if(later.type==='crop'){offsetX+=later.x;offsetY+=later.y;}
+  const x=Math.max(0,operation.x-offsetX),y=Math.max(0,operation.y-offsetY);
+  const right=Math.min(width,operation.x-offsetX+operation.width),bottom=Math.min(height,operation.y-offsetY+operation.height);
+  return right>x&&bottom>y?[{index,operation,offsetX,offsetY,x,y,width:right-x,height:bottom-y}]:[];
+ });
+}
+export function replaceImageMosaic(operations:ImageEditOperation[], index:number, rect:CropOperation|null, blockSize:number, offset:PenPoint={x:0,y:0}):ImageEditOperation[] {
+ if(operations[index]?.type!=='mosaic')return operations;
+ return rect?operations.map((operation,i)=>i===index?createMosaicOperation({...rect,x:rect.x+offset.x,y:rect.y+offset.y},blockSize):operation):operations.filter((_,i)=>i!==index);
+}
