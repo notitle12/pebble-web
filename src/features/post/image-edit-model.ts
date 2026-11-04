@@ -1,7 +1,9 @@
 export type CropOperation = { type: "crop"; x: number; y: number; width: number; height: number };
 export type MosaicOperation = { type: "mosaic"; x: number; y: number; width: number; height: number; blockSize: number };
 export type TextOperation = { type: "text"; text: string; x: number; y: number; fontSize: number; color: string };
-export type ImageEditOperation = CropOperation | MosaicOperation | TextOperation;
+export type PenPoint = { x: number; y: number };
+export type PenOperation = { type: "pen"; points: PenPoint[]; color: string; width: number };
+export type ImageEditOperation = CropOperation | MosaicOperation | TextOperation | PenOperation;
 
 export type PixelSize = { width: number; height: number };
 
@@ -38,4 +40,14 @@ export function createTextOperation(text: string, x: number, y: number, size: Pi
     y: Math.max(0, Math.min(size.height, Math.round(y))),
     fontSize: Math.max(16, Math.min(160, Math.round(fontSize))), color: safeColor,
   };
+}
+
+export function createPenOperation(points: PenPoint[], size: PixelSize, width: number, color: string): PenOperation | null {
+  if (!points.length) return null;
+  const safePoints = points.slice(0, 5000).map(point => ({
+    x: Math.max(0, Math.min(size.width, Math.round(point.x))),
+    y: Math.max(0, Math.min(size.height, Math.round(point.y))),
+  }));
+  const safeColor = /^#[\da-f]{6}$/i.test(color) ? color.toLowerCase() : "#ffffff";
+  return { type: "pen", points: safePoints, color: safeColor, width: Math.max(1, Math.min(128, Math.round(width))) };
 }

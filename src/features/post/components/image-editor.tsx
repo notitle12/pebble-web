@@ -3,7 +3,7 @@
 import { createPortal } from "react-dom";
 import { useCallback, useEffect, useRef, useState } from "react";
 import styles from "./image-editor.module.css";
-import { clampCropRect, createMosaicOperation, createTextOperation, safeBitmapSize, type CropOperation, type ImageEditOperation, type TextOperation } from "../image-edit-model";
+import { clampCropRect, createMosaicOperation, createPenOperation, createTextOperation, safeBitmapSize, type CropOperation, type ImageEditOperation, type PenPoint, type TextOperation } from "../image-edit-model";
 
 export type ImageEditorProps = {
   src: string;
@@ -13,7 +13,7 @@ export type ImageEditorProps = {
 };
 
 type CropSelection = { startX: number; startY: number; endX: number; endY: number };
-type Tool = "crop" | "mosaic" | "text";
+type Tool = "crop" | "mosaic" | "text" | "pen";
 
 function cropBounds(selection: CropSelection, width: number, height: number): CropOperation | null {
   return clampCropRect(selection.startX, selection.startY, selection.endX, selection.endY, { width, height });
@@ -48,6 +48,19 @@ function replayHistory(source: ImageBitmap, operations: ImageEditOperation[], cu
     }
     if (operation.type === "text") {
       drawTextOperation(current.getContext("2d")!, operation, current.width);
+      continue;
+    }
+    if (operation.type === "pen") {
+      const context = current.getContext("2d")!;
+      context.strokeStyle = operation.color;
+      context.lineWidth = operation.width;
+      context.lineCap = "round";
+      context.lineJoin = "round";
+      context.beginPath();
+      context.moveTo(operation.points[0].x, operation.points[0].y);
+      if (operation.points.length === 1) context.lineTo(operation.points[0].x + 0.1, operation.points[0].y + 0.1);
+      else for (const point of operation.points.slice(1)) context.lineTo(point.x, point.y);
+      context.stroke();
       continue;
     }
     const next = document.createElement("canvas");
@@ -99,6 +112,9 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
   const [textValue, setTextValue] = useState("");
   const [textFontSize, setTextFontSize] = useState(32);
   const [textColor, setTextColor] = useState("#ffffff");
+  const [penWidth, setPenWidth] = useState(8);
+  const [penColor, setPenColor] = useState("#e53935");
+  const [strokePreview, setStrokePreview] = useState<PenPoint[] | null>(null);
   const displayRef = useRef<HTMLCanvasElement>(null);
   const workingRef = useRef<HTMLCanvasElement | null>(null);
   const bitmapRef = useRef<ImageBitmap | null>(null);
@@ -221,16 +237,41 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
       return;
     }
     event.currentTarget.setPointerCapture(event.pointerId);
+    if (tool === "pen") {
+      setStrokePreview([point]);
+      return;
+    }
     setPointerStart(point);
     setSelection({ startX: point.x, startY: point.y, endX: point.x, endY: point.y });
     setNotice("");
   };
   const pointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (tool === "pen" && strokePreview) {
+      const point = pointerCoordinates(event);
+      if (point) setStrokePreview(previous => {
+        if (!previous || previous.length >= 5000) return previous;
+        const last = previous[previous.length - 1];
+        if (Math.hypot(point.x - last.x, point.y - last.y) < 1) return previous;
+        return [...previous, point];
+      });
+      return;
+    }
     if (!pointerStart) return;
     const point = pointerCoordinates(event);
     if (point) setSelection({ startX: pointerStart.x, startY: pointerStart.y, endX: point.x, endY: point.y });
   };
   const pointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (tool === "pen" && strokePreview && workingRef.current) {
+      const point = pointerCoordinates(event);
+      const points = point ? [...strokePreview, point] : strokePreview;
+      const operation = createPenOperation(points, workingRef.current, penWidth, penColor);
+      if (operation) {
+        setOperations(previous => [...previous.slice(0, cursor), operation]);
+        setCursor(cursor + 1);
+      }
+      setStrokePreview(null);
+      return;
+    }
     if (!pointerStart) return;
     const point = pointerCoordinates(event);
     if (point) setSelection({ startX: pointerStart.x, startY: pointerStart.y, endX: point.x, endY: point.y });
@@ -258,13 +299,14 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
   return createPortal(<div className={styles.backdrop} onMouseDown={event => { if (event.target === event.currentTarget && !saving) onCancel(); }}>
     <section ref={dialogRef} className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby="image-editor-title" aria-describedby="image-editor-help" tabIndex={-1}>
       <header className={styles.header}>
-        <div><h2 id="image-editor-title">이미지 편집</h2><p id="image-editor-help">{tool === "text" ? "문구와 모양을 정한 뒤 이미지 위치를 클릭해 배치하세요." : "영역을 드래그해 선택하고 도구를 적용하세요. 원본은 편집 중 보존됩니다."}</p></div>
+        <div><h2 id="image-editor-title">이미지 편집</h2><p id="image-editor-help">{tool === "text" ? "문구와 모양을 정한 뒤 이미지 위치를 클릭해 배치하세요." : tool === "pen" ? "색과 굵기를 정한 뒤 이미지 위에 그리세요." : "영역을 드래그해 선택하고 도구를 적용하세요. 원본은 편집 중 보존됩니다."}</p></div>
         <button type="button" className="editor-action" onClick={onCancel} disabled={saving}>닫기</button>
       </header>
       {loadError ? <div className={styles.error} role="alert">{loadError}</div> : !bitmap ? <p className={styles.status} role="status">이미지를 불러오는 중…</p> : <>
-        <div className={styles.stage} onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={() => setPointerStart(null)}>
+        <div className={styles.stage} onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={() => { setPointerStart(null); setStrokePreview(null); }}>
           <canvas ref={displayRef} className={styles.canvas} aria-label="편집할 이미지" />
           {bounds && current && <div className={styles.cropMarquee} aria-hidden="true" style={{ left: `${bounds.x / current.width * 100}%`, top: `${bounds.y / current.height * 100}%`, width: `${bounds.width / current.width * 100}%`, height: `${bounds.height / current.height * 100}%` }} />}
+          {strokePreview?.length && current && <svg className={styles.penPreview} viewBox={`0 0 ${current.width} ${current.height}`} preserveAspectRatio="none" aria-hidden="true"><polyline className={styles.penLine} points={strokePreview.map(point => `${point.x},${point.y}`).join(" ")} fill="none" stroke={penColor} strokeWidth={penWidth} strokeLinecap="round" strokeLinejoin="round" /></svg>}
         </div>
         <div className={styles.toolbar}>
           <div className={styles.actions}>
@@ -273,13 +315,17 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
             <button type="button" className="editor-action" aria-pressed={tool === "crop"} onClick={() => { setTool("crop"); setSelection(null); }} disabled={saving}>자르기</button>
             <button type="button" className="editor-action" aria-pressed={tool === "mosaic"} onClick={() => { setTool("mosaic"); setSelection(null); }} disabled={saving}>모자이크</button>
             <button type="button" className="editor-action" aria-pressed={tool === "text"} onClick={() => { setTool("text"); setSelection(null); }} disabled={saving}>텍스트</button>
+            <button type="button" className="editor-action" aria-pressed={tool === "pen"} onClick={() => { setTool("pen"); setSelection(null); }} disabled={saving}>펜</button>
             {tool === "crop" ? <button type="button" className="editor-action" onClick={addCrop} disabled={!bounds || saving}>자르기 적용</button> : tool === "mosaic" ? <>
               <label className={styles.rangeLabel}>모자이크 크기 <input type="range" min="4" max="48" step="2" value={mosaicBlockSize} onChange={event => setMosaicBlockSize(Number(event.currentTarget.value))} disabled={saving} /></label>
               <button type="button" className="editor-action" onClick={addMosaic} disabled={!bounds || saving}>모자이크 적용</button>
-            </> : <>
+            </> : tool === "text" ? <>
               <label className={styles.rangeLabel}>글자 크기 <input type="range" min="16" max="160" step="2" value={textFontSize} onChange={event => setTextFontSize(Number(event.currentTarget.value))} disabled={saving} /></label>
               <label className={styles.colorLabel}>글자색 <input type="color" value={textColor} onChange={event => setTextColor(event.currentTarget.value)} disabled={saving} /></label>
               <input className={styles.textInput} aria-label="이미지에 넣을 텍스트" placeholder="텍스트를 입력한 뒤 이미지 위치를 클릭하세요" value={textValue} maxLength={500} onChange={event => setTextValue(event.currentTarget.value)} disabled={saving} />
+            </> : <>
+              <label className={styles.rangeLabel}>펜 굵기 <input type="range" min="1" max="64" value={penWidth} onChange={event => setPenWidth(Number(event.currentTarget.value))} disabled={saving} /></label>
+              <label className={styles.colorLabel}>펜 색상 <input type="color" value={penColor} onChange={event => setPenColor(event.currentTarget.value)} disabled={saving} /></label>
             </>}
           </div>
           <p className={styles.dimensions}>{canvasSize.width} × {canvasSize.height}px</p>

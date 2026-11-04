@@ -1,11 +1,18 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { clampCropRect, createMosaicOperation, createTextOperation, safeBitmapSize } from "../src/features/post/image-edit-model.ts";
+import { clampCropRect, createMosaicOperation, createPenOperation, createTextOperation, safeBitmapSize } from "../src/features/post/image-edit-model.ts";
 
 test("bitmap dimensions follow the API edge and pixel limits", () => {
   assert.equal(safeBitmapSize(8000, 2500), true);
   assert.equal(safeBitmapSize(5000, 5000), false);
   assert.equal(safeBitmapSize(8001, 1), false);
+});
+
+test("pen operations store bounded source-pixel coordinates and a safe color", () => {
+  assert.deepEqual(createPenOperation([{ x: -5, y: 100 }, { x: 20.4, y: 10.2 }], { width: 50, height: 60 }, 200, "#ABCDEF"), {
+    type: "pen", points: [{ x: 0, y: 60 }, { x: 20, y: 10 }], width: 128, color: "#abcdef",
+  });
+  assert.equal(createPenOperation([], { width: 1, height: 1 }, 4, "#000000"), null);
 });
 
 test("text operation keeps safe plain text and bounded color, position and font size", () => {
