@@ -25,10 +25,6 @@ export const ImageTextLayout = Node.create({
     return ({ node, editor, getPos }) => {
       const dom = document.createElement("div"); dom.className = "post-columns-editor";
       const contentDOM=document.createElement("div");contentDOM.className="post-columns";
-      const actions=document.createElement("div");actions.className="post-columns-actions";actions.contentEditable="false";
-      const unwrapButton=document.createElement("button");unwrapButton.type="button";unwrapButton.className="post-columns-unwrap";unwrapButton.setAttribute("aria-label","나란히 배치 해제");unwrapButton.title="이미지와 글을 유지하고 위아래로 배치";
-      unwrapButton.innerHTML='<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 3h6v7H4zM14 3h6v7h-6zM4 16h16v5H4zM8 12v2m8-2v2"/></svg>';
-      unwrapButton.append(document.createTextNode("배치 해제"));actions.append(unwrapButton);
       const separator=document.createElement("div");separator.className="post-columns-separator";separator.contentEditable="false";
       separator.tabIndex=0;separator.setAttribute("role","separator");separator.setAttribute("aria-label","좌우 영역 너비 조절");separator.setAttribute("aria-orientation","vertical");separator.setAttribute("aria-valuemin","20");separator.setAttribute("aria-valuemax","80");separator.title="드래그해서 너비 조절 · 방향키로 조절 · 두 번 클릭하면 반씩";
       let drag:{pointerId:number;doc:typeof editor.state.doc}|null=null;
@@ -38,7 +34,7 @@ export const ImageTextLayout = Node.create({
         separator.style.left=`calc(${percent}% + ${(0.5-percent/100)*24}px)`;
         separator.setAttribute("aria-valuenow",String(Math.round(percent)));separator.setAttribute("aria-valuetext",`왼쪽 ${Math.round(percent)}%, 오른쪽 ${Math.round(100-percent)}%`);
       };
-      const sync=()=>{showRatio(node.attrs.ratio);separator.tabIndex=editor.isEditable?0:-1;separator.hidden=!editor.isEditable;actions.hidden=!editor.isEditable;unwrapButton.disabled=!editor.isEditable;};
+      const sync=()=>{showRatio(node.attrs.ratio);separator.tabIndex=editor.isEditable?0:-1;separator.hidden=!editor.isEditable;};
       const commit=(ratio:string)=>{
         const pos=getPos();
         if(typeof pos==="number"&&editor.isEditable&&!editor.isDestroyed&&safeColumnRatio(node.attrs.ratio)!==ratio)editor.view.dispatch(closeHistory(editor.state.tr).setNodeMarkup(pos,undefined,{...node.attrs,ratio}));
@@ -51,8 +47,6 @@ export const ImageTextLayout = Node.create({
         cancel();const tr=unwrapColumnLayout(editor.state.tr,pos);
         if(tr){editor.view.dispatch(tr);editor.view.focus();}
       };
-      unwrapButton.addEventListener("pointerdown",event=>{event.preventDefault();event.stopPropagation();});
-      unwrapButton.addEventListener("click",event=>{event.preventDefault();event.stopPropagation();unwrap();});
       separator.addEventListener("pointerdown",event=>{
         if(!editor.isEditable||event.button!==0)return;
         event.preventDefault();event.stopPropagation();separator.focus({preventScroll:true});separator.setPointerCapture(event.pointerId);
@@ -74,7 +68,6 @@ export const ImageTextLayout = Node.create({
           event.preventDefault();event.stopPropagation();if(editor.isEditable){if(event.shiftKey)editor.commands.redo();else editor.commands.undo();}return true;
         }return false;
       };
-      actions.addEventListener("keydown",event=>{historyKey(event);});
       separator.addEventListener("keydown",event=>{
         if(historyKey(event))return;
         if(!event.isComposing&&(event.key==="Backspace"||event.key==="Delete")){event.preventDefault();event.stopPropagation();unwrap();return;}
@@ -84,8 +77,8 @@ export const ImageTextLayout = Node.create({
         commit(ratioFromPercent(event.key==="Home"?20:event.key==="End"?80:columnLeftPercent(node.attrs.ratio)+(event.key==="ArrowLeft"?-step:step)));
       });
       separator.addEventListener("dblclick",event=>{event.preventDefault();event.stopPropagation();commit("1:1");});
-      sync();dom.append(contentDOM,separator,actions);
-      return {dom,contentDOM,update(next){if(next.type!==node.type)return false;node=next;if(!drag)sync();return true;},stopEvent:event=>separator.contains(event.target as globalThis.Node)||actions.contains(event.target as globalThis.Node),ignoreMutation:mutation=>separator.contains(mutation.target)||actions.contains(mutation.target)||mutation.type==="attributes"&&(mutation.target===dom||mutation.target===contentDOM),destroy(){drag=null;}};
+      sync();dom.append(contentDOM,separator);
+      return {dom,contentDOM,update(next){if(next.type!==node.type)return false;node=next;if(!drag)sync();return true;},stopEvent:event=>separator.contains(event.target as globalThis.Node),ignoreMutation:mutation=>separator.contains(mutation.target)||mutation.type==="attributes"&&(mutation.target===dom||mutation.target===contentDOM),destroy(){drag=null;}};
     };
   },
 });
