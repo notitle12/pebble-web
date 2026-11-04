@@ -1,4 +1,5 @@
 "use client";
+import {unwrapColumnLayout} from "../column-layout";
 import type { Editor } from "@tiptap/core";
 import { useEffect, useRef, useState } from "react";
 import { canPlaceBodyBlockBeside, placeBodyBlockBeside, sideOfBlockDrop, blockGapContext, movableBlocks, moveBodyBlock, type MovableBlock } from "../block-move";
@@ -70,7 +71,7 @@ export function BodyBlockHandle({ editor, disabled }: { editor: Editor | null; d
       const current = drag.current; if (!current) return; drag.current = null; setLine(null); setHover(null);
       if (!current?.started || !editor.isEditable || !editor.state.doc.eq(current.doc)) return;
       const tr = current.beside?placeBodyBlockBeside(editor.state.tr,current.source,current.beside.target,current.beside.side):moveBodyBlock(editor.state.tr, current.source, current.gap);
-      if (tr) editor.view.dispatch(tr.scrollIntoView());
+      if (tr) {editor.view.dispatch(tr.scrollIntoView());editor.view.focus();}
     };
     const cancel = () => { drag.current = null; setLine(null); setHover(null); };
     const escape = (event: KeyboardEvent) => { if (event.key === "Escape") cancel(); };
@@ -88,7 +89,10 @@ export function BodyBlockHandle({ editor, disabled }: { editor: Editor | null; d
     aria-label="본문 블록 이동" title="드래그해서 이동 · 문단 좌우 끝에 놓으면 나란히 배치 · Alt+↑/↓"
     onPointerDown={event => { if (event.button !== 0) return; event.preventDefault(); event.currentTarget.setPointerCapture(event.pointerId);
       drag.current = { source: hover.pos, doc: editor.state.doc, gap: hover.pos, started: false, x:event.clientX, y: event.clientY }; }}
-    onKeyDown={event => { if (!event.altKey || !["ArrowUp", "ArrowDown"].includes(event.key)) return; event.preventDefault();
+    onKeyDown={event => {
+      if((event.ctrlKey||event.metaKey)&&!event.altKey&&(event.key.toLowerCase()==="z"||event.code==="KeyZ")&&!event.nativeEvent.isComposing){event.preventDefault();event.stopPropagation();if(event.shiftKey)editor.commands.redo();else editor.commands.undo();return;}
+      if(hover.node.type.name==="imageTextLayout"&&["Backspace","Delete"].includes(event.key)&&!event.nativeEvent.isComposing){event.preventDefault();event.stopPropagation();const tr=unwrapColumnLayout(editor.state.tr,hover.pos);if(tr){editor.view.dispatch(tr);editor.view.focus();setHover(null);}return;}
+      if (!event.altKey || !["ArrowUp", "ArrowDown"].includes(event.key)) return; event.preventDefault();
       const siblings = movableBlocks(editor.state.doc).filter(item => item.parentPos === hover.parentPos);
       const index = siblings.findIndex(item => item.pos === hover.pos);
       const neighbor = siblings[index + (event.key === "ArrowUp" ? -1 : 1)];

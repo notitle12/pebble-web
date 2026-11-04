@@ -96,3 +96,31 @@ test('unwrapping empty columns leaves a valid writable paragraph and skips only 
  const row=schema.node('imageTextLayout',null,[empty.firstChild,schema.node('imageTextColumn',null,[schema.node('pebbleCode',null,schema.text('only'))])]);
  state=EditorState.create({schema,doc:schema.node('doc',null,[row])});assert.equal(unwrapColumnLayout(state.tr,0).doc.childCount,1);
 });
+
+test('Delete of a selected layout unwraps content; ordinary text selection does not change',async()=>{
+ const {NodeSelection}=await import('@tiptap/pm/state');
+ const {unwrapSelectedColumnLayout}=await import('../src/features/post/column-layout.ts');
+ const row=schema.node('imageTextLayout',null,[schema.node('imageTextColumn',null,[schema.node('paragraph',null,schema.text('left'))]),schema.node('imageTextColumn',null,[schema.node('pebbleCode',null,schema.text('right'))])]);
+ let state=EditorState.create({schema,doc:schema.node('doc',null,[row]),plugins:[history()]});
+ assert.equal(unwrapSelectedColumnLayout(state),false);
+ state=state.apply(state.tr.setSelection(NodeSelection.create(state.doc,0)));
+ assert.equal(unwrapSelectedColumnLayout(state,tr=>state=state.apply(tr)),true);assert.equal(state.doc.textContent,'leftright');assert.equal(state.doc.firstChild.type.name,'paragraph');
+ assert.equal(undo(state,tr=>state=state.apply(tr)),true);assert.equal(state.doc.firstChild.type.name,'imageTextLayout');
+});
+test('creating columns starts a separate undo step from immediately preceding typing',async()=>{
+ const {placeBodyBlockBeside}=await import('../src/features/post/block-move.ts');
+ let state=EditorState.create({schema,doc:schema.node('doc',null,[schema.node('paragraph',null,schema.text('text')),schema.node('pebbleCode',null,schema.text('code'))]),plugins:[history()]});
+ state=state.apply(state.tr.insertText('!',5));const typed=state.doc,code=movableBlocks(state.doc).find(item=>item.node.type.name==='pebbleCode');
+ state=state.apply(placeBodyBlockBeside(state.tr,code.pos,0,'right'));
+ assert.equal(undo(state,tr=>state=state.apply(tr)),true);assert.ok(state.doc.eq(typed));
+ assert.equal(undo(state,tr=>state=state.apply(tr)),true);assert.equal(state.doc.firstChild.textContent,'text');
+});
+
+test('unwrapping nested columns preserves image attributes and the surrounding block',async()=>{
+ const {unwrapColumnLayout}=await import('../src/features/post/column-layout.ts');
+ const nested=getSchema([ImageTextLayout,ImageTextColumn,Node.create({name:'doc',topNode:true,content:'block+'}),Node.create({name:'paragraph',group:'block',content:'text*'}),Node.create({name:'text',group:'inline'}),Node.create({name:'textPanel',group:'block',content:'block+',addAttributes:()=>({title:{default:'keep title'}})}),Node.create({name:'image',group:'block',atom:true,addAttributes:()=>({src:{default:null},width:{default:null},alt:{default:null}})})]);
+ const image=nested.node('image',{src:'https://example.test/edited.png',width:240,alt:'보존할 사진'}),text=nested.node('paragraph',null,nested.text('설명'));
+ const row=nested.node('imageTextLayout',{ratio:'64:36'},[nested.node('imageTextColumn',null,[image]),nested.node('imageTextColumn',null,[text])]);
+ const state=EditorState.create({schema:nested,doc:nested.node('doc',null,[nested.node('textPanel',{title:'keep title'},[row])])});
+ const tr=unwrapColumnLayout(state.tr,1);tr.doc.check();assert.equal(tr.doc.firstChild.attrs.title,'keep title');assert.ok(tr.doc.firstChild.firstChild.eq(image));assert.ok(tr.doc.firstChild.lastChild.eq(text));
+});

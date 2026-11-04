@@ -1,5 +1,5 @@
 import {Fragment} from '@tiptap/pm/model';
-import {Selection,type Transaction} from '@tiptap/pm/state';
+import {NodeSelection,Selection,type EditorState,type Transaction} from '@tiptap/pm/state';
 import {closeHistory} from '@tiptap/pm/history';
 
 /** Remove only the layout wrappers, preserving each column's blocks in reading order. */
@@ -18,4 +18,11 @@ export function unwrapColumnLayout(tr:Transaction,pos:number):Transaction|null {
  closeHistory(tr).replaceWith(pos,pos+node.nodeSize,fragment);
  tr.setSelection(Selection.near(tr.doc.resolve(Math.min(pos+1,tr.doc.content.size))));
  return tr.scrollIntoView();
+}
+
+export function unwrapSelectedColumnLayout(state:EditorState,dispatch?:(tr:Transaction)=>void):boolean {
+ const {selection}=state;
+ if(!(selection instanceof NodeSelection)||selection.node.type.name!=='imageTextLayout')return false;
+ const tr=unwrapColumnLayout(state.tr,selection.from);if(!tr)return false;
+ dispatch?.(tr);return true;
 }

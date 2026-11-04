@@ -1,4 +1,4 @@
-import {unwrapColumnLayout} from "./column-layout.ts";
+import {unwrapColumnLayout,unwrapSelectedColumnLayout} from "./column-layout.ts";
 import { closeHistory } from "@tiptap/pm/history";
 import { Node, mergeAttributes } from "@tiptap/core";
 
@@ -17,6 +17,10 @@ export const ImageTextLayout = Node.create({
   addAttributes: () => ({ ratio: { default: "1:1", parseHTML: element => safeColumnRatio(element.getAttribute("data-ratio")), renderHTML: attrs => ({ "data-ratio": safeColumnRatio(attrs.ratio), style:columnRatioStyle(attrs.ratio) }) } }),
   parseHTML: () => [{ tag: "div.post-columns" }],
   renderHTML: ({ HTMLAttributes }) => ["div", mergeAttributes({ class: "post-columns" }, HTMLAttributes), 0],
+  addKeyboardShortcuts(){
+    const unwrap=()=>unwrapSelectedColumnLayout(this.editor.state,tr=>this.editor.view.dispatch(tr));
+    return {Backspace:unwrap,Delete:unwrap};
+  },
   addNodeView() {
     return ({ node, editor, getPos }) => {
       const dom = document.createElement("div"); dom.className = "post-columns-editor";
@@ -65,10 +69,15 @@ export const ImageTextLayout = Node.create({
         const rect=contentDOM.getBoundingClientRect();commit(ratioAtPointer(event.clientX,rect.left,rect.width));
       });
       separator.addEventListener("pointercancel",cancel);separator.addEventListener("lostpointercapture",()=>{if(drag)cancel();});
-      separator.addEventListener("keydown",event=>{
+      const historyKey=(event:KeyboardEvent)=>{
         if((event.ctrlKey||event.metaKey)&&!event.altKey&&(event.key.toLowerCase()==="z"||event.code==="KeyZ")&&!event.isComposing){
-          event.preventDefault();event.stopPropagation();if(editor.isEditable){if(event.shiftKey)editor.commands.redo();else editor.commands.undo();}return;
-        }
+          event.preventDefault();event.stopPropagation();if(editor.isEditable){if(event.shiftKey)editor.commands.redo();else editor.commands.undo();}return true;
+        }return false;
+      };
+      actions.addEventListener("keydown",event=>{historyKey(event);});
+      separator.addEventListener("keydown",event=>{
+        if(historyKey(event))return;
+        if(!event.isComposing&&(event.key==="Backspace"||event.key==="Delete")){event.preventDefault();event.stopPropagation();unwrap();return;}
         if(event.key==="Escape"&&drag){event.preventDefault();event.stopPropagation();cancel();return;}
         if(!editor.isEditable||!["ArrowLeft","ArrowRight","Home","End"].includes(event.key))return;
         event.preventDefault();event.stopPropagation();const step=event.shiftKey?10:2;
