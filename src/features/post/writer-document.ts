@@ -39,11 +39,16 @@ export function documentToBlocks(doc: JSONContent, renderRich: (doc: JSONContent
   };
   const isSpecial = (node: JSONContent) => Object.values(nodeTypes).includes(node.type ?? "");
   const containsSpecial = (node: JSONContent): boolean => isSpecial(node) || !!node.content?.some(containsSpecial);
+  const containsInvalidSpecial = (node: JSONContent): boolean => isSpecial(node) && node.attrs?.valid === false || !!node.content?.some(containsInvalidSpecial);
+  const nestedContainers = new Set(["textPanel", "details", "imageTextLayout", "imageTextColumn"]);
   const append = (node: JSONContent) => {
     if (isSpecial(node)) {
       flush();
       const type = node.type === "pebbleCode" ? "CODE" : node.type === "tableSpec" ? "TABLE" : node.type === "databaseSchema" ? "DB_SCHEMA" : "ARCHITECTURE";
       result.push({ ...(type === "DB_SCHEMA" ? {editorTab: node.attrs?.editorTab === "SPEC" ? "SPEC" : "ERD"} : {}), key: node.attrs?.key ?? `inline-${result.length}`, type, content: type === "CODE" ? (node.content ?? []).map(child => child.text ?? "").join("") : JSON.stringify(node.attrs?.spec), language: type === "CODE" ? node.attrs?.language ?? "TYPESCRIPT" : null, title: node.attrs?.title ?? null, valid: node.attrs?.valid !== false, alignment: node.attrs?.align === "center" ? "CENTER" : node.attrs?.align === "right" ? "RIGHT" : "LEFT" });
+    } else if (nestedContainers.has(node.type ?? "") && !containsInvalidSpecial(node)) {
+      // These containers have a matching safe HTML schema in the editor and reader.
+      rich.push(node);
     } else if (node.content?.some(containsSpecial)) {
       // 붙여넣은 인용/목록 안에 구조 블록이 있어도 누락하지 않고 형식 경계에서 분리한다.
       let children: JSONContent[] = [];

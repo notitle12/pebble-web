@@ -62,3 +62,17 @@ test('HTML·마크다운 모드의 유효한 구조 마커는 보존하고 잘�
  assert.doesNotMatch(richContentHtml('<div data-pebble-type="TABLE" data-pebble-spec="{}" onclick="evil()">invalid</div>',format),/data-pebble|onclick/);
  }
 });
+
+test('일반·접기·좌우 배치 내부의 코드와 유효한 구조 블록은 저장 후 컨테이너 안에 남는다',()=>{
+ const code={type:'pebbleCode',attrs:{language:'XML'},content:[{type:'text',text:'<root/>\n'}]};
+ for(const type of ['textPanel','details','imageTextLayout']){
+  const wrapper={type,attrs:type==='details'?{summary:'제목',open:true}:{},content:type==='imageTextLayout'?[{type:'imageTextColumn',content:[code]},{type:'imageTextColumn',content:[rich('옆')]}]:[rich('앞'),code,{type:'tableSpec',attrs:{spec,valid:true}}]};
+  const saved=documentToBlocks({type:'doc',content:[wrapper]},render);
+  assert.deepEqual(saved.map(block=>block.type),['HTML']);
+  assert.deepEqual(blocksToDocument(saved,parse).content[0],wrapper);
+ }
+});
+test('미완성 명세는 정제 과정에서 사라지지 않도록 기존 구조 저장 경계를 유지한다',()=>{
+ const saved=documentToBlocks({type:'doc',content:[{type:'textPanel',content:[{type:'tableSpec',attrs:{valid:false,spec:{}}}]}]},render);
+ assert.equal(saved[0].type,'TABLE');assert.equal(saved[0].valid,false);assert.equal(saved[0].content,'{}');
+});
