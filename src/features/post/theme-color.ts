@@ -82,38 +82,60 @@ export const themeBackgrounds = {
   dark: { r: 23, g: 33, b: 27, a: 1 },
 } satisfies Record<keyof ThemePair, RGB>;
 
-export function textThemePair(color: unknown, highlight?: unknown): ThemePair | null {
+export function textThemePair(color: unknown, highlight?: unknown, surfaces?: ThemePair): ThemePair | null {
   const source = parseThemeColor(color);
   if (!source) return null;
   const highlightColor = highlight === undefined ? null : parseThemeColor(highlight);
   if (highlight !== undefined && !highlightColor) return null;
   const map = (theme: keyof ThemePair) => {
-    const page = themeBackgrounds[theme];
-    const background = highlightColor ? parseThemeColor(highlightThemePair(highlight)![theme])! : page;
+    const page = parseThemeColor(surfaces?.[theme]) ?? themeBackgrounds[theme];
+    const background = highlightColor ? parseThemeColor(highlightThemePair(highlight, surfaces)![theme])! : page;
     return toHex(readableForeground(composite(source, background), background));
   };
   return { light: map("light"), dark: map("dark") };
 }
 
-export function highlightThemePair(color: unknown): ThemePair | null {
+export function surfaceThemePair(color: unknown, surfaces: ThemePair = {
+  light: toHex(themeBackgrounds.light), dark: toHex(themeBackgrounds.dark),
+}): ThemePair | null {
   const source = parseThemeColor(color);
   if (!source) return null;
   const map = (theme: keyof ThemePair) => {
-    const page = themeBackgrounds[theme];
-    return toHex(readableForeground(composite(source, page), page, 1.2));
+    const base = parseThemeColor(surfaces[theme]) ?? themeBackgrounds[theme];
+    let surface = composite(source, base);
+    if (theme === "dark" && contrastRatio(surface, base) > 2.5) {
+      let low = 0, high = 1;
+      for (let i = 0; i < 24; i++) { const mid = (low + high) / 2; if (contrastRatio(blend(surface, base, mid), base) > 2.5) low = mid; else high = mid; }
+      surface = blend(surface, base, high);
+    }
+    return toHex(readableForeground(surface, base, 1.2));
   };
   return { light: map("light"), dark: map("dark") };
 }
 
-export function themeColorVariables(color: unknown, highlight?: unknown): Record<string, string> | null {
-  const text = textThemePair(color, highlight);
+export const highlightThemePair = surfaceThemePair;
+
+export function borderThemePair(value: unknown, surfaces: ThemePair): ThemePair | null {
+  if (typeof value !== "string") return null;
+  const color = /#[\da-f]{3,8}|rgba?\([^)]*\)/i.exec(value)?.[0];
+  const source = parseThemeColor(color);
+  if (!source) return null;
+  const map = (theme: keyof ThemePair) => {
+    const base = parseThemeColor(surfaces[theme]) ?? themeBackgrounds[theme];
+    return toHex(readableForeground(composite(source, base), base, 1.5));
+  };
+  return { light: map("light"), dark: map("dark") };
+}
+
+export function themeColorVariables(color: unknown, highlight?: unknown, surfaces?: ThemePair): Record<string, string> | null {
+  const text = textThemePair(color, highlight, surfaces);
   if (!text) return null;
   const vars: Record<string, string> = {
     "--pebble-text-light": text.light,
     "--pebble-text-dark": text.dark,
   };
   if (highlight !== undefined) {
-    const background = highlightThemePair(highlight);
+    const background = highlightThemePair(highlight, surfaces ? { light: surfaces.light, dark: surfaces.dark } : undefined);
     if (!background) return null;
     vars["--pebble-highlight-light"] = background.light;
     vars["--pebble-highlight-dark"] = background.dark;
