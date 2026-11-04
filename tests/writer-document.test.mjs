@@ -21,6 +21,16 @@ test('본문 사이의 코드·명세·아키텍처는 저장과 재편집에서
  assert.equal(blocksSignature(saved),blocksSignature(blocks));
  assert.equal(blocksSignature(documentToBlocks(blocksToDocument(saved,parse),render)),blocksSignature(saved));
 });
+test('빈 제목 접는 글은 본문 저장·재편집 왕복 후에도 제목을 인라인으로 입력할 수 있다',()=>{
+ const details={type:'details',attrs:{summary:'',open:true},content:[rich('내용')]};
+ const blocks=documentToBlocks({type:'doc',content:[details]},render);
+ const restored=blocksToDocument(blocks,parse);
+ assert.equal(restored.content[0].type,'details');
+ assert.equal(restored.content[0].attrs.summary,'');
+ assert.equal(restored.content[0].content[0].content[0].text,'내용');
+ restored.content[0].attrs.summary='제목 입력';
+ assert.equal(restored.content[0].attrs.summary,'제목 입력');
+});
 test('작성 중인 빈 구조 블록은 오류 상태로 재편집 문서 왕복 시 값을 보존한다',()=>{
  const blocks=[createEditorBlock('TABLE'),createEditorBlock('ARCHITECTURE')];
  const roundTrip=documentToBlocks(blocksToDocument(blocks,parse),render);

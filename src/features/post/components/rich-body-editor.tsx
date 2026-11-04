@@ -197,13 +197,12 @@ export function RichBodyEditor({ blocks, onChangeBlocks, onSplitViewChange, uplo
   const formatDialogId=useId();
   const formatDialog=useRef<HTMLDialogElement>(null);
   const [draftContent, setDraftContent] = useState(content);
-  const [form, setForm] = useState<"link" | "map" | "toggle" | "html" | null>(null);
+  const [form, setForm] = useState<"link" | "map" | "html" | null>(null);
   const [formError, setFormError] = useState("");
   const [busy, setBusy] = useState(false);
   const [linkHref, setLinkHref] = useState("");
   const [linkLabel, setLinkLabel] = useState("");
   const [mapLocation, setMapLocation] = useState<MapLocation | null>(null);
-  const [toggleSummary, setToggleSummary] = useState("");
   const [htmlDraft, setHtmlDraft] = useState("");
   const [slash, setSlash] = useState<(ReturnType<typeof slashMatch> & { left: number; top: number }) | null>(null);
   const [slashIndex, setSlashIndex] = useState(0);
@@ -488,16 +487,12 @@ export function RichBodyEditor({ blocks, onChangeBlocks, onSplitViewChange, uplo
   const pickColor = (color: string) => { if (palette === "text") editor?.chain().focus().setColor(color).run(); else editor?.chain().focus().setHighlight({ color }).run(); setPalette(null); };
   const chooseTable = (rows: number, cols: number) => { run(() => editor?.chain().focus().insertTable({ rows, cols, withHeaderRow: true }).run()); setTablePicker(false); };
 
-  const addToggle = (event: React.FormEvent) => {
-    event.preventDefault();
-    const summary = toggleSummary.trim();
-    if (!summary) { setFormError("접는 글의 제목을 입력해 주세요."); return; }
+  const addToggle = () => {
     if (!editor) return;
-    const toggle = { type: "details", attrs: { summary, open: true }, content: [{ type: "paragraph" }] };
+    const toggle = { type: "details", attrs: { summary: "", open: true }, content: [{ type: "paragraph" }] };
     const selection = editor.state.selection.$from;
     if (selection.parent.type.name === "pebbleCode") editor.chain().focus().insertContentAt(selection.after(), toggle).run();
     else editor.chain().focus().insertContent(toggle).run();
-    setForm(null); setToggleSummary("");
   };
 
   const insertDivider = (variant: DividerStyle) => {
@@ -522,7 +517,7 @@ export function RichBodyEditor({ blocks, onChangeBlocks, onSplitViewChange, uplo
     { label: "HTML", keywords: "html", action: () => openForm("html") },
     { label: "아키텍처", keywords: "architecture diagram", action: () => insertBlock("ARCHITECTURE") },
     { label: "DB 설계 · ERD · 테이블 명세", keywords: "database schema table", action: () => insertBlock("DB_SCHEMA") },
-    { label: "접는 글", keywords: "toggle details", action: () => openForm("toggle") },
+    { label: "접는 글", keywords: "toggle details", action: addToggle },
   ].filter(command => !command.disabled && `${command.label} ${command.keywords}`.toLocaleLowerCase().includes(slash?.query ?? ""));
   const selectSlashCommand = (index: number) => {
     const command = slashCommands[index];
@@ -614,7 +609,7 @@ export function RichBodyEditor({ blocks, onChangeBlocks, onSplitViewChange, uplo
       <button type="button" role="menuitem" onClick={() => insertAction(() => insertBlock("CODE"))}>코드</button>
       <button type="button" role="menuitem" onClick={() => insertAction(() => insertBlock("ARCHITECTURE"))}>아키텍처</button>
       <button type="button" role="menuitem" onClick={() => insertAction(() => insertBlock("DB_SCHEMA"))}>DB 설계 · ERD · 테이블 명세</button>
-      <button type="button" role="menuitem" onClick={() => openForm("toggle")}>접는 글</button>
+      <button type="button" role="menuitem" onClick={addToggle}>접는 글</button>
     </div>}
 
     {palette && <div data-writer-popup className={styles.palette} style={{ left: Math.max(12, paletteLeft), ...((toolbarMode === "inline" || toolbarHost !== undefined) ? {top:popupAnchor.top} : {}) }} role="dialog" aria-label={palette === "text" ? "글자색 선택" : "글씨 배경색 선택"}><strong>{palette === "text" ? "글자색" : "글씨 배경색"}</strong><div>{(palette === "text" ? textColors : highlightColors).map(color => <button key={color} type="button" title={color} aria-label={`${color} 색상`} style={{ backgroundColor: color }} onClick={() => pickColor(color)}/>)}</div><button type="button" onClick={() => { if (palette === "text") editor?.chain().focus().unsetColor().run(); else editor?.chain().focus().unsetHighlight().run(); setPalette(null); }}>기본색으로 초기화</button></div>}
@@ -634,12 +629,11 @@ export function RichBodyEditor({ blocks, onChangeBlocks, onSplitViewChange, uplo
     <input ref={fileRef} type="file" hidden aria-label="첨부할 이미지 선택" multiple accept="image/png,image/jpeg,image/webp" disabled={disabled || busy || !uploadImage} onChange={event => void chooseImages(Array.from(event.currentTarget.files ?? []))}/>
     {!form && busy && <p role="status">이미지 추가 중…</p>}
     {!form && formError && <p role="alert">{formError}</p>}
-    {form && <form onKeyDown={event => { if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); setForm(null); editor?.commands.focus(); } }} data-writer-popup className={styles.form} style={{left:Math.max(12,Math.min(popupAnchor.left,typeof window!=="undefined"?window.innerWidth-432:12)),top:popupAnchor.top}} onSubmit={form === "link" ? insertLink : form === "map" ? insertMap : form === "toggle" ? addToggle : insertHtmlBlock}>
-      <h3>{form === "link" ? "링크 추가" : form === "map" ? "네이버 지도" : form === "html" ? "안전한 HTML 블록 추가" : "접는 글 추가"}</h3>
+    {form && <form onKeyDown={event => { if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); setForm(null); editor?.commands.focus(); } }} data-writer-popup className={styles.form} style={{left:Math.max(12,Math.min(popupAnchor.left,typeof window!=="undefined"?window.innerWidth-432:12)),top:popupAnchor.top}} onSubmit={form === "link" ? insertLink : form === "map" ? insertMap : insertHtmlBlock}>
+      <h3>{form === "link" ? "링크 추가" : form === "map" ? "네이버 지도" : "안전한 HTML 블록 추가"}</h3>
       {form === "link" && <><label>주소<input type="url" value={linkHref} onChange={event => setLinkHref(event.target.value)} placeholder="https://example.com" required/></label><label>표시 문구 (선택)<input value={linkLabel} onChange={event => setLinkLabel(event.target.value)} /></label><button type="submit">링크 적용</button></>}
       {form === "map" && <><NaverLocationMap location={mapLocation} onSelect={setMapLocation}/><button type="submit" disabled={!mapLocation}>지도 삽입</button></>}
       {form === "html" && <><label>HTML 원문<textarea aria-label="HTML 블록 원문" placeholder="<p>내용을 입력하세요.</p>" value={htmlDraft} onChange={event => setHtmlDraft(event.target.value)} rows={8}/></label><div className={styles.preview} aria-label="HTML 미리보기" dangerouslySetInnerHTML={{ __html: richContentHtml(htmlDraft, "HTML") }}/><button type="submit">삽입</button></>}
-      {form === "toggle" && <><label>접는 글 제목<input placeholder="제목을 입력하세요" value={toggleSummary} onChange={event => setToggleSummary(event.target.value)} required/></label><button type="submit">추가</button></>}
       {formError && <p role="alert">{formError}</p>}<button type="button" onClick={() => { setForm(null); editor?.commands.focus(); }}>닫기</button>
     </form>}
   </section>;
