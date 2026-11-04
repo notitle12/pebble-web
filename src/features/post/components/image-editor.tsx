@@ -5,6 +5,21 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import styles from "./image-editor.module.css";
 import { clampCropRect, createMosaicOperation, createPenOperation, createResampleOperation, createTextOperation, safeBitmapSize, type CropOperation, type ImageEditOperation, type PenPoint, type TextOperation } from "../image-edit-model";
 
+type ActionName = "crop" | "mosaic" | "text" | "pen" | "resample" | "undo" | "redo" | "check" | "cancel";
+const actionPaths: Record<ActionName, string[]> = {
+  crop: ["M6 3v13a2 2 0 0 0 2 2h13", "M3 6h13a2 2 0 0 1 2 2v13"],
+  mosaic: ["M3 3h7v7H3z", "M14 3h7v7h-7z", "M3 14h7v7H3z", "M14 14h7v7h-7z"],
+  text: ["M4 6V4h16v2", "M12 4v16", "M8 20h8"],
+  pen: ["m15 4 5 5", "m4 15 11-11a2 2 0 0 1 3 0l2 2a2 2 0 0 1 0 3L9 20l-6 1z", "m4 15 5 5"],
+  resample: ["M8 3H3v5", "M3 3l6 6", "M16 21h5v-5", "m15 15 6 6", "M14 3h7v7", "M3 14v7h7"],
+  undo: ["M8 4 3 9l5 5", "M3 9h10a7 7 0 0 1 0 14"],
+  redo: ["m16 4 5 5-5 5", "M21 9H11a7 7 0 0 0 0 14"],
+  check: ["m5 12 4 4L19 6"], cancel: ["m6 6 12 12", "M18 6 6 18"],
+};
+function ActionIcon({ name }: { name: ActionName }) {
+  return <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">{actionPaths[name].map((d, index) => <path key={index} d={d}/>)}</svg>;
+}
+
 export type ImageEditorProps = {
   src: string;
   fileName?: string;
@@ -118,13 +133,16 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
   const [selection, setSelection] = useState<CropSelection | null>(null);
   const [pointerStart, setPointerStart] = useState<{ x: number; y: number } | null>(null);
   const [saving, setSaving] = useState(false);
+  const [confirmCancel, setConfirmCancel] = useState(false);
+  const confirmationRef = useRef<HTMLElement>(null);
+  const requestCancel = () => { if (!saving) setConfirmCancel(true); };
   const [saveError, setSaveError] = useState("");
   const [notice, setNotice] = useState("");
   const [tool, setTool] = useState<Tool>("crop");
   const [mosaicBlockSize, setMosaicBlockSize] = useState(12);
   const [textValue, setTextValue] = useState("");
   const [textFontSize, setTextFontSize] = useState(32);
-  const [textColor, setTextColor] = useState("#ffffff");
+  const [textColor, setTextColor] = useState("#24352b");
   const [penWidth, setPenWidth] = useState(8);
   const [penColor, setPenColor] = useState("#e53935");
   const [strokePreview, setStrokePreview] = useState<PenPoint[] | null>(null);
@@ -135,8 +153,8 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
   const workingRef = useRef<HTMLCanvasElement | null>(null);
   const bitmapRef = useRef<ImageBitmap | null>(null);
   const dialogRef = useRef<HTMLElement>(null);
-  const latestRef = useRef({ saving, onCancel });
-  latestRef.current = { saving, onCancel };
+  const latestRef = useRef({ saving, confirmCancel });
+  latestRef.current = { saving, confirmCancel };
 
   useEffect(() => {
     setMounted(true);
@@ -173,8 +191,8 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
   }, [src]);
 
   useEffect(() => {
-    if (mounted) dialogRef.current?.querySelector<HTMLButtonElement>("button:not(:disabled)")?.focus({ preventScroll: true });
-  }, [mounted]);
+    if (mounted) (confirmCancel ? confirmationRef : dialogRef).current?.querySelector<HTMLButtonElement>("button:not(:disabled)")?.focus({ preventScroll: true });
+  }, [mounted, confirmCancel]);
 
   const redraw = useCallback(() => {
     if (!bitmap || !displayRef.current) return;
@@ -199,16 +217,17 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
 
   useEffect(() => {
     const keydown = (event: KeyboardEvent) => {
-      if (event.key === "Tab" && dialogRef.current) {
-        const controls = Array.from(dialogRef.current.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), textarea:not(:disabled), select:not(:disabled), [tabindex="0"]')).filter(element => element.getClientRects().length);
+      const activeDialog = latestRef.current.confirmCancel ? confirmationRef.current : dialogRef.current;
+      if (event.key === "Tab" && activeDialog) {
+        const controls = Array.from(activeDialog.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), textarea:not(:disabled), select:not(:disabled), [tabindex="0"]')).filter(element => element.getClientRects().length);
         const first = controls[0], last = controls.at(-1);
-        if (event.shiftKey && (document.activeElement === first || !dialogRef.current.contains(document.activeElement))) { event.preventDefault(); last?.focus(); }
-        else if (!event.shiftKey && (document.activeElement === last || !dialogRef.current.contains(document.activeElement))) { event.preventDefault(); first?.focus(); }
+        if (event.shiftKey && (document.activeElement === first || !activeDialog.contains(document.activeElement))) { event.preventDefault(); last?.focus(); }
+        else if (!event.shiftKey && (document.activeElement === last || !activeDialog.contains(document.activeElement))) { event.preventDefault(); first?.focus(); }
         return;
       }
       if (event.key !== "Escape" || latestRef.current.saving) return;
       event.preventDefault();
-      latestRef.current.onCancel();
+      setConfirmCancel(previous => !previous);
     };
     window.addEventListener("keydown", keydown);
     return () => window.removeEventListener("keydown", keydown);
@@ -326,13 +345,22 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
   if (!mounted) return null;
   const current = workingRef.current;
   const bounds = selection && current ? cropBounds(selection, current.width, current.height) : null;
-  return createPortal(<div className={styles.backdrop} onMouseDown={event => { if (event.target === event.currentTarget && !saving) onCancel(); }}>
-    <section ref={dialogRef} className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby="image-editor-title" aria-describedby="image-editor-help" tabIndex={-1}>
+  return createPortal(<div className={styles.backdrop} onMouseDown={event => { if (event.target === event.currentTarget) requestCancel(); }}>
+    <section ref={dialogRef} inert={confirmCancel} className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby="image-editor-title" aria-describedby="image-editor-help" tabIndex={-1}>
       <header className={styles.header}>
         <div><h2 id="image-editor-title">이미지 편집</h2><p id="image-editor-help">{tool === "text" ? "문구와 모양을 정한 뒤 이미지 위치를 클릭해 배치하세요." : tool === "pen" ? "색과 굵기를 정한 뒤 이미지 위에 그리세요." : tool === "resample" ? "실제 픽셀 너비와 높이를 변경합니다. 원본은 편집 중 보존됩니다." : "영역을 드래그해 선택하고 도구를 적용하세요. 원본은 편집 중 보존됩니다."}</p></div>
-        <button type="button" className="editor-action" onClick={onCancel} disabled={saving}>닫기</button>
+
       </header>
       {loadError ? <div className={styles.error} role="alert">{loadError}</div> : !bitmap ? <p className={styles.status} role="status">이미지를 불러오는 중…</p> : <>
+        <div className={styles.toolStrip} role="toolbar" aria-label="이미지 편집 도구">
+          <div className={styles.toolChoices}>
+            {([["crop", "자르기"], ["mosaic", "모자이크"], ["text", "글씨"], ["pen", "펜"], ["resample", "크기"]] as const).map(([value, label]) => <button key={value} type="button" className="editor-action" aria-label={value === "resample" ? "크기 변경" : label} aria-pressed={tool === value} onClick={() => { setTool(value); setSelection(null); }} disabled={saving}><ActionIcon name={value}/><span>{label}</span></button>)}
+          </div>
+          <div className={styles.historyActions}>
+            <button type="button" className="editor-action" title="실행 취소" aria-label="실행 취소" onClick={undo} disabled={cursor === 0 || saving}><ActionIcon name="undo"/></button>
+            <button type="button" className="editor-action" title="다시 실행" aria-label="다시 실행" onClick={redo} disabled={cursor >= operations.length || saving}><ActionIcon name="redo"/></button>
+          </div>
+        </div>
         <div className={styles.stage} onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={() => { setPointerStart(null); setStrokePreview(null); }}>
           <canvas ref={displayRef} className={styles.canvas} aria-label="편집할 이미지" />
           {bounds && current && <div className={styles.cropMarquee} aria-hidden="true" style={{ left: `${bounds.x / current.width * 100}%`, top: `${bounds.y / current.height * 100}%`, width: `${bounds.width / current.width * 100}%`, height: `${bounds.height / current.height * 100}%` }} />}
@@ -340,16 +368,9 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
         </div>
         <div className={styles.toolbar}>
           <div className={styles.actions}>
-            <button type="button" className="editor-action" onClick={undo} disabled={cursor === 0 || saving}>실행 취소</button>
-            <button type="button" className="editor-action" onClick={redo} disabled={cursor >= operations.length || saving}>다시 실행</button>
-            <button type="button" className="editor-action" aria-pressed={tool === "crop"} onClick={() => { setTool("crop"); setSelection(null); }} disabled={saving}>자르기</button>
-            <button type="button" className="editor-action" aria-pressed={tool === "mosaic"} onClick={() => { setTool("mosaic"); setSelection(null); }} disabled={saving}>모자이크</button>
-            <button type="button" className="editor-action" aria-pressed={tool === "text"} onClick={() => { setTool("text"); setSelection(null); }} disabled={saving}>텍스트</button>
-            <button type="button" className="editor-action" aria-pressed={tool === "pen"} onClick={() => { setTool("pen"); setSelection(null); }} disabled={saving}>펜</button>
-            <button type="button" className="editor-action" aria-pressed={tool === "resample"} onClick={() => { setTool("resample"); setSelection(null); }} disabled={saving}>크기 변경</button>
-            {tool === "crop" ? <button type="button" className="editor-action" onClick={addCrop} disabled={!bounds || saving}>자르기 적용</button> : tool === "mosaic" ? <>
+            {tool === "crop" ? <button type="button" className="editor-action" onClick={addCrop} disabled={!bounds || saving}><ActionIcon name="check"/><span>자르기 적용</span></button> : tool === "mosaic" ? <>
               <label className={styles.rangeLabel}>모자이크 크기 <input type="range" min="4" max="48" step="2" value={mosaicBlockSize} onChange={event => setMosaicBlockSize(Number(event.currentTarget.value))} disabled={saving} /></label>
-              <button type="button" className="editor-action" onClick={addMosaic} disabled={!bounds || saving}>모자이크 적용</button>
+              <button type="button" className="editor-action" onClick={addMosaic} disabled={!bounds || saving}><ActionIcon name="check"/><span>모자이크 적용</span></button>
             </> : tool === "text" ? <>
               <label className={styles.rangeLabel}>글자 크기 <input type="range" min="16" max="160" step="2" value={textFontSize} onChange={event => setTextFontSize(Number(event.currentTarget.value))} disabled={saving} /></label>
               <label className={styles.colorLabel}>글자색 <input type="color" value={textColor} onChange={event => setTextColor(event.currentTarget.value)} disabled={saving} /></label>
@@ -369,7 +390,7 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
                 if (keepAspectRatio && current) setResampleWidth(Math.max(1, Math.round(next * current.width / current.height)));
               }} disabled={saving} /> px</label>
               <label className={styles.checkLabel}><input type="checkbox" checked={keepAspectRatio} onChange={event => setKeepAspectRatio(event.currentTarget.checked)} disabled={saving} /> 비율 유지</label>
-              <button type="button" className="editor-action" onClick={addResample} disabled={saving}>크기 변경 적용</button>
+              <button type="button" className="editor-action" onClick={addResample} disabled={saving}><ActionIcon name="check"/><span>크기 변경 적용</span></button>
             </>}
           </div>
           <p className={styles.dimensions}>{canvasSize.width} × {canvasSize.height}px</p>
@@ -379,9 +400,17 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
       </>}
       <footer className={styles.footer}>
         {saving && <span className={styles.status} role="status">편집한 이미지를 저장하는 중…</span>}
-        <button type="button" className="editor-action" onClick={onCancel} disabled={saving}>취소</button>
-        <button type="button" className={`editor-action ${styles.primary}`} onClick={() => void apply()} disabled={!bitmap || !canvasSize.width || saving || cursor === 0}>이미지 적용</button>
+        <button type="button" className="editor-action" onClick={requestCancel} disabled={saving}><ActionIcon name="cancel"/><span>취소</span></button>
+        <button type="button" className={`editor-action ${styles.primary}`} onClick={() => void apply()} disabled={!bitmap || !canvasSize.width || saving || cursor === 0}><ActionIcon name="check"/><span>저장</span></button>
       </footer>
     </section>
+    {confirmCancel && <section ref={confirmationRef} className={styles.confirmation} role="alertdialog" aria-modal="true" aria-labelledby="image-discard-title" aria-describedby="image-discard-description" tabIndex={-1}>
+      <h2 id="image-discard-title">이미지 편집을 취소할까요?</h2>
+      <p id="image-discard-description">저장하지 않은 이미지 편집 내용이 모두 사라집니다.</p>
+      <div className={styles.confirmActions}>
+        <button type="button" className="editor-action" onClick={() => setConfirmCancel(false)}>계속 편집</button>
+        <button type="button" className={`editor-action ${styles.discard}`} onClick={onCancel}>편집 취소</button>
+      </div>
+    </section>}
   </div>, document.body);
 }
