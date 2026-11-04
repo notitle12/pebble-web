@@ -31,6 +31,7 @@ export function createMosaicOperation(rect: CropOperation, blockSize: number): M
 }
 
 export function createTextOperation(text: string, x: number, y: number, size: PixelSize, fontSize: number, color: string, maxWidth?: number): TextOperation | null {
+  if(!Number.isFinite(size.width)||!Number.isFinite(size.height)||size.width<=0||size.height<=0)return null;
   const safeText = text.trim().slice(0, 500);
   if (!safeText) return null;
   const safeColor = /^#[\da-f]{6}$/i.test(color) ? color.toLowerCase() : "#ffffff";
@@ -87,7 +88,7 @@ export function imageTextLines(text:string,maxWidth:number,measure:(text:string)
 export type PlacedImageText={index:number;operation:TextOperation;sourceSize:PixelSize;offsetX:number;offsetY:number;x:number;y:number;width:number;height:number};
 /** Track text through later crops so its editing target stays on the visible glyphs. */
 export function placedImageTexts(operations:ImageEditOperation[],sourceSize:PixelSize,measure:(text:string,fontSize:number)=>number):PlacedImageText[]{
- const placed:PlacedImageText[]=[];let size=sourceSize;
+ const placed:PlacedImageText[]=[];let size={width:sourceSize.width,height:sourceSize.height};
  operations.forEach((operation,index)=>{
   if(operation.type==='crop'){size={width:operation.width,height:operation.height};return;}
   if(operation.type!=='text')return;

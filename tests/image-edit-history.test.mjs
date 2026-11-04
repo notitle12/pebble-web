@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {emptyImageHistory,commitImageEdit,undoImageEdit,redoImageEdit,replaceImageText} from '../src/features/post/image-edit-history.ts';
-import {placedImageTexts} from '../src/features/post/image-edit-model.ts';
+import {createTextOperation,placedImageTexts} from '../src/features/post/image-edit-model.ts';
 const text={type:'text',id:'a',text:'처음 글씨',x:20,y:30,fontSize:20,color:'#000000',maxWidth:120};
 test('text creation, re-edit and deletion each undo and redo without changing raster commands',()=>{
  const pen={type:'pen',color:'#fff',width:2,points:[{x:1,y:2}]};
@@ -29,4 +29,14 @@ test('text selection coordinates track later crops and discard fully cropped-out
  assert.equal(visible[0].x,10);assert.equal(visible[0].y,15);assert.equal(visible[0].offsetX,10);assert.equal(visible[0].offsetY,15);
  assert.deepEqual(visible[0].sourceSize,{width:300,height:200});
  assert.deepEqual(placedImageTexts([{...text,x:250},crop],{width:300,height:200},()=>10),[]);
+});
+
+test('reopening text reads ImageBitmap dimensions through their non-enumerable getters',()=>{
+ const bitmap=Object.create(null,{width:{get:()=>1591},height:{get:()=>925}});
+ const [region]=placedImageTexts([text],bitmap,(value,font)=>value.length*font/2);
+ assert.deepEqual(region.sourceSize,{width:1591,height:925});
+ const edited=createTextOperation('수정 후 유지',region.operation.x,region.operation.y,region.sourceSize,20,'#000000',region.width);
+ assert.ok(Number.isFinite(edited.x));assert.ok(Number.isFinite(edited.y));
+ assert.equal(edited.text,'수정 후 유지');
+ assert.equal(createTextOperation('손상 데이터',0,0,{},20,'#000000'),null);
 });
