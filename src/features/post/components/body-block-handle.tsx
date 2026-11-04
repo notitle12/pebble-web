@@ -36,6 +36,14 @@ export function BodyBlockHandle({ editor, disabled }: { editor: Editor | null; d
           event.preventDefault();return;
         }
         current.beside=undefined;
+        // Positions just outside a grid can still resolve into its nearest column.
+        // Use the grid's outer boundary when pulling a child back into the document.
+        const outerLayout=source?items.filter(item=>item.node.type.name==="imageTextLayout"&&item.pos<source.pos&&item.end>source.end).sort((a,b)=>(a.end-a.pos)-(b.end-b.pos))[0]:null;
+        if(outerLayout&&event.clientX>=outerLayout.rect.left-12&&event.clientX<=outerLayout.rect.right+12){
+          const before=event.clientY<outerLayout.rect.top&&event.clientY>=outerLayout.rect.top-32;
+          const after=event.clientY>outerLayout.rect.bottom&&event.clientY<=outerLayout.rect.bottom+32;
+          if(before||after){current.gap=before?outerLayout.pos:outerLayout.end;setLine({left:outerLayout.rect.left,top:before?outerLayout.rect.top:outerLayout.rect.bottom,width:outerLayout.rect.width});event.preventDefault();return;}
+        }
         const located = editor.view.posAtCoords({ left: event.clientX, top: event.clientY });
         const context = located ? blockGapContext(editor.state.doc, located.pos) : null;
         const target = context && items.find(item => item.pos === context.before);

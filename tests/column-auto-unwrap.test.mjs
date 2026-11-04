@@ -50,3 +50,9 @@ test('IME temporary empty text does not collapse a layout mid-composition',()=>{
  let state=stateFor([row()]);const text=movableBlocks(state.doc).find(item=>item.node.type.name==='paragraph');
  state=state.apply(state.tr.delete(text.pos+1,text.end-1).setMeta('composition',1));assert.equal(countLayouts(state.doc),1);
 });
+
+test('pulling a column child above the layout preserves the block and unwraps the remaining side',()=>{
+ let state=stateFor([row()]);const source=movableBlocks(state.doc).find(item=>item.node.type.name==='image'),original=state.doc;
+ state=state.apply(moveBodyBlock(state.tr,source.pos,0));assert.equal(countLayouts(state.doc),0);assert.ok(state.doc.firstChild.eq(image));assert.equal(state.doc.lastChild.textContent,'설명');
+ assert.equal(undo(state,tr=>state=state.apply(tr)),true);assert.ok(state.doc.eq(original));
+});
