@@ -5,3 +5,5 @@
 :global(html[data-theme=dark]) .handle{background:var(--block-heading)!important;color:var(--muted)}
 :global(html[data-theme=dark]) .handle:hover{background:var(--accent-soft)!important;color:var(--accent)}
 :global(html[data-theme=dark]) .line{background:var(--accent)}
+
+.sideLine{border-radius:2px}.sideLine::after{content:"나란히 배치";position:absolute;top:50%;left:8px;transform:translateY(-50%);padding:3px 7px;border-radius:4px;background:var(--accent,#35674b);color:var(--surface,#fff);font:500 11px/1.2 system-ui;white-space:nowrap}

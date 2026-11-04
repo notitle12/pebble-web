@@ -34,3 +34,33 @@ test('safe HTML and Markdown retain columns, ratio, image and text while strippi
  assert.match(restored,/post-columns/);assert.match(restored,/data-ratio="1:2"/);assert.match(restored,/설명/);assert.match(restored,/image.webp/);
  assert.doesNotMatch(richContentHtml(source.replace('1:2','evil'),'HTML'),/data-ratio/);
 });
+
+test('dropping either side of a paragraph creates equal columns without duplicating blocks, with undo/redo',async()=>{
+ const {placeBodyBlockBeside,sideOfBlockDrop}=await import('../src/features/post/block-move.ts');
+ for(const side of ['left','right'])for(const reverse of [false,true]){
+  const paragraph=schema.node('paragraph',null,schema.text('본문 설명'));
+  const code=schema.node('pebbleCode',null,schema.text('code'));
+  let state=EditorState.create({schema,doc:schema.node('doc',null,reverse?[code,paragraph]:[paragraph,code]),plugins:[history()]});
+  const original=state.doc,items=movableBlocks(state.doc),source=items.find(item=>item.node.type.name==='pebbleCode'),target=items.find(item=>item.node.type.name==='paragraph');
+  const tr=placeBodyBlockBeside(state.tr,source.pos,target.pos,side);assert.ok(tr);state=state.apply(tr);
+  assert.equal(state.doc.childCount,1);assert.equal(state.doc.firstChild.attrs.ratio,'1:1');
+  assert.equal(state.doc.firstChild.child(side==='left'?0:1).firstChild.type.name,'pebbleCode');
+  assert.equal(state.doc.textContent,side==='left'?'code본문 설명':'본문 설명code');
+  assert.equal(undo(state,tr=>state=state.apply(tr)),true);assert.ok(state.doc.eq(original));
+  assert.equal(redo(state,tr=>state=state.apply(tr)),true);state.doc.check();
+ }
+ const rect={left:100,right:900,top:100,bottom:140};
+ assert.equal(sideOfBlockDrop(110,120,rect),'left');assert.equal(sideOfBlockDrop(890,120,rect),'right');
+ assert.equal(sideOfBlockDrop(500,120,rect),null);assert.equal(sideOfBlockDrop(110,101,rect),null);assert.equal(sideOfBlockDrop(60,120,rect),null);
+});
+test('side placement moves the last column child out safely and rejects self/ancestor nesting',async()=>{
+ const {placeBodyBlockBeside}=await import('../src/features/post/block-move.ts');
+ const code=schema.node('pebbleCode',null,schema.text('nested'));
+ const row=schema.node('imageTextLayout',null,[schema.node('imageTextColumn',null,[code]),schema.node('imageTextColumn',null,[schema.node('paragraph')])]);
+ const state=EditorState.create({schema,doc:schema.node('doc',null,[row,schema.node('paragraph',null,schema.text('target'))])});
+ const items=movableBlocks(state.doc),source=items.find(item=>item.node.type.name==='pebbleCode'),target=items.at(-1);
+ const tr=placeBodyBlockBeside(state.tr,source.pos,target.pos,'right');assert.ok(tr);tr.doc.check();
+ assert.equal(tr.doc.firstChild.firstChild.firstChild.type.name,'paragraph');
+ assert.equal(placeBodyBlockBeside(state.tr,0,source.pos,'left'),null);
+ assert.equal(placeBodyBlockBeside(state.tr,source.pos,source.pos,'left'),null);
+});

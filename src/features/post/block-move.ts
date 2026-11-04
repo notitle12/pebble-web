@@ -118,3 +118,43 @@ export function moveBodyBlock(tr: Transaction, source: number, gap: number): Tra
   }
   return tr.docChanged ? tr : null;
 }
+
+export function canPlaceBodyBlockBeside(source:MovableBlock,target:MovableBlock):boolean {
+  return source.pos!==target.pos && source.node.type.name!=="imageTextLayout" && target.node.type.name!=="imageTextLayout"
+    && target.parentType!=="imageTextColumn"
+    && !(source.pos<target.end&&target.pos<source.end);
+}
+
+/** Wrap two independent blocks in a 50:50 layout as a single undoable move. */
+export function placeBodyBlockBeside(tr:Transaction,source:number,target:number,side:"left"|"right"):Transaction|null {
+  const items=movableBlocks(tr.doc),from=items.find(item=>item.pos===source),to=items.find(item=>item.pos===target);
+  if(!from||!to||!canPlaceBodyBlockBeside(from,to))return null;
+  const schema=tr.doc.type.schema,column=schema.nodes.imageTextColumn,layout=schema.nodes.imageTextLayout;
+  if(!column||!layout)return null;
+  const parent=from.parentPos<0?tr.doc:tr.doc.nodeAt(from.parentPos);
+  if(!parent)return null;
+  const needsPlaceholder=parent.type.name!=="doc"&&parent.childCount===1;
+  try {
+    if(needsPlaceholder){
+      const placeholder=schema.nodes.paragraph?.createAndFill();
+      if(!placeholder||!parent.canReplace(0,1,Fragment.from(placeholder)))return null;
+      tr.replaceWith(from.pos,from.end,placeholder);
+    }else tr.delete(from.pos,from.end);
+    const mappedTarget=tr.mapping.map(to.pos,1),targetNode=tr.doc.nodeAt(mappedTarget);
+    if(!targetNode?.eq(to.node))return null;
+    const children=side==="left"?[from.node,targetNode]:[targetNode,from.node];
+    const columns=children.map(node=>column.create(null,node));
+    const row=layout.create({ratio:"1:1"},columns);
+    const $target=tr.doc.resolve(mappedTarget),index=$target.index();
+    if(!$target.parent.canReplace(index,index+1,Fragment.from(row)))return null;
+    tr.replaceWith(mappedTarget,mappedTarget+targetNode.nodeSize,row);
+    tr.doc.check();return tr;
+  }catch{return null;}
+}
+
+/** Require an intentional move into the side of a block, away from its top/bottom gaps. */
+export function sideOfBlockDrop(x:number,y:number,rect:{left:number;right:number;top:number;bottom:number}):"left"|"right"|null {
+  const width=rect.right-rect.left,height=rect.bottom-rect.top,inset=Math.min(8,height/4),edge=Math.min(40,width*.2);
+  if(width<80||y<rect.top+inset||y>rect.bottom-inset||x<rect.left-8||x>rect.right+8)return null;
+  return x<=rect.left+edge?"left":x>=rect.right-edge?"right":null;
+}

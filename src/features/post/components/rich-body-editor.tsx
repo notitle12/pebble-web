@@ -12,7 +12,7 @@ import FontFamily from "@tiptap/extension-font-family";
 import Highlight from "@tiptap/extension-highlight";
 import Image from "@tiptap/extension-image";
 import { RichTextStarterKit } from "../rich-text-starter-kit";
-import { ImageTextLayout, ImageTextColumn, newImageTextLayout } from "../image-text-columns";
+import { ImageTextLayout, ImageTextColumn } from "../image-text-columns";
 import { ThemeTextDecorations } from "../theme-text-rendering";
 import { CodeClipboard } from "../code-clipboard";
 import { TableKit } from "@tiptap/extension-table";
@@ -527,7 +527,6 @@ export function RichBodyEditor({ blocks, onChangeBlocks, onSplitViewChange, uplo
     { label: "인용", keywords: "quote", action: () => editor?.chain().focus().toggleBlockquote().run() },
     ...dividerStyles.map(variant => ({ label: `구분선 · ${dividerLabels[variant]}`, keywords: `divider line ${variant}`, action: () => insertDivider(variant) })),
     { label: "표", keywords: "table", action: () => { setTablePicker(true); requestAnimationFrame(() => root.current?.querySelector<HTMLButtonElement>("[data-table-cell='3-3']")?.focus()); } },
-    { label: "이미지·글 나란히", keywords: "columns image text 좌우 양쪽 배치", action: () => editor?.chain().focus().insertContent(newImageTextLayout()).run() },
     { label: "이미지", keywords: "image photo 사진", action: () => fileRef.current?.click(), disabled: !uploadImage || busy },
     { label: "링크", keywords: "link url", action: () => openForm("link") },
     { label: "지도", keywords: "map location", action: () => openForm("map") },
