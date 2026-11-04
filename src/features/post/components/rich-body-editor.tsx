@@ -32,6 +32,7 @@ import { PostBody } from "./post-body";
 import styles from "./rich-body-editor.module.css";
 import { BlockAlignment } from "../block-alignment";
 import { ImageNodeView, RepresentativeImageProvider } from "./image-node-view";
+import { normalizeImageDisplaySize } from "../image-display-size";
 import { NaverLocationMap } from "./naver-location-map";
 import { buildNaverMapEmbed, parseNaverMapEmbed, type MapLocation } from "../naver-map";
 import { prepareImageAttachments } from "../image-attachments";
@@ -110,6 +111,19 @@ const RichImage = Image.extend({
         default: "left",
         parseHTML: (element: HTMLElement) => ["left", "center", "right"].includes(element.getAttribute("data-align") || "") ? element.getAttribute("data-align") : "left",
         renderHTML: (attributes: Record<string, unknown>) => ({ "data-align": ["left", "center", "right"].includes(String(attributes.align)) ? attributes.align : "left" }),
+      },
+      width: {
+        default: null,
+        parseHTML: (element: HTMLElement) => normalizeImageDisplaySize(element.getAttribute("width"), element.getAttribute("height")).width,
+        renderHTML: (attributes: Record<string, unknown>) => {
+          const size = normalizeImageDisplaySize(attributes.width, attributes.height);
+          return size.width ? { width: size.width, height: size.height } : {};
+        },
+      },
+      height: {
+        default: null,
+        parseHTML: (element: HTMLElement) => normalizeImageDisplaySize(element.getAttribute("width"), element.getAttribute("height")).height,
+        renderHTML: () => ({}),
       },
       src: {
         default: null,

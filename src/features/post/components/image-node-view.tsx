@@ -1,9 +1,10 @@
 "use client";
 
-import { createContext, useContext } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { NodeViewWrapper, type NodeViewProps } from "@tiptap/react";
 import styles from "./image-node-view.module.css";
 import { selectableRepresentativeImage } from "../post-images";
+import { normalizeImageDisplaySize, resizedImageDimensions } from "../image-display-size";
 
 type RepresentativeContextValue = {
   enabled?: boolean;
@@ -24,14 +25,83 @@ export function RepresentativeImageProvider({ enabled = true, selectedSrc, disab
 
 const safeImageHref = (value: unknown) => typeof value === "string" && /^(?:https?:|blob:)/i.test(value.trim());
 
-export function ImageNodeView({ node, selected, deleteNode, editor }: NodeViewProps) {
+export function ImageNodeView({ node, selected, deleteNode, editor, updateAttributes }: NodeViewProps) {
   const representative = useContext(RepresentativeContext);
+  const imageRef = useRef<HTMLImageElement>(null);
+  const dragRef = useRef<{ startX: number; startWidth: number; ratio: number; maxWidth: number; previewWidth: number } | null>(null);
+  const [previewWidth, setPreviewWidth] = useState<number | null>(null);
+  const displaySize = normalizeImageDisplaySize(node.attrs.width, node.attrs.height);
+  const editable = editor.isEditable && !representative.disabled;
   const src = safeImageHref(node.attrs.src) ? node.attrs.src : "";
   const mediaSrc = safeImageHref(node.attrs.mediaSrc) ? node.attrs.mediaSrc : "";
   const stableSrc = mediaSrc || src;
   const isRepresentative = !!stableSrc && representative.selectedSrc === stableSrc;
+  const finishDrag = (commit: boolean) => {
+    const drag = dragRef.current;
+    if (!drag) return;
+    dragRef.current = null;
+    if (commit && editor.isEditable && !editor.isDestroyed && !representative.disabled && Math.abs(drag.previewWidth - drag.startWidth) >= 1) {
+      updateAttributes(resizedImageDimensions(drag.previewWidth, drag.ratio, drag.maxWidth));
+    }
+    setPreviewWidth(null);
+  };
+  const onPointerMove = (event: PointerEvent) => {
+    const drag = dragRef.current;
+    if (!drag) return;
+    drag.previewWidth = resizedImageDimensions(drag.startWidth + event.clientX - drag.startX, drag.ratio, drag.maxWidth).width;
+    setPreviewWidth(drag.previewWidth);
+  };
+  const onPointerUp = () => finishDrag(true);
+  const onPointerCancel = () => finishDrag(false);
+  const onWindowKeyDown = (event: KeyboardEvent) => { if (event.key === "Escape") finishDrag(false); };
+  const handlersRef = useRef({ onPointerMove, onPointerUp, onPointerCancel, onWindowKeyDown });
+  handlersRef.current = { onPointerMove, onPointerUp, onPointerCancel, onWindowKeyDown };
+  useEffect(() => {
+    const move = (event: PointerEvent) => handlersRef.current.onPointerMove(event);
+    const up = () => handlersRef.current.onPointerUp();
+    const cancel = () => handlersRef.current.onPointerCancel();
+    const keydown = (event: KeyboardEvent) => handlersRef.current.onWindowKeyDown(event);
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", cancel);
+    window.addEventListener("blur", cancel);
+    window.addEventListener("keydown", keydown);
+    return () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", cancel);
+      window.removeEventListener("blur", cancel);
+      window.removeEventListener("keydown", keydown);
+    };
+  }, []);
+  const startResize = (event: React.PointerEvent<HTMLButtonElement>) => {
+    if (!editable || event.button !== 0) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const image = imageRef.current;
+    if (!image) return;
+    const rect = image.getBoundingClientRect();
+    const parentWidth = image.parentElement?.parentElement?.clientWidth || rect.width;
+    const ratio = image.naturalWidth > 0 && image.naturalHeight > 0 ? image.naturalWidth / image.naturalHeight : rect.width / Math.max(1, rect.height);
+    const startWidth = rect.width;
+    dragRef.current = { startX: event.clientX, startWidth, ratio, maxWidth: parentWidth, previewWidth: startWidth };
+    setPreviewWidth(rect.width);
+  };
+  const resizeByKeyboard = (event: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (!editable || !["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const image = imageRef.current;
+    if (!image) return;
+    const ratio = image.naturalWidth > 0 && image.naturalHeight > 0 ? image.naturalWidth / image.naturalHeight : image.clientWidth / Math.max(1, image.clientHeight);
+    const maxWidth = image.parentElement?.parentElement?.clientWidth || image.clientWidth;
+    const current = displaySize.width ?? image.getBoundingClientRect().width;
+    const next = event.key === "Home" ? 80 : event.key === "End" ? maxWidth : current + (event.key === "ArrowRight" ? 16 : -16);
+    updateAttributes(resizedImageDimensions(next, ratio, maxWidth));
+  };
   return <NodeViewWrapper as="figure" className={styles.image} data-align={node.attrs.align ?? "left"} data-selected={selected || undefined} contentEditable={false} draggable="true">
-    {src && <img src={src} alt={typeof node.attrs.alt === "string" ? node.attrs.alt : ""} draggable="true" />}
+    {src && <img ref={imageRef} src={src} alt={typeof node.attrs.alt === "string" ? node.attrs.alt : ""} width={displaySize.width ?? undefined} height={displaySize.height ?? undefined} style={{ width: previewWidth !== null ? `${previewWidth}px` : displaySize.width ? `${displaySize.width}px` : "auto", height: "auto" }} draggable="true" />}
+    {selected && editable && <button className={styles.resizeHandle} type="button" contentEditable={false} data-image-node-control="" draggable={false} aria-label="이미지 너비 조절" aria-valuemin={80} aria-valuemax={1600} aria-valuenow={Math.round(previewWidth ?? displaySize.width ?? imageRef.current?.getBoundingClientRect().width ?? 0)} aria-valuetext={`${Math.round(previewWidth ?? displaySize.width ?? imageRef.current?.getBoundingClientRect().width ?? 0)} 픽셀`} role="slider" onPointerDown={startResize} onKeyDown={resizeByKeyboard} onClick={event => event.stopPropagation()} />}
     <div className={styles.tools} role="group" aria-label="이미지 편집" contentEditable={false} data-image-node-control="">
     {representative.enabled !== false && selectableRepresentativeImage(stableSrc) && <button
       className={styles.representativeButton}
