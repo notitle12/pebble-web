@@ -1,3 +1,5 @@
+import { parseDocument } from "htmlparser2";
+import { Element, Text, type ChildNode } from "domhandler";
 import { Extension } from "@tiptap/core";
 import { Fragment, Slice } from "@tiptap/pm/model";
 import { Plugin } from "@tiptap/pm/state";
@@ -6,6 +8,14 @@ import type { EditorView } from "@tiptap/pm/view";
 const codeMime = "application/x-pebble-code";
 const normalize = (text: string) => text.replace(/\r\n?/g, "\n");
 const escape = (text: string) => text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+function codeOnlyHtml(html: string): boolean {
+  const onlyCode = (nodes: ChildNode[]): boolean => {
+    const visible = nodes.filter(node => node instanceof Element ? !["meta", "head"].includes(node.name) : node instanceof Text && !!node.data.trim());
+    return visible.length > 0 && visible.every(node => node instanceof Element && (node.name === "pre" || ["html", "body", "div"].includes(node.name) && onlyCode(node.children)));
+  };
+  return onlyCode(parseDocument(html).children);
+}
 
 function copyCode(view: EditorView, event: ClipboardEvent, cut = false) {
   const { $from, $to, empty } = view.state.selection;
@@ -38,7 +48,7 @@ export const CodeClipboard = Extension.create({
         handlePaste: (view, event) => {
           if (!view.editable || view.state.selection.$from.parent.type.spec.code || !event.clipboardData) return false;
           const data = event.clipboardData;
-          if (data.getData(codeMime) !== "1" && !/<pre(?:\s|>)/i.test(data.getData("text/html"))) return false;
+          if (data.getData(codeMime) !== "1" && !codeOnlyHtml(data.getData("text/html"))) return false;
           const text = normalize(data.getData("text/plain"));
           const paragraph = view.state.schema.nodes.paragraph;
           if (!text || !paragraph) return false;

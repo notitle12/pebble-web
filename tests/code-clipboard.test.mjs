@@ -49,3 +49,11 @@ test('ordinary rich copy/paste and paste into code keep their existing handlers'
  code.editable=false;assert.equal(props.handleDOMEvents.cut(code,event),false);
  prose.editable=false;assert.equal(props.handlePaste(prose,event),false);
 });
+
+test('a rich article containing code keeps its headings, table and container paste handler',()=>{
+ const view=fixture(false),before=view.state.doc;
+ const mixed=clipboard({'text/html':'<div class="post-text-block"><h2>제목</h2><pre><code>x</code></pre><table><tr><td>cell</td></tr></table></div>','text/plain':'제목\nx\ncell'});
+ assert.equal(props.handlePaste(view,mixed),false);assert.ok(view.state.doc.eq(before));
+ const only=clipboard({'text/html':'<html><head><meta charset="utf-8"></head><body><div><pre>x</pre></div></body></html>','text/plain':'x'});
+ assert.equal(props.handlePaste(view,only),true);assert.equal(view.state.doc.firstChild.type.name,'paragraph');
+});
