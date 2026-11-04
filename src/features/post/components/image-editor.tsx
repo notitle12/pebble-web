@@ -3,7 +3,7 @@
 import { createPortal } from "react-dom";
 import { useCallback, useEffect, useRef, useState } from "react";
 import styles from "./image-editor.module.css";
-import { clampCropRect, createMosaicOperation, createPenOperation, createTextOperation, safeBitmapSize, type CropOperation, type ImageEditOperation, type PenPoint, type TextOperation } from "../image-edit-model";
+import { clampCropRect, createMosaicOperation, createPenOperation, createResampleOperation, createTextOperation, safeBitmapSize, type CropOperation, type ImageEditOperation, type PenPoint, type TextOperation } from "../image-edit-model";
 
 export type ImageEditorProps = {
   src: string;
@@ -13,7 +13,7 @@ export type ImageEditorProps = {
 };
 
 type CropSelection = { startX: number; startY: number; endX: number; endY: number };
-type Tool = "crop" | "mosaic" | "text" | "pen";
+type Tool = "crop" | "mosaic" | "text" | "pen" | "resample";
 
 function cropBounds(selection: CropSelection, width: number, height: number): CropOperation | null {
   return clampCropRect(selection.startX, selection.startY, selection.endX, selection.endY, { width, height });
@@ -61,6 +61,19 @@ function replayHistory(source: ImageBitmap, operations: ImageEditOperation[], cu
       if (operation.points.length === 1) context.lineTo(operation.points[0].x + 0.1, operation.points[0].y + 0.1);
       else for (const point of operation.points.slice(1)) context.lineTo(point.x, point.y);
       context.stroke();
+      continue;
+    }
+    if (operation.type === "resample") {
+      const next = document.createElement("canvas");
+      next.width = operation.width;
+      next.height = operation.height;
+      const context = next.getContext("2d")!;
+      context.imageSmoothingEnabled = true;
+      context.imageSmoothingQuality = "high";
+      context.drawImage(current, 0, 0, operation.width, operation.height);
+      current.width = 0;
+      current.height = 0;
+      current = next;
       continue;
     }
     const next = document.createElement("canvas");
@@ -115,6 +128,9 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
   const [penWidth, setPenWidth] = useState(8);
   const [penColor, setPenColor] = useState("#e53935");
   const [strokePreview, setStrokePreview] = useState<PenPoint[] | null>(null);
+  const [resampleWidth, setResampleWidth] = useState(0);
+  const [resampleHeight, setResampleHeight] = useState(0);
+  const [keepAspectRatio, setKeepAspectRatio] = useState(true);
   const displayRef = useRef<HTMLCanvasElement>(null);
   const workingRef = useRef<HTMLCanvasElement | null>(null);
   const bitmapRef = useRef<ImageBitmap | null>(null);
@@ -175,6 +191,13 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
   useEffect(() => { redraw(); }, [redraw]);
 
   useEffect(() => {
+    if (tool === "resample" && workingRef.current) {
+      setResampleWidth(workingRef.current.width);
+      setResampleHeight(workingRef.current.height);
+    }
+  }, [tool, operations, cursor]);
+
+  useEffect(() => {
     const keydown = (event: KeyboardEvent) => {
       if (event.key === "Tab" && dialogRef.current) {
         const controls = Array.from(dialogRef.current.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), textarea:not(:disabled), select:not(:disabled), [tabindex="0"]')).filter(element => element.getClientRects().length);
@@ -210,6 +233,13 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
     setSelection(null);
     setPointerStart(null);
     setNotice("모자이크를 적용했습니다. 실행 취소로 되돌릴 수 있습니다.");
+  };
+  const addResample = () => {
+    const operation = createResampleOperation(resampleWidth, resampleHeight);
+    if (!operation) { setNotice("너비와 높이는 1px 이상이어야 합니다."); return; }
+    setOperations(previous => [...previous.slice(0, cursor), operation]);
+    setCursor(cursor + 1);
+    setNotice(`${operation.width} × ${operation.height}px로 실제 이미지 크기를 변경했습니다.`);
   };
 
   const undo = () => { setCursor(value => Math.max(0, value - 1)); setSelection(null); setNotice(""); };
@@ -299,7 +329,7 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
   return createPortal(<div className={styles.backdrop} onMouseDown={event => { if (event.target === event.currentTarget && !saving) onCancel(); }}>
     <section ref={dialogRef} className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby="image-editor-title" aria-describedby="image-editor-help" tabIndex={-1}>
       <header className={styles.header}>
-        <div><h2 id="image-editor-title">이미지 편집</h2><p id="image-editor-help">{tool === "text" ? "문구와 모양을 정한 뒤 이미지 위치를 클릭해 배치하세요." : tool === "pen" ? "색과 굵기를 정한 뒤 이미지 위에 그리세요." : "영역을 드래그해 선택하고 도구를 적용하세요. 원본은 편집 중 보존됩니다."}</p></div>
+        <div><h2 id="image-editor-title">이미지 편집</h2><p id="image-editor-help">{tool === "text" ? "문구와 모양을 정한 뒤 이미지 위치를 클릭해 배치하세요." : tool === "pen" ? "색과 굵기를 정한 뒤 이미지 위에 그리세요." : tool === "resample" ? "실제 픽셀 너비와 높이를 변경합니다. 원본은 편집 중 보존됩니다." : "영역을 드래그해 선택하고 도구를 적용하세요. 원본은 편집 중 보존됩니다."}</p></div>
         <button type="button" className="editor-action" onClick={onCancel} disabled={saving}>닫기</button>
       </header>
       {loadError ? <div className={styles.error} role="alert">{loadError}</div> : !bitmap ? <p className={styles.status} role="status">이미지를 불러오는 중…</p> : <>
@@ -316,6 +346,7 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
             <button type="button" className="editor-action" aria-pressed={tool === "mosaic"} onClick={() => { setTool("mosaic"); setSelection(null); }} disabled={saving}>모자이크</button>
             <button type="button" className="editor-action" aria-pressed={tool === "text"} onClick={() => { setTool("text"); setSelection(null); }} disabled={saving}>텍스트</button>
             <button type="button" className="editor-action" aria-pressed={tool === "pen"} onClick={() => { setTool("pen"); setSelection(null); }} disabled={saving}>펜</button>
+            <button type="button" className="editor-action" aria-pressed={tool === "resample"} onClick={() => { setTool("resample"); setSelection(null); }} disabled={saving}>크기 변경</button>
             {tool === "crop" ? <button type="button" className="editor-action" onClick={addCrop} disabled={!bounds || saving}>자르기 적용</button> : tool === "mosaic" ? <>
               <label className={styles.rangeLabel}>모자이크 크기 <input type="range" min="4" max="48" step="2" value={mosaicBlockSize} onChange={event => setMosaicBlockSize(Number(event.currentTarget.value))} disabled={saving} /></label>
               <button type="button" className="editor-action" onClick={addMosaic} disabled={!bounds || saving}>모자이크 적용</button>
@@ -323,9 +354,22 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
               <label className={styles.rangeLabel}>글자 크기 <input type="range" min="16" max="160" step="2" value={textFontSize} onChange={event => setTextFontSize(Number(event.currentTarget.value))} disabled={saving} /></label>
               <label className={styles.colorLabel}>글자색 <input type="color" value={textColor} onChange={event => setTextColor(event.currentTarget.value)} disabled={saving} /></label>
               <input className={styles.textInput} aria-label="이미지에 넣을 텍스트" placeholder="텍스트를 입력한 뒤 이미지 위치를 클릭하세요" value={textValue} maxLength={500} onChange={event => setTextValue(event.currentTarget.value)} disabled={saving} />
-            </> : <>
+            </> : tool === "pen" ? <>
               <label className={styles.rangeLabel}>펜 굵기 <input type="range" min="1" max="64" value={penWidth} onChange={event => setPenWidth(Number(event.currentTarget.value))} disabled={saving} /></label>
               <label className={styles.colorLabel}>펜 색상 <input type="color" value={penColor} onChange={event => setPenColor(event.currentTarget.value)} disabled={saving} /></label>
+            </> : <>
+              <label className={styles.dimensionLabel}>너비 <input type="number" min="1" max="8000" value={resampleWidth || ""} onChange={event => {
+                const next = Math.max(1, Number(event.currentTarget.value) || 1);
+                setResampleWidth(next);
+                if (keepAspectRatio && current) setResampleHeight(Math.max(1, Math.round(next * current.height / current.width)));
+              }} disabled={saving} /> px</label>
+              <label className={styles.dimensionLabel}>높이 <input type="number" min="1" max="8000" value={resampleHeight || ""} onChange={event => {
+                const next = Math.max(1, Number(event.currentTarget.value) || 1);
+                setResampleHeight(next);
+                if (keepAspectRatio && current) setResampleWidth(Math.max(1, Math.round(next * current.width / current.height)));
+              }} disabled={saving} /> px</label>
+              <label className={styles.checkLabel}><input type="checkbox" checked={keepAspectRatio} onChange={event => setKeepAspectRatio(event.currentTarget.checked)} disabled={saving} /> 비율 유지</label>
+              <button type="button" className="editor-action" onClick={addResample} disabled={saving}>크기 변경 적용</button>
             </>}
           </div>
           <p className={styles.dimensions}>{canvasSize.width} × {canvasSize.height}px</p>

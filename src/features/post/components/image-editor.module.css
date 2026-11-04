@@ -13,6 +13,7 @@
 .rangeLabel{display:inline-flex;align-items:center;gap:7px;color:var(--muted,#68707b);font-size:12px;line-height:1.2}.rangeLabel input{width:100px;accent-color:var(--accent,#4770d6)}
 .colorLabel{display:inline-flex;align-items:center;gap:6px;color:var(--muted,#68707b);font-size:12px;line-height:1.2}.colorLabel input{box-sizing:border-box;width:30px;height:28px;padding:2px;border:1px solid var(--line,#dfe3e8);border-radius:5px;background:var(--surface,#fff)}
 .textInput{box-sizing:border-box;width:min(260px,100%);height:30px;padding:0 8px;border:1px solid var(--line,#dfe3e8);border-radius:6px;background:var(--surface,#fff);color:var(--text,#202124);font:inherit;font-size:12px;line-height:1.2}
+.dimensionLabel{display:inline-flex;align-items:center;gap:5px;color:var(--muted,#68707b);font-size:12px;line-height:1.2;white-space:nowrap}.dimensionLabel input{box-sizing:border-box;width:78px;height:30px;padding:0 6px;border:1px solid var(--line,#dfe3e8);border-radius:6px;background:var(--surface,#fff);color:var(--text,#202124);font:inherit;font-size:12px;line-height:1.2}.checkLabel{display:inline-flex;align-items:center;gap:5px;color:var(--muted,#68707b);font-size:12px;line-height:1.2;white-space:nowrap}.checkLabel input{margin:0;accent-color:var(--accent,#4770d6)}
 .dimensions{margin:0;color:var(--muted,#68707b);font-size:12px;font-variant-numeric:tabular-nums}
 .footer{justify-content:flex-end;margin-top:18px;padding-top:14px;border-top:1px solid var(--line,#dfe3e8)}
 .footer .status{margin-right:auto}
