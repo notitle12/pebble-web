@@ -12,6 +12,7 @@ import FontFamily from "@tiptap/extension-font-family";
 import Highlight from "@tiptap/extension-highlight";
 import Image from "@tiptap/extension-image";
 import { RichTextStarterKit } from "../rich-text-starter-kit";
+import { CodeClipboard } from "../code-clipboard";
 import { TableKit } from "@tiptap/extension-table";
 import { setCellVerticalAlignment } from "../table-layout";
 import { TableShortcuts } from "../table-shortcuts";
@@ -165,7 +166,7 @@ const MapEmbed = TiptapNode.create({
 
 const extensionSet = [
   RichTextStarterKit.configure({ codeBlock: false, horizontalRule: false, heading: { levels: [1, 2, 3] }, link: { openOnClick: false, autolink: true, defaultProtocol: "https", HTMLAttributes: {target:null} } }),
-  CodeKeyboard, TextPanel, StyledDivider,
+  CodeKeyboard, CodeClipboard, TextPanel, StyledDivider,
   RichImage.configure({ inline: false, allowBase64: false }),
   TableKit.configure({ table: false }), TableCellFormatting, TableShortcuts,
   ControllableTable, HeadingParagraphReset, InlineCode, InlineTableSpec, InlineArchitecture, InlineDatabase, AutomaticToc,
