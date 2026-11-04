@@ -8,7 +8,7 @@ import styles from "./image-editor.module.css";
 import { clearImagePen, emptyImageHistory, commitImageEdit, undoImageEdit, redoImageEdit, replaceImageText, type ImageEditHistory } from "../image-edit-history";
 import { imageTextInputSurface, placedImageMosaics, replaceImageMosaic, placedImageTexts, imageTextLines, adjustCrop, fullImageCrop, hasCropChanges, clampCropRect, createMosaicOperation, createPenOperation, createTextOperation, safeBitmapSize, type CropOperation, type CropHandle, type ImageEditOperation, type PenPoint, type TextOperation, type PlacedImageText, type PixelSize } from "../image-edit-model";
 
-type ActionName = "crop" | "mosaic" | "text" | "pen" | "eraser" | "clear" | "undo" | "redo" | "check" | "cancel";
+type ActionName = "crop" | "mosaic" | "text" | "pen" | "eraser" | "clear" | "undo" | "redo" | "check" | "cancel" | "delete";
 const actionPaths: Record<ActionName, string[]> = {
   crop: ["M6 3v13a2 2 0 0 0 2 2h13", "M3 6h13a2 2 0 0 1 2 2v13"],
   mosaic: ["M3 3h7v7H3z", "M14 3h7v7h-7z", "M3 14h7v7H3z", "M14 14h7v7h-7z"],
@@ -19,6 +19,7 @@ const actionPaths: Record<ActionName, string[]> = {
   undo: ["M8 4 3 9l5 5", "M3 9h10a7 7 0 0 1 0 14"],
   redo: ["m16 4 5 5-5 5", "M21 9H11a7 7 0 0 0 0 14"],
   check: ["m5 12 4 4L19 6"], cancel: ["m6 6 12 12", "M18 6 6 18"],
+  delete: ["M3 6h18", "M8 6V4h8v2", "m19 6-1 14H6L5 6", "M10 11v5", "M14 11v5"],
 };
 function ActionIcon({ name }: { name: ActionName }) {
   return <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">{actionPaths[name].map((d, index) => <path key={index} d={d}/>)}</svg>;
@@ -338,7 +339,7 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
     const last=next.present.at(-1);if(tool==="mosaic"&&last?.type==="mosaic"){setActiveMosaicIndex(next.present.length-1);setMosaicBlockSize(last.blockSize);}
     setSelection(null);setNotice("");
   };
-  historyActions.current={undo,redo,blocked:saving||confirmCancel};
+  historyActions.current={undo,redo,deleteSelected:deleteMosaic,blocked:saving||confirmCancel};
   useEffect(()=>installImageHistoryKeys(window,()=>historyActions.current),[]);
 
   const pointerCoordinates = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -495,7 +496,6 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
           {(tool===null||tool==="mosaic")&&mosaicRegions.filter(region=>region.index!==activeMosaicIndex).map(region=><button key={region.index} type="button" className={styles.mosaicHitArea} aria-label={`모자이크 ${region.index+1} 수정`} title="클릭하여 모자이크 수정" style={{left:`${region.x/canvasSize.width*100}%`,top:`${region.y/canvasSize.height*100}%`,width:`${region.width/canvasSize.width*100}%`,height:`${region.height/canvasSize.height*100}%`}} onPointerDown={event=>{event.preventDefault();event.stopPropagation();editMosaic(region.index);}} onClick={event=>{if(event.detail===0)editMosaic(region.index);}} disabled={saving}/>)}
           {tool === "mosaic" && activeMosaic && current && <div className={styles.mosaicFrame} role="group" aria-label="모자이크 영역 이동" tabIndex={0} onPointerDown={event=>startMosaicDrag(event,"move")} onKeyDown={event=>moveMosaicKey(event,"move")} style={{left:`${activeMosaic.x/current.width*100}%`,top:`${activeMosaic.y/current.height*100}%`,width:`${activeMosaic.width/current.width*100}%`,height:`${activeMosaic.height/current.height*100}%`}}>
             {([["nw","왼쪽 위"],["ne","오른쪽 위"],["se","오른쪽 아래"],["sw","왼쪽 아래"]] as const).map(([handle,label])=><button key={handle} type="button" className={styles.cropHandle} data-handle={handle} aria-label={`모자이크 ${label} 조절점`} disabled={saving} onPointerDown={event=>startMosaicDrag(event,handle)} onKeyDown={event=>moveMosaicKey(event,handle)}/>)}
-            <button type="button" className={styles.mosaicDelete} aria-label="모자이크 삭제" title="모자이크 삭제" onPointerDown={event=>{event.preventDefault();event.stopPropagation();}} onClick={deleteMosaic} disabled={saving}><ActionIcon name="cancel"/></button>
           </div>}
           {(tool===null||tool==="text")&&textRegions.filter(region=>region.operation.id!==textDraft?.editingId).map(region=><button key={region.operation.id} type="button" className={styles.textHitArea} data-image-text-hit="" aria-label={`글씨 수정: ${region.operation.text.slice(0,40)}`} title="클릭하여 글씨 수정·삭제" style={{left:`${region.x/canvasSize.width*100}%`,top:`${region.y/canvasSize.height*100}%`,width:`${region.width/canvasSize.width*100}%`,height:`${region.height/canvasSize.height*100}%`}} onPointerDown={event=>{event.preventDefault();event.stopPropagation();editText(region);}} onClick={event=>{if(event.detail===0)editText(region);}} disabled={saving}/>)}
           {textDraft && current && <textarea data-image-text-control="" ref={textInputRef} className={styles.textOverlay} aria-label="이미지에 넣을 글씨" placeholder="글씨 입력" value={textDraft.text} maxLength={500} rows={Math.max(1,textDraft.text.split("\n").length)} style={{left:`${textDraft.x/current.width*100}%`,top:`${textDraft.y/current.height*100}%`,width:`${textDraft.maxWidth/current.width*100}%`,fontSize:`${textDraft.fontSize*displayScale}px`,color:textDraft.color,backgroundColor:imageTextInputSurface(textDraft.color),caretColor:textDraft.color,colorScheme:imageTextInputSurface(textDraft.color)==="#ffffff"?"light":"dark"}} onPointerDown={event=>event.stopPropagation()} onClick={event=>event.stopPropagation()} onChange={event=>updateTextDraft({...textDraft,text:event.currentTarget.value})} onKeyDown={event=>{event.stopPropagation();if(event.key==="Enter"&&(event.ctrlKey||event.metaKey)&&!event.nativeEvent.isComposing){event.preventDefault();commitText();}}} disabled={saving}/>}
@@ -507,6 +507,7 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
           <div className={styles.actions}>
             {tool === "crop" ? <span className={styles.dimensions}>남길 영역 {bounds?.width} × {bounds?.height}px</span> : tool === "mosaic" ? <>
               <label className={styles.rangeLabel}>모자이크 크기 <input type="range" min="4" max="48" step="2" value={mosaicBlockSize} onPointerDown={()=>{mosaicSizeGesture.current=false;}} onPointerUp={()=>{mosaicSizeGesture.current=false;}} onBlur={()=>{mosaicSizeGesture.current=false;}} onKeyDown={()=>{mosaicSizeGesture.current=false;}} onChange={event => updateMosaicSize(Number(event.currentTarget.value))} disabled={saving} /></label>
+              {activeMosaicIndex!==null&&<><button type="button" className={styles.mosaicDelete} aria-label="선택한 모자이크 삭제" title="선택한 모자이크 삭제" onClick={deleteMosaic} disabled={saving||confirmCancel}><ActionIcon name="delete"/></button><span className={styles.keyboardHint}>Backspace/Delete로 삭제</span></>}
             </> : tool === "text" ? <div className={styles.textSettings} data-image-text-control="">
               <label className={styles.rangeLabel}>글자 크기 <input type="range" min="16" max="160" step="2" value={textFontSize} onChange={event => {const fontSize=Number(event.currentTarget.value);setTextFontSize(fontSize);if(textDraftRef.current)updateTextDraft({...textDraftRef.current,fontSize});}} disabled={saving} /></label>
               <label className={styles.colorLabel}>글자색 <input type="color" value={textColor} onChange={event => {const color=event.currentTarget.value;setTextColor(color);if(textDraftRef.current)updateTextDraft({...textDraftRef.current,color});}} disabled={saving} /></label>

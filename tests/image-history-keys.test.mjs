@@ -17,3 +17,17 @@ test('saving, confirmation and IME states cannot leak undo to the post; ordinary
  const composing=key({isComposing:true});target.dispatchEvent(composing);assert.equal(composing.defaultPrevented,false);assert.equal(post,0);
  target.dispatchEvent(key({ctrlKey:false}));target.dispatchEvent(key({altKey:true}));assert.equal(post,2);
 });
+test('Backspace and Delete remove only a selected mosaic, stay inside the dialog, and leave text inputs alone',()=>{
+ class KeyTarget extends EventTarget{isContentEditable=false;selector='';closest(value){return value.split(',').includes(this.selector)?this:null;}}
+ const target=new KeyTarget();let deleted=0,post=0,blocked=false,selected=true;
+ installImageHistoryKeys(target,()=>({undo:()=>{},redo:()=>{},deleteSelected:()=>deleted++,blocked:blocked||!selected}));
+ target.addEventListener('keydown',()=>post++);
+ const send=(values={})=>{const event=key({key:'Delete',ctrlKey:false,...values});target.dispatchEvent(event);return event;};
+ assert.equal(send().defaultPrevented,true);assert.equal(deleted,1);assert.equal(post,0);
+ selected=false;send({key:'Backspace'});assert.equal(deleted,1);assert.equal(post,0);
+ selected=true;blocked=true;send();assert.equal(deleted,1);assert.equal(post,0);
+ blocked=false;target.selector='input';const inputEvent=send();assert.equal(inputEvent.defaultPrevented,false);assert.equal(deleted,1);assert.equal(post,1);
+ target.selector='textarea';const textareaEvent=send();assert.equal(textareaEvent.defaultPrevented,false);assert.equal(deleted,1);assert.equal(post,2);
+ target.selector='[data-image-text-control]';const textInputEvent=send();assert.equal(textInputEvent.defaultPrevented,false);assert.equal(deleted,1);assert.equal(post,3);
+ target.selector='';target.isContentEditable=true;const contentEvent=send();assert.equal(contentEvent.defaultPrevented,false);assert.equal(deleted,1);assert.equal(post,4);
+});
