@@ -9,4 +9,3 @@
 .post-columns-separator:hover::after,.post-columns-separator:focus-visible::after,.post-columns-editor[data-resizing]>.post-columns-separator::after{background:var(--accent);opacity:1;width:3px}
 .post-columns-separator:focus-visible{outline:1px dashed var(--focus);outline-offset:-3px;border-radius:4px}
 @media(max-width:640px){.post-columns-separator{display:none}}
-

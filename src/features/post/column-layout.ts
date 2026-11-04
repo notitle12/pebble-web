@@ -3,7 +3,7 @@ import {NodeSelection,Selection,type EditorState,type Transaction} from '@tiptap
 import {closeHistory} from '@tiptap/pm/history';
 
 /** Remove only the layout wrappers, preserving each column's blocks in reading order. */
-export function unwrapColumnLayout(tr:Transaction,pos:number):Transaction|null {
+export function unwrapColumnLayout(tr:Transaction,pos:number,options:{isolate?:boolean;select?:boolean}={}):Transaction|null {
  if(!Number.isSafeInteger(pos)||pos<0||pos>=tr.doc.content.size)return null;
  const node=tr.doc.nodeAt(pos);if(node?.type.name!=='imageTextLayout')return null;
  const blocks=[];
@@ -15,9 +15,10 @@ export function unwrapColumnLayout(tr:Transaction,pos:number):Transaction|null {
  if(!blocks.length){const empty=tr.doc.type.schema.nodes.paragraph?.createAndFill();if(!empty)return null;blocks.push(empty);}
  const fragment=Fragment.fromArray(blocks),$pos=tr.doc.resolve(pos),index=$pos.index();
  if(!$pos.parent.canReplace(index,index+1,fragment))return null;
- closeHistory(tr).replaceWith(pos,pos+node.nodeSize,fragment);
- tr.setSelection(Selection.near(tr.doc.resolve(Math.min(pos+1,tr.doc.content.size))));
- return tr.scrollIntoView();
+ if(options.isolate!==false)closeHistory(tr);
+ tr.replaceWith(pos,pos+node.nodeSize,fragment);
+ if(options.select!==false)tr.setSelection(Selection.near(tr.doc.resolve(Math.min(pos+1,tr.doc.content.size))));
+ return options.select===false?tr:tr.scrollIntoView();
 }
 
 export function unwrapSelectedColumnLayout(state:EditorState,dispatch?:(tr:Transaction)=>void):boolean {
@@ -25,4 +26,23 @@ export function unwrapSelectedColumnLayout(state:EditorState,dispatch?:(tr:Trans
  if(!(selection instanceof NodeSelection)||selection.node.type.name!=='imageTextLayout')return false;
  const tr=unwrapColumnLayout(state.tr,selection.from);if(!tr)return false;
  dispatch?.(tr);return true;
+}
+
+export function emptyColumnLayoutAtCursor(state:EditorState):number|null {
+ const {selection}=state;if(!selection.empty)return null;
+ for(let depth=selection.$from.depth;depth>0;depth--){
+  const column=selection.$from.node(depth);
+  if(column.type.name==='imageTextColumn'&&columnIsEmpty(column)&&selection.$from.node(depth-1).type.name==='imageTextLayout')return selection.$from.before(depth-1);
+ }
+ return null;
+}
+export function columnIsEmpty(column:import('@tiptap/pm/model').Node):boolean {
+ for(let index=0;index<column.childCount;index++){
+  const child=column.child(index);if(!child.isTextblock||child.content.size>0)return false;
+ }
+ return true;
+}
+export function unwrapEmptyColumnAtCursor(state:EditorState,dispatch?:(tr:Transaction)=>void):boolean {
+ const pos=emptyColumnLayoutAtCursor(state);if(pos===null)return false;
+ const tr=unwrapColumnLayout(state.tr,pos);if(!tr)return false;dispatch?.(tr);return true;
 }

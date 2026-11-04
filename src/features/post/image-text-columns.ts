@@ -1,4 +1,5 @@
-import {unwrapColumnLayout,unwrapSelectedColumnLayout} from "./column-layout.ts";
+import {columnAutoUnwrapPlugin} from "./column-auto-unwrap.ts";
+import {unwrapColumnLayout,unwrapSelectedColumnLayout,unwrapEmptyColumnAtCursor} from "./column-layout.ts";
 import { closeHistory } from "@tiptap/pm/history";
 import { Node, mergeAttributes } from "@tiptap/core";
 
@@ -17,8 +18,9 @@ export const ImageTextLayout = Node.create({
   addAttributes: () => ({ ratio: { default: "1:1", parseHTML: element => safeColumnRatio(element.getAttribute("data-ratio")), renderHTML: attrs => ({ "data-ratio": safeColumnRatio(attrs.ratio), style:columnRatioStyle(attrs.ratio) }) } }),
   parseHTML: () => [{ tag: "div.post-columns" }],
   renderHTML: ({ HTMLAttributes }) => ["div", mergeAttributes({ class: "post-columns" }, HTMLAttributes), 0],
+  addProseMirrorPlugins(){return [columnAutoUnwrapPlugin()];},
   addKeyboardShortcuts(){
-    const unwrap=()=>unwrapSelectedColumnLayout(this.editor.state,tr=>this.editor.view.dispatch(tr));
+    const unwrap=()=>unwrapSelectedColumnLayout(this.editor.state,tr=>this.editor.view.dispatch(tr))||unwrapEmptyColumnAtCursor(this.editor.state,tr=>this.editor.view.dispatch(tr));
     return {Backspace:unwrap,Delete:unwrap};
   },
   addNodeView() {
