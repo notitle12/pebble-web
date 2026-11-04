@@ -1,12 +1,13 @@
 "use client";
 import type { Editor } from "@tiptap/core";
-import type { Node } from "@tiptap/pm/model";
 import { useEffect, useRef, useState } from "react";
-import { moveBodyBlock } from "../block-move";
+import { blockGapContext, movableBlocks, moveBodyBlock, type MovableBlock } from "../block-move";
 import styles from "./body-block-handle.module.css";
 
-type Block = { pos: number; end: number; rect: DOMRect; table: boolean };
-type Drag = { source: number; doc: Node; gap: number; started: boolean; y: number };
+type Block = MovableBlock & { rect: DOMRect; table: boolean };
+type Drag = { source: number; doc: EditorDoc; gap: number; started: boolean; y: number };
+
+type EditorDoc = NonNullable<Editor>["state"]["doc"];
 
 export function BodyBlockHandle({ editor, disabled }: { editor: Editor | null; disabled: boolean }) {
   const [hover, setHover] = useState<Block | null>(null);
@@ -14,24 +15,35 @@ export function BodyBlockHandle({ editor, disabled }: { editor: Editor | null; d
   const drag = useRef<Drag | null>(null);
   useEffect(() => {
     if (!editor || disabled) { setHover(null); return; }
-    const blocks = (): Block[] => {
-      const result: Block[] = [];
-      editor.state.doc.forEach((node, pos) => {
-        const dom = editor.view.nodeDOM(pos);
-        if (dom instanceof HTMLElement) result.push({ pos, end: pos + node.nodeSize, rect: dom.getBoundingClientRect(), table: node.type.spec.tableRole === "table" });
-      });
-      return result;
-    };
+    const blocks = (): Block[] => movableBlocks(editor.state.doc).flatMap(item => {
+      const dom = editor.view.nodeDOM(item.pos);
+      return dom instanceof HTMLElement ? [{ ...item, rect: dom.getBoundingClientRect(), table: item.node.type.spec.tableRole === "table" }] : [];
+    });
     const move = (event: MouseEvent) => {
       const items = blocks();
       if (drag.current) {
         const current = drag.current;
         if (Math.abs(event.clientY - current.y) > 4) current.started = true;
         if (!current.started || !items.length) return;
-        const target = items.find(item => event.clientY < item.rect.top + item.rect.height / 2);
-        current.gap = target?.pos ?? editor.state.doc.content.size;
-        const rect = target?.rect ?? items[items.length - 1].rect;
-        setLine({ left: rect.left, top: target ? rect.top : rect.bottom, width: rect.width });
+        const located = editor.view.posAtCoords({ left: event.clientX, top: event.clientY });
+        const context = located ? blockGapContext(editor.state.doc, located.pos) : null;
+        const target = context && items.find(item => item.pos === context.before);
+        if (context && target) {
+          const after = event.clientY >= target.rect.top + target.rect.height / 2;
+          current.gap = after ? context.after! : context.before!;
+          setLine({ left: target.rect.left, top: after ? target.rect.bottom : target.rect.top, width: target.rect.width });
+        } else if (context && context.before === null) {
+          current.gap = context.pos;
+          const parent = context.parentPos < 0 ? editor.view.dom : editor.view.nodeDOM(context.parentPos);
+          const rect = parent instanceof HTMLElement ? parent.getBoundingClientRect() : editor.view.dom.getBoundingClientRect();
+          setLine({ left: rect.left, top: rect.bottom, width: rect.width });
+        } else {
+          const topLevel = items.filter(item => item.parentPos === -1);
+          const last = topLevel.at(-1);
+          if (!last || event.clientY < last.rect.top + last.rect.height / 2) return;
+          current.gap = editor.state.doc.content.size;
+          setLine({ left: last.rect.left, top: last.rect.bottom, width: last.rect.width });
+        }
         if (event.clientY < 96) window.scrollBy(0, -12);
         else if (event.clientY > window.innerHeight - 48) window.scrollBy(0, 12);
         event.preventDefault(); return;
@@ -39,8 +51,10 @@ export function BodyBlockHandle({ editor, disabled }: { editor: Editor | null; d
       if (event.target instanceof Element && event.target.closest("[data-body-block-handle]")) return;
       // Table row/column controls own the cell gutter. Offer whole-block movement farther left.
       if (event.target instanceof Element && event.target.closest("td,th,[data-table-band-control]")) { setHover(null); return; }
-      setHover(items.find(item => event.clientY >= item.rect.top && event.clientY <= item.rect.bottom
-        && event.clientX >= item.rect.left - 40 && event.clientX <= item.rect.right) ?? null);
+      const target = items.filter(item => event.clientY >= item.rect.top && event.clientY <= item.rect.bottom
+        && event.clientX >= item.rect.left - 60 && event.clientX <= item.rect.right)
+        .sort((a, b) => a.rect.width * a.rect.height - b.rect.width * b.rect.height)[0] ?? null;
+      setHover(target);
     };
     const end = () => {
       const current = drag.current; if (!current) return; drag.current = null; setLine(null); setHover(null);
@@ -65,8 +79,10 @@ export function BodyBlockHandle({ editor, disabled }: { editor: Editor | null; d
     onPointerDown={event => { if (event.button !== 0) return; event.preventDefault(); event.currentTarget.setPointerCapture(event.pointerId);
       drag.current = { source: hover.pos, doc: editor.state.doc, gap: hover.pos, started: false, y: event.clientY }; }}
     onKeyDown={event => { if (!event.altKey || !["ArrowUp", "ArrowDown"].includes(event.key)) return; event.preventDefault();
-      const positions: number[] = []; editor.state.doc.forEach((_node, pos) => positions.push(pos));
-      const index = positions.indexOf(hover.pos), gap = event.key === "ArrowUp" ? positions[index - 1] : positions[index + 2] ?? editor.state.doc.content.size;
+      const siblings = movableBlocks(editor.state.doc).filter(item => item.parentPos === hover.parentPos);
+      const index = siblings.findIndex(item => item.pos === hover.pos);
+      const neighbor = siblings[index + (event.key === "ArrowUp" ? -1 : 1)];
+      const gap = event.key === "ArrowUp" ? neighbor?.pos : neighbor?.end;
       if (gap === undefined) return; const tr = moveBodyBlock(editor.state.tr, hover.pos, gap); if (tr) { editor.view.dispatch(tr); setHover(null); } }}>
     <svg aria-hidden="true" viewBox="0 0 16 24">{[6,12,18].flatMap(y => [5,11].map(x => <circle key={`${x}-${y}`} cx={x} cy={y} r="1.4" fill="currentColor"/>))}</svg>
   </button>}{line && <div className={styles.line} style={line}/>}</>;
