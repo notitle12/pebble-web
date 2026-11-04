@@ -49,7 +49,7 @@
 .rendered :global(th), .rendered :global(td) { border: 1px solid #c4cbd4; padding: .45rem .65rem; }
 .rendered :global(img) { height: auto; max-width: 100%; }
 .rendered :global(iframe) { border: 0; height: auto; max-width: 100%; min-height: 18rem; width: 100%; }
-.rendered :global(details) { border-top: 1px solid #dedede; padding: .75rem 0; }
+.rendered :global(details) { padding: .75rem 0; }
 .rendered :global(details > summary) { cursor: pointer; font-weight: 600; }
 .form { background: #fff; border: 1px solid #e7e7e7; box-sizing: border-box; display: grid; gap: .7rem; left: 48px; max-height: calc(100vh - 170px); overflow-y: auto; padding: 16px; position: fixed; top: 80px; width: min(420px, calc(100vw - 96px)); z-index: 1003; }
 .form h3, .form p { margin: 0; }
@@ -109,7 +109,7 @@
 .sticky{justify-content:center;padding:0 24px}
 .toolrow{flex:0 1 auto;width:max-content;max-width:calc(100vw - 320px)}
 .modeSelect{margin-left:8px;border-left:1px solid #ececec;padding-left:12px}
-.toggleBlock{margin:18px 0;border:1px solid #eceef0;border-radius:5px;padding:10px 12px}
+.toggleBlock{margin:18px 0;padding:10px 12px}
 .toggleHeader{display:flex;align-items:center;gap:6px}
 .root .toggleHeader button{border:0;background:transparent;min-width:26px;min-height:26px;padding:4px;cursor:pointer;color:#676c74}
 .toggleHeader svg{display:block;width:16px;height:16px;transition:transform .15s}
