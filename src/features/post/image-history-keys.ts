@@ -5,8 +5,8 @@ export function installImageHistoryKeys(target:EventTarget,actions:()=>ImageHist
   const event=raw as KeyboardEvent;
   if(event.key==='Backspace'||event.key==='Delete'){
    const target=event.target as (Element&{isContentEditable?:boolean})|null;
-   if(target?.isContentEditable||(typeof target?.closest==='function'&&target.closest('input,textarea,select,[contenteditable="true"],[data-image-text-control]')))return;
-   event.stopImmediatePropagation();event.preventDefault();
+   if(target?.isContentEditable||(typeof target?.closest==='function'&&target.closest('input:not([type="range"]),textarea,select,[contenteditable="true"],[data-image-text-control]')))return;
+   event.stopImmediatePropagation();if(event.isComposing)return;event.preventDefault();
    const current=actions();if(!current.blocked)current.deleteSelected?.();
    return;
   }

@@ -65,8 +65,8 @@
 .dialog button.mosaicHitArea{position:absolute;z-index:2;display:block;min-height:0;min-width:0;margin:0;padding:0;border:0;border-radius:0;background:transparent;cursor:pointer;touch-action:manipulation}
 .dialog button.mosaicHitArea:hover:not(:disabled),.dialog button.mosaicHitArea:focus-visible{background:#ffffff12;outline:1px dashed var(--accent,#2f6b50);outline-offset:0}
 .mosaicFrame{position:absolute;z-index:3;box-sizing:border-box;outline:1px solid var(--accent,#2f6b50);cursor:move;touch-action:none}
-.dialog button.mosaicDelete{width:36px;min-width:36px;min-height:36px;padding:0;color:var(--danger,#b42318)}
+.dialog button.mosaicDelete{width:30px;height:30px;min-width:30px;min-height:30px;padding:0;color:var(--danger,#b42318)}
 .dialog .mosaicDelete svg{width:16px;height:16px}
-@media(pointer:coarse){.dialog button.mosaicDelete{width:44px;min-width:44px;min-height:44px}}
+@media(pointer:coarse){.dialog button.mosaicDelete{width:40px;height:40px;min-width:40px;min-height:40px}}
 
 .textOverlay::placeholder{color:#777;opacity:1}

@@ -26,8 +26,16 @@ test('Backspace and Delete remove only a selected mosaic, stay inside the dialog
  assert.equal(send().defaultPrevented,true);assert.equal(deleted,1);assert.equal(post,0);
  selected=false;send({key:'Backspace'});assert.equal(deleted,1);assert.equal(post,0);
  selected=true;blocked=true;send();assert.equal(deleted,1);assert.equal(post,0);
- blocked=false;target.selector='input';const inputEvent=send();assert.equal(inputEvent.defaultPrevented,false);assert.equal(deleted,1);assert.equal(post,1);
+ blocked=false;target.selector='input:not([type="range"])';const inputEvent=send();assert.equal(inputEvent.defaultPrevented,false);assert.equal(deleted,1);assert.equal(post,1);
  target.selector='textarea';const textareaEvent=send();assert.equal(textareaEvent.defaultPrevented,false);assert.equal(deleted,1);assert.equal(post,2);
  target.selector='[data-image-text-control]';const textInputEvent=send();assert.equal(textInputEvent.defaultPrevented,false);assert.equal(deleted,1);assert.equal(post,3);
  target.selector='';target.isContentEditable=true;const contentEvent=send();assert.equal(contentEvent.defaultPrevented,false);assert.equal(deleted,1);assert.equal(post,4);
+});
+
+test('mosaic Delete works from its size slider while composition never deletes the selected area',()=>{
+ class Slider extends EventTarget{closest(){return null;}}
+ const target=new Slider();let count=0,post=0;
+ installImageHistoryKeys(target,()=>({undo:()=>{},redo:()=>{},deleteSelected:()=>count++,blocked:false}));target.addEventListener('keydown',()=>post++);
+ const composing=key({key:'Backspace',ctrlKey:false,isComposing:true});target.dispatchEvent(composing);assert.equal(count,0);assert.equal(post,0);assert.equal(composing.defaultPrevented,false);
+ const del=key({key:'Delete',ctrlKey:false});target.dispatchEvent(del);assert.equal(count,1);assert.equal(post,0);assert.equal(del.defaultPrevented,true);
 });
