@@ -12,6 +12,7 @@ import FontFamily from "@tiptap/extension-font-family";
 import Highlight from "@tiptap/extension-highlight";
 import Image from "@tiptap/extension-image";
 import { RichTextStarterKit } from "../rich-text-starter-kit";
+import { ThemeTextDecorations } from "../theme-text-rendering";
 import { CodeClipboard } from "../code-clipboard";
 import { TableKit } from "@tiptap/extension-table";
 import { setCellVerticalAlignment } from "../table-layout";
@@ -187,7 +188,7 @@ const extensionSet = [
   FontSize,
   BlockAlignment,
   FontFamily,
-  Color,
+  Color, ThemeTextDecorations,
   Highlight.configure({ multicolor: true }),
   TextAlign.configure({ types: ["heading", "paragraph"] }),
   EditableToggle,

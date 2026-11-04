@@ -1,0 +1,15 @@
+.pebble-theme-text, .pebble-theme-text span, .pebble-theme-text mark {
+  color: var(--pebble-text-light) !important;
+}
+
+.pebble-theme-highlight, .pebble-theme-highlight mark {
+  background-color: var(--pebble-highlight-light) !important;
+}
+
+html[data-theme="dark"] :is(.pebble-theme-text, .pebble-theme-text span, .pebble-theme-text mark) {
+  color: var(--pebble-text-dark) !important;
+}
+
+html[data-theme="dark"] :is(.pebble-theme-highlight, .pebble-theme-highlight mark) {
+  background-color: var(--pebble-highlight-dark) !important;
+}
