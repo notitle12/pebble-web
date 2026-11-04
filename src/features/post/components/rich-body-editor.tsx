@@ -275,7 +275,7 @@ export function RichBodyEditor({ blocks, onChangeBlocks, onSplitViewChange, uplo
       if(!moved||!(selection instanceof NodeSelection)||selection.$from.depth!==0||selection.node.type.name==="paragraph"||last?.type.name!=="paragraph"||last.content.size!==0)return false;
       const end=view.nodeDOM(doc.content.size-last.nodeSize);
       if(!(end instanceof HTMLElement)||event.clientY<end.getBoundingClientRect().top)return false;
-      event.preventDefault();const tr=moveBodyBlock(view.state.tr,selection.from,doc.content.size);if(tr)view.dispatch(tr.scrollIntoView());return true;
+      event.preventDefault();const tr=moveBodyBlock(view.state.tr,selection.from,doc.content.size);if(tr)view.dispatch(tr);return true;
     }},
     onTransaction: ({ editor: current }) => {
       const match = slashMatch(current.state);

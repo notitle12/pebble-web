@@ -136,7 +136,7 @@ export function ImageNodeView({ node, selected, deleteNode, editor, updateAttrib
       data-image-node-control=""
       draggable={false}
       onMouseDown={event => event.preventDefault()}
-      onClick={event => { event.stopPropagation(); if (!representative.disabled && editor.isEditable) deleteNode(); }}
+      onClick={event => { event.stopPropagation(); if (!representative.disabled && editor.isEditable) { deleteNode(); editor.view.focus(); } }}
       onKeyDown={event => event.stopPropagation()}
     ><svg aria-hidden="true" viewBox="0 0 20 20" fill="none"><path d="m5 5 10 10M15 5 5 15"/></svg></button>
     </div>

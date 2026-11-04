@@ -79,7 +79,7 @@ export function BodyBlockHandle({ editor, disabled }: { editor: Editor | null; d
       const current = drag.current; if (!current) return; drag.current = null; setLine(null); setHover(null);
       if (!current?.started || !editor.isEditable || !editor.state.doc.eq(current.doc)) return;
       const tr = current.beside?placeBodyBlockBeside(editor.state.tr,current.source,current.beside.target,current.beside.side):moveBodyBlock(editor.state.tr, current.source, current.gap);
-      if (tr) {editor.view.dispatch(tr.scrollIntoView());editor.view.focus();}
+      if (tr) {editor.view.dispatch(tr);editor.view.focus();}
     };
     const cancel = () => { drag.current = null; setLine(null); setHover(null); };
     const escape = (event: KeyboardEvent) => { if (event.key === "Escape") cancel(); };

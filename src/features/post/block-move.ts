@@ -1,3 +1,4 @@
+import {columnViewportKey} from "./column-viewport.ts";
 import {closeHistory} from "@tiptap/pm/history";
 import { Fragment, type Node } from "@tiptap/pm/model";
 import type { Transaction } from "@tiptap/pm/state";
@@ -135,7 +136,7 @@ export function placeBodyBlockBeside(tr:Transaction,source:number,target:number,
   const parent=from.parentPos<0?tr.doc:tr.doc.nodeAt(from.parentPos);
   if(!parent)return null;
   const needsPlaceholder=parent.type.name!=="doc"&&parent.childCount===1;
-  closeHistory(tr);
+  closeHistory(tr).setMeta(columnViewportKey,true);
   try {
     if(needsPlaceholder){
       const placeholder=schema.nodes.paragraph?.createAndFill();

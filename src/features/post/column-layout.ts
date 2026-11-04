@@ -1,3 +1,4 @@
+import {columnViewportKey} from "./column-viewport.ts";
 import {Fragment} from '@tiptap/pm/model';
 import {NodeSelection,Selection,type EditorState,type Transaction} from '@tiptap/pm/state';
 import {closeHistory} from '@tiptap/pm/history';
@@ -16,9 +17,9 @@ export function unwrapColumnLayout(tr:Transaction,pos:number,options:{isolate?:b
  const fragment=Fragment.fromArray(blocks),$pos=tr.doc.resolve(pos),index=$pos.index();
  if(!$pos.parent.canReplace(index,index+1,fragment))return null;
  if(options.isolate!==false)closeHistory(tr);
- tr.replaceWith(pos,pos+node.nodeSize,fragment);
+ tr.setMeta(columnViewportKey,true).replaceWith(pos,pos+node.nodeSize,fragment);
  if(options.select!==false)tr.setSelection(Selection.near(tr.doc.resolve(Math.min(pos+1,tr.doc.content.size))));
- return options.select===false?tr:tr.scrollIntoView();
+ return tr;
 }
 
 export function unwrapSelectedColumnLayout(state:EditorState,dispatch?:(tr:Transaction)=>void):boolean {
