@@ -2,17 +2,19 @@
 
 import { createPortal } from "react-dom";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { eraseImagePen } from "../image-pen-eraser";
 import { installImageHistoryKeys, type ImageHistoryActions } from "../image-history-keys";
 import styles from "./image-editor.module.css";
 import { emptyImageHistory, commitImageEdit, undoImageEdit, redoImageEdit, replaceImageText, type ImageEditHistory } from "../image-edit-history";
 import { imageTextInputSurface, placedImageMosaics, replaceImageMosaic, placedImageTexts, imageTextLines, adjustCrop, fullImageCrop, hasCropChanges, clampCropRect, createMosaicOperation, createPenOperation, createTextOperation, safeBitmapSize, type CropOperation, type CropHandle, type ImageEditOperation, type PenPoint, type TextOperation, type PlacedImageText, type PixelSize } from "../image-edit-model";
 
-type ActionName = "crop" | "mosaic" | "text" | "pen" | "undo" | "redo" | "check" | "cancel";
+type ActionName = "crop" | "mosaic" | "text" | "pen" | "eraser" | "undo" | "redo" | "check" | "cancel";
 const actionPaths: Record<ActionName, string[]> = {
   crop: ["M6 3v13a2 2 0 0 0 2 2h13", "M3 6h13a2 2 0 0 1 2 2v13"],
   mosaic: ["M3 3h7v7H3z", "M14 3h7v7h-7z", "M3 14h7v7H3z", "M14 14h7v7h-7z"],
   text: ["M4 6V4h16v2", "M12 4v16", "M8 20h8"],
   pen: ["m15 4 5 5", "m4 15 11-11a2 2 0 0 1 3 0l2 2a2 2 0 0 1 0 3L9 20l-6 1z", "m4 15 5 5"],
+  eraser: ["m16 3 5 5a2 2 0 0 1 0 3L11 21H7l-5-5a2 2 0 0 1 0-3L12 3a3 3 0 0 1 4 0Z", "m7 8 10 10", "M11 21h10"],
   undo: ["M8 4 3 9l5 5", "M3 9h10a7 7 0 0 1 0 14"],
   redo: ["m16 4 5 5-5 5", "M21 9H11a7 7 0 0 0 0 14"],
   check: ["m5 12 4 4L19 6"], cancel: ["m6 6 12 12", "M18 6 6 18"],
@@ -29,7 +31,7 @@ export type ImageEditorProps = {
 };
 
 type CropSelection = { startX: number; startY: number; endX: number; endY: number };
-type Tool = "crop" | "mosaic" | "text" | "pen";
+type Tool = "crop" | "mosaic" | "text" | "pen" | "eraser";
 type ImageTextDraft = {id:string;editingId:string|null;x:number;y:number;sourceX:number;sourceY:number;sourceSize:PixelSize;text:string;maxWidth:number;fontSize:number;color:string};
 
 function cropBounds(selection: CropSelection, width: number, height: number): CropOperation | null {
@@ -68,16 +70,14 @@ function replayHistory(source: ImageBitmap, operations: ImageEditOperation[], cu
       continue;
     }
     if (operation.type === "pen") {
-      const context = current.getContext("2d")!;
-      context.strokeStyle = operation.color;
-      context.lineWidth = operation.width;
-      context.lineCap = "round";
-      context.lineJoin = "round";
-      context.beginPath();
-      context.moveTo(operation.points[0].x, operation.points[0].y);
-      if (operation.points.length === 1) context.lineTo(operation.points[0].x + 0.1, operation.points[0].y + 0.1);
-      else for (const point of operation.points.slice(1)) context.lineTo(point.x, point.y);
-      context.stroke();
+      if(operation.erasures?.length){
+        const ink=document.createElement("canvas");ink.width=current.width;ink.height=current.height;
+        const context=ink.getContext("2d")!;
+        drawStroke(context,operation.points,operation.width,operation.color);
+        context.globalCompositeOperation="destination-out";
+        for(const erasure of operation.erasures)drawStroke(context,erasure.points,erasure.width,"#000000");
+        current.getContext("2d")!.drawImage(ink,0,0);ink.width=0;ink.height=0;
+      }else drawStroke(current.getContext("2d")!,operation.points,operation.width,operation.color);
       continue;
     }
     const next = document.createElement("canvas");
@@ -89,6 +89,15 @@ function replayHistory(source: ImageBitmap, operations: ImageEditOperation[], cu
     current = next;
   }
   return current;
+}
+
+function drawStroke(context:CanvasRenderingContext2D,points:PenPoint[],width:number,color:string) {
+  if(!points.length)return;
+  context.strokeStyle=color;context.lineWidth=width;context.lineCap="round";context.lineJoin="round";
+  context.beginPath();context.moveTo(points[0].x,points[0].y);
+  if(points.length===1)context.lineTo(points[0].x+.1,points[0].y+.1);
+  else for(const point of points.slice(1))context.lineTo(point.x,point.y);
+  context.stroke();
 }
 
 function drawTextOperation(context: CanvasRenderingContext2D, operation: TextOperation, canvasWidth: number) {
@@ -141,6 +150,8 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
   const [displayScale, setDisplayScale] = useState(1);
   const [textFontSize, setTextFontSize] = useState(32);
   const [textColor, setTextColor] = useState("#24352b");
+  const [eraserWidth,setEraserWidth]=useState(32);
+  const [eraserPosition,setEraserPosition]=useState<PenPoint|null>(null);
   const [penWidth, setPenWidth] = useState(8);
   const [penColor, setPenColor] = useState("#e53935");
   const [strokePreview, setStrokePreview] = useState<PenPoint[] | null>(null);
@@ -189,10 +200,11 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
     if (mounted) (confirmCancel ? confirmationRef : dialogRef).current?.querySelector<HTMLButtonElement>("button:not(:disabled)")?.focus({ preventScroll: true });
   }, [mounted, confirmCancel]);
 
-  const previewOperations = useMemo(()=>{
+  const basePreviewOperations = useMemo(()=>{
     const next=textDraft?.editingId?operations.filter(operation=>operation.type!=="text"||operation.id!==textDraft.editingId):operations;
     return mosaicDraft?replaceImageMosaic(next,mosaicDraft.index,mosaicDraft.rect,mosaicDraft.blockSize,mosaicDraft.offset):next;
   },[operations,textDraft?.editingId,mosaicDraft]);
+  const previewOperations=useMemo(()=>tool==="eraser"&&strokePreview?eraseImagePen(basePreviewOperations,strokePreview,eraserWidth):basePreviewOperations,[basePreviewOperations,tool,strokePreview,eraserWidth]);
   const mosaicRegions = useMemo(()=>bitmap?placedImageMosaics(operations,bitmap):[],[operations,bitmap]);
   const textRegions = useMemo(()=>{
     if(!bitmap)return [];
@@ -358,7 +370,7 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
       setNotice("");return;
     }
     event.currentTarget.setPointerCapture(event.pointerId);
-    if (tool === "pen") {
+    if (tool === "pen" || tool === "eraser") {
       setStrokePreview([point]);
       return;
     }
@@ -377,7 +389,8 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
       if (point) setCropRect(adjustCrop(drag.rect, drag.handle, point.x-drag.x, point.y-drag.y, canvasSize));
       return;
     }
-    if (tool === "pen" && strokePreview) {
+    if(tool==="eraser")setEraserPosition(pointerCoordinates(event));
+    if ((tool === "pen" || tool === "eraser") && strokePreview) {
       const point = pointerCoordinates(event);
       if (point) setStrokePreview(previous => {
         if (!previous || previous.length >= 5000) return previous;
@@ -399,12 +412,13 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
       mosaicDrag.current=null;setMosaicDraft(null);return;
     }
     if (cropDrag.current) { pointerMove(event); cropDrag.current = null; return; }
-    if (tool === "pen" && strokePreview && workingRef.current) {
+    if ((tool === "pen" || tool === "eraser") && strokePreview && workingRef.current) {
       const point = pointerCoordinates(event);
       const points = point ? [...strokePreview, point] : strokePreview;
-      const operation = createPenOperation(points, workingRef.current, penWidth, penColor);
-      if (operation) {
-        commitCommands([...historyRef.current.present,operation]);
+      if(tool==="eraser")commitCommands(eraseImagePen(historyRef.current.present,points,eraserWidth));
+      else {
+        const operation=createPenOperation(points,workingRef.current,penWidth,penColor);
+        if(operation)commitCommands([...historyRef.current.present,operation]);
       }
       setStrokePreview(null);
       return;
@@ -453,20 +467,20 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
   return createPortal(<div className={styles.backdrop} onMouseDown={event => { if (event.target === event.currentTarget) {if(textDraftRef.current){commitText();return;}requestCancel();} }}>
     <section ref={dialogRef} onPointerDownCapture={finishTextOnOutsidePointer} inert={confirmCancel} className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby="image-editor-title" aria-describedby="image-editor-help" tabIndex={-1}>
       <header className={styles.header}>
-        <div><h2 id="image-editor-title">이미지 편집</h2><p id="image-editor-help">{tool === "text" ? "글씨를 넣을 위치를 클릭하고 입력하세요. Ctrl/⌘+Enter로 입력을 마칩니다." : tool === "pen" ? "색과 굵기를 정한 뒤 이미지 위에 그리세요." : tool === "crop" ? "테두리의 조절점을 움직여 남길 영역을 정하세요." : tool === "mosaic" ? "영역을 지정하면 바로 모자이크됩니다. 슬라이더로 크기를 조절하세요." : "사용할 도구를 선택하세요."}</p></div>
+        <div><h2 id="image-editor-title">이미지 편집</h2><p id="image-editor-help">{tool === "text" ? "글씨를 넣을 위치를 클릭하고 입력하세요. Ctrl/⌘+Enter로 입력을 마칩니다." : tool === "eraser" ? "지울 펜 자국 위를 드래그하세요. 원본 이미지와 글씨·모자이크는 유지됩니다." : tool === "pen" ? "색과 굵기를 정한 뒤 이미지 위에 그리세요." : tool === "crop" ? "테두리의 조절점을 움직여 남길 영역을 정하세요." : tool === "mosaic" ? "영역을 지정하면 바로 모자이크됩니다. 슬라이더로 크기를 조절하세요." : "사용할 도구를 선택하세요."}</p></div>
 
       </header>
       {loadError ? <div className={styles.error} role="alert">{loadError}</div> : !bitmap ? <p className={styles.status} role="status">이미지를 불러오는 중…</p> : <>
         <div className={styles.toolStrip} role="toolbar" aria-label="이미지 편집 도구">
           <div className={styles.toolChoices}>
-            {([["crop", "자르기"], ["mosaic", "모자이크"], ["text", "글씨"], ["pen", "펜"]] as const).map(([value, label]) => <button key={value} type="button" className="editor-action" aria-label={label} aria-pressed={tool === value} onClick={() => selectTool(value)} disabled={saving}><ActionIcon name={value}/><span>{label}</span></button>)}
+            {([["crop", "자르기"], ["mosaic", "모자이크"], ["text", "글씨"], ["pen", "펜"], ["eraser", "지우개"]] as const).map(([value, label]) => <button key={value} type="button" className="editor-action" aria-label={label} aria-pressed={tool === value} onClick={() => selectTool(value)} disabled={saving}><ActionIcon name={value}/><span>{label}</span></button>)}
           </div>
           <div className={styles.historyActions}>
             <button type="button" className="editor-action" title="실행 취소" aria-label="실행 취소" onClick={undo} disabled={!history.past.length && !pendingCrop && !textDraft || saving}><ActionIcon name="undo"/></button>
             <button type="button" className="editor-action" title="다시 실행" aria-label="다시 실행" onClick={redo} disabled={!history.future.length && !cropRedo || saving}><ActionIcon name="redo"/></button>
           </div>
         </div>
-        <div className={styles.stage} data-image-stage="" onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={() => { if (cropDrag.current) setCropRect(cropDrag.current.rect); cropDrag.current = null; mosaicDrag.current=null;setMosaicDraft(null);setPointerStart(null); setStrokePreview(null); }}>
+        <div className={styles.stage} data-image-stage="" data-tool={tool??"none"} onPointerLeave={()=>setEraserPosition(null)} onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={() => { if (cropDrag.current) setCropRect(cropDrag.current.rect); cropDrag.current = null; mosaicDrag.current=null;setMosaicDraft(null);setPointerStart(null); setStrokePreview(null); }}>
           <canvas ref={displayRef} className={styles.canvas} aria-label="편집할 이미지" />
           {tool === "crop" && bounds && current && <div className={styles.cropShade} aria-hidden="true" style={{clipPath:`polygon(evenodd, 0% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%, ${bounds.x/current.width*100}% ${bounds.y/current.height*100}%, ${bounds.x/current.width*100}% ${(bounds.y+bounds.height)/current.height*100}%, ${(bounds.x+bounds.width)/current.width*100}% ${(bounds.y+bounds.height)/current.height*100}%, ${(bounds.x+bounds.width)/current.width*100}% ${bounds.y/current.height*100}%, ${bounds.x/current.width*100}% ${bounds.y/current.height*100}%)`}}/>}
           {bounds && current && (tool === "crop" ? <div className={styles.cropFrame} role="group" aria-label="자르기 영역 이동" tabIndex={0} onPointerDown={event => startCropDrag(event, "move")} onKeyDown={event => cropKeys(event, "move")} style={{left:`${bounds.x/current.width*100}%`,top:`${bounds.y/current.height*100}%`,width:`${bounds.width/current.width*100}%`,height:`${bounds.height/current.height*100}%`}}>
@@ -481,7 +495,8 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
           {(tool===null||tool==="text")&&textRegions.filter(region=>region.operation.id!==textDraft?.editingId).map(region=><button key={region.operation.id} type="button" className={styles.textHitArea} data-image-text-hit="" aria-label={`글씨 수정: ${region.operation.text.slice(0,40)}`} title="클릭하여 글씨 수정·삭제" style={{left:`${region.x/canvasSize.width*100}%`,top:`${region.y/canvasSize.height*100}%`,width:`${region.width/canvasSize.width*100}%`,height:`${region.height/canvasSize.height*100}%`}} onPointerDown={event=>{event.preventDefault();event.stopPropagation();editText(region);}} onClick={event=>{if(event.detail===0)editText(region);}} disabled={saving}/>)}
           {textDraft && current && <textarea data-image-text-control="" ref={textInputRef} className={styles.textOverlay} aria-label="이미지에 넣을 글씨" placeholder="글씨 입력" value={textDraft.text} maxLength={500} rows={Math.max(1,textDraft.text.split("\n").length)} style={{left:`${textDraft.x/current.width*100}%`,top:`${textDraft.y/current.height*100}%`,width:`${textDraft.maxWidth/current.width*100}%`,fontSize:`${textDraft.fontSize*displayScale}px`,color:textDraft.color,backgroundColor:imageTextInputSurface(textDraft.color),caretColor:textDraft.color,colorScheme:imageTextInputSurface(textDraft.color)==="#ffffff"?"light":"dark"}} onPointerDown={event=>event.stopPropagation()} onClick={event=>event.stopPropagation()} onChange={event=>updateTextDraft({...textDraft,text:event.currentTarget.value})} onKeyDown={event=>{event.stopPropagation();if(event.key==="Enter"&&(event.ctrlKey||event.metaKey)&&!event.nativeEvent.isComposing){event.preventDefault();commitText();}}} disabled={saving}/>}
           {textDraft&&current&&<button type="button" className={styles.textDelete} data-image-text-control="" aria-label="글씨 삭제" title="글씨 삭제" style={{left:`clamp(10px, ${(textDraft.x+textDraft.maxWidth)/current.width*100}%, calc(100% - 10px))`,top:`clamp(10px, ${textDraft.y/current.height*100}%, calc(100% - 10px))`}} onPointerDown={event=>{event.preventDefault();event.stopPropagation();}} onClick={deleteText} disabled={saving}><ActionIcon name="cancel"/></button>}
-          {strokePreview?.length && current && <svg className={styles.penPreview} viewBox={`0 0 ${current.width} ${current.height}`} preserveAspectRatio="none" aria-hidden="true"><polyline className={styles.penLine} points={strokePreview.map(point => `${point.x},${point.y}`).join(" ")} fill="none" stroke={penColor} strokeWidth={penWidth} strokeLinecap="round" strokeLinejoin="round" /></svg>}
+          {tool === "pen" && strokePreview?.length && current && <svg className={styles.penPreview} viewBox={`0 0 ${current.width} ${current.height}`} preserveAspectRatio="none" aria-hidden="true"><polyline className={styles.penLine} points={strokePreview.map(point => `${point.x},${point.y}`).join(" ")} fill="none" stroke={penColor} strokeWidth={penWidth} strokeLinecap="round" strokeLinejoin="round" /></svg>}
+          {tool==="eraser"&&eraserPosition&&current&&<svg className={styles.penPreview} viewBox={`0 0 ${current.width} ${current.height}`} preserveAspectRatio="none" aria-hidden="true"><circle cx={eraserPosition.x} cy={eraserPosition.y} r={eraserWidth/2} fill="#ffffff18" stroke="#000" strokeWidth={2/displayScale}/><circle cx={eraserPosition.x} cy={eraserPosition.y} r={eraserWidth/2} fill="none" stroke="#fff" strokeWidth={1/displayScale} strokeDasharray={`${3/displayScale} ${3/displayScale}`}/></svg>}
         </div>
         <div className={styles.toolbar}>
           <div className={styles.actions}>

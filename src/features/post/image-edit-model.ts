@@ -2,7 +2,8 @@ export type CropOperation = { type: "crop"; x: number; y: number; width: number;
 export type MosaicOperation = { type: "mosaic"; x: number; y: number; width: number; height: number; blockSize: number };
 export type TextOperation = { type: "text"; id?: string; text: string; x: number; y: number; fontSize: number; color: string; maxWidth?: number };
 export type PenPoint = { x: number; y: number };
-export type PenOperation = { type: "pen"; points: PenPoint[]; color: string; width: number };
+export type PenErasure = {points:PenPoint[];width:number};
+export type PenOperation = { type: "pen"; points: PenPoint[]; color: string; width: number; erasures?:PenErasure[] };
 export type ImageEditOperation = CropOperation | MosaicOperation | TextOperation | PenOperation;
 
 export type PixelSize = { width: number; height: number };
