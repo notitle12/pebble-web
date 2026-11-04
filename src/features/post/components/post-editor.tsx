@@ -1,6 +1,7 @@
 "use client";
+import type {PostDraftSettings} from "@/lib/writer-drafts";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createEditorBlock, normalizePostSlug, validateEditorValue, validatePostSlug, type PostVisibility, type PostEditorValue, type EditorBlockType } from "../post-editor-model";
 import {BoardPicker} from "@/features/board/components/board-picker";
 import {PostProjectPicker} from "./post-project-picker";
@@ -15,16 +16,16 @@ type ImageUpload={src:string;previewUrl:string};
 
 const initial = (): PostEditorValue => ({ title: "", summary: "", categoryId:null,projectId:null,boardId:null,tags:[],blocks: [createEditorBlock("HTML")] });
 
-export function PostEditor({ memberId, initialValue, onSave, busy = false, visibility = "HIDDEN", blocked = false, existingCategory, existingPost, uploadImage, initialNotice, onDirtyChange, onExit }: { memberId:string; initialValue?: PostEditorValue; onSave: (value: PostEditorValue, action:PostSaveAction) => Promise<"server"|"local">; busy?:boolean; visibility?:PostVisibility; blocked?:boolean;existingCategory?:Classification|null;existingPost?:{draft:boolean;urlKey:string;id:string};uploadImage?:(file:File,value:PostEditorValue)=>Promise<ImageUpload>;initialNotice?:string;onDirtyChange?:(dirty:boolean)=>void;onExit?:()=>void }) {
+export function PostEditor({ memberId, initialValue, onSave, busy = false, visibility = "HIDDEN", blocked = false, existingCategory, existingPost, uploadImage, initialNotice, onDirtyChange, onExit, onDraftChange, initialSettings, initialDirty = false, autosaveStatus }: { memberId:string; initialValue?: PostEditorValue; onSave: (value: PostEditorValue, action:PostSaveAction) => Promise<"server"|"local">; busy?:boolean; visibility?:PostVisibility; blocked?:boolean;existingCategory?:Classification|null;existingPost?:{draft:boolean;urlKey:string;id:string};uploadImage?:(file:File,value:PostEditorValue)=>Promise<ImageUpload>;initialNotice?:string;onDirtyChange?:(dirty:boolean)=>void;onExit?:()=>void;onDraftChange?:(value:PostEditorValue,settings:PostDraftSettings,dirty:boolean)=>void;initialSettings?:PostDraftSettings;initialDirty?:boolean;autosaveStatus?:string }) {
   const startingValue = useRef<PostEditorValue>(initialValue ?? initial());
   const [value, setValue] = useState<PostEditorValue>(() => startingValue.current);
   const [publishRevision,setPublishRevision]=useState(0);
   const [review,setReview]=useState(false),[extrasOpen,setExtrasOpen]=useState(false),[saveMessage,setSaveMessage]=useState(initialNotice??""),[saveError,setSaveError]=useState("");
-  const [targetVisibility,setTargetVisibility]=useState<PostVisibility>(visibility),[slug,setSlug]=useState(startingValue.current.slug??"");
-  const initialSlugMode:"NUMERIC"|"CUSTOM"=existingPost?.draft&&startingValue.current.slug?"CUSTOM":"NUMERIC";
+  const [targetVisibility,setTargetVisibility]=useState<PostVisibility>(initialSettings?.visibility??visibility),[slug,setSlug]=useState(startingValue.current.slug??"");
+  const initialSlugMode:"NUMERIC"|"CUSTOM"=initialSettings?.slugMode??(existingPost?.draft&&startingValue.current.slug?"CUSTOM":"NUMERIC");
   const [slugMode,setSlugMode]=useState<"NUMERIC"|"CUSTOM">(initialSlugMode);
-  const dialog=useRef<HTMLDialogElement>(null),dialogHeading=useRef<HTMLHeadingElement>(null),slugTouched=useRef(!!(existingPost?.draft&&startingValue.current.slug));
-  const baseline = useRef(JSON.stringify({...startingValue.current,slug:initialSlugMode==="CUSTOM"?startingValue.current.slug??"":"",slugMode:initialSlugMode}));
+  const dialog=useRef<HTMLDialogElement>(null),dialogHeading=useRef<HTMLHeadingElement>(null),slugTouched=useRef(initialSlugMode==="CUSTOM");
+  const baseline = useRef(initialDirty?"recovered-draft":JSON.stringify({...startingValue.current,slug:initialSlugMode==="CUSTOM"?startingValue.current.slug??"":"",slugMode:initialSlugMode}));
   const dirty = JSON.stringify({...value,slug:slugMode==="CUSTOM"?slug:"",slugMode}) !== baseline.current;
   const errors = useMemo(() => validateEditorValue(value), [value]);
   const temporaryErrors=errors.filter(error=>error!=="제목을 입력해 주세요.");
@@ -33,6 +34,7 @@ export function PostEditor({ memberId, initialValue, onSave, busy = false, visib
   const imagePreviews = useMemo(() => Object.assign({}, ...value.blocks.map(block => block.imagePreviews ?? {})), [value.blocks]);
   const updateDocument = useCallback((blocks: PostEditorValue["blocks"]) => setValue(current => ({ ...current, blocks, thumbnailImageSrc: representativeImageSrc(blocks, current.thumbnailImageSrc) })), []);
 
+  useLayoutEffect(()=>{onDraftChange?.({...value,slug:slugMode==="CUSTOM"?slug:""},{slugMode,visibility:targetVisibility},dirty);},[value,slug,slugMode,targetVisibility,dirty,onDraftChange]);
   useEffect(()=>{onDirtyChange?.(dirty);return()=>onDirtyChange?.(false);},[dirty,onDirtyChange]);
   useEffect(() => {
     const warn = (event: BeforeUnloadEvent) => { if (dirty) { event.preventDefault(); event.returnValue = ""; } };
@@ -58,7 +60,7 @@ export function PostEditor({ memberId, initialValue, onSave, busy = false, visib
   const leave=()=>{if((dirty||busy)&&!window.confirm("저장되지 않은 변경 사항이 있습니다. 이 페이지를 나갈까요?"))return;if(onExit)onExit();else window.location.assign("/me/posts");};
 
   return <section className="post-editor writer-composer" aria-label="게시글 작성기">
-    <header className="writer-action-bar"><button type="button" className="writer-exit" disabled={busy} onClick={leave}>나가기</button><span aria-live="polite">{busy?"저장 중…":saveMessage|| (dirty?"저장되지 않은 변경 사항":"변경 사항 없음")}</span><div><button type="button" className="secondary" disabled={busy||temporaryErrors.length>0} onClick={()=>void save({kind:"temporary"})}>{busy?"저장 중…":"임시저장"}</button><button type="button" disabled={busy||errors.length>0} onClick={()=>{setSaveMessage("");setSaveError("");setPublishRevision(n=>n+1);setReview(true);}}>완료</button></div></header>
+    <header className="writer-action-bar"><button type="button" className="writer-exit" disabled={busy} onClick={leave}>나가기</button><span aria-live="polite">{busy?"저장 중…":autosaveStatus||saveMessage|| (dirty?"저장되지 않은 변경 사항":"변경 사항 없음")}</span><div><button type="button" className="secondary" disabled={busy||temporaryErrors.length>0} onClick={()=>void save({kind:"temporary"})}>{busy?"저장 중…":"임시저장"}</button><button type="button" disabled={busy||errors.length>0} onClick={()=>{setSaveMessage("");setSaveError("");setPublishRevision(n=>n+1);setReview(true);}}>완료</button></div></header>
     <label className="writer-title-field"><span className="writer-visually-hidden">제목</span><input value={value.title} maxLength={400} aria-label="제목" aria-invalid={!value.title.trim() || Array.from(value.title).length > 200} placeholder="제목을 입력하세요" onChange={event => setValue(current => ({ ...current, title: event.target.value }))} /><small>{Array.from(value.title).length}/200</small></label>
     <RichBodyEditor blocks={value.blocks} onChangeBlocks={updateDocument} disabled={busy} imagePreviews={imagePreviews} representativeImageSrc={representativeImageSrc(value.blocks, value.thumbnailImageSrc)} onSelectRepresentativeImage={src => setValue(current => ({ ...current, thumbnailImageSrc: src }))} uploadImage={uploadImage ? async file => {
       const image = await uploadImage(file, value);

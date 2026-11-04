@@ -1,4 +1,7 @@
 'use client';
+import {useWriterAutosave} from '@/lib/use-writer-autosave';
+import {WriterRecovery} from '@/components/writer-recovery';
+import {validDraftValue} from '@/lib/writer-drafts';
 import {useCallback,useEffect,useRef,useState} from 'react';
 import Link from 'next/link';
 import {useRouter} from 'next/navigation';
@@ -11,7 +14,6 @@ import {mediaFileError,parseMediaResponse,safeMediaUrl} from '@/features/media/m
 import {createPendingImages} from '@/features/post/pending-images';
 import {parseOwnProject,projectId,projectWriteFailure,type OwnProject} from '../api/member-projects';
 import {buildProjectSaveBody,emptyProject,projectEditorValue,type ProjectEditorValue,type ProjectVisibility} from '../project-editor-model';
-import {parseProjectDocument,serializeProjectDocument} from '../project-document';
 import {postImageSources} from '@/features/post/post-images';
 import {projectDraft} from '../project-drafts';
 import {projectImageValue,replaceProjectImageBlocks,projectImagePreviews} from '../project-images';
@@ -28,7 +30,8 @@ function Writer({member,id,onLogout}:{member:Member;id?:string;onLogout:(hasChan
  const router=useRouter();
  const [project,setProject]=useState<OwnProject|null>(null),[value,setValue]=useState<ProjectEditorValue>(emptyProject),[loading,setLoading]=useState(true),[error,setError]=useState(''),[busy,setBusy]=useState(false),[saved,setSaved]=useState(''),[attempt,setAttempt]=useState(0),[cover,setCover]=useState<File|null>(null),[coverPreview,setCoverPreview]=useState(''),[coverLoading,setCoverLoading]=useState(false),[selectedImageSrc,setSelectedImageSrc]=useState<string|null>(null),[imagePreviews,setImagePreviews]=useState<Record<string,string>>({}),[coverDeleted,setCoverDeleted]=useState(false);
  const [featuredHome,setFeaturedHome]=useState<BlogHomeSettings|null>(null),[featuredSelection,setFeaturedSelection]=useState<FeaturedSelection>({featured:false,removedIds:[]}),[featuredNames,setFeaturedNames]=useState<Record<string,string>>({}),[featuredLoading,setFeaturedLoading]=useState(false),[featuredError,setFeaturedError]=useState(''),[featuredChanged,setFeaturedChanged]=useState(false);
- const featuredLoad=useRef(0),orderDirty=useRef(false);
+ const featuredLoad=useRef(0),orderDirty=useRef(false),recoveredProjectId=useRef<string|undefined>(undefined);
+ const [recovered,setRecovered]=useState(false),[restoredVisibility,setRestoredVisibility]=useState<ProjectVisibility|undefined>();
  const [orderBusy,setOrderBusy]=useState(false);
  const [orderPreview,setOrderPreview]=useState<ProjectOrderPreviewState>({posts:null,loading:true,error:""});
  const onOrderPreviewChange=useCallback((state:ProjectOrderPreviewState)=>setOrderPreview(state),[]);
@@ -40,13 +43,22 @@ function Writer({member,id,onLogout}:{member:Member;id?:string;onLogout:(hasChan
  useEffect(()=>{let live=true;setLoading(true);setError('');async function load(){try{
   let next=id?parseOwnProject(await userSession.request(`/projects/${projectId(id)}`),member.id,id):null;
   let nextValue=next?projectEditorValue(next):emptyProject();let nextCover:File|null=null;let nextCoverDeleted=false;
-  try{const draft=await projectDraft('read',member.id,id);if(!live)return;if(draft&&window.confirm('임시저장한 프로젝트를 이어서 작성할까요?')){
-   const restored={...draft.value,document:parseProjectDocument(draft.value.document)};if(!draft.value||typeof restored.name!=='string'||!Array.isArray(restored.techStackIds))throw new Error('초안 형식이 올바르지 않아요.');
-   if(!next&&draft.projectId)next=parseOwnProject(await userSession.request(`/projects/${projectId(draft.projectId)}`),member.id,draft.projectId);
-   nextValue=restored;nextCover=draft.cover instanceof File?draft.cover:null;nextCoverDeleted=draft.coverDeleted===true;if(live)setSaved('임시저장한 내용을 복원했어요.');
-  }}catch{if(live)setError('임시저장한 내용을 읽지 못했어요. 저장된 프로젝트를 열었어요.');}
+
   if(live){projectRef.current=next;setProject(next);setValue(nextValue);setCover(nextCover);setCoverDeleted(nextCoverDeleted);setImagePreviews(next?projectImagePreviews(next.id,next.media):{});dirty.current=false;}
  }catch(e){if(live)setError(projectWriteFailure(e));}finally{if(live)setLoading(false);}}void load();return()=>{live=false;};},[id,member.id,attempt]);
+ const autosave=useWriterAutosave<ProjectEditorValue>({
+  scope:{memberId:member.id,kind:'project',targetId:id},enabled:!loading,dirty:dirty.current,
+  signature:JSON.stringify({value,coverDeleted,selectedImageSrc,cover:cover?[cover.name,cover.size,cover.lastModified]:null}),
+  snapshot:()=>({value,images:pending.current.snapshot(projectImageValue(value)),contentId:projectRef.current?.id??recoveredProjectId.current??id,cover,coverDeleted,selectedImageSrc,projectVisibility:projectRef.current?.visibilityStatus??restoredVisibility??'PUBLIC'}),
+  legacy:async()=>{const draft=await projectDraft('read',member.id,id);if(!draft)return;if(!validDraftValue('project',draft.value))throw new Error('이전 프로젝트 저장본을 읽지 못했어요. 저장본은 유지했습니다.');return {value:draft.value,images:[],contentId:draft.projectId,cover:draft.cover,coverDeleted:draft.coverDeleted};},
+  onRestore:record=>{
+   if(!validDraftValue('project',record.value))throw new Error('프로젝트 자동저장본을 확인해 주세요.');
+   const previews=pending.current.restore(record.images);
+   setValue(record.value);setRestoredVisibility(record.projectVisibility??(id||record.contentId?'HIDDEN':'PUBLIC'));setCover(record.cover??null);setCoverDeleted(record.coverDeleted??false);setSelectedImageSrc(record.selectedImageSrc??null);
+   setImagePreviews(before=>({...before,...previews}));setRecovered(true);dirty.current=true;setSaved('자동저장된 프로젝트를 복구했어요.');
+   if(!projectRef.current)recoveredProjectId.current=record.contentId??id;
+  },
+ });
  async function uploadImage(file:File){const message=mediaFileError(file);if(message)throw new Error(message);const image=pending.current.stage(new File([await file.arrayBuffer()],file.name,{type:file.type}));setImagePreviews(before=>({...before,[image.src]:image.previewUrl}));dirty.current=true;return image;}
  async function selectCandidateCover(candidate:{src:string;previewUrl:string}){
   if(selectingCover.current||saving.current||!current())return;
@@ -93,7 +105,10 @@ function Writer({member,id,onLogout}:{member:Member;id?:string;onLogout:(hasChan
  async function save(visibility:ProjectVisibility,temporary=false){
   if(saving.current||selectingCover.current||!current())return;saving.current=true;setBusy(true);setError('');setSaved('');
   try{
+   if(temporary){await autosave.saveNow();if(current()){setSaved('이 브라우저에 임시저장했어요.');dirty.current=false;}return;}
+   await autosave.saveNow().catch(()=>{});
    let target=projectRef.current;let resolved=value;
+   if(!target&&recoveredProjectId.current){target=parseOwnProject(await userSession.request(`/projects/${projectId(recoveredProjectId.current)}`),member.id,recoveredProjectId.current);projectRef.current=target;if(current())setProject(target);await autosave.saveNow().catch(()=>{});}
    if(!temporary&&featuredChanged){
     if(featuredLoading||!featuredHome)throw new Error('대표 프로젝트 설정을 먼저 불러와 주세요.');
     const latest=await getMyBlogHome(path=>userSession.request(path));
@@ -102,22 +117,19 @@ function Writer({member,id,onLogout}:{member:Member;id?:string;onLogout:(hasChan
    }
    if(!temporary)buildProjectSaveBody(value,target??undefined,visibility);
    if(pending.current.has(projectImageValue(value))){
-    if(!target){target=parseOwnProject(await userSession.request('/projects',{method:'POST',body:{name:value.name.trim()||'제목 없는 프로젝트',lifecycleStatus:'IN_PROGRESS',visibilityStatus:'HIDDEN'}}),member.id);projectRef.current=target;if(current())setProject(target);}
+    if(!target){target=parseOwnProject(await userSession.request('/projects',{method:'POST',body:{name:value.name.trim()||'제목 없는 프로젝트',lifecycleStatus:'IN_PROGRESS',visibilityStatus:'HIDDEN'}}),member.id);projectRef.current=target;if(current())setProject(target);await autosave.saveNow().catch(()=>{});}
     const imageValue=await pending.current.resolve(projectImageValue(value),async file=>{
      const form=new FormData();form.append('file',file);form.append('mediaRole','BODY');form.append('displayOrder','0');
      const media=parseMediaResponse(await userSession.request(`/projects/${target!.id}/media`,{method:'POST',body:form}));if(!media.url)throw new Error('이미지 미리보기를 불러오지 못했어요.');
      const image={src:apiUrl(`/projects/${target!.id}/media/${media.id}/content`).href,previewUrl:media.url};if(current())setImagePreviews(before=>({...before,[image.src]:image.previewUrl}));return image;
     });resolved=replaceProjectImageBlocks(value,imageValue);if(current())setValue(resolved);
    }
-   if(temporary){
-    const draftValue={...resolved,document:parseProjectDocument(serializeProjectDocument(resolved.document))};
-    await projectDraft('write',member.id,draftSlot.current,{value:draftValue,projectId:target?.id,cover,coverDeleted,savedAt:Date.now()});if(current()){setSaved('이 브라우저에 임시저장했어요.');dirty.current=false;}return;
-   }
+
    let body=buildProjectSaveBody(resolved,target??undefined,visibility);
-   if(!target){target=parseOwnProject(await userSession.request('/projects',{method:'POST',body:{...body,visibilityStatus:'HIDDEN'}}),member.id);projectRef.current=target;if(current())setProject(target);}
+   if(!target){target=parseOwnProject(await userSession.request('/projects',{method:'POST',body:{...body,visibilityStatus:'HIDDEN'}}),member.id);projectRef.current=target;if(current())setProject(target);await autosave.saveNow().catch(()=>{});}
    if(cover){
     const form=new FormData();form.append('file',cover);await userSession.request(`/projects/${target.id}/cover`,{method:'PUT',body:form});
-   }else if(coverDeleted&&existingCover){
+   }else if(coverDeleted&&target.media.some(item=>item.mediaRole==='THUMBNAIL')){
     await userSession.request(`/projects/${target.id}/cover`,{method:'DELETE'});
    }
    // 공개 여부는 이미지·본문 준비가 끝난 뒤 확정한다.
@@ -125,6 +137,7 @@ function Writer({member,id,onLogout}:{member:Member;id?:string;onLogout:(hasChan
    const next=Object.keys(body).length?parseOwnProject(await userSession.request(`/projects/${target.id}`,{method:'PATCH',body}),member.id,target.id):parseOwnProject(await userSession.request(`/projects/${target.id}`),member.id,target.id);
    if(!current())return;
    projectRef.current=next;setProject(next);setValue(projectEditorValue(next));setCover(null);setCoverDeleted(false);setSelectedImageSrc(null);setImagePreviews(projectImagePreviews(next.id,next.media));dirty.current=false;setSaved(visibility==='PUBLIC'?'프로젝트를 발행했어요.':'비공개로 발행했어요.');
+   await autosave.clear().catch(()=>{});
    await projectDraft('remove',member.id,draftSlot.current).catch(()=>{});draftSlot.current=next.id;
    if(featuredChanged){
     try{
@@ -139,10 +152,11 @@ function Writer({member,id,onLogout}:{member:Member;id?:string;onLogout:(hasChan
     }
    }
    if(current())router.replace(next.visibilityStatus==='PUBLIC'&&!next.isBlocked?`/projects/${next.id}`:`/projects/${next.id}/view`);
-  }catch(e){if(current())setError(projectWriteFailure(e));throw e;}finally{saving.current=false;if(mounted.current)setBusy(false);}
+  }catch(e){await autosave.saveNow().catch(()=>{});if(current())setError(projectWriteFailure(e));throw e;}finally{saving.current=false;if(mounted.current)setBusy(false);}
  }
  if(loading)return <p role="status">프로젝트를 불러오고 있어요.</p>;
- if(id&&!project)return <section className="list-state"><h1>프로젝트를 열지 못했어요</h1><p role="alert">{error}</p><button className="button" onClick={()=>setAttempt(n=>n+1)}>다시 불러오기</button></section>;
+ if(!autosave.ready)return autosave.recovery.length?<WriterRecovery records={autosave.recovery} onRestore={autosave.restore} onFresh={autosave.fresh} error={autosave.error}/>:<p role="status">자동저장본을 확인하고 있어요.</p>;
+ if(id&&!project&&!recovered)return <section className="list-state"><h1>프로젝트를 열지 못했어요</h1><p role="alert">{error}</p><button className="button" onClick={()=>setAttempt(n=>n+1)}>다시 불러오기</button></section>;
  const existingCover=project?.media.find(item=>item.mediaRole==='THUMBNAIL');
  const documentBlocks=value.document.sections.flatMap(section=>section.blocks);
  const candidateSources=postImageSources(documentBlocks);
@@ -166,6 +180,6 @@ function Writer({member,id,onLogout}:{member:Member;id?:string;onLogout:(hasChan
  const currentCoverPreview=coverDeleted?null:(coverPreview||safeMediaUrl(existingCover?.url??existingCover?.thumbnailUrl??null));
  const coverElement=<ProjectCoverPicker preview={currentCoverPreview} selected={!coverDeleted&&(!!cover||!!existingCover||!!selectedImageSrc)} selectedSrc={selectedImageSrc} disabled={busy||coverLoading} onChange={changeCover} onRemove={removeCover} candidateImages={candidateImages} onSelectCandidate={selectCandidateCover}/>;
 
- return <><div className="writer-identity"><span>{member.nickname}</span><AccountMenu member={member} logoutDisabled={busy||coverLoading||orderBusy} onLogout={()=>onLogout(dirty.current||orderDirty.current,member.id)}/></div><h1 className="writer-visually-hidden">프로젝트 작성</h1><div className="writer-status writer-visually-hidden"><Link href="/me/projects">← 내 프로젝트</Link><span>{saved}</span></div>{error&&<p role="alert">{error}</p>}<ProjectEditor value={value} onChange={next=>{setValue(next);setError('');dirty.current=true;}} busy={busy||coverLoading} navigationBusy={orderBusy} onExit={()=>{if(orderBusy)return;if(dirty.current||orderDirty.current){if(!window.confirm("저장되지 않은 변경 사항이 있습니다. 이 페이지를 나갈까요?"))return;}router.push(projectEditorExitHref(project));}} relatedPostsPreviewElement={id&&project?<ProjectPostOrderPreview state={orderPreview}/>:undefined} visibility={project?.visibilityStatus??'PUBLIC'} blocked={project?.isBlocked??false} existingTechStacks={project?.techStacks} onPublishOpen={()=>void loadFeatured()} featuredElement={visibility=><ProjectFeaturedPicker home={featuredHome} selection={featuredSelection} projectId={project?.id} names={featuredNames} loading={featuredLoading} error={featuredError} disabled={busy||coverLoading} publicProject={visibility==='PUBLIC'&&!project?.isBlocked} onReload={()=>void loadFeatured()} onChange={selection=>{setFeaturedSelection(selection);setFeaturedChanged(true);dirty.current=true;}}/>} uploadImage={uploadImage} imagePreviews={imagePreviews} relatedPostsElement={id&&project?<ProjectPostOrder key={`${project.id}:${member.id}`} projectId={project.id} memberId={member.id} disabled={busy||coverLoading} onBusyChange={setOrderBusy} onPreviewChange={onOrderPreviewChange} onDirtyChange={next=>{orderDirty.current=next;}}/>:undefined} coverElement={coverElement} coverPreviewUrl={currentCoverPreview} representativeImageSrc={selectedImageSrc} onSelectRepresentativeImage={src=>void selectCandidateCover({src,previewUrl:imagePreviews[src]||src})} onTemporarySave={()=>save(project?.visibilityStatus??'HIDDEN',true)} onSave={save}/></>;
+ return <><div className="writer-identity"><span>{member.nickname}</span><AccountMenu member={member} logoutDisabled={busy||coverLoading||orderBusy} onLogout={()=>onLogout(dirty.current||orderDirty.current,member.id)}/></div><h1 className="writer-visually-hidden">프로젝트 작성</h1><div className="writer-status writer-visually-hidden"><Link href="/me/projects">← 내 프로젝트</Link><span>{saved}</span></div>{error&&<p role="alert">{error}</p>}{autosave.error&&<p role="alert">{autosave.error} <button type="button" onClick={()=>void autosave.saveNow().catch(()=>{})}>다시 시도</button></p>}<ProjectEditor autosaveStatus={autosave.status} value={value} onChange={next=>{setValue(next);setError('');dirty.current=true;}} busy={busy||coverLoading} navigationBusy={orderBusy} onExit={()=>{if(orderBusy)return;if(dirty.current||orderDirty.current){if(!window.confirm("저장되지 않은 변경 사항이 있습니다. 이 페이지를 나갈까요?"))return;}router.replace(projectEditorExitHref(project));}} relatedPostsPreviewElement={id&&project?<ProjectPostOrderPreview state={orderPreview}/>:undefined} visibility={project?.visibilityStatus??restoredVisibility??'PUBLIC'} blocked={project?.isBlocked??false} existingTechStacks={project?.techStacks} onPublishOpen={()=>void loadFeatured()} featuredElement={visibility=><ProjectFeaturedPicker home={featuredHome} selection={featuredSelection} projectId={project?.id} names={featuredNames} loading={featuredLoading} error={featuredError} disabled={busy||coverLoading} publicProject={visibility==='PUBLIC'&&!project?.isBlocked} onReload={()=>void loadFeatured()} onChange={selection=>{setFeaturedSelection(selection);setFeaturedChanged(true);dirty.current=true;}}/>} uploadImage={uploadImage} imagePreviews={imagePreviews} relatedPostsElement={id&&project?<ProjectPostOrder key={`${project.id}:${member.id}`} projectId={project.id} memberId={member.id} disabled={busy||coverLoading} onBusyChange={setOrderBusy} onPreviewChange={onOrderPreviewChange} onDirtyChange={next=>{orderDirty.current=next;}}/>:undefined} coverElement={coverElement} coverPreviewUrl={currentCoverPreview} representativeImageSrc={selectedImageSrc} onSelectRepresentativeImage={src=>void selectCandidateCover({src,previewUrl:imagePreviews[src]||src})} onTemporarySave={()=>save(project?.visibilityStatus??'HIDDEN',true)} onSave={save}/></>;
 }
 export function ProjectWriteScreen({id}:{id?:string}){return <WriterLogoutBoundary>{onLogout=><MemberGate profile preserveOnExpiry>{member=><Writer key={`${member.id}:${id??'new'}`} member={member} id={id} onLogout={onLogout}/>}</MemberGate>}</WriterLogoutBoundary>;}
