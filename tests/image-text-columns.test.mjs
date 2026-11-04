@@ -64,3 +64,14 @@ test('side placement moves the last column child out safely and rejects self/anc
  assert.equal(placeBodyBlockBeside(state.tr,0,source.pos,'left'),null);
  assert.equal(placeBodyBlockBeside(state.tr,source.pos,source.pos,'left'),null);
 });
+
+test('custom column widths round-trip through safe HTML and Markdown, with bounded geometry',async()=>{
+ const {safeColumnRatio,columnRatioParts,ratioAtPointer,ratioFromPercent}=await import('../src/features/post/column-ratio.ts');
+ assert.equal(ratioAtPointer(312,0,624),'50:50');assert.equal(ratioAtPointer(-100,0,624),'20:80');assert.equal(ratioAtPointer(900,0,624),'80:20');
+ assert.equal(ratioFromPercent(NaN),'50:50');assert.equal(safeColumnRatio('1:2'),'1:2');
+ for(const bad of ['0:100','19:81','99:1','40:40','40:60;evil','calc(50%)'])assert.equal(columnRatioParts(bad),null);
+ const raw='<div class="post-columns" data-ratio="37:63"><div class="post-column"><p>왼쪽</p></div><div class="post-column"><p>오른쪽</p></div></div>';
+ const safe=richContentHtml(raw,'HTML');assert.match(safe,/data-ratio="37:63"/);assert.match(safe,/--column-left:37fr/);assert.match(safe,/--column-right:63fr/);
+ const restored=richContentHtml(htmlToMarkdown(safe),'MARKDOWN');assert.match(restored,/data-ratio="37:63"/);assert.match(restored,/--column-left:37fr/);
+ assert.doesNotMatch(richContentHtml(raw.replace('37:63','evil'),'HTML'),/data-ratio/);
+});

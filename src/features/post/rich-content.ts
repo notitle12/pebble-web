@@ -1,3 +1,4 @@
+import {columnRatioParts,columnRatioStyle} from "./column-ratio.ts";
 import {parseDatabaseSchema} from "./database-schema.ts";
 import { parseArchitectureSpec, parseTableSpec } from "./api/post-list.ts";
 import { parseNaverMapEmbed } from "./naver-map.ts";
@@ -8,6 +9,8 @@ export type RichBodyFormat = "HTML" | "MARKDOWN" | "TEXT";
 
 const allowedStyles: NonNullable<IOptions["allowedStyles"]> = {
   "*": {
+    "--column-left": [/^(?:[1-9]|[1-7]\d|80)fr$/],
+    "--column-right": [/^(?:[1-9]|[1-7]\d|80)fr$/],
     color: [/^#[0-9a-f]{3,8}$/i, /^rgba?\([\d.% ,]+\)$/i, /^[a-z]{3,20}$/i],
     "background-color": [/^#[0-9a-f]{3,8}$/i, /^rgba?\([\d.% ,]+\)$/i, /^[a-z]{3,20}$/i],
     "font-family": [/^[\w ,"'-]{1,80}$/],
@@ -67,7 +70,8 @@ const sanitizerOptions: IOptions = {
     td: (_tagName, attrs) => ({ tagName: "td", attribs: safeCellAttributes(attrs) }),
     th: (_tagName, attrs) => ({ tagName: "th", attribs: safeCellAttributes(attrs) }),
     div: (_tagName, attrs) => {
-      if (!["1:1", "1:2", "2:1"].includes(attrs["data-ratio"] || "")) delete attrs["data-ratio"];
+      if(!columnRatioParts(attrs["data-ratio"]))delete attrs["data-ratio"];
+      if(attrs.class?.split(/\s+/).includes("post-columns"))attrs.style=`${attrs.style??""};${columnRatioStyle(attrs["data-ratio"])}`;
       const type = attrs["data-pebble-type"];
       if (!type) return { tagName: "div", attribs: attrs };
       try {
