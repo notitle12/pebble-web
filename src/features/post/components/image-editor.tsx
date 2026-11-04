@@ -2,6 +2,7 @@
 
 import { createPortal } from "react-dom";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { installImageHistoryKeys, type ImageHistoryActions } from "../image-history-keys";
 import styles from "./image-editor.module.css";
 import { emptyImageHistory, commitImageEdit, undoImageEdit, redoImageEdit, replaceImageText, type ImageEditHistory } from "../image-edit-history";
 import { placedImageTexts, imageTextLines, adjustCrop, fullImageCrop, hasCropChanges, clampCropRect, createMosaicOperation, createPenOperation, createTextOperation, safeBitmapSize, type CropOperation, type CropHandle, type ImageEditOperation, type PenPoint, type TextOperation, type PlacedImageText, type PixelSize } from "../image-edit-model";
@@ -109,6 +110,7 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
   const [bitmap, setBitmap] = useState<ImageBitmap | null>(null);
   const [loadError, setLoadError] = useState("");
   const [history, setHistory] = useState<ImageEditHistory>(emptyImageHistory);
+  const historyActions = useRef<ImageHistoryActions>({undo:()=>{},redo:()=>{},blocked:true});
   const historyRef = useRef(history); historyRef.current = history;
   const operations = history.present;
   const cursor = operations.length;
@@ -282,6 +284,8 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
     const last=next.present.at(-1);if(tool==="mosaic"&&last?.type==="mosaic"){setActiveMosaicIndex(next.present.length-1);setMosaicBlockSize(last.blockSize);}
     setSelection(null);setNotice("");
   };
+  historyActions.current={undo,redo,blocked:saving||confirmCancel};
+  useEffect(()=>installImageHistoryKeys(window,()=>historyActions.current),[]);
 
   const pointerCoordinates = (event: React.PointerEvent<HTMLDivElement>) => {
     const canvas = displayRef.current;
