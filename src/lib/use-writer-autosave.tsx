@@ -42,7 +42,10 @@ export function useWriterAutosave<T>(options:Options<T>){
   try{await latest.current.onRestore(record);if(record.key!=='legacy')source.current=record;setRecovery([]);setReady(true);setLoadError('');}
   catch(error){setLoadError(error instanceof Error?error.message:'자동저장본을 복구하지 못했어요. 저장본은 유지했습니다.');}
  };
- const fresh=()=>{setRecovery([]);setReady(true);};
+ const fresh=async()=>{
+  try{for(const record of recovery)if(record.key!=='legacy')await writerDraftStore.discard(record);setRecovery([]);setReady(true);setLoadError('');}
+  catch(error){setLoadError(error instanceof Error?error.message:'자동저장본을 삭제하지 못했습니다.');throw error;}
+ };
  const saveNow=async()=>{controller.current!.schedule({payload:latest.current.snapshot(),capturedAt:Date.now()});await controller.current!.flush();};
  const status=state.phase==='pending'?'자동저장 대기 중…':state.phase==='saving'?'자동저장 중…':state.phase==='saved'?`이 브라우저에 자동저장 · ${new Intl.DateTimeFormat('ko-KR',{hour:'2-digit',minute:'2-digit',hour12:false}).format(state.savedAt)}`:'';
  return{ready,recovery,restore,fresh,status,error:loadError||state.error||'',saveNow,flush:()=>controller.current!.flush(),clear:async()=>{try{await controller.current!.clear();}catch(error){setLoadError('서버에는 저장됐지만 이전 자동저장본을 정리하지 못했어요.');throw error;}}};

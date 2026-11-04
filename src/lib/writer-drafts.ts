@@ -77,6 +77,17 @@ export const writerDraftStore = {
    tx.oncomplete=()=>resolve();tx.onerror=tx.onabort=()=>reject(new Error('자동저장에 실패했어요. 브라우저 저장 공간을 확인하고 작성 내용을 별도로 보관해 주세요.'));
   });} finally{db.close();}
  },
+ async discard(record:WriterDraft<unknown>):Promise<void>{
+  const db=await openDrafts();
+  try{await new Promise<void>((resolve,reject)=>{
+   const tx=db.transaction('drafts','readwrite'),store=tx.objectStore('drafts'),request=store.index('owner').getAll(draftOwner(record));
+   request.onsuccess=()=>{for(const old of request.result as WriterDraft<unknown>[]){
+    if(draftDocument(old)!==draftDocument(record))continue;
+    if(old.savedAt<record.savedAt||(old.key===record.key&&(record.revision?old.revision===record.revision:old.savedAt===record.savedAt)))store.delete(old.key);
+   }};
+   tx.oncomplete=()=>resolve();tx.onabort=tx.onerror=()=>reject(new Error('자동저장본을 삭제하지 못했습니다. 다시 시도해 주세요.'));
+  });}finally{db.close();}
+ },
  async remove(key: string, savedAt?: number | string): Promise<void> {
   const db=await openDrafts();
   try{await new Promise<void>((resolve,reject)=>{
