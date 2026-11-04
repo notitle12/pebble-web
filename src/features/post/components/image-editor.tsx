@@ -119,7 +119,7 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
   const requestCancel = () => { if (!saving) setConfirmCancel(true); };
   const [saveError, setSaveError] = useState("");
   const [notice, setNotice] = useState("");
-  const [tool, setTool] = useState<Tool>("crop");
+  const [tool, setTool] = useState<Tool | null>(null);
   const [activeMosaicIndex, setActiveMosaicIndex] = useState<number | null>(null);
   const [mosaicBlockSize, setMosaicBlockSize] = useState(12);
   const [textDraft, setTextDraft] = useState<{x:number;y:number;text:string;maxWidth:number}|null>(null);
@@ -261,7 +261,7 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
     setCropRect(adjustCrop(cropRect, handle, event.key === "ArrowLeft" ? -step : event.key === "ArrowRight" ? step : 0, event.key === "ArrowUp" ? -step : event.key === "ArrowDown" ? step : 0, canvasSize)); setCropRedo(null);
   };
   const pointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (!workingRef.current || saving || tool === "crop") return;
+    if (!workingRef.current || saving || !tool || tool === "crop") return;
     const point = pointerCoordinates(event);
     if (!point) return;
     if (tool === "text") {
@@ -356,7 +356,7 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
   return createPortal(<div className={styles.backdrop} onMouseDown={event => { if (event.target === event.currentTarget) requestCancel(); }}>
     <section ref={dialogRef} inert={confirmCancel} className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby="image-editor-title" aria-describedby="image-editor-help" tabIndex={-1}>
       <header className={styles.header}>
-        <div><h2 id="image-editor-title">이미지 편집</h2><p id="image-editor-help">{tool === "text" ? "글씨를 넣을 위치를 클릭하고 입력하세요. Ctrl/⌘+Enter로 입력을 마칩니다." : tool === "pen" ? "색과 굵기를 정한 뒤 이미지 위에 그리세요." : tool === "crop" ? "테두리의 조절점을 움직여 남길 영역을 정하세요." : "영역을 지정하면 바로 모자이크됩니다. 슬라이더로 크기를 조절하세요."}</p></div>
+        <div><h2 id="image-editor-title">이미지 편집</h2><p id="image-editor-help">{tool === "text" ? "글씨를 넣을 위치를 클릭하고 입력하세요. Ctrl/⌘+Enter로 입력을 마칩니다." : tool === "pen" ? "색과 굵기를 정한 뒤 이미지 위에 그리세요." : tool === "crop" ? "테두리의 조절점을 움직여 남길 영역을 정하세요." : tool === "mosaic" ? "영역을 지정하면 바로 모자이크됩니다. 슬라이더로 크기를 조절하세요." : "사용할 도구를 선택하세요."}</p></div>
 
       </header>
       {loadError ? <div className={styles.error} role="alert">{loadError}</div> : !bitmap ? <p className={styles.status} role="status">이미지를 불러오는 중…</p> : <>
@@ -386,10 +386,10 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
             </> : tool === "text" ? <>
               <label className={styles.rangeLabel}>글자 크기 <input type="range" min="16" max="160" step="2" value={textFontSize} onChange={event => setTextFontSize(Number(event.currentTarget.value))} disabled={saving} /></label>
               <label className={styles.colorLabel}>글자색 <input type="color" value={textColor} onChange={event => setTextColor(event.currentTarget.value)} disabled={saving} /></label>
-            </> : <>
+            </> : tool === "pen" ? <>
               <label className={styles.rangeLabel}>펜 굵기 <input type="range" min="1" max="64" value={penWidth} onChange={event => setPenWidth(Number(event.currentTarget.value))} disabled={saving} /></label>
               <label className={styles.colorLabel}>펜 색상 <input type="color" value={penColor} onChange={event => setPenColor(event.currentTarget.value)} disabled={saving} /></label>
-            </>}
+            </> : null}
           </div>
           <p className={styles.dimensions}>{canvasSize.width} × {canvasSize.height}px</p>
         </div>
