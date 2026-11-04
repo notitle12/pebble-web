@@ -1,6 +1,6 @@
 export type CropOperation = { type: "crop"; x: number; y: number; width: number; height: number };
 export type MosaicOperation = { type: "mosaic"; x: number; y: number; width: number; height: number; blockSize: number };
-export type TextOperation = { type: "text"; text: string; x: number; y: number; fontSize: number; color: string };
+export type TextOperation = { type: "text"; text: string; x: number; y: number; fontSize: number; color: string; maxWidth?: number };
 export type PenPoint = { x: number; y: number };
 export type PenOperation = { type: "pen"; points: PenPoint[]; color: string; width: number };
 export type ImageEditOperation = CropOperation | MosaicOperation | TextOperation | PenOperation;
@@ -30,7 +30,7 @@ export function createMosaicOperation(rect: CropOperation, blockSize: number): M
   return { ...rect, type: "mosaic", blockSize: Math.max(4, Math.min(48, Math.round(blockSize))) };
 }
 
-export function createTextOperation(text: string, x: number, y: number, size: PixelSize, fontSize: number, color: string): TextOperation | null {
+export function createTextOperation(text: string, x: number, y: number, size: PixelSize, fontSize: number, color: string, maxWidth?: number): TextOperation | null {
   const safeText = text.trim().slice(0, 500);
   if (!safeText) return null;
   const safeColor = /^#[\da-f]{6}$/i.test(color) ? color.toLowerCase() : "#ffffff";
@@ -39,6 +39,7 @@ export function createTextOperation(text: string, x: number, y: number, size: Pi
     x: Math.max(0, Math.min(size.width, Math.round(x))),
     y: Math.max(0, Math.min(size.height, Math.round(y))),
     fontSize: Math.max(16, Math.min(160, Math.round(fontSize))), color: safeColor,
+    ...(maxWidth !== undefined && Number.isFinite(maxWidth) ? {maxWidth: Math.max(1, Math.min(size.width, Math.round(maxWidth)))} : {}),
   };
 }
 
@@ -68,4 +69,17 @@ export function adjustCrop(rect:CropOperation,handle:CropHandle,dx:number,dy:num
  if(handle.includes('n'))top=clamp(top+dy,0,bottom-minHeight);
  if(handle.includes('s'))bottom=clamp(bottom+dy,top+minHeight,size.height);
  return {type:'crop',x:left,y:top,width:right-left,height:bottom-top};
+}
+
+/** Wrap long Korean text without compressing its glyphs; preserve blank lines. */
+export function imageTextLines(text:string,maxWidth:number,measure:(text:string)=>number):string[]{
+ const lines:string[]=[];
+ const segmenter=typeof Intl.Segmenter==='function'?new Intl.Segmenter(undefined,{granularity:'grapheme'}):null;
+ for(const paragraph of text.split('\n')){
+  let line='';
+  const glyphs=segmenter?Array.from(segmenter.segment(paragraph),part=>part.segment):Array.from(paragraph);
+  for(const glyph of glyphs){if(line&&measure(line+glyph)>maxWidth){lines.push(line);line=glyph;}else line+=glyph;}
+  lines.push(line);
+ }
+ return lines;
 }

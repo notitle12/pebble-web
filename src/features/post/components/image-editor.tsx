@@ -3,7 +3,7 @@
 import { createPortal } from "react-dom";
 import { useCallback, useEffect, useRef, useState } from "react";
 import styles from "./image-editor.module.css";
-import { adjustCrop, fullImageCrop, hasCropChanges, clampCropRect, createMosaicOperation, createPenOperation, createTextOperation, safeBitmapSize, type CropOperation, type CropHandle, type ImageEditOperation, type PenPoint, type TextOperation } from "../image-edit-model";
+import { imageTextLines, adjustCrop, fullImageCrop, hasCropChanges, clampCropRect, createMosaicOperation, createPenOperation, createTextOperation, safeBitmapSize, type CropOperation, type CropHandle, type ImageEditOperation, type PenPoint, type TextOperation } from "../image-edit-model";
 
 type ActionName = "crop" | "mosaic" | "text" | "pen" | "undo" | "redo" | "check" | "cancel";
 const actionPaths: Record<ActionName, string[]> = {
@@ -92,20 +92,12 @@ function drawTextOperation(context: CanvasRenderingContext2D, operation: TextOpe
   context.fillStyle = operation.color;
   context.font = `${operation.fontSize}px system-ui, sans-serif`;
   context.textBaseline = "top";
-  const maxWidth = Math.max(1, canvasWidth - operation.x - 12);
+  const maxWidth = Math.max(1, Math.min(operation.maxWidth ?? canvasWidth, canvasWidth - operation.x));
   const lineHeight = Math.round(operation.fontSize * 1.25);
   let y = operation.y;
-  for (const paragraph of operation.text.split("\n")) {
-    let line = "";
-    for (const word of paragraph.split(/\s+/)) {
-      const next = line ? `${line} ${word}` : word;
-      if (line && context.measureText(next).width > maxWidth) {
-        context.fillText(line, operation.x, y, maxWidth);
-        y += lineHeight;
-        line = word;
-      } else line = next;
-    }
-    if (line) { context.fillText(line, operation.x, y, maxWidth); y += lineHeight; }
+  for (const line of imageTextLines(operation.text, maxWidth, text => context.measureText(text).width)) {
+    context.fillText(line, operation.x, y);
+    y += lineHeight;
   }
 }
 
@@ -130,7 +122,9 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
   const [tool, setTool] = useState<Tool>("crop");
   const [activeMosaicIndex, setActiveMosaicIndex] = useState<number | null>(null);
   const [mosaicBlockSize, setMosaicBlockSize] = useState(12);
-  const [textValue, setTextValue] = useState("");
+  const [textDraft, setTextDraft] = useState<{x:number;y:number;text:string;maxWidth:number}|null>(null);
+  const textInputRef = useRef<HTMLTextAreaElement>(null);
+  const [displayScale, setDisplayScale] = useState(1);
   const [textFontSize, setTextFontSize] = useState(32);
   const [textColor, setTextColor] = useState("#24352b");
   const [penWidth, setPenWidth] = useState(8);
@@ -215,8 +209,22 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
     return () => window.removeEventListener("keydown", keydown);
   }, []);
 
+  const pendingText = () => textDraft ? createTextOperation(textDraft.text,textDraft.x,textDraft.y,canvasSize,textFontSize,textColor,textDraft.maxWidth) : null;
+  const commitText = () => {
+    const operation = pendingText();
+    if (operation) {setOperations(previous=>[...previous.slice(0,cursor),operation]);setCursor(cursor+1);}
+    setTextDraft(null);
+  };
+  useEffect(()=>{const input=textInputRef.current;if(input){input.style.height="auto";input.style.height=`${input.scrollHeight}px`;}},[textDraft?.text,textFontSize,displayScale]);
+  useEffect(()=>{if(textDraft)textInputRef.current?.focus({preventScroll:true});},[textDraft?.x,textDraft?.y]);
+  useEffect(()=>{
+    const canvas=displayRef.current;if(!canvas)return;
+    const observer=new ResizeObserver(()=>setDisplayScale(canvas.clientWidth/Math.max(1,canvas.width)));
+    observer.observe(canvas);return()=>observer.disconnect();
+  },[bitmap,canvasSize.width,canvasSize.height]);
   const selectTool = (next: Tool) => {
     if (next === tool) return;
+    if (tool === "text") commitText();
     if (tool === "crop" && hasCropChanges(cropRect, canvasSize)) {
       setOperations(previous => [...previous.slice(0, cursor), cropRect!]);
       setCursor(cursor + 1);
@@ -228,7 +236,7 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
     if (activeMosaicIndex === null || activeMosaicIndex >= cursor) return;
     setOperations(previous => previous.map((operation, index) => index === activeMosaicIndex && operation.type === "mosaic" ? createMosaicOperation({ ...operation, type: "crop" }, size) : operation));
   };
-  const undo = () => { if (tool === "crop" && hasCropChanges(cropRect, canvasSize)) { setCropRedo(cropRect); setCropRect(fullImageCrop(canvasSize)); return; } setActiveMosaicIndex(null); setCursor(value => Math.max(0, value - 1)); setSelection(null); setNotice(""); };
+  const undo = () => { if(textDraft){setTextDraft(null);return;} if (tool === "crop" && hasCropChanges(cropRect, canvasSize)) { setCropRedo(cropRect); setCropRect(fullImageCrop(canvasSize)); return; } setActiveMosaicIndex(null); setCursor(value => Math.max(0, value - 1)); setSelection(null); setNotice(""); };
   const redo = () => { if (cropRedo) { setCropRect(cropRedo); setCropRedo(null); return; } if (tool === "mosaic" && operations[cursor]?.type === "mosaic") { setActiveMosaicIndex(cursor); setMosaicBlockSize((operations[cursor] as Extract<ImageEditOperation,{type:"mosaic"}>).blockSize); } setCursor(value => Math.min(operations.length, value + 1)); setSelection(null); setNotice(""); };
 
   const pointerCoordinates = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -257,12 +265,11 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
     const point = pointerCoordinates(event);
     if (!point) return;
     if (tool === "text") {
-      const operation = createTextOperation(textValue, point.x, point.y, workingRef.current, textFontSize, textColor);
-      if (!operation) { setNotice("먼저 표시할 문구를 입력하세요."); return; }
-      setOperations(previous => [...previous.slice(0, cursor), operation]);
-      setCursor(cursor + 1);
-      setNotice("텍스트를 배치했습니다. 실행 취소로 되돌릴 수 있습니다.");
-      return;
+      commitText();
+      const x=Math.max(0,Math.min(canvasSize.width-Math.min(120,canvasSize.width),Math.round(point.x)));
+      const y=Math.max(0,Math.min(canvasSize.height-Math.min(textFontSize*1.5,canvasSize.height),Math.round(point.y)));
+      setTextDraft({x,y,text:"",maxWidth:Math.max(1,Math.min(canvasSize.width-x,Math.max(120,Math.round(canvasSize.width*.45))))});
+      setNotice("");return;
     }
     event.currentTarget.setPointerCapture(event.pointerId);
     if (tool === "pen") {
@@ -326,6 +333,7 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
   const apply = async () => {
     if (!bitmap || saving) return;
     const exported = operations.slice(0, cursor);
+    const text = pendingText(); if(text)exported.push(text);
     if (tool === "crop" && hasCropChanges(cropRect, canvasSize)) exported.push(cropRect!);
     const canvas = replayHistory(bitmap, exported, exported.length);
     setSaving(true);
@@ -348,7 +356,7 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
   return createPortal(<div className={styles.backdrop} onMouseDown={event => { if (event.target === event.currentTarget) requestCancel(); }}>
     <section ref={dialogRef} inert={confirmCancel} className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby="image-editor-title" aria-describedby="image-editor-help" tabIndex={-1}>
       <header className={styles.header}>
-        <div><h2 id="image-editor-title">이미지 편집</h2><p id="image-editor-help">{tool === "text" ? "문구와 모양을 정한 뒤 이미지 위치를 클릭해 배치하세요." : tool === "pen" ? "색과 굵기를 정한 뒤 이미지 위에 그리세요." : tool === "crop" ? "테두리의 조절점을 움직여 남길 영역을 정하세요." : "영역을 지정하면 바로 모자이크됩니다. 슬라이더로 크기를 조절하세요."}</p></div>
+        <div><h2 id="image-editor-title">이미지 편집</h2><p id="image-editor-help">{tool === "text" ? "글씨를 넣을 위치를 클릭하고 입력하세요. Ctrl/⌘+Enter로 입력을 마칩니다." : tool === "pen" ? "색과 굵기를 정한 뒤 이미지 위에 그리세요." : tool === "crop" ? "테두리의 조절점을 움직여 남길 영역을 정하세요." : "영역을 지정하면 바로 모자이크됩니다. 슬라이더로 크기를 조절하세요."}</p></div>
 
       </header>
       {loadError ? <div className={styles.error} role="alert">{loadError}</div> : !bitmap ? <p className={styles.status} role="status">이미지를 불러오는 중…</p> : <>
@@ -357,7 +365,7 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
             {([["crop", "자르기"], ["mosaic", "모자이크"], ["text", "글씨"], ["pen", "펜"]] as const).map(([value, label]) => <button key={value} type="button" className="editor-action" aria-label={label} aria-pressed={tool === value} onClick={() => selectTool(value)} disabled={saving}><ActionIcon name={value}/><span>{label}</span></button>)}
           </div>
           <div className={styles.historyActions}>
-            <button type="button" className="editor-action" title="실행 취소" aria-label="실행 취소" onClick={undo} disabled={cursor === 0 && !pendingCrop || saving}><ActionIcon name="undo"/></button>
+            <button type="button" className="editor-action" title="실행 취소" aria-label="실행 취소" onClick={undo} disabled={cursor === 0 && !pendingCrop && !textDraft || saving}><ActionIcon name="undo"/></button>
             <button type="button" className="editor-action" title="다시 실행" aria-label="다시 실행" onClick={redo} disabled={cursor >= operations.length && !cropRedo || saving}><ActionIcon name="redo"/></button>
           </div>
         </div>
@@ -368,6 +376,7 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
             {([["nw","왼쪽 위"],["n","위"],["ne","오른쪽 위"],["e","오른쪽"],["se","오른쪽 아래"],["s","아래"],["sw","왼쪽 아래"],["w","왼쪽"]] as const).map(([handle,label])=><button key={handle} type="button" className={styles.cropHandle} data-handle={handle} aria-label={`자르기 ${label} 조절점`} disabled={saving} onPointerDown={event=>startCropDrag(event,handle)} onKeyDown={event=>cropKeys(event,handle)}/>)}
           </div> : <div className={styles.cropMarquee} aria-hidden="true" style={{ left: `${bounds.x / current.width * 100}%`, top: `${bounds.y / current.height * 100}%`, width: `${bounds.width / current.width * 100}%`, height: `${bounds.height / current.height * 100}%` }} />)}
           {tool === "mosaic" && activeMosaic && current && <div className={styles.mosaicOutline} aria-hidden="true" style={{left:`${activeMosaic.x/current.width*100}%`,top:`${activeMosaic.y/current.height*100}%`,width:`${activeMosaic.width/current.width*100}%`,height:`${activeMosaic.height/current.height*100}%`}}/>}
+          {textDraft && current && <textarea ref={textInputRef} className={styles.textOverlay} aria-label="이미지에 넣을 글씨" placeholder="글씨 입력" value={textDraft.text} maxLength={500} rows={Math.max(1,textDraft.text.split("\n").length)} style={{left:`${textDraft.x/current.width*100}%`,top:`${textDraft.y/current.height*100}%`,width:`${textDraft.maxWidth/current.width*100}%`,fontSize:`${textFontSize*displayScale}px`,color:textColor}} onPointerDown={event=>event.stopPropagation()} onClick={event=>event.stopPropagation()} onChange={event=>setTextDraft({...textDraft,text:event.currentTarget.value})} onKeyDown={event=>{event.stopPropagation();if(event.key==="Enter"&&(event.ctrlKey||event.metaKey)&&!event.nativeEvent.isComposing){event.preventDefault();commitText();}}} disabled={saving}/>}
           {strokePreview?.length && current && <svg className={styles.penPreview} viewBox={`0 0 ${current.width} ${current.height}`} preserveAspectRatio="none" aria-hidden="true"><polyline className={styles.penLine} points={strokePreview.map(point => `${point.x},${point.y}`).join(" ")} fill="none" stroke={penColor} strokeWidth={penWidth} strokeLinecap="round" strokeLinejoin="round" /></svg>}
         </div>
         <div className={styles.toolbar}>
@@ -377,7 +386,6 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
             </> : tool === "text" ? <>
               <label className={styles.rangeLabel}>글자 크기 <input type="range" min="16" max="160" step="2" value={textFontSize} onChange={event => setTextFontSize(Number(event.currentTarget.value))} disabled={saving} /></label>
               <label className={styles.colorLabel}>글자색 <input type="color" value={textColor} onChange={event => setTextColor(event.currentTarget.value)} disabled={saving} /></label>
-              <input className={styles.textInput} aria-label="이미지에 넣을 텍스트" placeholder="텍스트를 입력한 뒤 이미지 위치를 클릭하세요" value={textValue} maxLength={500} onChange={event => setTextValue(event.currentTarget.value)} disabled={saving} />
             </> : <>
               <label className={styles.rangeLabel}>펜 굵기 <input type="range" min="1" max="64" value={penWidth} onChange={event => setPenWidth(Number(event.currentTarget.value))} disabled={saving} /></label>
               <label className={styles.colorLabel}>펜 색상 <input type="color" value={penColor} onChange={event => setPenColor(event.currentTarget.value)} disabled={saving} /></label>
@@ -391,7 +399,7 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
       <footer className={styles.footer}>
         {saving && <span className={styles.status} role="status">편집한 이미지를 저장하는 중…</span>}
         <button type="button" className="editor-action" onClick={requestCancel} disabled={saving}><ActionIcon name="cancel"/><span>취소</span></button>
-        <button type="button" className={`editor-action ${styles.primary}`} onClick={() => void apply()} disabled={!bitmap || !canvasSize.width || saving || cursor === 0 && !pendingCrop}><ActionIcon name="check"/><span>저장</span></button>
+        <button type="button" className={`editor-action ${styles.primary}`} onClick={() => void apply()} disabled={!bitmap || !canvasSize.width || saving || cursor === 0 && !pendingCrop && !pendingText()}><ActionIcon name="check"/><span>저장</span></button>
       </footer>
     </section>
     {confirmCancel && <section ref={confirmationRef} className={styles.confirmation} role="alertdialog" aria-modal="true" aria-labelledby="image-discard-title" aria-describedby="image-discard-description" tabIndex={-1}>

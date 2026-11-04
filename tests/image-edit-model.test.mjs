@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { adjustCrop, fullImageCrop, hasCropChanges, clampCropRect, createMosaicOperation, createPenOperation, createTextOperation, safeBitmapSize } from "../src/features/post/image-edit-model.ts";
+import { imageTextLines, adjustCrop, fullImageCrop, hasCropChanges, clampCropRect, createMosaicOperation, createPenOperation, createTextOperation, safeBitmapSize } from "../src/features/post/image-edit-model.ts";
 
 test("bitmap dimensions follow the API edge and pixel limits", () => {
   assert.equal(safeBitmapSize(8000, 2500), true);
@@ -45,4 +45,12 @@ test('crop handles start at the image perimeter and keep opposite edges within t
  assert.deepEqual(adjustCrop(selected,'move',-500,500,size),{...selected,x:0,y:10});
  assert.deepEqual(adjustCrop(selected,'e',500,0,size),selected);
  assert.equal(adjustCrop(selected,'n',NaN,1,size),selected);
+});
+
+test('placed text retains its box width, blank lines and whole graphemes without font compression',()=>{
+ const operation=createTextOperation('가나다라\n\n마바',10,20,{width:100,height:100},24,'#123456',40);
+ assert.equal(operation.maxWidth,40);
+ assert.deepEqual(imageTextLines(operation.text,20,text=>Array.from(text).length*10),['가나','다라','','마바']);
+ assert.deepEqual(imageTextLines('👩‍💻X',20,text=>Array.from(text).length*10),['👩‍💻','X']);
+ assert.equal(createTextOperation('text',0,0,{width:100,height:100},24,'#123456',999).maxWidth,100);
 });
