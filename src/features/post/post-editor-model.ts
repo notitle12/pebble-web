@@ -1,5 +1,6 @@
 import {parseDatabaseSchema,newDatabaseSchema} from "./database-schema.ts";
 import { normalizeTags } from "./post-tags.ts";
+import { codeLanguages } from "./code-languages.ts";
 import { validId } from "../../lib/list-query.ts";
 import { parseArchitectureSpec, parseTableSpec, type ArchitectureSpec, type PostDetail, type TableSpec } from "./api/post-list.ts";
 import {bodyImageId,representativeImageSrc,postImageSources} from "./post-images.ts";
@@ -75,7 +76,7 @@ export function validateEditorValue(value: PostEditorValue): string[] {
     if (!block.valid) errors.push(`${index + 1}번째 블록의 입력을 확인해 주세요.`);
     if (!safe(block.content) || length(block.content) > 50000) errors.push(`${index + 1}번째 블록은 올바른 Unicode로 된 50,000자 이하여야 합니다.`);
     if (block.title && (!safe(block.title) || length(block.title) > 100)) errors.push(`${index + 1}번째 블록 제목은 100자 이하여야 합니다.`);
-    if (block.type === "CODE" && (!block.language || length(block.language) > 50 || !["JAVA", "JAVASCRIPT", "TYPESCRIPT", "PYTHON", "HTML", "CSS", "SQL", "JSON", "YAML", "MARKDOWN", "BASH", "SHELL"].includes(block.language))) errors.push(`${index + 1}번째 코드 블록의 언어를 선택해 주세요.`);
+    if (block.type === "CODE" && (!block.language || length(block.language) > 50 || !codeLanguages.includes(block.language))) errors.push(`${index + 1}번째 코드 블록의 언어를 선택해 주세요.`);
     if (block.type === "TABLE" || block.type === "ARCHITECTURE" || block.type === "DB_SCHEMA") {
       try {
         const parsed: unknown = JSON.parse(block.content);

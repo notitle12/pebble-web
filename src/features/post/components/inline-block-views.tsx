@@ -9,8 +9,8 @@ import { ArchitectureBlock } from "./architecture-block";
 import { ArchitectureEditor } from "./architecture-editor";
 import styles from "./inline-block-views.module.css";
 import { TableTextInput } from "./table-text-input";
+import { codeLanguages as languages } from "../code-languages";
 
-const languages = ["JAVA", "JAVASCRIPT", "TYPESCRIPT", "PYTHON", "HTML", "CSS", "SQL", "JSON", "YAML", "MARKDOWN", "BASH", "SHELL"];
 export const defaultInlineTableSpec = (): TableSpec => ({ schemaVersion: 1, tableName: "", columns: [{ name: "", dataType: "", primaryKey: false, nullable: true }] });
 export const defaultInlineArchitectureSpec = (): ArchitectureSpec => ({ schemaVersion: 1, groups: [], nodes: [{ id: "client", type: "CLIENT", label: "", icon: "CLIENT", position: { x: 56, y: 80 } }], edges: [] });
 function useEditable(editor: NodeViewProps["editor"]) {

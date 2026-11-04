@@ -7,6 +7,14 @@ import {parseOwnPost} from "../src/features/post/api/member-posts.ts";
 const author = { id: "1", handle: "pebble-user", nickname: "Pebble", blogName: null };
 const basePost = { id: "10", urlKey: "first-post", title: "첫 글", summary: null, author, tags: [], publishedAt: null, createdAt: "2026-10-03T00:00:00Z" };
 
+test("XML code passes write validation and keeps the selected language in the request",()=>{
+  const value={title:"XML",summary:"",blocks:[{...createEditorBlock("CODE"),content:'<root name="한글"/>',language:"XML",valid:true}]};
+  assert.deepEqual(validateEditorValue(value),[]);
+  assert.equal(buildPostSaveBody(value).blocks[0].language,"XML");
+  assert.equal(buildPostSaveBody(value).blocks[0].content,'<root name="한글"/>');
+  assert.ok(validateEditorValue({...value,blocks:[{...value.blocks[0],language:"UNKNOWN"}]}).length>0);
+});
+
 test("new editor blocks do not prefill example text", () => {
   assert.equal(createEditorBlock("TEXT").content, "");
   assert.equal(createEditorBlock("CODE").content, "");

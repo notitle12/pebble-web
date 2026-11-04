@@ -3,7 +3,7 @@ import type { JSONContent } from "@tiptap/core";
 import type { EditorBlock } from "./post-editor-model.ts";
 import { parseArchitectureSpec, parseTableSpec } from "./api/post-list.ts";
 
-export const codeLanguages = ["JAVA", "JAVASCRIPT", "TYPESCRIPT", "PYTHON", "HTML", "XML", "CSS", "SQL", "JSON", "YAML", "MARKDOWN", "BASH", "SHELL"];
+export { codeLanguages } from "./code-languages.ts";
 export const textSizes = { p: ["12px", "14px", "16px", "18px", "20px", "24px"], "1": ["28px", "32px", "36px", "40px", "48px"], "2": ["22px", "24px", "28px", "32px", "36px"], "3": ["18px", "20px", "22px", "24px", "28px"] };
 export const defaultTextSizes = { p: "16px", "1": "32px", "2": "24px", "3": "20px" };
 export const textColors = ["#202124", "#5f6368", "#9aa0a6", "#c62828", "#ef6c00", "#b8860b", "#2e7d32", "#1565c0", "#6a1b9a", "#ffffff"];
