@@ -3,8 +3,7 @@ export type MosaicOperation = { type: "mosaic"; x: number; y: number; width: num
 export type TextOperation = { type: "text"; text: string; x: number; y: number; fontSize: number; color: string };
 export type PenPoint = { x: number; y: number };
 export type PenOperation = { type: "pen"; points: PenPoint[]; color: string; width: number };
-export type ResampleOperation = { type: "resample"; width: number; height: number };
-export type ImageEditOperation = CropOperation | MosaicOperation | TextOperation | PenOperation | ResampleOperation;
+export type ImageEditOperation = CropOperation | MosaicOperation | TextOperation | PenOperation;
 
 export type PixelSize = { width: number; height: number };
 
@@ -53,13 +52,3 @@ export function createPenOperation(points: PenPoint[], size: PixelSize, width: n
   return { type: "pen", points: safePoints, color: safeColor, width: Math.max(1, Math.min(128, Math.round(width))) };
 }
 
-export function boundedResampleSize(width: number, height: number): PixelSize | null {
-  if (!Number.isFinite(width) || !Number.isFinite(height) || width < 1 || height < 1) return null;
-  const scale = Math.min(1, 8000 / width, 8000 / height, Math.sqrt(20_000_000 / (width * height)));
-  return { width: Math.max(1, Math.floor(width * scale)), height: Math.max(1, Math.floor(height * scale)) };
-}
-
-export function createResampleOperation(width: number, height: number): ResampleOperation | null {
-  const size = boundedResampleSize(Math.round(width), Math.round(height));
-  return size ? { type: "resample", ...size } : null;
-}
