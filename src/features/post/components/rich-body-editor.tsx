@@ -619,7 +619,6 @@ export function RichBodyEditor({ blocks, onChangeBlocks, onSplitViewChange, uplo
     {dividerOpen && <div data-writer-popup className={`${styles.insertMenu} ${styles.dividerMenu}`} style={popupAnchor} role="menu" aria-label="구분선 종류">{dividerStyles.map(variant => <button type="button" role="menuitem" key={variant} onClick={() => insertDivider(variant)}>{dividerLabels[variant]}<hr className={`post-divider-${variant}`}/></button>)}</div>}
     {insertMenuOpen && <div data-writer-popup className={styles.insertMenu} style={popupAnchor} role="menu" aria-label="추가 삽입 도구">
       <button type="button" role="menuitem" onClick={() => insertAction(insertTextPanel)}>일반 블록</button>
-      <button type="button" role="menuitem" aria-label="이미지·글 나란히" onClick={() => insertAction(() => editor?.chain().focus().insertContent(newImageTextLayout()).run())}>나란히 배치</button>
       <button type="button" role="menuitem" onClick={() => insertAction(insertToc)}>목차</button>
       <button type="button" role="menuitem" onClick={() => openForm("map")}>지도</button>
       <button type="button" role="menuitem" onClick={() => openForm("html")}>HTML</button>
