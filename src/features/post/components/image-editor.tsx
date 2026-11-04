@@ -5,16 +5,17 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { eraseImagePen } from "../image-pen-eraser";
 import { installImageHistoryKeys, type ImageHistoryActions } from "../image-history-keys";
 import styles from "./image-editor.module.css";
-import { emptyImageHistory, commitImageEdit, undoImageEdit, redoImageEdit, replaceImageText, type ImageEditHistory } from "../image-edit-history";
+import { clearImagePen, emptyImageHistory, commitImageEdit, undoImageEdit, redoImageEdit, replaceImageText, type ImageEditHistory } from "../image-edit-history";
 import { imageTextInputSurface, placedImageMosaics, replaceImageMosaic, placedImageTexts, imageTextLines, adjustCrop, fullImageCrop, hasCropChanges, clampCropRect, createMosaicOperation, createPenOperation, createTextOperation, safeBitmapSize, type CropOperation, type CropHandle, type ImageEditOperation, type PenPoint, type TextOperation, type PlacedImageText, type PixelSize } from "../image-edit-model";
 
-type ActionName = "crop" | "mosaic" | "text" | "pen" | "eraser" | "undo" | "redo" | "check" | "cancel";
+type ActionName = "crop" | "mosaic" | "text" | "pen" | "eraser" | "clear" | "undo" | "redo" | "check" | "cancel";
 const actionPaths: Record<ActionName, string[]> = {
   crop: ["M6 3v13a2 2 0 0 0 2 2h13", "M3 6h13a2 2 0 0 1 2 2v13"],
   mosaic: ["M3 3h7v7H3z", "M14 3h7v7h-7z", "M3 14h7v7H3z", "M14 14h7v7h-7z"],
   text: ["M4 6V4h16v2", "M12 4v16", "M8 20h8"],
   pen: ["m15 4 5 5", "m4 15 11-11a2 2 0 0 1 3 0l2 2a2 2 0 0 1 0 3L9 20l-6 1z", "m4 15 5 5"],
   eraser: ["m16 3 5 5a2 2 0 0 1 0 3L11 21H7l-5-5a2 2 0 0 1 0-3L12 3a3 3 0 0 1 4 0Z", "m7 8 10 10", "M11 21h10"],
+  clear: ["M3 6h18", "M9 6V3h6v3", "m5 6 1 15h12l1-15", "M10 10v7", "M14 10v7"],
   undo: ["M8 4 3 9l5 5", "M3 9h10a7 7 0 0 1 0 14"],
   redo: ["m16 4 5 5-5 5", "M21 9H11a7 7 0 0 0 0 14"],
   check: ["m5 12 4 4L19 6"], cancel: ["m6 6 12 12", "M18 6 6 18"],
@@ -319,6 +320,10 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
     if(activeMosaicIndex===null)return;
     commitCommands(replaceImageMosaic(historyRef.current.present,activeMosaicIndex,null,mosaicBlockSize));setActiveMosaicIndex(null);setNotice("");
   };
+  const clearPen = () => {
+    setStrokePreview(null);setPointerStart(null);
+    commitCommands(clearImagePen(historyRef.current.present));setNotice("펜으로 그린 내용을 모두 지웠습니다. 실행 취소로 되돌릴 수 있어요.");
+  };
   const undo = () => {
     if(textDraftRef.current)commitText();
     cropDrag.current=null;mosaicDrag.current=null;setMosaicDraft(null);mosaicSizeGesture.current=false;setPointerStart(null);setStrokePreview(null);
@@ -509,6 +514,7 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
               <label className={styles.rangeLabel}>펜 굵기 <input type="range" min="1" max="64" value={penWidth} onChange={event => setPenWidth(Number(event.currentTarget.value))} disabled={saving} /></label>
               <label className={styles.colorLabel}>펜 색상 <input type="color" value={penColor} onChange={event => setPenColor(event.currentTarget.value)} disabled={saving} /></label>
             </> : null}
+            {(tool==="pen"||tool==="eraser")&&<button type="button" className="editor-action" onClick={clearPen} title="펜으로 그린 내용만 모두 지우기" aria-label="펜 전체 지우기" disabled={saving||!operations.some(operation=>operation.type==="pen")}><ActionIcon name="clear"/><span>전체 지우기</span></button>}
           </div>
           <p className={styles.dimensions}>{canvasSize.width} × {canvasSize.height}px</p>
         </div>

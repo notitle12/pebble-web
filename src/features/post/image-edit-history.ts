@@ -20,3 +20,7 @@ export function replaceImageText(operations:ImageEditOperation[],editingId:strin
  if(index<0)return operations;
  return next?operations.map((operation,i)=>i===index?next:operation):operations.filter((_,i)=>i!==index);
 }
+
+export function clearImagePen(operations:ImageEditOperation[]):ImageEditOperation[] {
+ return operations.some(operation=>operation.type==='pen')?operations.filter(operation=>operation.type!=='pen'):operations;
+}

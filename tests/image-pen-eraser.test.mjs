@@ -26,3 +26,13 @@ test('eraser outside pen strokes or with invalid coordinates leaves history unch
  assert.equal(eraseImagePen(operations,[],8),operations);
  assert.equal(eraseImagePen(operations,[{x:NaN,y:20}],8),operations);
 });
+
+test('clear all removes every pen stroke and its erasures as one reversible edit, preserving other tools',async()=>{
+ const {clearImagePen}=await import('../src/features/post/image-edit-history.ts');
+ const commands=[pen,text,{...pen,erasures:[{points:[{x:30,y:20}],width:8}]},mosaic];
+ let history=commitImageEdit(emptyImageHistory(),commands);
+ history=commitImageEdit(history,clearImagePen(commands));
+ assert.deepEqual(history.present,[text,mosaic]);assert.deepEqual(undoImageEdit(history).present,commands);
+ assert.deepEqual(redoImageEdit(undoImageEdit(history)).present,[text,mosaic]);
+ assert.equal(clearImagePen(history.present),history.present);
+});
