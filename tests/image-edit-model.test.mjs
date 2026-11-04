@@ -1,11 +1,18 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { clampCropRect, createMosaicOperation, safeBitmapSize } from "../src/features/post/image-edit-model.ts";
+import { clampCropRect, createMosaicOperation, createTextOperation, safeBitmapSize } from "../src/features/post/image-edit-model.ts";
 
 test("bitmap dimensions follow the API edge and pixel limits", () => {
   assert.equal(safeBitmapSize(8000, 2500), true);
   assert.equal(safeBitmapSize(5000, 5000), false);
   assert.equal(safeBitmapSize(8001, 1), false);
+});
+
+test("text operation keeps safe plain text and bounded color, position and font size", () => {
+  assert.deepEqual(createTextOperation("  Hello <img>  ", -5, 99, { width: 100, height: 80 }, 500, "not-a-color"), {
+    type: "text", text: "Hello <img>", x: 0, y: 80, fontSize: 160, color: "#ffffff",
+  });
+  assert.equal(createTextOperation("  ", 0, 0, { width: 10, height: 10 }, 32, "#000000"), null);
 });
 
 test("mosaic operations retain bounded pixel block sizes", () => {

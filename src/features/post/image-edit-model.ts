@@ -1,6 +1,7 @@
 export type CropOperation = { type: "crop"; x: number; y: number; width: number; height: number };
 export type MosaicOperation = { type: "mosaic"; x: number; y: number; width: number; height: number; blockSize: number };
-export type ImageEditOperation = CropOperation | MosaicOperation;
+export type TextOperation = { type: "text"; text: string; x: number; y: number; fontSize: number; color: string };
+export type ImageEditOperation = CropOperation | MosaicOperation | TextOperation;
 
 export type PixelSize = { width: number; height: number };
 
@@ -25,4 +26,16 @@ export function dimensionsAfterCrop(size: PixelSize, operation: CropOperation): 
 
 export function createMosaicOperation(rect: CropOperation, blockSize: number): MosaicOperation {
   return { ...rect, type: "mosaic", blockSize: Math.max(4, Math.min(48, Math.round(blockSize))) };
+}
+
+export function createTextOperation(text: string, x: number, y: number, size: PixelSize, fontSize: number, color: string): TextOperation | null {
+  const safeText = text.trim().slice(0, 500);
+  if (!safeText) return null;
+  const safeColor = /^#[\da-f]{6}$/i.test(color) ? color.toLowerCase() : "#ffffff";
+  return {
+    type: "text", text: safeText,
+    x: Math.max(0, Math.min(size.width, Math.round(x))),
+    y: Math.max(0, Math.min(size.height, Math.round(y))),
+    fontSize: Math.max(16, Math.min(160, Math.round(fontSize))), color: safeColor,
+  };
 }

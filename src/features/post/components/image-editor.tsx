@@ -3,7 +3,7 @@
 import { createPortal } from "react-dom";
 import { useCallback, useEffect, useRef, useState } from "react";
 import styles from "./image-editor.module.css";
-import { clampCropRect, createMosaicOperation, safeBitmapSize, type CropOperation, type ImageEditOperation } from "../image-edit-model";
+import { clampCropRect, createMosaicOperation, createTextOperation, safeBitmapSize, type CropOperation, type ImageEditOperation, type TextOperation } from "../image-edit-model";
 
 export type ImageEditorProps = {
   src: string;
@@ -13,7 +13,7 @@ export type ImageEditorProps = {
 };
 
 type CropSelection = { startX: number; startY: number; endX: number; endY: number };
-type Tool = "crop" | "mosaic";
+type Tool = "crop" | "mosaic" | "text";
 
 function cropBounds(selection: CropSelection, width: number, height: number): CropOperation | null {
   return clampCropRect(selection.startX, selection.startY, selection.endX, selection.endY, { width, height });
@@ -46,6 +46,10 @@ function replayHistory(source: ImageBitmap, operations: ImageEditOperation[], cu
       current = next;
       continue;
     }
+    if (operation.type === "text") {
+      drawTextOperation(current.getContext("2d")!, operation, current.width);
+      continue;
+    }
     const next = document.createElement("canvas");
     next.width = operation.width;
     next.height = operation.height;
@@ -55,6 +59,27 @@ function replayHistory(source: ImageBitmap, operations: ImageEditOperation[], cu
     current = next;
   }
   return current;
+}
+
+function drawTextOperation(context: CanvasRenderingContext2D, operation: TextOperation, canvasWidth: number) {
+  context.fillStyle = operation.color;
+  context.font = `${operation.fontSize}px system-ui, sans-serif`;
+  context.textBaseline = "top";
+  const maxWidth = Math.max(1, canvasWidth - operation.x - 12);
+  const lineHeight = Math.round(operation.fontSize * 1.25);
+  let y = operation.y;
+  for (const paragraph of operation.text.split("\n")) {
+    let line = "";
+    for (const word of paragraph.split(/\s+/)) {
+      const next = line ? `${line} ${word}` : word;
+      if (line && context.measureText(next).width > maxWidth) {
+        context.fillText(line, operation.x, y, maxWidth);
+        y += lineHeight;
+        line = word;
+      } else line = next;
+    }
+    if (line) { context.fillText(line, operation.x, y, maxWidth); y += lineHeight; }
+  }
 }
 
 export function ImageEditor({ src, fileName = "image", onApply, onCancel }: ImageEditorProps) {
@@ -71,6 +96,9 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
   const [notice, setNotice] = useState("");
   const [tool, setTool] = useState<Tool>("crop");
   const [mosaicBlockSize, setMosaicBlockSize] = useState(12);
+  const [textValue, setTextValue] = useState("");
+  const [textFontSize, setTextFontSize] = useState(32);
+  const [textColor, setTextColor] = useState("#ffffff");
   const displayRef = useRef<HTMLCanvasElement>(null);
   const workingRef = useRef<HTMLCanvasElement | null>(null);
   const bitmapRef = useRef<ImageBitmap | null>(null);
@@ -184,6 +212,14 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
     if (!workingRef.current || saving) return;
     const point = pointerCoordinates(event);
     if (!point) return;
+    if (tool === "text") {
+      const operation = createTextOperation(textValue, point.x, point.y, workingRef.current, textFontSize, textColor);
+      if (!operation) { setNotice("먼저 표시할 문구를 입력하세요."); return; }
+      setOperations(previous => [...previous.slice(0, cursor), operation]);
+      setCursor(cursor + 1);
+      setNotice("텍스트를 배치했습니다. 실행 취소로 되돌릴 수 있습니다.");
+      return;
+    }
     event.currentTarget.setPointerCapture(event.pointerId);
     setPointerStart(point);
     setSelection({ startX: point.x, startY: point.y, endX: point.x, endY: point.y });
@@ -222,7 +258,7 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
   return createPortal(<div className={styles.backdrop} onMouseDown={event => { if (event.target === event.currentTarget && !saving) onCancel(); }}>
     <section ref={dialogRef} className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby="image-editor-title" aria-describedby="image-editor-help" tabIndex={-1}>
       <header className={styles.header}>
-        <div><h2 id="image-editor-title">이미지 편집</h2><p id="image-editor-help">자르기 영역을 드래그해 선택하고 적용하세요. 원본은 편집 중 보존됩니다.</p></div>
+        <div><h2 id="image-editor-title">이미지 편집</h2><p id="image-editor-help">{tool === "text" ? "문구와 모양을 정한 뒤 이미지 위치를 클릭해 배치하세요." : "영역을 드래그해 선택하고 도구를 적용하세요. 원본은 편집 중 보존됩니다."}</p></div>
         <button type="button" className="editor-action" onClick={onCancel} disabled={saving}>닫기</button>
       </header>
       {loadError ? <div className={styles.error} role="alert">{loadError}</div> : !bitmap ? <p className={styles.status} role="status">이미지를 불러오는 중…</p> : <>
@@ -236,9 +272,14 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
             <button type="button" className="editor-action" onClick={redo} disabled={cursor >= operations.length || saving}>다시 실행</button>
             <button type="button" className="editor-action" aria-pressed={tool === "crop"} onClick={() => { setTool("crop"); setSelection(null); }} disabled={saving}>자르기</button>
             <button type="button" className="editor-action" aria-pressed={tool === "mosaic"} onClick={() => { setTool("mosaic"); setSelection(null); }} disabled={saving}>모자이크</button>
-            {tool === "crop" ? <button type="button" className="editor-action" onClick={addCrop} disabled={!bounds || saving}>자르기 적용</button> : <>
+            <button type="button" className="editor-action" aria-pressed={tool === "text"} onClick={() => { setTool("text"); setSelection(null); }} disabled={saving}>텍스트</button>
+            {tool === "crop" ? <button type="button" className="editor-action" onClick={addCrop} disabled={!bounds || saving}>자르기 적용</button> : tool === "mosaic" ? <>
               <label className={styles.rangeLabel}>모자이크 크기 <input type="range" min="4" max="48" step="2" value={mosaicBlockSize} onChange={event => setMosaicBlockSize(Number(event.currentTarget.value))} disabled={saving} /></label>
               <button type="button" className="editor-action" onClick={addMosaic} disabled={!bounds || saving}>모자이크 적용</button>
+            </> : <>
+              <label className={styles.rangeLabel}>글자 크기 <input type="range" min="16" max="160" step="2" value={textFontSize} onChange={event => setTextFontSize(Number(event.currentTarget.value))} disabled={saving} /></label>
+              <label className={styles.colorLabel}>글자색 <input type="color" value={textColor} onChange={event => setTextColor(event.currentTarget.value)} disabled={saving} /></label>
+              <input className={styles.textInput} aria-label="이미지에 넣을 텍스트" placeholder="텍스트를 입력한 뒤 이미지 위치를 클릭하세요" value={textValue} maxLength={500} onChange={event => setTextValue(event.currentTarget.value)} disabled={saving} />
             </>}
           </div>
           <p className={styles.dimensions}>{canvasSize.width} × {canvasSize.height}px</p>
