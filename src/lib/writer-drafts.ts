@@ -43,29 +43,29 @@ export const draftDocument = (record: Pick<WriterDraft,'targetId'|'contentId'>) 
 export function newestDraft<T>(records: WriterDraft<T>[], incoming: WriterDraft<T>): WriterDraft<T> {
  return records.filter(record=>record.memberId===incoming.memberId&&record.kind===incoming.kind&&draftDocument(record)===draftDocument(incoming)).reduce((latest,record)=>record.savedAt>latest.savedAt?record:latest,incoming);
 }
-async function openDrafts(): Promise<IDBDatabase> {
+async function openDrafts(databaseName:string): Promise<IDBDatabase> {
  if(typeof indexedDB==='undefined')throw new Error('이 브라우저에서는 자동저장 공간을 사용할 수 없어요.');
  return new Promise((resolve,reject) => {
   let blocked=false;
-  const request = indexedDB.open('pebble-writer-autosave',1);
+  const request = indexedDB.open(databaseName,1);
   request.onupgradeneeded = () => { const store=request.result.createObjectStore('drafts',{keyPath:'key'}); store.createIndex('owner','owner'); };
   request.onsuccess = () => {if(blocked){request.result.close();return;}request.result.onversionchange=()=>request.result.close();resolve(request.result);};
   request.onerror = () => reject(new Error('자동저장 공간을 열지 못했어요. 브라우저 저장 공간을 확인해 주세요.'));
   request.onblocked = () => {blocked=true;reject(new Error('자동저장 공간을 열지 못했어요. 다른 작성 탭을 닫고 다시 시도해 주세요.'));};
  });
 }
-export const writerDraftStore = {
- async list<T>(scope: DraftScope): Promise<WriterDraft<T>[]> {
-  const db=await openDrafts();
+export function createWriterDraftStore(databaseName:string) { return {
+ async list<T>(scope: DraftScope, allDocuments=false): Promise<WriterDraft<T>[]> {
+  const db=await openDrafts(databaseName);
   try { return await new Promise((resolve,reject) => {
    const tx=db.transaction('drafts','readonly'),request=tx.objectStore('drafts').index('owner').getAll(draftOwner(scope));
    let records: WriterDraft[]=[];
-   request.onsuccess=()=>{records=(request.result as WriterDraft[]).filter(record=>matchesDraft(scope,record)).sort((a,b)=>b.savedAt-a.savedAt).slice(0,1);};
-   tx.oncomplete=()=>resolve(records as WriterDraft<T>[]);tx.onerror=tx.onabort=()=>reject(new Error('자동저장본을 읽지 못했어요. 저장된 내용을 덮어쓰지 않았습니다.'));
+   request.onsuccess=()=>{records=(request.result as WriterDraft[]).filter(record=>matchesDraft(allDocuments?{...scope,targetId:record.targetId??record.contentId}:scope,record)).sort((a,b)=>b.savedAt-a.savedAt);};
+   tx.oncomplete=()=>resolve((allDocuments?records:records.slice(0,1)) as WriterDraft<T>[]);tx.onerror=tx.onabort=()=>reject(new Error('자동저장본을 읽지 못했어요. 저장된 내용을 덮어쓰지 않았습니다.'));
   }); } finally {db.close();}
  },
  async write<T>(record: WriterDraft<T>): Promise<void> {
-  const db=await openDrafts();
+  const db=await openDrafts(databaseName);
   try {await new Promise<void>((resolve,reject)=>{
    const tx=db.transaction('drafts','readwrite'),store=tx.objectStore('drafts'),request=store.index('owner').getAll(draftOwner(record));
    request.onsuccess=()=>{
@@ -78,7 +78,7 @@ export const writerDraftStore = {
   });} finally{db.close();}
  },
  async discard(record:WriterDraft<unknown>):Promise<void>{
-  const db=await openDrafts();
+  const db=await openDrafts(databaseName);
   try{await new Promise<void>((resolve,reject)=>{
    const tx=db.transaction('drafts','readwrite'),store=tx.objectStore('drafts'),request=store.index('owner').getAll(draftOwner(record));
    request.onsuccess=()=>{for(const old of request.result as WriterDraft<unknown>[]){
@@ -89,11 +89,13 @@ export const writerDraftStore = {
   });}finally{db.close();}
  },
  async remove(key: string, savedAt?: number | string): Promise<void> {
-  const db=await openDrafts();
+  const db=await openDrafts(databaseName);
   try{await new Promise<void>((resolve,reject)=>{
    const tx=db.transaction('drafts','readwrite'),store=tx.objectStore('drafts'),request=store.get(key);
    request.onsuccess=()=>{if(request.result && (savedAt===undefined || (typeof savedAt==='string'?request.result.revision===savedAt:request.result.savedAt===savedAt)))store.delete(key);};
    tx.oncomplete=()=>resolve();tx.onerror=tx.onabort=()=>reject(new Error('이전 자동저장본을 정리하지 못했어요.'));
   });}finally{db.close();}
  }
-};
+}; }
+export const writerDraftStore = createWriterDraftStore("pebble-writer-autosave");
+export const manualPostDraftStore = createWriterDraftStore("pebble-writer-manual-posts");

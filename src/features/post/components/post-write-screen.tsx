@@ -1,7 +1,7 @@
 "use client";
 import {useWriterAutosave} from "@/lib/use-writer-autosave";
 import {WriterRecovery} from "@/components/writer-recovery";
-import {validDraftValue,type PostDraftSettings} from "@/lib/writer-drafts";
+import {manualPostDraftStore,cleanDraftValue,validDraftValue,type PostDraftSettings} from "@/lib/writer-drafts";
 import {useCallback,useEffect,useRef,useState} from "react";
 import {useRouter} from "next/navigation";
 import Link from "next/link";
@@ -12,6 +12,8 @@ import {userSession,type Member} from "@/features/auth/user-session";
 import {parseOwnPost,postId,type OwnPost} from "../api/member-posts";
 import {apiUrl,MemberApiError,responseData} from "@/lib/member-api";
 import {safeMediaUrl,mediaFileError} from "@/features/media/model";
+import {PostDraftLoader} from "./post-draft-loader";
+import type {SavedPostChoice} from "../saved-post-drafts";
 import {PostEditor,type PostEditorValue,type PostSaveAction} from "./post-editor";
 import {buildPostSaveBody,editorValueFromPost,type PostSaveOptions} from "../post-editor-model";
 import {postEditorExitHref} from "../editor-exit";
@@ -47,7 +49,7 @@ function Writer({member,id,onLogout}:{member:Member;id?:string;onLogout:(hasChan
   const router=useRouter();
   const[post,setPost]=useState<OwnPost|null>(null),[loading,setLoading]=useState(!!id),[error,setError]=useState(""),[busy,setBusy]=useState(false),[saved,setSaved]=useState(""),[restoredValue,setRestoredValue]=useState<PostEditorValue|null>(null),[restoreNotice,setRestoreNotice]=useState(""),[imagePreviews,setImagePreviews]=useState<Record<string,string>>({});
   const saving=useRef(false),unsaved=useRef(false),postRef=useRef<OwnPost|null>(null),recoveredId=useRef<string|undefined>(undefined);
-  const [draftValue,setDraftValue]=useState<PostEditorValue|null>(null),[draftDirty,setDraftDirty]=useState(false),[draftSettings,setDraftSettings]=useState<PostDraftSettings|undefined>(),[recovered,setRecovered]=useState(false);
+  const [draftValue,setDraftValue]=useState<PostEditorValue|null>(null),[draftDirty,setDraftDirty]=useState(false),[draftSettings,setDraftSettings]=useState<PostDraftSettings|undefined>(),[recovered,setRecovered]=useState(false),[loadRevision,setLoadRevision]=useState(0);
   const onDraftChange=useCallback((value:PostEditorValue,settings:PostDraftSettings,dirty:boolean)=>{setDraftValue(value);setDraftSettings(settings);setDraftDirty(dirty);},[]);
   const onDirtyChange=useCallback((dirty:boolean)=>{unsaved.current=dirty;},[]);
   const pendingImages=useRef(createPendingImages());
@@ -61,14 +63,6 @@ function Writer({member,id,onLogout}:{member:Member;id?:string;onLogout:(hasChan
     scope:{memberId:member.id,kind:"post",targetId:id},enabled:!loading,dirty:draftDirty,
     signature:JSON.stringify({value:draftValue,settings:draftSettings}),
     snapshot:()=>{const value=draftValue??restoredValue??(postRef.current?editorValueFromPost(postRef.current):{title:"",summary:"",blocks:[]});return {value,settings:draftSettings,images:pendingImages.current.snapshot(value),contentId:postRef.current?.id??recoveredId.current??id};},
-    legacy:async()=>{
-      if(!id||post?.draft)return;
-      const raw=window.localStorage.getItem(localKey(member.id,id));if(!raw)return;
-      const parsed:unknown=JSON.parse(raw);if(!validEditorDraft(parsed))throw new Error("이전 임시저장본을 읽지 못했어요. 저장본은 그대로 보관했습니다.");
-      const legacy=parsed as PostEditorValue&{tagIds?:string[];pendingTagNames?:string[]};
-      const catalog=legacy.tagIds?.length?await getPublicTechStacks():[];
-      return {value:{...parsed,tags:restoreDraftTags(legacy,catalog)},images:[],contentId:id};
-    },
     onRestore:record=>{
       if(!validDraftValue("post",record.value))throw new Error("글 자동저장본을 확인해 주세요.");
       const previews=pendingImages.current.restore(record.images);recoveredId.current=record.contentId;
@@ -110,7 +104,8 @@ function Writer({member,id,onLogout}:{member:Member;id?:string;onLogout:(hasChan
         setImagePreviews(previews=>({...previews,[image.src]:image.previewUrl}));return image;
       });
       if(action.kind==="temporary"&&current&&!current.draft){
-        await autosave.saveNow();
+        await manualPostDraftStore.write({memberId:member.id,kind:"post",targetId:current.id,contentId:current.id,value:cleanDraftValue(resolved),settings:draftSettings,images:pendingImages.current.snapshot(resolved),version:1,key:`manual:${member.id}:${current.id}`,savedAt:Date.now()});
+        await autosave.clear().catch(()=>{});
         setRestoredValue(resolved);setSaved("이 브라우저에 임시 저장했습니다.");return "local";
       }
       const result=await saveServer(resolved,action,current);
@@ -118,6 +113,7 @@ function Writer({member,id,onLogout}:{member:Member;id?:string;onLogout:(hasChan
         try{window.localStorage.setItem(localKey(member.id,result.id)+":tags",JSON.stringify(value.tags??[]));}catch{/* The server already stores the tags. */}
       }
       if(action.kind==="complete"){
+        await manualPostDraftStore.remove(`manual:${member.id}:${result.id}`).catch(()=>{});
         try{window.localStorage.removeItem(localKey(member.id,result.id));window.localStorage.removeItem(localKey(member.id,result.id)+":tags");}catch{/* Browser storage may be disabled. */}
         await autosave.clear().catch(()=>{});
         const destination=action.visibility==="PUBLIC"?`/blogs/${encodeURIComponent(result.author.handle)}/posts/${encodeURIComponent(result.urlKey)}`:"/me/posts";
@@ -128,6 +124,18 @@ function Writer({member,id,onLogout}:{member:Member;id?:string;onLogout:(hasChan
     }catch(e){await autosave.saveNow().catch(()=>{});setError(e instanceof Error?e.message:"저장하지 못했습니다.");throw e;}
     finally{saving.current=false;setBusy(false);}
   };
+  const loadSavedDraft=async(choice:SavedPostChoice)=>{
+    await autosave.flush();
+    if(!choice.local){router.push(`/posts/${postId(choice.id)}/edit`);return;}
+    const original=parseOwnPost(await userSession.request(`/posts/${postId(choice.id)}`));
+    if(original.author.id!==member.id)throw new Error("본인 임시저장 글만 불러올 수 있습니다.");
+    const previews=previewMap(await userSession.request(`/posts/${postId(choice.id)}/images`),choice.id);
+    const localPreviews=pendingImages.current.restore(choice.local.images);
+    recoveredId.current=original.id;postRef.current=original;setPost(original);setImagePreviews(previews);
+    setRestoredValue({...choice.local.value,blocks:choice.local.value.blocks.map(block=>({...block,imagePreviews:{...previews,...localPreviews}}))});
+    setDraftSettings(choice.local.settings);setRecovered(true);setLoadRevision(value=>value+1);setRestoreNotice("직접 임시저장한 글을 불러왔습니다.");
+    window.history.replaceState(null,"",`/posts/${original.id}/edit`);
+  };
   if(loading)return <section className="list-state" role="status">글을 불러오고 있어요.</section>;
   if(!autosave.ready)return autosave.recovery.length?<WriterRecovery records={autosave.recovery} onRestore={autosave.restore} onFresh={autosave.fresh} error={autosave.error}/>:<p role="status">자동저장본을 확인하고 있어요.</p>;
   if(id&&!post&&!recovered)return <section className="list-state"><h2>글을 열지 못했어요</h2><p role="alert">{error}</p><Link className="button" href="/me/posts">내 글로 돌아가기</Link></section>;
@@ -135,7 +143,7 @@ function Writer({member,id,onLogout}:{member:Member;id?:string;onLogout:(hasChan
   const editorValue=restoredValue?{...restoredValue,blocks:restoredValue.blocks.map(block=>({...block,imagePreviews:{...block.imagePreviews,...imagePreviews}}))}:baseline;
   return <><div className="writer-identity"><span>{member.nickname}</span><AccountMenu member={member} logoutDisabled={busy} onLogout={()=>onLogout(unsaved.current,member.id)}/></div><h1 className="writer-screen-heading writer-visually-hidden">{post?(post.draft?"임시 글 수정":"게시글 수정"):"새 게시글"}</h1><div className="writer-status writer-visually-hidden"><Link href="/me/posts">← 내 글</Link><p>{post?.draft?"비공개 임시 글을 작성하고 있습니다.":post?.visibilityStatus==="PUBLIC"?"공개 글을 수정하고 있습니다. 임시저장은 이 브라우저에 보관됩니다.":"글 제목과 본문을 작성하세요."}</p>{post?.isBlocked&&<p role="alert">관리자에 의해 차단된 글입니다. 작성자가 차단을 해제할 수 없습니다.</p>}</div>{error&&<p className="table-editor-error" role="alert">{error}</p>}{saved&&<p className="writer-visually-hidden" role="status">{saved}</p>}
     {autosave.error&&<p className="writer-autosave-error" role="alert">{autosave.error} <button type="button" onClick={()=>void autosave.saveNow().catch(()=>{})}>다시 시도</button></p>}
-    <PostEditor onDraftChange={onDraftChange} initialSettings={draftSettings} initialDirty={recovered} autosaveStatus={autosave.status} key={`${member.id}:${id??"new"}`} memberId={member.id} initialValue={editorValue} initialNotice={restoreNotice} onDirtyChange={onDirtyChange} onExit={()=>router.replace(postEditorExitHref(post))} busy={busy} existingCategory={post?.category} existingPost={post?{id:post.id,draft:post.draft,urlKey:post.urlKey}:undefined} visibility={post?.visibilityStatus??"HIDDEN"} blocked={post?.isBlocked??false} uploadImage={uploadImage} onSave={onSave}/>
+    <PostEditor draftLoader={!id&&!post?<PostDraftLoader memberId={member.id} disabled={busy} onSelect={loadSavedDraft}/>:undefined} onDraftChange={onDraftChange} initialSettings={draftSettings} initialDirty={recovered} autosaveStatus={autosave.status} key={`${member.id}:${id??"new"}:${loadRevision}`} memberId={member.id} initialValue={editorValue} initialNotice={restoreNotice} onDirtyChange={onDirtyChange} onExit={()=>router.replace(postEditorExitHref(post))} busy={busy} existingCategory={post?.category} existingPost={post?{id:post.id,draft:post.draft,urlKey:post.urlKey}:undefined} visibility={post?.visibilityStatus??"HIDDEN"} blocked={post?.isBlocked??false} uploadImage={uploadImage} onSave={onSave}/>
   </>;
 }
 export function PostWriteScreen({id}:{id?:string}){return <WriterLogoutBoundary>{onLogout=><MemberGate profile preserveOnExpiry>{member=><Writer key={`${member.id}:${id??"new"}`} member={member} id={id} onLogout={onLogout}/>}</MemberGate>}</WriterLogoutBoundary>;}
