@@ -54,3 +54,11 @@ test('placed text retains its box width, blank lines and whole graphemes without
  assert.deepEqual(imageTextLines('👩‍💻X',20,text=>Array.from(text).length*10),['👩‍💻','X']);
  assert.equal(createTextOperation('text',0,0,{width:100,height:100},24,'#123456',999).maxWidth,100);
 });
+
+test('image text editing uses a contrasting background for both dark and light ink regardless of the site theme',async()=>{
+ const {imageTextInputSurface}=await import('../src/features/post/image-edit-model.ts');
+ assert.equal(imageTextInputSurface('#24352b'),'#ffffff');
+ assert.equal(imageTextInputSurface('#ffffff'),'#000000');
+ assert.equal(imageTextInputSurface('#000000'),'#ffffff');
+ assert.equal(imageTextInputSurface('#ffff00'),'#000000');
+});

@@ -120,3 +120,11 @@ export function replaceImageMosaic(operations:ImageEditOperation[], index:number
  if(operations[index]?.type!=='mosaic')return operations;
  return rect?operations.map((operation,i)=>i===index?createMosaicOperation({...rect,x:rect.x+offset.x,y:rect.y+offset.y},blockSize):operation):operations.filter((_,i)=>i!==index);
 }
+
+/** Editing surface follows the chosen ink, independently of the surrounding site theme. */
+export function imageTextInputSurface(color:string):string {
+ const rgb=/^#[\da-f]{6}$/i.test(color)?[1,3,5].map(start=>parseInt(color.slice(start,start+2),16)/255):[0,0,0];
+ const linear=rgb.map(value=>value<=.04045?value/12.92:((value+.055)/1.055)**2.4);
+ const luminance=.2126*linear[0]+.7152*linear[1]+.0722*linear[2];
+ return (luminance+.05)/.05>(1.05)/(luminance+.05)?'#000000':'#ffffff';
+}

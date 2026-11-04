@@ -66,3 +66,5 @@
 .mosaicFrame{position:absolute;z-index:3;box-sizing:border-box;outline:1px solid var(--accent,#2f6b50);cursor:move;touch-action:none}
 .dialog button.mosaicDelete{position:absolute;z-index:4;right:12px;top:-9px;width:18px;height:18px;min-width:0;min-height:0;margin:0;padding:0;border-radius:50%;box-shadow:0 1px 4px #0002}
 .dialog .mosaicDelete svg{width:11px;height:11px}
+
+.textOverlay::placeholder{color:#777;opacity:1}
