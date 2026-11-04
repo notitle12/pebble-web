@@ -124,7 +124,7 @@ export type ArchitectureSpec = { schemaVersion: 1; groups: ArchitectureGroup[]; 
 export type BlockAlignment = "LEFT" | "CENTER" | "RIGHT";
 export type PostBlock = { type: "TEXT" | "CODE" | "TABLE" | "ARCHITECTURE" | "DB_SCHEMA" | "HTML" | "MARKDOWN"; content: string; language: string | null; title: string | null; displayOrder: number; alignment: BlockAlignment };
 export type PostDetail = PostSummary & { projectId?: string | null; blocks: PostBlock[] };
-const languages = ["JAVA", "JAVASCRIPT", "TYPESCRIPT", "PYTHON", "HTML", "CSS", "SQL", "JSON", "YAML", "MARKDOWN", "BASH", "SHELL"];
+const languages = ["JAVA", "JAVASCRIPT", "TYPESCRIPT", "PYTHON", "HTML", "XML", "CSS", "SQL", "JSON", "YAML", "MARKDOWN", "BASH", "SHELL"];
 const keysAre = (value: Record<string, unknown>, allowed: string[]) => Object.keys(value).every(key => allowed.includes(key));
 function safeString(value: string): boolean {
   for (let index = 0; index < value.length; index++) {

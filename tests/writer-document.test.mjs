@@ -9,6 +9,12 @@ const architecture={schemaVersion:1,groups:[],nodes:[{id:'client',type:'CLIENT',
 const rich=text=>({type:'paragraph',content:[{type:'text',text}]});
 const parse=block=>({type:'doc',content:JSON.parse(block.content)});
 const render=doc=>JSON.stringify(doc.content);
+test('XML 코드의 언어와 공백은 저장과 재편집에서 유지된다',()=>{
+ const block={key:'xml',type:'CODE',language:'XML',title:null,valid:true,content:'<?xml version="1.0"?>\n<root>\n  <item name="한글"/>\n</root>'};
+ const doc=blocksToDocument([block],parse);
+ assert.equal(doc.content[0].attrs.language,'XML');
+ assert.equal(blocksSignature(documentToBlocks(doc,render)),blocksSignature([block]));
+});
 test('본문 사이의 코드·명세·아키텍처는 저장과 재편집에서 순서와 내용을 보존한다',()=>{
  const blocks=[{type:'HTML',content:JSON.stringify([rich('앞')])},{type:'CODE',language:'JAVA',content:'<script>safe text</script>\n  return 1;'}, {type:'TABLE',content:JSON.stringify(spec)},{type:'ARCHITECTURE',content:JSON.stringify(architecture)}, {type:'HTML',content:JSON.stringify([rich('뒤')])}].map((b,i)=>({key:String(i),title:null,language:null,valid:true,...b}));
  const saved=documentToBlocks(blocksToDocument(blocks,parse),render);

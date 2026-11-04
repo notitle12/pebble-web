@@ -7,12 +7,20 @@ test("언어 식별자 정규화 및 포맷팅", () => {
   assert.equal(normalizeLanguage("TYPESCRIPT"), "typescript");
   assert.equal(normalizeLanguage("py"), "python");
   assert.equal(normalizeLanguage("postgres"), "sql");
+  assert.equal(normalizeLanguage("xml"), "xml");
   assert.equal(normalizeLanguage(null), "text");
 
   assert.equal(formatLanguageLabel("ts"), "TypeScript");
   assert.equal(formatLanguageLabel("py"), "Python");
   assert.equal(formatLanguageLabel("sql"), "SQL");
+  assert.equal(formatLanguageLabel("xml"), "XML");
   assert.equal(formatLanguageLabel(null), "Code");
+});
+
+test("XML 태그와 속성을 마크업으로 토큰화", () => {
+  const tokens = tokenizeCode('<root item="value">text</root>', "xml");
+  assert.ok(tokens.some(token => token.type === "property" && token.text === "root"));
+  assert.ok(tokens.some(token => token.type === "string" && token.text === '"value"'));
 });
 
 test("JavaScript/TypeScript 구문 토큰화: 키워드, 함수, 문자열, 숫자, 주석", () => {
