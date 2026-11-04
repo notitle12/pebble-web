@@ -5,6 +5,13 @@ import { NodeViewWrapper, type NodeViewProps } from "@tiptap/react";
 import styles from "./image-node-view.module.css";
 import { selectableRepresentativeImage } from "../post-images";
 import { normalizeImageDisplaySize, resizedImageDimensions } from "../image-display-size";
+import { ImageEditor } from "./image-editor";
+
+type ImageEditingValue = { prepare?: (file: File) => Promise<{ src: string; previewUrl: string }>; disabled?: boolean };
+const ImageEditingContext = createContext<ImageEditingValue>({});
+export function ImageEditingProvider({ children, ...value }: ImageEditingValue & { children: React.ReactNode }) {
+  return <ImageEditingContext.Provider value={value}>{children}</ImageEditingContext.Provider>;
+}
 
 type RepresentativeContextValue = {
   enabled?: boolean;
@@ -27,6 +34,8 @@ const safeImageHref = (value: unknown) => typeof value === "string" && /^(?:http
 
 export function ImageNodeView({ node, selected, deleteNode, editor, updateAttributes }: NodeViewProps) {
   const representative = useContext(RepresentativeContext);
+  const imageEditing = useContext(ImageEditingContext);
+  const [editing, setEditing] = useState(false);
   const imageRef = useRef<HTMLImageElement>(null);
   const dragRef = useRef<{ startX: number; startWidth: number; ratio: number; maxWidth: number; previewWidth: number } | null>(null);
   const [previewWidth, setPreviewWidth] = useState<number | null>(null);
@@ -103,6 +112,7 @@ export function ImageNodeView({ node, selected, deleteNode, editor, updateAttrib
     {src && <img ref={imageRef} src={src} alt={typeof node.attrs.alt === "string" ? node.attrs.alt : ""} width={displaySize.width ?? undefined} height={displaySize.height ?? undefined} style={{ width: previewWidth !== null ? `${previewWidth}px` : displaySize.width ? `${displaySize.width}px` : "auto", height: "auto" }} draggable="true" />}
     {selected && editable && <button className={styles.resizeHandle} type="button" contentEditable={false} data-image-node-control="" draggable={false} aria-label="이미지 너비 조절" aria-valuemin={80} aria-valuemax={1600} aria-valuenow={Math.round(previewWidth ?? displaySize.width ?? imageRef.current?.getBoundingClientRect().width ?? 0)} aria-valuetext={`${Math.round(previewWidth ?? displaySize.width ?? imageRef.current?.getBoundingClientRect().width ?? 0)} 픽셀`} role="slider" onPointerDown={startResize} onKeyDown={resizeByKeyboard} onClick={event => event.stopPropagation()} />}
     <div className={styles.tools} role="group" aria-label="이미지 편집" contentEditable={false} data-image-node-control="">
+    {imageEditing.prepare && <button type="button" className="editor-action" disabled={!editable || imageEditing.disabled} data-image-node-control="" draggable={false} onMouseDown={event => event.preventDefault()} onClick={event => { event.stopPropagation(); setEditing(true); }} onKeyDown={event => event.stopPropagation()}>이미지 편집</button>}
     {representative.enabled !== false && selectableRepresentativeImage(stableSrc) && <button
       className={styles.representativeButton}
       type="button"
@@ -130,5 +140,14 @@ export function ImageNodeView({ node, selected, deleteNode, editor, updateAttrib
       onKeyDown={event => event.stopPropagation()}
     ><svg aria-hidden="true" viewBox="0 0 20 20" fill="none"><path d="m5 5 10 10M15 5 5 15"/></svg></button>
     </div>
+    {editing && <ImageEditor src={src} fileName={typeof node.attrs.alt === "string" ? node.attrs.alt : "image"} onCancel={() => setEditing(false)} onApply={async file => {
+      if (!imageEditing.prepare || !editor.isEditable || editor.isDestroyed || imageEditing.disabled) throw new Error("지금은 이미지를 변경할 수 없습니다.");
+      const result = await imageEditing.prepare(file);
+      if (!safeImageHref(result.src) || !safeImageHref(result.previewUrl)) throw new Error("이미지 응답 주소가 올바르지 않습니다.");
+      if (editor.isDestroyed || !editor.isEditable) throw new Error("편집 화면을 다시 확인해 주세요.");
+      updateAttributes({ src: result.previewUrl, mediaSrc: result.src, width: null, height: null });
+      if (isRepresentative) representative.onSelect(result.src);
+      setEditing(false);
+    }}/>} 
   </NodeViewWrapper>;
 }

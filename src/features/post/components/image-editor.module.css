@@ -1,0 +1,23 @@
+.backdrop{position:fixed;inset:0;z-index:2000;display:grid;place-items:center;padding:20px;background:rgba(11,18,32,.62)}
+.dialog{box-sizing:border-box;width:min(900px,calc(100vw - 32px));max-height:min(92dvh,900px);overflow:auto;padding:20px;border:1px solid var(--line,#dfe3e8);border-radius:12px;background:var(--surface,#fff);color:var(--text,#202124);box-shadow:0 20px 70px #0005;outline:none}
+.header{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:16px}
+.header h2{margin:0 0 5px;font-size:18px;line-height:1.25}
+.header p{margin:0;color:var(--muted,#68707b);font-size:12px;line-height:1.4}
+.stage{position:relative;width:fit-content;max-width:100%;max-height:68dvh;overflow:hidden;margin-inline:auto;touch-action:none;user-select:none;background:var(--block-surface,#f5f6f8);border:1px solid var(--line,#dfe3e8);border-radius:8px;cursor:crosshair}
+.canvas{display:block;width:auto;max-width:100%;max-height:68dvh;height:auto;object-fit:contain;pointer-events:none}
+.cropMarquee{position:absolute;border:1.5px dashed var(--accent,#4770d6);background:rgba(71,112,214,.14);box-shadow:0 0 0 9999px rgba(8,13,24,.26);pointer-events:none}
+.toolbar,.actions,.footer{display:flex;align-items:center;gap:8px}
+.toolbar{justify-content:space-between;margin-top:12px}
+.actions{flex-wrap:wrap}
+.dimensions{margin:0;color:var(--muted,#68707b);font-size:12px;font-variant-numeric:tabular-nums}
+.footer{justify-content:flex-end;margin-top:18px;padding-top:14px;border-top:1px solid var(--line,#dfe3e8)}
+.footer .status{margin-right:auto}
+.status,.error{margin:10px 0 0;font-size:12px;line-height:1.4}
+.status{color:var(--muted,#68707b)}
+.error{color:var(--danger,#b42318)}
+.primary{border-color:var(--accent,#4770d6)!important;background:var(--accent,#4770d6)!important;color:white!important}
+.primary:hover:not(:disabled){filter:brightness(.96)}
+.dialog button{line-height:1.2;min-height:30px;padding-block:0}
+.dialog button:focus-visible{outline:2px solid var(--focus,#4770d6);outline-offset:2px}
+@media(max-width:600px){.backdrop{padding:8px}.dialog{width:calc(100vw - 16px);max-height:96dvh;padding:14px}.stage,.canvas{max-height:62dvh}.header{gap:8px}.header h2{font-size:16px}.toolbar{align-items:flex-start;flex-direction:column}.footer{flex-wrap:wrap}.footer .status{flex-basis:100%;margin:0}}
+@media(prefers-reduced-motion:reduce){.dialog *{scroll-behavior:auto}}
