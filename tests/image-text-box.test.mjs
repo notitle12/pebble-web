@@ -18,12 +18,12 @@ test('auto-growing text near the bottom preserves its complete height instead of
  assert.deepEqual(fitImageTextBox('첫줄\n둘째\n셋째',{x:20,y:90,width:32,height:22},{width:200,height:100},16,measure,true),{x:20,y:38,width:32,height:62});
 });
 
-test('auto text keeps browser-measured height and width when composing characters changes the measured width',()=>{
+test('auto text preserves its width but discards a stale soft-wrapped height during typing',()=>{
  const size={width:300,height:200};
  const first=fitImageTextBox('가나',{x:10,y:10,width:80,height:43},size,16,measure,true);
  const composing=fitImageTextBox('가ㄴ',first,size,16,measure,true);
  const complete=fitImageTextBox('가나',composing,size,16,measure,true);
- assert.deepEqual(first,{x:10,y:10,width:80,height:43});
+ assert.deepEqual(first,{x:10,y:10,width:80,height:22});
  assert.deepEqual(composing,first);
  assert.deepEqual(complete,first);
 });
