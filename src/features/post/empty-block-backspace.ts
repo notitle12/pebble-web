@@ -4,7 +4,7 @@ import {closeHistory} from '@tiptap/pm/history';
 import {NodeSelection,Selection,TextSelection,type EditorState,type Transaction} from '@tiptap/pm/state';
 import {CellSelection} from '@tiptap/pm/tables';
 
-const containerNames=new Set(['textPanel','table','details']);
+const containerNames=new Set(['textPanel','table','details','pebbleCode','codeBlock']);
 
 /** 공백 문자·이미지·코드 등은 내용으로 보존하고 빈 문단만 허용한다. */
 function emptyText(node:Node):boolean {
@@ -15,6 +15,7 @@ function emptyText(node:Node):boolean {
 }
 
 export function isEmptyBodyContainer(node:Node):boolean {
+ if(['pebbleCode','codeBlock'].includes(node.type.name))return node.content.size===0;
  if(node.type.name==='table'){
   let empty=true;
   node.forEach(row=>row.forEach(cell=>cell.forEach(child=>{if(!emptyText(child))empty=false;})));
@@ -67,7 +68,7 @@ function atContainerStart(state:EditorState,pos:number):boolean {
 
 export const EmptyBlockBackspace=Extension.create<{types:string[]}>({
  name:'emptyBlockBackspace',priority:1300,
- addOptions:()=>({types:['textPanel','table','details']}),
+ addOptions:()=>({types:['textPanel','table','details','pebbleCode','codeBlock']}),
  addKeyboardShortcuts(){return {Backspace:()=>{
   if(!this.editor.isEditable||this.editor.view.composing)return false;
   const pos=containerAtSelection(this.editor.state,this.options.types);if(pos===null)return false;

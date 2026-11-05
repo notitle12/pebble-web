@@ -9,7 +9,8 @@ import {RichTextStarterKit} from '../src/features/post/rich-text-starter-kit.ts'
 import {TextPanel} from '../src/features/post/editor-tools.ts';
 import {EmptyBlockBackspace,deleteEmptyBodyContainer} from '../src/features/post/empty-block-backspace.ts';
 const Details=Node.create({name:'details',group:'block',content:'block+',addAttributes:()=>({summary:{default:''},open:{default:true}})});
-const schema=getSchema([RichTextStarterKit,TextPanel,TableKit,Details,Node.create({name:'image',group:'block',atom:true})]);
+const Code=Node.create({name:'pebbleCode',group:'block',content:'text*',code:true,addAttributes:()=>({language:{default:'XML'}})});
+const schema=getSchema([RichTextStarterKit,TextPanel,TableKit,Details,Code,Node.create({name:'image',group:'block',atom:true})]);
 const p=text=>schema.node('paragraph',null,text?schema.text(text):null);
 const panel=content=>schema.node('textPanel',null,content??p());
 function fixture(nodes,find=node=>node.type.name==='paragraph'){
@@ -40,7 +41,32 @@ test('a toggle with any title or hidden body content remains, including whitespa
  for(const node of [details('title'),details(' '),details('',[p(),p('hidden')],false),details('',[p(),schema.node('image')],false),details('',schema.node('codeBlock')),details('',table())]){
   const f=fixture([node]),original=f.editor.state.doc;
   assert.equal(deleteEmptyBodyContainer(f.editor.state,0),null);
-  if(node.firstChild.type.name!=='table'){f.keys.Backspace();assert.ok(f.editor.state.doc.eq(original));}
+  if(!['table','codeBlock'].includes(node.firstChild.type.name)){f.keys.Backspace();assert.ok(f.editor.state.doc.eq(original));}
+ }
+});
+const code=text=>schema.node('pebbleCode',null,text?schema.text(text):null);
+test('empty code Backspace removes the code and preserves preceding blanks or general blocks exactly',()=>{
+ for(const before of [p(),panel(p('above')),panel()]){
+  const f=fixture([before,code(),p('after')],node=>node.type.name==='pebbleCode'),original=f.editor.state.doc;
+  assert.equal(f.keys.Backspace(),true);assert.equal(f.editor.state.doc.childCount,2);assert.ok(f.editor.state.doc.firstChild.eq(before));
+  assert.equal(f.editor.state.doc.lastChild.textContent,'after');assert.equal(f.editor.state.selection.$from.parent.type.name,'paragraph');
+  assert.equal(undo(f.editor.state,tr=>f.editor.view.dispatch(tr)),true);assert.ok(f.editor.state.doc.eq(original));
+  assert.equal(redo(f.editor.state,tr=>f.editor.view.dispatch(tr)),true);assert.equal(f.editor.state.doc.childCount,2);
+ }
+});
+test('empty code inside a sole block keeps its parent, while code text, whitespace and IME are protected',()=>{
+ for(const node of [code(),panel(code()),details('keep',code())]){
+  const f=fixture([node],node=>node.type.name==='pebbleCode');assert.equal(f.keys.Backspace(),true);f.editor.state.doc.check();
+  assert.equal(f.editor.state.doc.firstChild.type.name,node.type.name==='pebbleCode'?'paragraph':node.type.name);
+  assert.equal(f.editor.state.selection.$from.parent.type.name,'paragraph');
+ }
+ for(const value of ['x',' ','\n']){
+  const f=fixture([p(),code(value)],node=>node.type.name==='pebbleCode'),original=f.editor.state.doc;
+  assert.equal(f.keys.Backspace(),false);assert.ok(f.editor.state.doc.eq(original));
+ }
+ for(const mode of ['readonly','composing']){
+  const f=fixture([p(),code()],node=>node.type.name==='pebbleCode');if(mode==='readonly')f.editor.isEditable=false;else f.editor.view.composing=true;
+  assert.equal(f.keys.Backspace(),false);assert.equal(f.editor.state.doc.lastChild.type.name,'pebbleCode');
  }
 });
 test('deleting a blank general block inside a titled toggle preserves the outer title and wrapper',()=>{
