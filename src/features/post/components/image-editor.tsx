@@ -1,4 +1,5 @@
 "use client";
+import {autoImageTextBox,resizeImageTextBox,type ImageTextBox} from "../image-text-box";
 
 import { createPortal } from "react-dom";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
@@ -35,7 +36,7 @@ export type ImageEditorProps = {
 type ImageTransform = {left:number;top:number;width:number;height:number;pixelWidth:number;pixelHeight:number};
 type CropSelection = { startX: number; startY: number; endX: number; endY: number };
 type Tool = "crop" | "mosaic" | "text" | "pen" | "eraser";
-type ImageTextDraft = {id:string;editingId:string|null;x:number;y:number;sourceX:number;sourceY:number;sourceSize:PixelSize;text:string;maxWidth:number;fontSize:number;color:string};
+type ImageTextDraft = {id:string;editingId:string|null;x:number;y:number;sourceX:number;sourceY:number;sourceSize:PixelSize;text:string;maxWidth:number;boxHeight:number;autoSize:boolean;fontSize:number;color:string};
 
 function cropBounds(selection: CropSelection, width: number, height: number): CropOperation | null {
   return clampCropRect(selection.startX, selection.startY, selection.endX, selection.endY, { width, height });
@@ -109,11 +110,13 @@ function drawTextOperation(context: CanvasRenderingContext2D, operation: TextOpe
   context.textBaseline = "top";
   const maxWidth = Math.max(1, Math.min(operation.maxWidth ?? canvasWidth, canvasWidth - operation.x));
   const lineHeight = Math.round(operation.fontSize * 1.25);
+  context.save();context.beginPath();context.rect(operation.x,operation.y,maxWidth,operation.boxHeight??context.canvas.height-operation.y);context.clip();
   let y = operation.y;
   for (const line of imageTextLines(operation.text, maxWidth, text => context.measureText(text).width)) {
     context.fillText(line, operation.x, y);
     y += lineHeight;
   }
+  context.restore();
 }
 
 export function ImageEditor({ src, fileName = "image", onApply, onCancel }: ImageEditorProps) {
@@ -146,7 +149,14 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
   const mosaicSizeGesture = useRef(false);
   const [textDraft, setTextDraft] = useState<ImageTextDraft|null>(null);
   const textDraftRef = useRef(textDraft);textDraftRef.current=textDraft;
-  const updateTextDraft = (next:ImageTextDraft|null) => {textDraftRef.current=next;setTextDraft(next);};
+  const updateTextDraft = (next:ImageTextDraft|null) => {
+    if(next?.autoSize){
+      const context=document.createElement("canvas").getContext("2d")!;context.font=`${next.fontSize}px system-ui, sans-serif`;
+      const box=autoImageTextBox(next.text,next.x,next.y,canvasSize,next.fontSize,text=>context.measureText(text).width);
+      next={...next,maxWidth:box.width,boxHeight:box.height};
+    }
+    textDraftRef.current=next;setTextDraft(next);
+  };
   const dismissTextOnPointer = useRef(false);
   const textInputRef = useRef<HTMLTextAreaElement>(null);
   const [displayScale, setDisplayScale] = useState(1);
@@ -249,8 +259,8 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
 
   const pendingText = (draft=textDraftRef.current) => {
     if(!draft)return null;
-    const operation=createTextOperation(draft.text,draft.sourceX,draft.sourceY,draft.sourceSize,draft.fontSize,draft.color,draft.maxWidth);
-    return operation?{...operation,id:draft.id}:null;
+    const operation=createTextOperation(draft.text,draft.sourceX,draft.sourceY,draft.sourceSize,draft.fontSize,draft.color,draft.maxWidth,draft.boxHeight);
+    return operation?{...operation,id:draft.id,autoSize:draft.autoSize}:null;
   };
   const commitText = () => {
     const draft=textDraftRef.current;if(!draft)return;
@@ -262,7 +272,7 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
     const operation=region.operation;
     if(!operation.id)return;
     setTool("text");setTextFontSize(operation.fontSize);setTextColor(operation.color);
-    updateTextDraft({id:operation.id,editingId:operation.id,x:region.x,y:region.y,sourceX:operation.x,sourceY:operation.y,sourceSize:region.sourceSize,text:operation.text,maxWidth:region.width,fontSize:operation.fontSize,color:operation.color});
+    updateTextDraft({id:operation.id,editingId:operation.id,x:region.x,y:region.y,sourceX:operation.x,sourceY:operation.y,sourceSize:region.sourceSize,text:operation.text,maxWidth:region.width,boxHeight:region.height,autoSize:operation.autoSize===true,fontSize:operation.fontSize,color:operation.color});
   };
   const deleteText = () => {
     const draft=textDraftRef.current;if(!draft)return;
@@ -272,7 +282,6 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
     if(saving||!textDraftRef.current||!(event.target instanceof Element)||event.target.closest("[data-image-text-control],[data-image-text-hit]"))return;
     dismissTextOnPointer.current=!!event.target.closest("[data-image-stage]");commitText();
   };
-  useEffect(()=>{const input=textInputRef.current;if(input){input.style.height="auto";input.style.height=`${input.scrollHeight}px`;}},[textDraft?.text,textFontSize,displayScale]);
   useEffect(()=>{if(textDraft)textInputRef.current?.focus({preventScroll:true});},[textDraft?.id]);
   useEffect(()=>{
     const canvas=displayRef.current;if(!canvas)return;
@@ -369,9 +378,9 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
     if (!point) return;
     if (tool === "text") {
       if(textDraftRef.current){commitText();return;}
-      const x=Math.max(0,Math.min(canvasSize.width-Math.min(120,canvasSize.width),Math.round(point.x)));
+      const x=Math.max(0,Math.min(canvasSize.width-Math.min(textFontSize*2,canvasSize.width),Math.round(point.x)));
       const y=Math.max(0,Math.min(canvasSize.height-Math.min(textFontSize*1.5,canvasSize.height),Math.round(point.y)));
-      updateTextDraft({id:crypto.randomUUID(),editingId:null,x,y,sourceX:x,sourceY:y,sourceSize:{...canvasSize},text:"",maxWidth:Math.max(1,Math.min(canvasSize.width-x,Math.max(120,Math.round(canvasSize.width*.45)))),fontSize:textFontSize,color:textColor});
+      updateTextDraft({id:crypto.randomUUID(),editingId:null,x,y,sourceX:x,sourceY:y,sourceSize:{...canvasSize},text:"",maxWidth:Math.min(textFontSize*2,canvasSize.width-x),boxHeight:Math.round(textFontSize*1.25)+2,autoSize:true,fontSize:textFontSize,color:textColor});
       return;
     }
     event.currentTarget.setPointerCapture(event.pointerId);
@@ -497,7 +506,7 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
             {([["nw","왼쪽 위"],["ne","오른쪽 위"],["se","오른쪽 아래"],["sw","왼쪽 아래"]] as const).map(([handle,label])=><button key={handle} type="button" className={styles.cropHandle} data-handle={handle} aria-label={`모자이크 ${label} 조절점`} disabled={saving} onPointerDown={event=>startMosaicDrag(event,handle)} onKeyDown={event=>moveMosaicKey(event,handle)}/>)}
           </div>}
           {(tool===null||tool==="text")&&textRegions.filter(region=>region.operation.id!==textDraft?.editingId).map(region=><button key={region.operation.id} type="button" className={styles.textHitArea} data-image-text-hit="" aria-label={`글씨 수정: ${region.operation.text.slice(0,40)}`} title="클릭하여 글씨 수정·삭제" style={{left:`${region.x/canvasSize.width*100}%`,top:`${region.y/canvasSize.height*100}%`,width:`${region.width/canvasSize.width*100}%`,height:`${region.height/canvasSize.height*100}%`}} onPointerDown={event=>{event.preventDefault();event.stopPropagation();editText(region);}} onClick={event=>{if(event.detail===0)editText(region);}} disabled={saving}/>)}
-          {textDraft && current && <textarea data-image-text-control="" ref={textInputRef} className={styles.textOverlay} aria-label="이미지에 넣을 글씨" placeholder="글씨 입력" value={textDraft.text} maxLength={500} rows={Math.max(1,textDraft.text.split("\n").length)} style={{left:`${textDraft.x/current.width*100}%`,top:`${textDraft.y/current.height*100}%`,width:`${textDraft.maxWidth/current.width*100}%`,fontSize:`${textDraft.fontSize*displayScale}px`,color:textDraft.color,backgroundColor:imageTextInputSurface(textDraft.color),caretColor:textDraft.color,colorScheme:imageTextInputSurface(textDraft.color)==="#ffffff"?"light":"dark"}} onPointerDown={event=>event.stopPropagation()} onClick={event=>event.stopPropagation()} onChange={event=>updateTextDraft({...textDraft,text:event.currentTarget.value})} onKeyDown={event=>{event.stopPropagation();if(event.key==="Enter"&&(event.ctrlKey||event.metaKey)&&!event.nativeEvent.isComposing){event.preventDefault();commitText();}}} disabled={saving}/>}
+          {textDraft && current && <textarea data-image-text-control="" ref={textInputRef} className={styles.textOverlay} aria-label="이미지에 넣을 글씨" placeholder="글씨" value={textDraft.text} maxLength={500} rows={1} style={{left:`${textDraft.x/current.width*100}%`,top:`${textDraft.y/current.height*100}%`,width:`${textDraft.maxWidth/current.width*100}%`,height:`${textDraft.boxHeight/current.height*100}%`,fontSize:`${textDraft.fontSize*displayScale}px`,color:textDraft.color,backgroundColor:imageTextInputSurface(textDraft.color),caretColor:textDraft.color,colorScheme:imageTextInputSurface(textDraft.color)==="#ffffff"?"light":"dark"}} onPointerDown={event=>event.stopPropagation()} onClick={event=>event.stopPropagation()} onChange={event=>updateTextDraft({...textDraft,text:event.currentTarget.value})} onKeyDown={event=>{event.stopPropagation();if(event.key==="Enter"&&(event.ctrlKey||event.metaKey)&&!event.nativeEvent.isComposing){event.preventDefault();commitText();}}} disabled={saving}/>}
           {textDraft&&current&&<button type="button" className={styles.textDelete} data-image-text-control="" aria-label="글씨 삭제" title="글씨 삭제" style={{left:`clamp(10px, ${(textDraft.x+textDraft.maxWidth)/current.width*100}%, calc(100% - 10px))`,top:`clamp(10px, ${textDraft.y/current.height*100}%, calc(100% - 10px))`}} onPointerDown={event=>{event.preventDefault();event.stopPropagation();}} onClick={deleteText} disabled={saving}><ActionIcon name="cancel"/></button>}
           {tool === "pen" && strokePreview?.length && current && <svg className={styles.penPreview} viewBox={`0 0 ${current.width} ${current.height}`} preserveAspectRatio="none" aria-hidden="true"><polyline className={styles.penLine} points={strokePreview.map(point => `${point.x},${point.y}`).join(" ")} fill="none" stroke={penColor} strokeWidth={penWidth} strokeLinecap="round" strokeLinejoin="round" /></svg>}
           {tool==="eraser"&&eraserPosition&&current&&<svg className={styles.penPreview} viewBox={`0 0 ${current.width} ${current.height}`} preserveAspectRatio="none" aria-hidden="true"><circle cx={eraserPosition.x} cy={eraserPosition.y} r={eraserWidth/2} fill="#ffffff18" stroke="#000" strokeWidth={2/displayScale}/><circle cx={eraserPosition.x} cy={eraserPosition.y} r={eraserWidth/2} fill="none" stroke="#fff" strokeWidth={1/displayScale} strokeDasharray={`${3/displayScale} ${3/displayScale}`}/></svg>}

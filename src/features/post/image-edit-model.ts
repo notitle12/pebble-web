@@ -1,6 +1,6 @@
 export type CropOperation = { type: "crop"; x: number; y: number; width: number; height: number };
 export type MosaicOperation = { type: "mosaic"; x: number; y: number; width: number; height: number; blockSize: number };
-export type TextOperation = { type: "text"; id?: string; text: string; x: number; y: number; fontSize: number; color: string; maxWidth?: number };
+export type TextOperation = { type: "text"; id?: string; text: string; x: number; y: number; fontSize: number; color: string; maxWidth?: number; boxHeight?:number; autoSize?:boolean };
 export type PenPoint = { x: number; y: number };
 export type PenErasure = {points:PenPoint[];width:number};
 export type PenOperation = { type: "pen"; points: PenPoint[]; color: string; width: number; erasures?:PenErasure[] };
@@ -31,7 +31,7 @@ export function createMosaicOperation(rect: CropOperation, blockSize: number): M
   return { ...rect, type: "mosaic", blockSize: Math.max(4, Math.min(48, Math.round(blockSize))) };
 }
 
-export function createTextOperation(text: string, x: number, y: number, size: PixelSize, fontSize: number, color: string, maxWidth?: number): TextOperation | null {
+export function createTextOperation(text: string, x: number, y: number, size: PixelSize, fontSize: number, color: string, maxWidth?: number, boxHeight?:number): TextOperation | null {
   if(!Number.isFinite(size.width)||!Number.isFinite(size.height)||size.width<=0||size.height<=0)return null;
   const safeText = text.trim().slice(0, 500);
   if (!safeText) return null;
@@ -42,6 +42,7 @@ export function createTextOperation(text: string, x: number, y: number, size: Pi
     y: Math.max(0, Math.min(size.height, Math.round(y))),
     fontSize: Math.max(16, Math.min(160, Math.round(fontSize))), color: safeColor,
     ...(maxWidth !== undefined && Number.isFinite(maxWidth) ? {maxWidth: Math.max(1, Math.min(size.width, Math.round(maxWidth)))} : {}),
+    ...(boxHeight !== undefined && Number.isFinite(boxHeight) ? {boxHeight:Math.max(1,Math.min(size.height,Math.round(boxHeight)))} : {}),
   };
 }
 
@@ -95,7 +96,7 @@ export function placedImageTexts(operations:ImageEditOperation[],sourceSize:Pixe
   if(operation.type!=='text')return;
   const width=Math.max(1,Math.min(operation.maxWidth??size.width,size.width-operation.x));
   const lines=imageTextLines(operation.text,width,text=>measure(text,operation.fontSize));
-  const height=lines.length*Math.round(operation.fontSize*1.25);
+  const height=operation.boxHeight??lines.length*Math.round(operation.fontSize*1.25);
   let offsetX=0,offsetY=0;
   for(const later of operations.slice(index+1))if(later.type==='crop'){offsetX+=later.x;offsetY+=later.y;}
   placed.push({index,operation,sourceSize:{...size},offsetX,offsetY,x:operation.x-offsetX,y:operation.y-offsetY,width,height});
