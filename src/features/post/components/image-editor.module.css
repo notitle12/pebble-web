@@ -63,20 +63,22 @@
 
 .dialog button.mosaicHitArea{position:absolute;z-index:2;display:block;min-height:0;min-width:0;margin:0;padding:0;border:0;border-radius:0;background:transparent;cursor:pointer;touch-action:manipulation}
 .dialog button.mosaicHitArea:hover:not(:disabled),.dialog button.mosaicHitArea:focus-visible{background:#ffffff12;outline:1px dashed var(--accent,#2f6b50);outline-offset:0}
-.mosaicFrame{position:absolute;z-index:3;box-sizing:border-box;outline:1px solid var(--accent,#2f6b50);cursor:move;touch-action:none}
-.dialog button.mosaicDelete{width:30px;height:30px;min-width:30px;min-height:30px;padding:0;color:var(--danger,#b42318)}
-.dialog .mosaicDelete svg{width:16px;height:16px}
-@media(pointer:coarse){.dialog button.mosaicDelete{width:40px;height:40px;min-width:40px;min-height:40px}}
+.mosaicFrame{position:absolute;z-index:3;box-sizing:border-box;outline:none;touch-action:none}
 
 .textOverlay::placeholder{color:#777;opacity:1}
 
 .textFrame{position:absolute;z-index:5;outline:none;touch-action:none}
-.textMoveSurface{position:absolute;inset:-5px;border:1px solid var(--accent,#2f6b50);border-radius:2px;cursor:move;touch-action:none}
-.textFrame:focus-visible .textMoveSurface{outline:1px dashed var(--focus,#4770d6);outline-offset:2px}
-.textFrame .cropHandle[data-handle=n]{left:50%;top:0;transform:translate(-50%,-50%);cursor:ns-resize}
-.textFrame .cropHandle[data-handle=s]{left:50%;bottom:0;transform:translate(-50%,50%);cursor:ns-resize}
-.textFrame .cropHandle[data-handle=e]{right:0;top:50%;transform:translate(50%,-50%);cursor:ew-resize}
-.textFrame .cropHandle[data-handle=w]{left:0;top:50%;transform:translate(-50%,-50%);cursor:ew-resize}
+.boxMoveSurface{position:absolute;z-index:2;inset:0;outline:1px solid var(--accent,#2f6b50);pointer-events:none}
+.boxMoveEdge{position:absolute;pointer-events:auto;cursor:move;touch-action:none}
+.boxMoveEdge[data-edge=n],.boxMoveEdge[data-edge=s]{left:-4px;right:-4px;height:8px}
+.boxMoveEdge[data-edge=n]{top:-4px}.boxMoveEdge[data-edge=s]{bottom:-4px}
+.boxMoveEdge[data-edge=e],.boxMoveEdge[data-edge=w]{top:-4px;bottom:-4px;width:8px}
+.boxMoveEdge[data-edge=e]{right:-4px}.boxMoveEdge[data-edge=w]{left:-4px}
+:is(.textFrame,.mosaicFrame):focus-visible .boxMoveSurface{outline:1px dashed var(--focus,#4770d6);outline-offset:2px}
+.cropHandle[data-handle=n]{left:50%;top:0;transform:translate(-50%,-50%);cursor:ns-resize}
+.cropHandle[data-handle=s]{left:50%;bottom:0;transform:translate(-50%,50%);cursor:ns-resize}
+.cropHandle[data-handle=e]{right:0;top:50%;transform:translate(50%,-50%);cursor:ew-resize}
+.cropHandle[data-handle=w]{left:0;top:50%;transform:translate(-50%,-50%);cursor:ew-resize}
 .dialog .textFrame .cropHandle{width:12px;height:12px}
 .textFrame .cropHandle::after{width:6px;height:6px}
 @media(pointer:coarse){.dialog .textFrame .cropHandle{width:20px;height:20px}}
