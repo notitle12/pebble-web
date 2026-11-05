@@ -1,5 +1,5 @@
 import { MemberApiError, responseData } from "../../lib/member-api.ts";
-export const INSIGHT_DAYS = [7, 30, 90, 0] as const;
+export const INSIGHT_DAYS = [1, 7, 30, 0] as const;
 export type InsightDays = typeof INSIGHT_DAYS[number];
 export type InsightItem = { id: string; title: string; urlKey: string | null; views: number; visibilityStatus: "PUBLIC" | "HIDDEN"; isBlocked: boolean; draft: boolean };
 export type InsightDay = { date: string; postViews: number; projectViews: number };

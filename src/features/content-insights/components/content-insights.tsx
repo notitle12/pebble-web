@@ -24,8 +24,8 @@ function Trend({ data }: { data: InsightsData }) {
   </section>;
 }
 function Dashboard({ member }: { member: Member }) {
-  const [days, setDays] = useState<InsightDays>(30), [attempt, setAttempt] = useState(0);
-  const [state, setState] = useState<{ days: InsightDays; data: InsightsData | null; error: string; loading: boolean }>({ days: 30, data: null, error: "", loading: true });
+  const [days, setDays] = useState<InsightDays>(1), [attempt, setAttempt] = useState(0);
+  const [state, setState] = useState<{ days: InsightDays; data: InsightsData | null; error: string; loading: boolean }>({ days: 1, data: null, error: "", loading: true });
   useEffect(() => {
     let live = true;
     setState({ days, data: null, error: "", loading: true });

@@ -38,7 +38,7 @@ test("a document uses external source only before SPA route movement, including 
 });
 
 test("source coverage is always seven days independently of selected content period", () => {
-  for (const days of [0, 7, 30, 90]) {
+  for (const days of [0, 1, 7, 30, 90]) {
     const value = detail(days); value.data.sources = [{ source: "GOOGLE", views: 3 }];
     const parsed = parseContentInsightDetail(value, "posts", item.id, days);
     assert.equal(parsed.sourceDays, 7); assert.equal(parsed.sourceFromDate, "2026-10-17"); assert.equal(parsed.sources[0].views, 3);
