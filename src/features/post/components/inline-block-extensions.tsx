@@ -71,7 +71,7 @@ export const InlineCode = TiptapNode.create({
 });
 function ToggleView({ node, editor, updateAttributes }: NodeViewProps) {
   const editable = useEditorState({ editor, selector: ({ editor: current }) => current.isEditable });
-  return <NodeViewWrapper className={styles.toggleBlock}>
+  return <NodeViewWrapper className={styles.toggleBlock} data-post-toggle>
     <div className={styles.toggleHeader} contentEditable={false}>
       <button type="button" aria-label={node.attrs.open ? "내용 접기" : "내용 펼치기"} aria-expanded={!!node.attrs.open} onClick={() => updateAttributes({ open: !node.attrs.open })}>
         <svg aria-hidden="true" viewBox="0 0 16 16" style={{ transform: node.attrs.open ? "rotate(90deg)" : undefined }}><path d="m6 3 5 5-5 5" fill="none" stroke="currentColor" strokeWidth="1.6"/></svg>

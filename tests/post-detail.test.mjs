@@ -16,6 +16,7 @@ test("목 상세 Guest 조회·본문 문자 보존·없는 글·깨진 블록 �
   try {
     const post=await getPublicPost("writer-1","note-1",base);
     assert.equal(post.blocks[1].type,"CODE");assert.match(post.blocks[0].content,/<script>/);
+    assert.equal(parsePostDetail({data:{...post,blocks:[{type:"CODE",content:"<root/>",language:"XML",title:null,displayOrder:0}]}}).blocks[0].language,"XML");
     await assert.rejects(getPublicPost("writer-1","missing",base),error=>error.kind==="not-found");
     for(const block of [{...post.blocks[0],type:"UNSUPPORTED"},{...post.blocks[1],language:"BAD"},{...post.blocks[0],content:null}]) assert.throws(()=>parsePostDetail({data:{...post,blocks:[block]}}));
     await assert.rejects(getPublicPost("writer-1","other",base,async()=>Response.json({data:post})),error=>error.kind==="response");
