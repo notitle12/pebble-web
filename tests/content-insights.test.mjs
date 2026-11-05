@@ -7,12 +7,11 @@ const fixture = (days = 7) => ({ data: { days, fromDate: days ? new Date(Date.UT
 test("content insights reads requested periods, preserves bigint IDs and uses one private request", async () => {
   const calls = []; const result = await getContentInsights(7, async path => { calls.push(path); return fixture(); });
   assert.deepEqual(calls, ["/members/me/content-insights?days=7"]); assert.equal(result.posts[0].id, item.id); assert.equal(result.daily.length, 7);
-  const today = await getContentInsights(1, async () => fixture(1)); assert.equal(today.daily.length, 1); assert.equal(today.fromDate, today.toDate); assert.equal(today.postViews, 4);
-  const all = parseContentInsights(fixture(0), 0); assert.equal(all.fromDate, null); assert.equal(all.chartDays, 30);
-  assert.equal(parseContentInsights(fixture(90), 90).daily.length, 90);
+  const fortnight = await getContentInsights(14, async () => fixture(14)); assert.equal(fortnight.daily.length, 14); assert.equal(fortnight.fromDate, "2026-10-10"); assert.equal(fortnight.postViews, 4);
+  assert.equal(parseContentInsights(fixture(30), 30).daily.length, 30);
 });
 test("invalid periods fail without sending a request", async () => {
-  let calls = 0; await assert.rejects(getContentInsights(2, async () => { calls++; return fixture(); })); assert.equal(calls, 0);
+  let calls = 0; for(const period of [0,1,2,90]) await assert.rejects(getContentInsights(period, async () => { calls++; return fixture(); })); assert.equal(calls, 0);
 });
 test("content insights rejects malformed counters, duplicate dates, period mismatch, and duplicate ranking IDs", () => {
   for (const change of [d => d.postViews = -1, d => d.projectViews = Number.MAX_SAFE_INTEGER + 1, d => d.days = 30, d => d.daily[1].date = d.daily[0].date, d => d.daily.pop(), d => d.posts.push({ ...item }), d => d.posts[0].views = 0, d => d.posts[0].visibilityStatus = "DELETED", d => d.fromDate = "2026-02-30", d => d.trackingStartedAt = "yesterday"]) {

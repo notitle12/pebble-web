@@ -6,7 +6,7 @@ type Query=Pick<URLSearchParams,'get'|'getAll'>;
 const single=(query:Query,key:string)=>query.getAll(key).length===1?query.get(key):null;
 export function parseInsightFilters(query:Query):InsightFilters {
  const rawDays=single(query,'days'),rawKind=single(query,'kind'),rawSort=single(query,'sort'),rawDirection=single(query,'direction');
- const days=rawDays!==null&&INSIGHT_DAYS.some(value=>String(value)===rawDays)?Number(rawDays) as InsightDays:1;
+ const days=rawDays!==null&&INSIGHT_DAYS.some(value=>String(value)===rawDays)?Number(rawDays) as InsightDays:7;
  const kind:ContentKind=rawKind==='projects'?'projects':'posts';
  const sort=INSIGHT_SORTS.includes(rawSort as InsightSort)?rawSort as InsightSort:'LATEST';
  const direction:InsightDirection=rawDirection==='ASC'?'ASC':'DESC';
@@ -28,4 +28,8 @@ export function insightPageHref(view:InsightView,filters:InsightFilters):string 
 export function insightDetailLink(kind:ContentKind,id:string,filters:InsightFilters,from:InsightView):string {
  const params=filterParams(filters);params.set('from',from);
  return `/settings/blog/insights/${kind}/${encodeURIComponent(id)}?${params}`;
+}
+export function insightLocationHref(pathname:string,filters:InsightFilters):string {
+ const detail=pathname.match(/^\/settings\/blog\/insights\/(posts|projects)\/([1-9]\d*)$/);
+ return detail?insightDetailLink(detail[1] as ContentKind,detail[2],filters,filters.from):insightPageHref(pathname==='/settings/blog/insights/content'?filters.kind:'overview',filters);
 }

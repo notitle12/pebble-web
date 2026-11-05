@@ -16,7 +16,8 @@ test("all-content search permits zero views and drafts, sends one encoded ten-it
 test("detail contract reads selected daily periods, fixed twelve months, source enum and long-lived counts", async () => {
   const calls = []; const result = await getContentInsightDetail("posts", item.id, 7, async path => { calls.push(path); return detail(); });
   assert.equal(calls[0], `/members/me/content-insights/posts/${item.id}?days=7`); assert.equal(result.daily.length, 7); assert.equal(result.monthly.length, 12); assert.equal(result.monthly[0].month, "2025-11"); assert.equal(result.monthly[11].month, "2026-10"); assert.equal(result.totalViews, 45);
-  const all = parseContentInsightDetail(detail(0), "posts", item.id, 0); assert.equal(all.chartDays, 90); assert.equal(all.fromDate, null);
+  const fortnight = await getContentInsightDetail("posts", item.id, 14, async () => detail(14)); assert.equal(fortnight.chartDays, 14); assert.equal(fortnight.fromDate, "2026-10-10"); assert.equal(fortnight.totalViews, 45);
+  for(const period of [0,1,90]) await assert.rejects(getContentInsightDetail("posts", item.id, period, async () => {throw new Error("unsupported period must not request");}));
   const sources = detail(); sources.data.sources = [{ source: "UNKNOWN", views: 4 }, { source: "DIRECT", views: 2 }]; assert.equal(parseContentInsightDetail(sources, "posts", item.id, 7).sources.length, 2);
 });
 test("detail rejects malformed identity, noncontinuous dates, month gaps, duplicate or arbitrary source strings", () => {
@@ -38,7 +39,7 @@ test("a document uses external source only before SPA route movement, including 
 });
 
 test("source coverage is always seven days independently of selected content period", () => {
-  for (const days of [0, 1, 7, 30, 90]) {
+  for (const days of [7, 14, 30]) {
     const value = detail(days); value.data.sources = [{ source: "GOOGLE", views: 3 }];
     const parsed = parseContentInsightDetail(value, "posts", item.id, days);
     assert.equal(parsed.sourceDays, 7); assert.equal(parsed.sourceFromDate, "2026-10-17"); assert.equal(parsed.sources[0].views, 3);

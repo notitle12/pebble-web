@@ -11,7 +11,7 @@ import {useInsightFilters} from "./use-insight-filters";
 import {insightDetailLink,insightPageHref,type InsightFilters} from "../insight-query";
 
 const number = (value: number) => value.toLocaleString("ko-KR");
-const label = (days: InsightDays) => days === 0 ? "전체" : `${days}일`;
+const label = (days: InsightDays) => `${days}일`;
 function Ranking({ kind, rows, filters }: { kind: "posts" | "projects"; rows: InsightItem[]; filters:InsightFilters }) {
   const name = kind === "posts" ? "게시글" : "프로젝트";
   return <section className={styles.ranking} aria-labelledby={`insight-${kind}-title`}><div className={styles.sectionHeading}><h2 id={`insight-${kind}-title`}>많이 읽은 {name}</h2><Link className={styles.detailLink} href={insightPageHref(kind,{...filters,query:"",sort:"VIEWS",direction:"DESC"})}>전체 보기</Link></div>
@@ -19,7 +19,7 @@ function Ranking({ kind, rows, filters }: { kind: "posts" | "projects"; rows: In
   </section>;
 }
 function Trend({ data }: { data: InsightsData }) {
-  return <section className={styles.trend} aria-labelledby="insight-trend-title"><div className={styles.sectionHeading}><h2 id="insight-trend-title">조회 추이</h2>{data.days === 0 && <span>최근 30일</span>}</div>
+  return <section className={styles.trend} aria-labelledby="insight-trend-title"><div className={styles.sectionHeading}><h2 id="insight-trend-title">조회 추이</h2></div>
     <div className={styles.legend}><span><i className={styles.postDot}/>게시글</span><span><i className={styles.projectDot}/>프로젝트</span></div>
     <InsightTrendChart rows={data.daily.map(day => ({ label: day.date, values: [day.postViews, day.projectViews] }))} series={[{ label: "게시글", kind: "post" }, { label: "프로젝트", kind: "project" }]} compactDates label={`${data.chartDays}일간 게시글 및 프로젝트의 일별 조회 추이`}/>
 
@@ -29,7 +29,7 @@ function Dashboard({ member }: { member: Member }) {
   const {filters,change}=useInsightFilters();
   const days=filters.days,setDays=(days:InsightDays)=>change({days});
   const [attempt, setAttempt] = useState(0);
-  const [state, setState] = useState<{ days: InsightDays; data: InsightsData | null; error: string; loading: boolean }>({ days: 1, data: null, error: "", loading: true });
+  const [state, setState] = useState<{ days: InsightDays; data: InsightsData | null; error: string; loading: boolean }>({ days: 7, data: null, error: "", loading: true });
   useEffect(() => {
     let live = true;
     setState({ days, data: null, error: "", loading: true });

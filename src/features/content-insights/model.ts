@@ -1,5 +1,5 @@
 import { MemberApiError, responseData } from "../../lib/member-api.ts";
-export const INSIGHT_DAYS = [1, 7, 30, 0] as const;
+export const INSIGHT_DAYS = [7, 14, 30] as const;
 export type InsightDays = typeof INSIGHT_DAYS[number];
 export type InsightItem = { id: string; title: string; urlKey: string | null; views: number; visibilityStatus: "PUBLIC" | "HIDDEN"; isBlocked: boolean; draft: boolean };
 export type InsightDay = { date: string; postViews: number; projectViews: number };
@@ -19,10 +19,10 @@ export function parseInsightItems(value: unknown, allowZero = false): InsightIte
   });
 }
 export function parseContentInsights(value: unknown, expectedDays: InsightDays): ContentInsights {
-  const d = responseData(value), chartDays = expectedDays || 30;
+  const d = responseData(value), chartDays = expectedDays;
   if (d.days !== expectedDays || d.chartDays !== chartDays || d.timeZone !== "Asia/Seoul" || typeof d.trackingStartedAt !== "string" || !/^\d{4}-\d{2}-\d{2}T/.test(d.trackingStartedAt) || !Number.isFinite(Date.parse(d.trackingStartedAt)) || !Array.isArray(d.daily) || d.daily.length !== chartDays) invalid();
   const toDate = date(d.toDate), fromDate = d.fromDate === null ? null : date(d.fromDate);
-  if (expectedDays === 0 ? fromDate !== null : fromDate !== new Date(Date.parse(toDate + "T00:00:00Z") - (expectedDays - 1) * 86400000).toISOString().slice(0, 10)) invalid();
+  if (fromDate !== new Date(Date.parse(toDate + "T00:00:00Z") - (expectedDays - 1) * 86400000).toISOString().slice(0, 10)) invalid();
   const daily = (d.daily as unknown[]).map((value, index) => {
     const row = record(value), day = date(row.date);
     if (day !== new Date(Date.parse(toDate + "T00:00:00Z") - (chartDays - index - 1) * 86400000).toISOString().slice(0, 10)) invalid();
@@ -77,9 +77,9 @@ export async function getInsightItems(kind: ContentKind, page: number, query: st
 }
 
 export function parseContentInsightDetail(value: unknown, kind: ContentKind, id: string, days: InsightDays): ContentInsightDetail {
-  const d = responseData(value), chartDays = days || 90, toDate = date(d.toDate), fromDate = d.fromDate === null ? null : date(d.fromDate);
+  const d = responseData(value), chartDays = days, toDate = date(d.toDate), fromDate = d.fromDate === null ? null : date(d.fromDate);
   if (d.kind !== kind || d.days !== days || d.chartDays !== chartDays || d.timeZone !== "Asia/Seoul" || !Array.isArray(d.daily) || d.daily.length !== chartDays || !Array.isArray(d.monthly) || d.monthly.length !== 12 || !Array.isArray(d.sources) || d.sources.length > CONTENT_SOURCES.length) invalid();
-  if (days === 0 ? fromDate !== null : fromDate !== new Date(Date.parse(toDate + "T00:00:00Z") - (days - 1) * 86400000).toISOString().slice(0, 10)) invalid();
+  if (fromDate !== new Date(Date.parse(toDate + "T00:00:00Z") - (days - 1) * 86400000).toISOString().slice(0, 10)) invalid();
   const sourceFromDate = date(d.sourceFromDate);
   if (d.sourceDays !== 7 || sourceFromDate !== new Date(Date.parse(toDate + "T00:00:00Z") - 6 * 86400000).toISOString().slice(0, 10)) invalid();
   const item = parseInsightItems([d.item], true)[0]; if (item.id !== id) invalid();
