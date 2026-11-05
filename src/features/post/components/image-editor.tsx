@@ -148,6 +148,7 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
   const mosaicDrag = useRef<{handle:CropHandle;rect:CropOperation;x:number;y:number;transform:ImageTransform}|null>(null);
   const mosaicSizeGesture = useRef(false);
   const [textDraft, setTextDraft] = useState<ImageTextDraft|null>(null);
+  const textDrag=useRef<{handle:CropHandle;rect:ImageTextBox;draft:ImageTextDraft;start:PenPoint;transform:ImageTransform}|null>(null);
   const textDraftRef = useRef(textDraft);textDraftRef.current=textDraft;
   const updateTextDraft = (next:ImageTextDraft|null) => {
     if(next?.autoSize){
@@ -279,7 +280,7 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
     updateTextDraft(null);commitCommands(replaceImageText(historyRef.current.present,draft.editingId,null));
   };
   const finishTextOnOutsidePointer = (event:React.PointerEvent<HTMLElement>) => {
-    if(saving||!textDraftRef.current||!(event.target instanceof Element)||event.target.closest("[data-image-text-control],[data-image-text-hit]"))return;
+    if(saving||textDrag.current||!textDraftRef.current||!(event.target instanceof Element)||event.target.closest("[data-image-text-control],[data-image-text-hit]"))return;
     dismissTextOnPointer.current=!!event.target.closest("[data-image-stage]");commitText();
   };
   useEffect(()=>{if(textDraft)textInputRef.current?.focus({preventScroll:true});},[textDraft?.id]);
@@ -288,13 +289,39 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
     const observer=new ResizeObserver(()=>setDisplayScale(canvas.clientWidth/Math.max(1,canvas.width)));
     observer.observe(canvas);return()=>observer.disconnect();
   },[bitmap,canvasSize.width,canvasSize.height]);
+  const textBoxDraft = (draft:ImageTextDraft,rect:ImageTextBox,autoSize:boolean):ImageTextDraft => ({
+    ...draft,x:rect.x,y:rect.y,sourceX:rect.x+(draft.sourceX-draft.x),sourceY:rect.y+(draft.sourceY-draft.y),maxWidth:rect.width,boxHeight:rect.height,autoSize,
+  });
+  const commitTextGeometry = (next:ImageTextDraft) => {
+    const operation=pendingText(next);
+    if(operation){commitCommands(replaceImageText(historyRef.current.present,next.editingId,operation));next={...next,editingId:next.id};}
+    updateTextDraft(next);
+  };
+  const startTextDrag = (event:React.PointerEvent<HTMLElement>,handle:CropHandle) => {
+    const original=textDraftRef.current,transform=imageTransform(),point=pointerCoordinates(event,transform);
+    if(saving||event.button!==0||!original||!point||!transform)return;
+    event.preventDefault();event.stopPropagation();event.currentTarget.focus({preventScroll:true});event.currentTarget.setPointerCapture(event.pointerId);
+    const operation=pendingText(original),draft=operation?{...original,editingId:original.id}:original;
+    if(operation)commitCommands(replaceImageText(historyRef.current.present,original.editingId,operation));
+    updateTextDraft(draft);
+    textDrag.current={handle,draft,rect:{x:draft.x,y:draft.y,width:draft.maxWidth,height:draft.boxHeight},start:point,transform};
+  };
+  const textBoxKey = (event:React.KeyboardEvent<HTMLElement>,handle:CropHandle) => {
+    const original=textDraftRef.current;
+    if(saving||!original||!["ArrowLeft","ArrowRight","ArrowUp","ArrowDown"].includes(event.key))return;
+    event.preventDefault();event.stopPropagation();const step=event.shiftKey?10:1;
+    const operation=pendingText(original),draft=operation?{...original,editingId:original.id}:original;
+    if(operation)commitCommands(replaceImageText(historyRef.current.present,original.editingId,operation));
+    const rect=resizeImageTextBox({x:draft.x,y:draft.y,width:draft.maxWidth,height:draft.boxHeight},handle,event.key==="ArrowLeft"?-step:event.key==="ArrowRight"?step:0,event.key==="ArrowUp"?-step:event.key==="ArrowDown"?step:0,canvasSize,draft.fontSize);
+    commitTextGeometry(textBoxDraft(draft,rect,handle==="move"?draft.autoSize:false));
+  };
   const selectTool = (next: Tool) => {
     if (next === tool) return;
     if (textDraftRef.current) commitText();
     if (tool === "crop" && hasCropChanges(cropRect, canvasSize)) {
       commitCommands([...historyRef.current.present, cropRect!]);
     }
-    mosaicDrag.current=null;setMosaicDraft(null);mosaicSizeGesture.current=false;
+    textDrag.current=null;mosaicDrag.current=null;setMosaicDraft(null);mosaicSizeGesture.current=false;
     cropDrag.current = null; setCropRedo(null); setSelection(null); setPointerStart(null); setActiveMosaicIndex(null); setTool(next);
   };
   const editMosaic = (index:number) => {
@@ -336,13 +363,13 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
   };
   const undo = () => {
     if(textDraftRef.current)commitText();
-    cropDrag.current=null;mosaicDrag.current=null;setMosaicDraft(null);mosaicSizeGesture.current=false;setPointerStart(null);setStrokePreview(null);
+    cropDrag.current=null;textDrag.current=null;mosaicDrag.current=null;setMosaicDraft(null);mosaicSizeGesture.current=false;setPointerStart(null);setStrokePreview(null);
     if(tool==="crop"&&hasCropChanges(cropRect,canvasSize)){setCropRedo(cropRect);setCropRect(fullImageCrop(canvasSize));return;}
     setActiveMosaicIndex(null);updateHistory(undoImageEdit(historyRef.current));setSelection(null);
   };
   const redo = () => {
     if(textDraftRef.current)commitText();
-    mosaicDrag.current=null;setMosaicDraft(null);mosaicSizeGesture.current=false;
+    textDrag.current=null;mosaicDrag.current=null;setMosaicDraft(null);mosaicSizeGesture.current=false;
     if(cropRedo){setCropRect(cropRedo);setCropRedo(null);return;}
     const next=redoImageEdit(historyRef.current);updateHistory(next);
     const last=next.present.at(-1);if(tool==="mosaic"&&last?.type==="mosaic"){setActiveMosaicIndex(next.present.length-1);setMosaicBlockSize(last.blockSize);}
@@ -393,6 +420,11 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
 
   };
   const pointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    if(textDrag.current){
+      const drag=textDrag.current,point=pointerCoordinates(event,drag.transform);
+      if(point){const rect=resizeImageTextBox(drag.rect,drag.handle,point.x-drag.start.x,point.y-drag.start.y,canvasSize,drag.draft.fontSize);updateTextDraft(textBoxDraft(drag.draft,rect,drag.handle==="move"?drag.draft.autoSize:false));}
+      return;
+    }
     if(mosaicDrag.current){
       const drag=mosaicDrag.current,point=pointerCoordinates(event,drag.transform);
       if(point)setMosaicDraft(previous=>previous?{...previous,rect:adjustCrop(drag.rect,drag.handle,point.x-drag.x,point.y-drag.y,canvasSize)}:null);
@@ -419,6 +451,11 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
     if (point) setSelection({ startX: pointerStart.x, startY: pointerStart.y, endX: point.x, endY: point.y });
   };
   const pointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
+    if(textDrag.current){
+      const drag=textDrag.current,point=pointerCoordinates(event,drag.transform);
+      const rect=point?resizeImageTextBox(drag.rect,drag.handle,point.x-drag.start.x,point.y-drag.start.y,canvasSize,drag.draft.fontSize):drag.rect;
+      textDrag.current=null;commitTextGeometry(textBoxDraft(drag.draft,rect,drag.handle==="move"?drag.draft.autoSize:false));return;
+    }
     if(mosaicDrag.current&&mosaicDraft){
       const drag=mosaicDrag.current,point=pointerCoordinates(event,drag.transform);
       const rect=point?adjustCrop(drag.rect,drag.handle,point.x-drag.x,point.y-drag.y,canvasSize):mosaicDraft.rect;
@@ -494,7 +531,7 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
             <button type="button" className="editor-action" title="다시 실행" aria-label="다시 실행" onClick={redo} disabled={!history.future.length && !cropRedo || saving}><ActionIcon name="redo"/></button>
           </div>
         </div>
-        <div className={styles.stage} style={{"--image-native-width":`${canvasSize.width}px`,"--image-ratio":canvasSize.width/Math.max(1,canvasSize.height)} as CSSProperties} data-image-stage="" data-tool={tool??"none"} onPointerLeave={()=>setEraserPosition(null)} onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={() => { if (cropDrag.current) setCropRect(cropDrag.current.rect); cropDrag.current = null; mosaicDrag.current=null;setMosaicDraft(null);setPointerStart(null); setStrokePreview(null); }}>
+        <div className={styles.stage} style={{"--image-native-width":`${canvasSize.width}px`,"--image-ratio":canvasSize.width/Math.max(1,canvasSize.height)} as CSSProperties} data-image-stage="" data-tool={tool??"none"} onPointerLeave={()=>setEraserPosition(null)} onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={() => { if(textDrag.current){updateTextDraft(textDrag.current.draft);textDrag.current=null;}if (cropDrag.current) setCropRect(cropDrag.current.rect); cropDrag.current = null; mosaicDrag.current=null;setMosaicDraft(null);setPointerStart(null); setStrokePreview(null); }}>
           <canvas ref={displayRef} className={styles.canvas} aria-label="편집할 이미지" />
           {tool === "crop" && bounds && current && <div className={styles.cropShade} aria-hidden="true" style={{clipPath:`polygon(evenodd, 0% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%, ${bounds.x/current.width*100}% ${bounds.y/current.height*100}%, ${bounds.x/current.width*100}% ${(bounds.y+bounds.height)/current.height*100}%, ${(bounds.x+bounds.width)/current.width*100}% ${(bounds.y+bounds.height)/current.height*100}%, ${(bounds.x+bounds.width)/current.width*100}% ${bounds.y/current.height*100}%, ${bounds.x/current.width*100}% ${bounds.y/current.height*100}%)`}}/>}
           {bounds && current && (tool === "crop" ? <div className={styles.cropFrame} role="group" aria-label="자르기 영역 이동" tabIndex={0} onPointerDown={event => startCropDrag(event, "move")} onKeyDown={event => cropKeys(event, "move")} style={{left:`${bounds.x/current.width*100}%`,top:`${bounds.y/current.height*100}%`,width:`${bounds.width/current.width*100}%`,height:`${bounds.height/current.height*100}%`}}>
@@ -506,8 +543,12 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
             {([["nw","왼쪽 위"],["ne","오른쪽 위"],["se","오른쪽 아래"],["sw","왼쪽 아래"]] as const).map(([handle,label])=><button key={handle} type="button" className={styles.cropHandle} data-handle={handle} aria-label={`모자이크 ${label} 조절점`} disabled={saving} onPointerDown={event=>startMosaicDrag(event,handle)} onKeyDown={event=>moveMosaicKey(event,handle)}/>)}
           </div>}
           {(tool===null||tool==="text")&&textRegions.filter(region=>region.operation.id!==textDraft?.editingId).map(region=><button key={region.operation.id} type="button" className={styles.textHitArea} data-image-text-hit="" aria-label={`글씨 수정: ${region.operation.text.slice(0,40)}`} title="클릭하여 글씨 수정·삭제" style={{left:`${region.x/canvasSize.width*100}%`,top:`${region.y/canvasSize.height*100}%`,width:`${region.width/canvasSize.width*100}%`,height:`${region.height/canvasSize.height*100}%`}} onPointerDown={event=>{event.preventDefault();event.stopPropagation();editText(region);}} onClick={event=>{if(event.detail===0)editText(region);}} disabled={saving}/>)}
-          {textDraft && current && <textarea data-image-text-control="" ref={textInputRef} className={styles.textOverlay} aria-label="이미지에 넣을 글씨" placeholder="글씨" value={textDraft.text} maxLength={500} rows={1} style={{left:`${textDraft.x/current.width*100}%`,top:`${textDraft.y/current.height*100}%`,width:`${textDraft.maxWidth/current.width*100}%`,height:`${textDraft.boxHeight/current.height*100}%`,fontSize:`${textDraft.fontSize*displayScale}px`,color:textDraft.color,backgroundColor:imageTextInputSurface(textDraft.color),caretColor:textDraft.color,colorScheme:imageTextInputSurface(textDraft.color)==="#ffffff"?"light":"dark"}} onPointerDown={event=>event.stopPropagation()} onClick={event=>event.stopPropagation()} onChange={event=>updateTextDraft({...textDraft,text:event.currentTarget.value})} onKeyDown={event=>{event.stopPropagation();if(event.key==="Enter"&&(event.ctrlKey||event.metaKey)&&!event.nativeEvent.isComposing){event.preventDefault();commitText();}}} disabled={saving}/>}
-          {textDraft&&current&&<button type="button" className={styles.textDelete} data-image-text-control="" aria-label="글씨 삭제" title="글씨 삭제" style={{left:`clamp(10px, ${(textDraft.x+textDraft.maxWidth)/current.width*100}%, calc(100% - 10px))`,top:`clamp(10px, ${textDraft.y/current.height*100}%, calc(100% - 10px))`}} onPointerDown={event=>{event.preventDefault();event.stopPropagation();}} onClick={deleteText} disabled={saving}><ActionIcon name="cancel"/></button>}
+          {textDraft && current && <div className={styles.textFrame} data-image-text-control="" role="group" aria-label="글씨 상자 이동" tabIndex={0} onPointerDown={event=>startTextDrag(event,"move")} onKeyDown={event=>textBoxKey(event,"move")} style={{left:`${textDraft.x/current.width*100}%`,top:`${textDraft.y/current.height*100}%`,width:`${textDraft.maxWidth/current.width*100}%`,height:`${textDraft.boxHeight/current.height*100}%`}}>
+            <div className={styles.textMoveSurface} title="테두리를 드래그해 글씨 이동"/>
+            <textarea data-image-text-control="" ref={textInputRef} className={styles.textOverlay} aria-label="이미지에 넣을 글씨" placeholder="글씨" value={textDraft.text} maxLength={500} rows={1} style={{fontSize:`${textDraft.fontSize*displayScale}px`,color:textDraft.color,backgroundColor:imageTextInputSurface(textDraft.color),caretColor:textDraft.color,colorScheme:imageTextInputSurface(textDraft.color)==="#ffffff"?"light":"dark"}} onPointerDown={event=>event.stopPropagation()} onClick={event=>event.stopPropagation()} onChange={event=>updateTextDraft({...textDraftRef.current!,text:event.currentTarget.value})} onKeyDown={event=>{event.stopPropagation();if(event.key==="Enter"&&(event.ctrlKey||event.metaKey)&&!event.nativeEvent.isComposing){event.preventDefault();commitText();}}} disabled={saving}/>
+            {([["nw","왼쪽 위"],["n","위쪽"],["ne","오른쪽 위"],["e","오른쪽"],["se","오른쪽 아래"],["s","아래쪽"],["sw","왼쪽 아래"],["w","왼쪽"]] as const).map(([handle,label])=><button key={handle} type="button" className={styles.cropHandle} data-handle={handle} aria-label={`글씨 ${label} 크기 조절`} disabled={saving} onPointerDown={event=>startTextDrag(event,handle)} onKeyDown={event=>textBoxKey(event,handle)}/>)}
+          </div>}
+          {textDraft&&current&&<button type="button" className={styles.textDelete} data-image-text-control="" aria-label="글씨 삭제" title="글씨 삭제" style={{left:`clamp(10px, ${(textDraft.x+textDraft.maxWidth)/current.width*100}%, calc(100% - 10px))`,top:`calc(${textDraft.y/current.height*100}% - 18px)`}} onPointerDown={event=>{event.preventDefault();event.stopPropagation();}} onClick={deleteText} disabled={saving}><ActionIcon name="cancel"/></button>}
           {tool === "pen" && strokePreview?.length && current && <svg className={styles.penPreview} viewBox={`0 0 ${current.width} ${current.height}`} preserveAspectRatio="none" aria-hidden="true"><polyline className={styles.penLine} points={strokePreview.map(point => `${point.x},${point.y}`).join(" ")} fill="none" stroke={penColor} strokeWidth={penWidth} strokeLinecap="round" strokeLinejoin="round" /></svg>}
           {tool==="eraser"&&eraserPosition&&current&&<svg className={styles.penPreview} viewBox={`0 0 ${current.width} ${current.height}`} preserveAspectRatio="none" aria-hidden="true"><circle cx={eraserPosition.x} cy={eraserPosition.y} r={eraserWidth/2} fill="#ffffff18" stroke="#000" strokeWidth={2/displayScale}/><circle cx={eraserPosition.x} cy={eraserPosition.y} r={eraserWidth/2} fill="none" stroke="#fff" strokeWidth={1/displayScale} strokeDasharray={`${3/displayScale} ${3/displayScale}`}/></svg>}
         </div>

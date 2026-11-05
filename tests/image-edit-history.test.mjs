@@ -59,3 +59,18 @@ test('mosaic targets follow crops, re-edit in source pixels and retain undo/redo
  assert.equal(replaceImageMosaic(commands,2,rect,24),commands);
  assert.deepEqual(placedImageMosaics([mosaic,{...crop,x:200}],{width:300,height:200}),[]);
 });
+
+test('image text position and box dimensions stay editable after a crop and round-trip through undo',async()=>{
+ const {resizeImageTextBox}=await import('../src/features/post/image-text-box.ts');
+ const crop={type:'crop',x:20,y:30,width:400,height:300};
+ const original={...text,x:80,y:90,maxWidth:140,boxHeight:60,autoSize:false};
+ const source={width:600,height:400},commands=[original,crop];
+ const [region]=placedImageTexts(commands,source,()=>40);
+ assert.equal(region.height,60);
+ const moved=resizeImageTextBox({x:region.x,y:region.y,width:region.width,height:region.height},'move',25,15,{width:400,height:300},20);
+ const resized=resizeImageTextBox(moved,'se',40,30,{width:400,height:300},20);
+ const operation={...createTextOperation(original.text,resized.x+region.offsetX,resized.y+region.offsetY,region.sourceSize,20,original.color,resized.width,resized.height),id:original.id,autoSize:false};
+ let history=commitImageEdit(emptyImageHistory(),commands);history=commitImageEdit(history,replaceImageText(history.present,original.id,operation));
+ const [edited]=placedImageTexts(history.present,source,()=>40);assert.deepEqual({x:edited.x,y:edited.y,width:edited.width,height:edited.height},resized);
+ assert.deepEqual(undoImageEdit(history).present,commands);assert.deepEqual(redoImageEdit(undoImageEdit(history)).present,history.present);assert.equal(original.x,80);
+});
