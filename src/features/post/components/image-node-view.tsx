@@ -4,7 +4,7 @@ import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { NodeViewWrapper, type NodeViewProps } from "@tiptap/react";
 import styles from "./image-node-view.module.css";
 import { selectableRepresentativeImage } from "../post-images";
-import { normalizeImageDisplaySize, resizedImageDimensions } from "../image-display-size";
+import { imageCornerWidthDelta, normalizeImageDisplaySize, resizedImageDimensions } from "../image-display-size";
 import { ImageEditor } from "./image-editor";
 
 type ImageEditingValue = { prepare?: (file: File) => Promise<{ src: string; previewUrl: string }>; disabled?: boolean };
@@ -30,6 +30,10 @@ export function RepresentativeImageProvider({ enabled = true, selectedSrc, disab
   return <RepresentativeContext.Provider value={{ enabled, selectedSrc, disabled, onSelect }}>{children}</RepresentativeContext.Provider>;
 }
 
+const corners = ["top-left", "top-right", "bottom-left", "bottom-right"] as const;
+type Corner = typeof corners[number];
+const cornerLabels: Record<Corner, string> = {"top-left":"왼쪽 위", "top-right":"오른쪽 위", "bottom-left":"왼쪽 아래", "bottom-right":"오른쪽 아래"};
+
 const safeImageHref = (value: unknown) => typeof value === "string" && /^(?:https?:|blob:)/i.test(value.trim());
 
 export function ImageNodeView({ node, selected, deleteNode, editor, updateAttributes }: NodeViewProps) {
@@ -37,7 +41,7 @@ export function ImageNodeView({ node, selected, deleteNode, editor, updateAttrib
   const imageEditing = useContext(ImageEditingContext);
   const [editing, setEditing] = useState(false);
   const imageRef = useRef<HTMLImageElement>(null);
-  const dragRef = useRef<{ startX: number; startWidth: number; ratio: number; maxWidth: number; previewWidth: number } | null>(null);
+  const dragRef = useRef<{ startX: number; startY: number; corner: Corner; startWidth: number; ratio: number; maxWidth: number; previewWidth: number } | null>(null);
   const [previewWidth, setPreviewWidth] = useState<number | null>(null);
   const displaySize = normalizeImageDisplaySize(node.attrs.width, node.attrs.height);
   const editable = editor.isEditable && !representative.disabled;
@@ -57,7 +61,7 @@ export function ImageNodeView({ node, selected, deleteNode, editor, updateAttrib
   const onPointerMove = (event: PointerEvent) => {
     const drag = dragRef.current;
     if (!drag) return;
-    drag.previewWidth = resizedImageDimensions(drag.startWidth + event.clientX - drag.startX, drag.ratio, drag.maxWidth).width;
+    drag.previewWidth = resizedImageDimensions(drag.startWidth + imageCornerWidthDelta(event.clientX - drag.startX, event.clientY - drag.startY, drag.ratio, drag.corner), drag.ratio, drag.maxWidth).width;
     setPreviewWidth(drag.previewWidth);
   };
   const onPointerUp = () => finishDrag(true);
@@ -83,7 +87,7 @@ export function ImageNodeView({ node, selected, deleteNode, editor, updateAttrib
       window.removeEventListener("keydown", keydown);
     };
   }, []);
-  const startResize = (event: React.PointerEvent<HTMLButtonElement>) => {
+  const startResize = (event: React.PointerEvent<HTMLButtonElement>, corner: Corner) => {
     if (!editable || event.button !== 0) return;
     event.preventDefault();
     event.stopPropagation();
@@ -93,7 +97,7 @@ export function ImageNodeView({ node, selected, deleteNode, editor, updateAttrib
     const parentWidth = image.parentElement?.parentElement?.clientWidth || rect.width;
     const ratio = image.naturalWidth > 0 && image.naturalHeight > 0 ? image.naturalWidth / image.naturalHeight : rect.width / Math.max(1, rect.height);
     const startWidth = rect.width;
-    dragRef.current = { startX: event.clientX, startWidth, ratio, maxWidth: parentWidth, previewWidth: startWidth };
+    dragRef.current = { startX: event.clientX, startY: event.clientY, corner, startWidth, ratio, maxWidth: parentWidth, previewWidth: startWidth };
     setPreviewWidth(rect.width);
   };
   const resizeByKeyboard = (event: React.KeyboardEvent<HTMLButtonElement>) => {
@@ -110,7 +114,7 @@ export function ImageNodeView({ node, selected, deleteNode, editor, updateAttrib
   };
   return <NodeViewWrapper as="figure" className={styles.image} data-align={node.attrs.align ?? "left"} data-selected={selected || undefined} contentEditable={false} draggable="true">
     {src && <img ref={imageRef} src={src} alt={typeof node.attrs.alt === "string" ? node.attrs.alt : ""} width={displaySize.width ?? undefined} height={displaySize.height ?? undefined} style={{ width: previewWidth !== null ? `${previewWidth}px` : displaySize.width ? `${displaySize.width}px` : "auto", height: "auto" }} draggable="true" />}
-    {selected && editable && <button className={styles.resizeHandle} type="button" contentEditable={false} data-image-node-control="" draggable={false} aria-label="이미지 너비 조절" aria-valuemin={80} aria-valuemax={1600} aria-valuenow={Math.round(previewWidth ?? displaySize.width ?? imageRef.current?.getBoundingClientRect().width ?? 0)} aria-valuetext={`${Math.round(previewWidth ?? displaySize.width ?? imageRef.current?.getBoundingClientRect().width ?? 0)} 픽셀`} role="slider" onPointerDown={startResize} onKeyDown={resizeByKeyboard} onClick={event => event.stopPropagation()} />}
+    {editable && corners.map(corner => <button key={corner} className={styles.resizeHandle} data-corner={corner} data-resizing={previewWidth !== null && dragRef.current?.corner === corner || undefined} type="button" contentEditable={false} data-image-node-control="" draggable={false} aria-label={`이미지 ${cornerLabels[corner]} 크기 조절`} aria-valuemin={80} aria-valuemax={1600} aria-valuenow={Math.round(previewWidth ?? displaySize.width ?? imageRef.current?.getBoundingClientRect().width ?? 0)} aria-valuetext={`${Math.round(previewWidth ?? displaySize.width ?? imageRef.current?.getBoundingClientRect().width ?? 0)} 픽셀`} role="slider" onPointerDown={event => startResize(event, corner)} onKeyDown={resizeByKeyboard} onClick={event => event.stopPropagation()} />)}
     <div className={styles.tools} role="group" aria-label="이미지 편집" contentEditable={false} data-image-node-control="">
     {representative.enabled !== false && selectableRepresentativeImage(stableSrc) && <button
       className={styles.representativeButton}

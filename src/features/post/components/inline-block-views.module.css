@@ -10,7 +10,8 @@
 .toolbar select { margin-right: auto; }
 .toolbar button { background: transparent; border: 0; }
 .block .codeContent { background: transparent; border: 0; color: #303640; font: 14px/1.7 var(--font-mono, "JetBrains Mono", "D2Coding", monospace); font-variant-ligatures: normal; font-feature-settings: "calt" 1, "liga" 1; margin: 0; max-width: 100%; min-height: 80px; min-width: 0; outline: none; overflow-x: auto; padding: 12px 16px 18px; tab-size: 2; white-space: pre !important; overflow-wrap: normal !important; word-break: normal !important; }
-.block .codeContent :global([data-node-view-content]) { min-width: 100%; width: max-content; white-space: pre !important; overflow-wrap: normal !important; word-break: normal !important; }
+/* Keep the actual contentDOM block-level: native last-character deletion can remove an empty inline <code>, leaving ProseMirror with detached, stale text. */
+.block .codeContent :global([data-node-view-content-react]) { display: block; min-height: 1.7em; min-width: 100%; width: max-content; white-space: pre !important; overflow-wrap: normal !important; word-break: normal !important; }
 .copyStatus { color: #59636f; font-size: 12px; margin: 0; padding: 0 16px 10px; }
 .copyStatus:empty { display: none; }
 .heading { align-items: center; background: #fafbfc; border-bottom: 1px solid #e8ebee; display: flex; font-size: 13px; font-weight: 500; gap: 12px; justify-content: space-between; padding: 10px 14px; }

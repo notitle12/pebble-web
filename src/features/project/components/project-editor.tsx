@@ -12,6 +12,7 @@ import {ProjectDiagramSection} from "./project-diagram-section";
 import {ProjectCoverImage} from "./project-cover-image";
 import {ProjectDocumentView} from "./project-document-view";
 import {safeExternalUrl} from "../api/project-list";
+import {writerReturnHref} from "@/lib/writer-navigation";
 
 type Props = {
   value: ProjectEditorValue;
@@ -136,7 +137,7 @@ export function ProjectEditor({ value, onChange, busy, visibility, blocked, exis
 
   return <div className={`${styles.editor} writer-composer project-editor`}>
     <footer className={`${styles.toolbar} writer-action-bar`} aria-label="프로젝트 저장 및 발행">
-      <button type="button" className="writer-exit" disabled={busy||navigationBusy} onClick={()=>onExit?onExit():window.location.assign("/me/projects")}>나가기</button>
+      <button type="button" className="writer-exit" disabled={busy||navigationBusy} onClick={()=>onExit?onExit():window.location.assign(writerReturnHref("/me/projects"))}>나가기</button>
       <span className={styles.saveState} role="status">{busy ? "저장 중…" : autosaveStatus || feedback || "프로젝트를 자유롭게 기록해 보세요."}</span>
       <div className={styles.actions}>
         <button type="button" disabled={busy || navigationBusy || !onTemporarySave} onClick={() => void temporarySave()}>임시저장</button>

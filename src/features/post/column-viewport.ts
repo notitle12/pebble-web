@@ -33,7 +33,7 @@ export function columnViewportPlugin():Plugin<boolean> {
  return new Plugin({
   key:columnViewportKey,
   state:{init:()=>false,apply(tr,previous,oldState,newState){
-   const preserve=tr.getMeta(columnViewportKey)===true||tr.docChanged&&layoutShape(oldState.doc)!==layoutShape(newState.doc)||!!tr.getMeta('appendedTransaction')&&previous;
+   const preserve=tr.getMeta(columnViewportKey)!==false&&(tr.getMeta(columnViewportKey)===true||tr.docChanged&&layoutShape(oldState.doc)!==layoutShape(newState.doc)||!!tr.getMeta('appendedTransaction')&&previous);
    if(preserve&&tr.docChanged&&currentView&&!pending)pending=captureViewport(currentView.dom);
    return preserve;
   }},

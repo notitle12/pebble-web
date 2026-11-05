@@ -1,6 +1,7 @@
 import { Extension, Node, nodeInputRule } from "@tiptap/core";
 import { exitCode, newlineInCode } from "@tiptap/pm/commands";
 import type { EditorState } from "@tiptap/pm/state";
+import {textPanelExitTransaction} from "./text-panel-exit.ts";
 
 export const dividerStyles = ["solid", "dashed", "double", "short"] as const;
 export type DividerStyle = typeof dividerStyles[number];
@@ -22,7 +23,11 @@ export const TextPanel = Node.create({
   name: "textPanel", group: "block", content: "block+", defining: true,
   parseHTML() { return [{ tag: "div.post-text-block" }]; },
   renderHTML() { return ["div", { class: "post-text-block" }, 0]; },
-  addKeyboardShortcuts() { return { "Mod-Enter": () => {
+  addKeyboardShortcuts() { return { Enter:()=>{
+    if(!this.editor.isEditable||this.editor.view.composing)return false;
+    const tr=textPanelExitTransaction(this.editor.state);if(!tr)return false;
+    this.editor.view.dispatch(tr);return true;
+  }, "Mod-Enter": () => {
     const { $from } = this.editor.state.selection;
     for (let depth = $from.depth; depth > 0; depth--) {
       if ($from.node(depth).type.name !== this.name) continue;
