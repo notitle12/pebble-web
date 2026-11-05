@@ -1,7 +1,7 @@
 "use client";
 
 import { createPortal } from "react-dom";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { eraseImagePen } from "../image-pen-eraser";
 import { installImageHistoryKeys, type ImageHistoryActions } from "../image-history-keys";
 import styles from "./image-editor.module.css";
@@ -32,6 +32,7 @@ export type ImageEditorProps = {
   onCancel: () => void;
 };
 
+type ImageTransform = {left:number;top:number;width:number;height:number;pixelWidth:number;pixelHeight:number};
 type CropSelection = { startX: number; startY: number; endX: number; endY: number };
 type Tool = "crop" | "mosaic" | "text" | "pen" | "eraser";
 type ImageTextDraft = {id:string;editingId:string|null;x:number;y:number;sourceX:number;sourceY:number;sourceSize:PixelSize;text:string;maxWidth:number;fontSize:number;color:string};
@@ -129,7 +130,7 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
   const commitCommands = (next:ImageEditOperation[]) => updateHistory(commitImageEdit(historyRef.current,next));
   const [cropRect, setCropRect] = useState<CropOperation | null>(null);
   const [cropRedo, setCropRedo] = useState<CropOperation | null>(null);
-  const cropDrag = useRef<{ handle: CropHandle; rect: CropOperation; x: number; y: number } | null>(null);
+  const cropDrag = useRef<{ handle: CropHandle; rect: CropOperation; x: number; y: number; transform:ImageTransform } | null>(null);
   const [selection, setSelection] = useState<CropSelection | null>(null);
   const [pointerStart, setPointerStart] = useState<{ x: number; y: number } | null>(null);
   const [saving, setSaving] = useState(false);
@@ -137,12 +138,11 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
   const confirmationRef = useRef<HTMLElement>(null);
   const requestCancel = () => { if (!saving) setConfirmCancel(true); };
   const [saveError, setSaveError] = useState("");
-  const [notice, setNotice] = useState("");
   const [tool, setTool] = useState<Tool | null>(null);
   const [activeMosaicIndex, setActiveMosaicIndex] = useState<number | null>(null);
   const [mosaicBlockSize, setMosaicBlockSize] = useState(12);
   const [mosaicDraft, setMosaicDraft] = useState<{index:number;rect:CropOperation;offset:PenPoint;blockSize:number}|null>(null);
-  const mosaicDrag = useRef<{handle:CropHandle;rect:CropOperation;x:number;y:number}|null>(null);
+  const mosaicDrag = useRef<{handle:CropHandle;rect:CropOperation;x:number;y:number;transform:ImageTransform}|null>(null);
   const mosaicSizeGesture = useRef(false);
   const [textDraft, setTextDraft] = useState<ImageTextDraft|null>(null);
   const textDraftRef = useRef(textDraft);textDraftRef.current=textDraft;
@@ -216,15 +216,15 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
   const redraw = useCallback(() => {
     if (!bitmap || !displayRef.current) return;
     const working = replayHistory(bitmap, previewOperations, previewOperations.length);
-    if (workingRef.current) { workingRef.current.width = 0; workingRef.current.height = 0; }
-    workingRef.current = working;
-    setCanvasSize({ width: working.width, height: working.height });
-    setCropRect(fullImageCrop(working));
-    setCropRedo(null);
-    const display = displayRef.current;
-    display.width = working.width;
-    display.height = working.height;
-    display.getContext("2d")!.drawImage(working, 0, 0);
+    const previous=workingRef.current;workingRef.current=working;
+    setCanvasSize(size=>size.width===working.width&&size.height===working.height?size:{width:working.width,height:working.height});
+    const display=displayRef.current;
+    if(display.width!==working.width||display.height!==working.height){
+      display.width=working.width;display.height=working.height;
+      setCropRect(fullImageCrop(working));setCropRedo(null);
+    }
+    const context=display.getContext("2d")!;context.clearRect(0,0,display.width,display.height);context.drawImage(working,0,0);
+    if(previous){previous.width=0;previous.height=0;}
   }, [bitmap, previewOperations]);
 
   useEffect(() => { redraw(); }, [redraw]);
@@ -286,12 +286,12 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
       commitCommands([...historyRef.current.present, cropRect!]);
     }
     mosaicDrag.current=null;setMosaicDraft(null);mosaicSizeGesture.current=false;
-    cropDrag.current = null; setCropRedo(null); setSelection(null); setPointerStart(null); setActiveMosaicIndex(null); setTool(next); setNotice("");
+    cropDrag.current = null; setCropRedo(null); setSelection(null); setPointerStart(null); setActiveMosaicIndex(null); setTool(next);
   };
   const editMosaic = (index:number) => {
     commitText();setTool("mosaic");setActiveMosaicIndex(index);mosaicSizeGesture.current=false;
     const operation=historyRef.current.present[index];if(operation?.type==="mosaic")setMosaicBlockSize(operation.blockSize);
-    setNotice("모서리로 영역을 조절하거나 드래그해 이동하세요. 모자이크 크기도 다시 바꿀 수 있어요.");
+
   };
   const updateMosaicSize = (size: number) => {
     setMosaicBlockSize(size);
@@ -303,11 +303,11 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
   };
   const startMosaicDrag = (event:React.PointerEvent<HTMLElement>,handle:CropHandle) => {
     if(saving||activeMosaicIndex===null)return;
-    const region=mosaicRegions.find(value=>value.index===activeMosaicIndex),point=pointerCoordinates(event as React.PointerEvent<HTMLDivElement>);
-    if(!region||!point)return;
+    const region=mosaicRegions.find(value=>value.index===activeMosaicIndex),transform=imageTransform(),point=pointerCoordinates(event,transform);
+    if(!region||!point||!transform)return;
     event.preventDefault();event.stopPropagation();event.currentTarget.setPointerCapture(event.pointerId);
     const rect:CropOperation={type:"crop",x:region.x,y:region.y,width:region.width,height:region.height};
-    mosaicDrag.current={handle,rect,...point};
+    mosaicDrag.current={handle,rect,...point,transform};
     setMosaicDraft({index:region.index,rect,offset:{x:region.offsetX,y:region.offsetY},blockSize:region.operation.blockSize});
   };
   const moveMosaicKey = (event:React.KeyboardEvent<HTMLElement>,handle:CropHandle) => {
@@ -319,17 +319,17 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
   };
   const deleteMosaic = () => {
     if(activeMosaicIndex===null)return;
-    commitCommands(replaceImageMosaic(historyRef.current.present,activeMosaicIndex,null,mosaicBlockSize));setActiveMosaicIndex(null);setNotice("");
+    commitCommands(replaceImageMosaic(historyRef.current.present,activeMosaicIndex,null,mosaicBlockSize));setActiveMosaicIndex(null);
   };
   const clearPen = () => {
     setStrokePreview(null);setPointerStart(null);
-    commitCommands(clearImagePen(historyRef.current.present));setNotice("펜으로 그린 내용을 모두 지웠습니다. 실행 취소로 되돌릴 수 있어요.");
+    commitCommands(clearImagePen(historyRef.current.present));
   };
   const undo = () => {
     if(textDraftRef.current)commitText();
     cropDrag.current=null;mosaicDrag.current=null;setMosaicDraft(null);mosaicSizeGesture.current=false;setPointerStart(null);setStrokePreview(null);
     if(tool==="crop"&&hasCropChanges(cropRect,canvasSize)){setCropRedo(cropRect);setCropRect(fullImageCrop(canvasSize));return;}
-    setActiveMosaicIndex(null);updateHistory(undoImageEdit(historyRef.current));setSelection(null);setNotice("");
+    setActiveMosaicIndex(null);updateHistory(undoImageEdit(historyRef.current));setSelection(null);
   };
   const redo = () => {
     if(textDraftRef.current)commitText();
@@ -337,26 +337,25 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
     if(cropRedo){setCropRect(cropRedo);setCropRedo(null);return;}
     const next=redoImageEdit(historyRef.current);updateHistory(next);
     const last=next.present.at(-1);if(tool==="mosaic"&&last?.type==="mosaic"){setActiveMosaicIndex(next.present.length-1);setMosaicBlockSize(last.blockSize);}
-    setSelection(null);setNotice("");
+    setSelection(null);
   };
   historyActions.current={undo,redo,deleteSelected:deleteMosaic,blocked:saving||confirmCancel};
   useEffect(()=>installImageHistoryKeys(window,()=>historyActions.current),[]);
 
-  const pointerCoordinates = (event: React.PointerEvent<HTMLDivElement>) => {
-    const canvas = displayRef.current;
-    if (!canvas) return null;
-    const rect = canvas.getBoundingClientRect();
-    return {
-      x: Math.max(0, Math.min(canvas.width, (event.clientX - rect.left) * canvas.width / Math.max(1, rect.width))),
-      y: Math.max(0, Math.min(canvas.height, (event.clientY - rect.top) * canvas.height / Math.max(1, rect.height))),
-    };
+  const imageTransform = ():ImageTransform|null => {
+    const canvas=displayRef.current;if(!canvas)return null;
+    const rect=canvas.getBoundingClientRect();return {left:rect.left,top:rect.top,width:rect.width,height:rect.height,pixelWidth:canvas.width,pixelHeight:canvas.height};
+  };
+  const pointerCoordinates = (event: React.PointerEvent<HTMLElement>,transform=imageTransform()) => {
+    if(!transform)return null;
+    return {x:Math.max(0,Math.min(transform.pixelWidth,(event.clientX-transform.left)*transform.pixelWidth/Math.max(1,transform.width))),y:Math.max(0,Math.min(transform.pixelHeight,(event.clientY-transform.top)*transform.pixelHeight/Math.max(1,transform.height)))};
   };
   const startCropDrag = (event: React.PointerEvent<HTMLElement>, handle: CropHandle) => {
     if (saving || !cropRect) return;
-    const point = pointerCoordinates(event as React.PointerEvent<HTMLDivElement>);
-    if (!point) return;
+    const transform=imageTransform(),point=pointerCoordinates(event,transform);
+    if (!point||!transform) return;
     event.preventDefault(); event.stopPropagation(); event.currentTarget.setPointerCapture(event.pointerId);
-    cropDrag.current = {handle, rect: cropRect, ...point}; setCropRedo(null);
+    cropDrag.current = {handle, rect: cropRect, ...point,transform}; setCropRedo(null);
   };
   const cropKeys = (event: React.KeyboardEvent<HTMLElement>, handle: CropHandle) => {
     if (saving || !cropRect || !["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(event.key)) return;
@@ -373,7 +372,7 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
       const x=Math.max(0,Math.min(canvasSize.width-Math.min(120,canvasSize.width),Math.round(point.x)));
       const y=Math.max(0,Math.min(canvasSize.height-Math.min(textFontSize*1.5,canvasSize.height),Math.round(point.y)));
       updateTextDraft({id:crypto.randomUUID(),editingId:null,x,y,sourceX:x,sourceY:y,sourceSize:{...canvasSize},text:"",maxWidth:Math.max(1,Math.min(canvasSize.width-x,Math.max(120,Math.round(canvasSize.width*.45)))),fontSize:textFontSize,color:textColor});
-      setNotice("");return;
+      return;
     }
     event.currentTarget.setPointerCapture(event.pointerId);
     if (tool === "pen" || tool === "eraser") {
@@ -382,16 +381,16 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
     }
     setPointerStart(point);
     setSelection({ startX: point.x, startY: point.y, endX: point.x, endY: point.y });
-    setNotice("");
+
   };
   const pointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
     if(mosaicDrag.current){
-      const point=pointerCoordinates(event),drag=mosaicDrag.current;
+      const drag=mosaicDrag.current,point=pointerCoordinates(event,drag.transform);
       if(point)setMosaicDraft(previous=>previous?{...previous,rect:adjustCrop(drag.rect,drag.handle,point.x-drag.x,point.y-drag.y,canvasSize)}:null);
       return;
     }
     if (cropDrag.current) {
-      const point = pointerCoordinates(event), drag = cropDrag.current;
+      const drag=cropDrag.current,point=pointerCoordinates(event,drag.transform);
       if (point) setCropRect(adjustCrop(drag.rect, drag.handle, point.x-drag.x, point.y-drag.y, canvasSize));
       return;
     }
@@ -412,7 +411,7 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
   };
   const pointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
     if(mosaicDrag.current&&mosaicDraft){
-      const point=pointerCoordinates(event),drag=mosaicDrag.current;
+      const drag=mosaicDrag.current,point=pointerCoordinates(event,drag.transform);
       const rect=point?adjustCrop(drag.rect,drag.handle,point.x-drag.x,point.y-drag.y,canvasSize):mosaicDraft.rect;
       commitCommands(replaceImageMosaic(historyRef.current.present,mosaicDraft.index,rect,mosaicDraft.blockSize,mosaicDraft.offset));
       mosaicDrag.current=null;setMosaicDraft(null);return;
@@ -440,7 +439,7 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
       if (rect) {
         const current=historyRef.current.present;commitCommands([...current,createMosaicOperation(rect,mosaicBlockSize)]);
         setActiveMosaicIndex(current.length);mosaicSizeGesture.current=true;
-        setNotice("모자이크 크기를 조절하면 선택한 영역에 바로 반영됩니다.");
+
       }
     }
     setSelection(null); setPointerStart(null);
@@ -471,9 +470,9 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
   const activeMosaic=mosaicDraft?.rect??selectedMosaic;
   const pendingCrop = tool === "crop" && hasCropChanges(cropRect, canvasSize);
   return createPortal(<div className={styles.backdrop} onMouseDown={event => { if (event.target === event.currentTarget) {if(textDraftRef.current){commitText();return;}requestCancel();} }}>
-    <section ref={dialogRef} onPointerDownCapture={finishTextOnOutsidePointer} inert={confirmCancel} className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby="image-editor-title" aria-describedby="image-editor-help" tabIndex={-1}>
+    <section ref={dialogRef} onPointerDownCapture={finishTextOnOutsidePointer} inert={confirmCancel} className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby="image-editor-title" tabIndex={-1}>
       <header className={styles.header}>
-        <div><h2 id="image-editor-title">이미지 편집</h2><p id="image-editor-help">{tool === "text" ? "글씨를 넣을 위치를 클릭하고 입력하세요. Ctrl/⌘+Enter로 입력을 마칩니다." : tool === "eraser" ? "지울 펜 자국 위를 드래그하세요. 원본 이미지와 글씨·모자이크는 유지됩니다." : tool === "pen" ? "색과 굵기를 정한 뒤 이미지 위에 그리세요." : tool === "crop" ? "테두리의 조절점을 움직여 남길 영역을 정하세요." : tool === "mosaic" ? "영역을 지정하면 바로 모자이크됩니다. 슬라이더로 크기를 조절하세요." : "사용할 도구를 선택하세요."}</p></div>
+        <h2 id="image-editor-title">이미지 편집</h2>
 
       </header>
       {loadError ? <div className={styles.error} role="alert">{loadError}</div> : !bitmap ? <p className={styles.status} role="status">이미지를 불러오는 중…</p> : <>
@@ -486,7 +485,7 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
             <button type="button" className="editor-action" title="다시 실행" aria-label="다시 실행" onClick={redo} disabled={!history.future.length && !cropRedo || saving}><ActionIcon name="redo"/></button>
           </div>
         </div>
-        <div className={styles.stage} data-image-stage="" data-tool={tool??"none"} onPointerLeave={()=>setEraserPosition(null)} onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={() => { if (cropDrag.current) setCropRect(cropDrag.current.rect); cropDrag.current = null; mosaicDrag.current=null;setMosaicDraft(null);setPointerStart(null); setStrokePreview(null); }}>
+        <div className={styles.stage} style={{"--image-native-width":`${canvasSize.width}px`,"--image-ratio":canvasSize.width/Math.max(1,canvasSize.height)} as CSSProperties} data-image-stage="" data-tool={tool??"none"} onPointerLeave={()=>setEraserPosition(null)} onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={() => { if (cropDrag.current) setCropRect(cropDrag.current.rect); cropDrag.current = null; mosaicDrag.current=null;setMosaicDraft(null);setPointerStart(null); setStrokePreview(null); }}>
           <canvas ref={displayRef} className={styles.canvas} aria-label="편집할 이미지" />
           {tool === "crop" && bounds && current && <div className={styles.cropShade} aria-hidden="true" style={{clipPath:`polygon(evenodd, 0% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%, ${bounds.x/current.width*100}% ${bounds.y/current.height*100}%, ${bounds.x/current.width*100}% ${(bounds.y+bounds.height)/current.height*100}%, ${(bounds.x+bounds.width)/current.width*100}% ${(bounds.y+bounds.height)/current.height*100}%, ${(bounds.x+bounds.width)/current.width*100}% ${bounds.y/current.height*100}%, ${bounds.x/current.width*100}% ${bounds.y/current.height*100}%)`}}/>}
           {bounds && current && (tool === "crop" ? <div className={styles.cropFrame} role="group" aria-label="자르기 영역 이동" tabIndex={0} onPointerDown={event => startCropDrag(event, "move")} onKeyDown={event => cropKeys(event, "move")} style={{left:`${bounds.x/current.width*100}%`,top:`${bounds.y/current.height*100}%`,width:`${bounds.width/current.width*100}%`,height:`${bounds.height/current.height*100}%`}}>
@@ -507,7 +506,7 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
           <div className={styles.actions}>
             {tool === "crop" ? <span className={styles.dimensions}>남길 영역 {bounds?.width} × {bounds?.height}px</span> : tool === "mosaic" ? <>
               <label className={styles.rangeLabel}>모자이크 크기 <input type="range" min="4" max="48" step="2" value={mosaicBlockSize} onPointerDown={()=>{mosaicSizeGesture.current=false;}} onPointerUp={()=>{mosaicSizeGesture.current=false;}} onBlur={()=>{mosaicSizeGesture.current=false;}} onKeyDown={()=>{mosaicSizeGesture.current=false;}} onChange={event => updateMosaicSize(Number(event.currentTarget.value))} disabled={saving} /></label>
-              {activeMosaicIndex!==null&&<><button type="button" className={styles.mosaicDelete} aria-label="선택한 모자이크 삭제" title="선택한 모자이크 삭제" onClick={deleteMosaic} disabled={saving||confirmCancel}><ActionIcon name="delete"/></button><span className={styles.keyboardHint}>Backspace/Delete로 삭제</span></>}
+              <button type="button" className={styles.mosaicDelete} aria-label="선택한 모자이크 삭제" title="선택한 모자이크 삭제 (Backspace / Delete)" onClick={deleteMosaic} disabled={activeMosaicIndex===null||saving||confirmCancel}><ActionIcon name="delete"/></button>
             </> : tool === "text" ? <div className={styles.textSettings} data-image-text-control="">
               <label className={styles.rangeLabel}>글자 크기 <input type="range" min="16" max="160" step="2" value={textFontSize} onChange={event => {const fontSize=Number(event.currentTarget.value);setTextFontSize(fontSize);if(textDraftRef.current)updateTextDraft({...textDraftRef.current,fontSize});}} disabled={saving} /></label>
               <label className={styles.colorLabel}>글자색 <input type="color" value={textColor} onChange={event => {const color=event.currentTarget.value;setTextColor(color);if(textDraftRef.current)updateTextDraft({...textDraftRef.current,color});}} disabled={saving} /></label>
@@ -519,7 +518,6 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
           </div>
           <p className={styles.dimensions}>{canvasSize.width} × {canvasSize.height}px</p>
         </div>
-        {notice && <p className={styles.status} role="status">{notice}</p>}
         {saveError && <p className={styles.error} role="alert">{saveError}</p>}
       </>}
       <footer className={styles.footer}>
