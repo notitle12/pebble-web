@@ -7,16 +7,20 @@
 .image .tools button{display:inline-flex;align-items:center;justify-content:center;gap:6px;position:static;min-width:30px;min-height:30px;height:30px;margin:0;padding:0 8px;border:1px solid var(--line);border-radius:6px;background:color-mix(in srgb,var(--surface) 94%,transparent);color:var(--muted);box-shadow:0 2px 8px #0002;backdrop-filter:blur(8px);pointer-events:none;font-family:inherit;font-size:11px;font-weight:500;line-height:1.2;cursor:pointer;white-space:nowrap}
 .image .tools button svg{width:15px;height:15px;flex:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
 .image .tools .deleteButton{width:30px;padding:0;margin-left:auto}
-.image button.resizeHandle{box-sizing:border-box;min-width:0;min-height:0;margin:0;line-height:1;font-size:0;display:none;position:absolute;right:-12px;top:50%;transform:translateY(-50%);z-index:4;width:28px;height:48px;padding:0;border:0;border-radius:4px;background:transparent;box-shadow:none;cursor:ew-resize;touch-action:none}
-.image button.resizeHandle::before{content:"";position:absolute;left:12px;top:10px;width:4px;height:28px;border:1px solid color-mix(in srgb,var(--surface) 72%,transparent);border-radius:3px;background:var(--accent);box-shadow:0 1px 4px #0005}
-.image[data-selected="true"] .resizeHandle{display:block}
-.resizeHandle:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+.image button.resizeHandle{box-sizing:border-box;min-width:0;min-height:0;margin:0;line-height:1;font-size:0;display:block;position:absolute;z-index:4;width:24px;height:24px;padding:0;border:0;border-radius:0;background:transparent;box-shadow:none;touch-action:none}
+.image button.resizeHandle::before{content:"";position:absolute;inset:8px;border:1px solid var(--accent);border-radius:1px;background:var(--surface);box-shadow:0 1px 4px #0003;opacity:0;transition:opacity .1s ease}
+.image button.resizeHandle[data-corner="top-left"]{left:-12px;top:-12px;cursor:nwse-resize}
+.image button.resizeHandle[data-corner="top-right"]{right:-12px;top:-12px;cursor:nesw-resize}
+.image button.resizeHandle[data-corner="bottom-left"]{left:-12px;bottom:-12px;cursor:nesw-resize}
+.image button.resizeHandle[data-corner="bottom-right"]{right:-12px;bottom:-12px;cursor:nwse-resize}
+.image button.resizeHandle:hover::before,.image button.resizeHandle:focus-visible::before,.image button.resizeHandle[data-resizing="true"]::before{opacity:1}
+.resizeHandle:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .image .tools button:hover:not(:disabled){background:var(--accent-soft);color:var(--accent)}
 .image .tools .representativeButton[aria-pressed="true"]{color:var(--accent)}
 .image .tools button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .image .tools button:disabled{opacity:.45;cursor:default}
 @media(hover:none){.image[data-selected="true"] .tools{opacity:1;transform:none}.image .tools button{min-height:44px;height:44px}.image .tools .deleteButton{min-width:44px;width:44px}}
-@media(hover:none){.image[data-selected="true"] button.resizeHandle{min-height:0;width:36px;height:52px;right:-16px}.image button.resizeHandle::before{left:16px;top:12px;height:28px}}
+@media(hover:none){.image button.resizeHandle{visibility:hidden;width:40px;height:40px}.image[data-selected="true"] button.resizeHandle{visibility:visible}.image[data-selected="true"] button.resizeHandle::before{opacity:1;inset:15px}.image button.resizeHandle[data-corner^="top"]{top:-20px}.image button.resizeHandle[data-corner^="bottom"]{bottom:-20px}.image button.resizeHandle[data-corner$="left"]{left:-20px}.image button.resizeHandle[data-corner$="right"]{right:-20px}}
 @media(prefers-reduced-motion:reduce){.tools{transition:none}}
 
 .image:hover .tools button,.image:has(button:focus-visible) .tools button{pointer-events:auto}

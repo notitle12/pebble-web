@@ -2,6 +2,15 @@ const MIN_IMAGE_WIDTH = 80;
 const MAX_IMAGE_WIDTH = 1600;
 const MAX_IMAGE_HEIGHT = 16000;
 
+export type ImageResizeCorner = "top-left" | "top-right" | "bottom-left" | "bottom-right";
+
+/** Project the pointer onto the aspect-ratio diagonal, in the corner's direction. */
+export function imageCornerWidthDelta(dx: number, dy: number, ratio: number, corner: ImageResizeCorner): number {
+  const x = dx * (corner.endsWith("left") ? -1 : 1);
+  const y = dy * (corner.startsWith("top") ? -1 : 1);
+  return (x + y / ratio) / (1 + 1 / (ratio * ratio)) || 0;
+}
+
 function safeDimension(value: unknown, max: number): number | null {
   const number = typeof value === "number" ? value : typeof value === "string" && /^\d+$/.test(value) ? Number(value) : NaN;
   return Number.isSafeInteger(number) && number > 0 && number <= max ? number : null;
