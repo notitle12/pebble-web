@@ -1,7 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import {advanceWriterNavigation, safeWriterReturnHref, writerReturnHref, observeWriterNavigation} from '../src/lib/writer-navigation.ts';
 const empty=()=>({current:null,returnTo:null});
+const source=path=>readFileSync(new URL(path,import.meta.url),'utf8');
 
 for (const writer of ['/posts/new','/projects/new','/posts/123/edit','/projects/123/edit']) {
  test(`${writer} returns to the entry page including search, pagination and fragment`,()=>{
@@ -51,4 +53,16 @@ test('tab storage survives a page reload and a new -> edit history replacement',
   const stored=JSON.parse([...data.values()][0]);
   assert.deepEqual(stored,{current:'/posts/123/edit',returnTo:'/projects?page=6#list'});
  } finally {globalThis.window=originalWindow;globalThis.document=originalDocument;}
+});
+test('post and project exits use entry history with their management pages only as fallbacks',()=>{
+ const postWrite=source('../src/features/post/components/post-write-screen.tsx');
+ const projectWrite=source('../src/features/project/components/project-write-screen.tsx');
+ const postEditor=source('../src/features/post/components/post-editor.tsx');
+ const projectEditor=source('../src/features/project/components/project-editor.tsx');
+ assert.match(postWrite,/writerReturnHref\(postEditorExitHref\(post\)\)/);
+ assert.match(projectWrite,/writerReturnHref\(projectEditorExitHref\(project\)\)/);
+ assert.match(postEditor,/writerReturnHref\("\/me\/posts"\)/);
+ assert.match(projectEditor,/writerReturnHref\("\/me\/projects"\)/);
+ assert.doesNotMatch(postEditor,/window\.location\.assign\("\/me\/posts"\)/);
+ assert.doesNotMatch(projectEditor,/window\.location\.assign\("\/me\/projects"\)/);
 });
