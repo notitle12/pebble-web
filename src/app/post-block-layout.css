@@ -1,0 +1,76 @@
+/* The reader uses plain tables; Tiptap wraps them in a scroll container. */
+.post-prose.post-prose table {
+  margin-block: 24px 30px;
+}
+
+.post-prose.post-prose div.tableWrapper {
+  margin-block: 24px 30px;
+  padding-bottom: 0;
+}
+
+.post-prose.post-prose div.tableWrapper table {
+  margin-block: 0;
+}
+
+/* Both the editable NodeView and saved HTML identify the TOC by this label. */
+.post-prose.post-prose nav[aria-label="목차"] {
+  margin-block: 24px;
+  padding: 18px 22px;
+  border: 1px solid #ebecef;
+  border-radius: 5px;
+  background: #f8f9fa;
+  color: #4d535d;
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+.post-prose.post-prose nav[aria-label="목차"] > :is(h2, strong) {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.8;
+}
+
+.post-prose.post-prose nav[aria-label="목차"] ol {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.post-prose.post-prose nav[aria-label="목차"] li {
+  font-size: 14px;
+  line-height: 1.8;
+  list-style: none;
+}
+
+.post-prose.post-prose nav[aria-label="목차"] a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* Keep the heading's own numbering and mirror the editor's 12px steps. */
+.post-prose.post-prose nav[aria-label="목차"] li[data-level="2"] {
+  padding-left: 12px;
+}
+
+.post-prose.post-prose nav[aria-label="목차"] li[data-level="3"] {
+  padding-left: 24px;
+}
+
+.post-prose.post-prose nav[aria-label="목차"] li[data-level="4"] {
+  padding-left: 36px;
+}
+
+.post-prose.post-prose nav[aria-label="목차"] li[data-level="5"] {
+  padding-left: 48px;
+}
+
+.post-prose.post-prose nav[aria-label="목차"] li[data-level="6"] {
+  padding-left: 60px;
+}
+
+html[data-theme="dark"] .post-prose.post-prose nav[aria-label="목차"] {
+  border-color: var(--line);
+  background: var(--block-surface);
+  color: var(--text);
+}
