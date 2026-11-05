@@ -34,6 +34,7 @@ import { PostBody } from "./post-body";
 import styles from "./rich-body-editor.module.css";
 import { BlockAlignment } from "../block-alignment";
 import { CodeBlockSelection } from "../code-block-selection";
+import { EmptyBlockBackspace } from "../empty-block-backspace";
 import { ImageNodeView, RepresentativeImageProvider, ImageEditingProvider } from "./image-node-view";
 import { normalizeImageDisplaySize } from "../image-display-size";
 import { NaverLocationMap } from "./naver-location-map";
@@ -188,7 +189,7 @@ const extensionSet = [
   TableKit.configure({ table: false }), TableCellFormatting, TableShortcuts,
   ControllableTable, HeadingParagraphReset, InlineCode, InlineTableSpec, InlineArchitecture, InlineDatabase, AutomaticToc,
   FontSize,
-  BlockAlignment, CodeBlockSelection,
+  BlockAlignment, CodeBlockSelection, EmptyBlockBackspace,
   FontFamily,
   Color, ThemeTextDecorations, ImageTextLayout, ImageTextColumn,
   Highlight.configure({ multicolor: true }),
