@@ -18,9 +18,30 @@ test('auto-growing text near the bottom preserves its complete height instead of
  assert.deepEqual(fitImageTextBox('첫줄\n둘째\n셋째',{x:20,y:90,width:32,height:22},{width:200,height:100},16,measure,true),{x:20,y:38,width:32,height:62});
 });
 
+test('auto text keeps browser-measured height and width when composing characters changes the measured width',()=>{
+ const size={width:300,height:200};
+ const first=fitImageTextBox('가나',{x:10,y:10,width:80,height:43},size,16,measure,true);
+ const composing=fitImageTextBox('가ㄴ',first,size,16,measure,true);
+ const complete=fitImageTextBox('가나',composing,size,16,measure,true);
+ assert.deepEqual(first,{x:10,y:10,width:80,height:43});
+ assert.deepEqual(composing,first);
+ assert.deepEqual(complete,first);
+});
+
+test('auto text reserves caret space and only grows while more text is entered',()=>{
+ let rect={x:10,y:10,width:32,height:22};
+ for(const text of ['가나다','가나다라','가나다라마']){
+  const next=fitImageTextBox(text,rect,{width:300,height:200},16,measure,true);
+  assert.ok(next.width>=measure(text)+8);
+  assert.ok(next.width>=rect.width);
+  assert.equal(next.height,22);
+  rect=next;
+ }
+});
+
 test('auto text box starts clickable when empty and grows for Korean and multiline text',()=>{
  assert.deepEqual(autoImageTextBox('',10,10,{width:300,height:200},16,measure),{width:32,height:22});
- assert.deepEqual(autoImageTextBox('가나다\n라마',10,10,{width:300,height:200},16,measure),{width:32,height:42});
+ assert.deepEqual(autoImageTextBox('가나다\n라마',10,10,{width:300,height:200},16,measure),{width:38,height:42});
 });
 
 test('auto text box wraps naturally when the remaining image width is limited',()=>{

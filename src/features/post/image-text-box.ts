@@ -26,7 +26,8 @@ export function autoImageTextBox(
     const measured = measure(line);
     return Number.isFinite(measured) && measured >= 0 ? Math.max(width, measured) : width;
   }, 0);
-  const width = Math.min(availableWidth, Math.max(fontSize * 2, naturalWidth + 2));
+  // Leave space for the caret and an IME's in-progress glyph at fractional scales.
+  const width = Math.min(availableWidth, Math.max(fontSize * 2, naturalWidth + Math.max(2, fontSize / 2)));
   const lineHeight = Math.max(1, Math.round(fontSize * 1.25));
   const lines = imageTextLines(text, Math.max(0, width - 2), line => {
     const measured = measure(line);
@@ -47,11 +48,11 @@ export function fitImageTextBox(
 ): ImageTextBox {
   const x = Math.max(0, Math.min(size.width, rect.x));
   const width = autoWidth
-    ? autoImageTextBox(text, x, 0, size, fontSize, measure).width
+    ? Math.min(size.width - x, Math.max(rect.width, autoImageTextBox(text, x, 0, size, fontSize, measure).width))
     : Math.max(1, Math.min(size.width - x, rect.width));
   const lineHeight = Math.max(1, Math.round(fontSize * 1.25));
   const contentHeight = imageTextLines(text, Math.max(1, width - 2), measure).length * lineHeight + 2;
-  const height = Math.min(size.height, Math.max(contentHeight, autoWidth ? 0 : rect.height));
+  const height = Math.min(size.height, Math.max(contentHeight, rect.height));
   return { x, y: Math.max(0, Math.min(rect.y, size.height - height)), width, height };
 }
 
