@@ -3,7 +3,8 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { MemberGate } from "../../auth/components/member-gate";
 import { userSession, type Member } from "../../auth/user-session";
-import { getContentInsights, INSIGHT_DAYS, insightDetailHref, insightPoints, type ContentInsights as InsightsData, type InsightDays, type InsightItem } from "../model";
+import { getContentInsights, INSIGHT_DAYS, insightDetailHref, type ContentInsights as InsightsData, type InsightDays, type InsightItem } from "../model";
+import { InsightTrendChart } from "./insight-trend-chart";
 import styles from "./content-insights.module.css";
 import { InsightsNavigation } from "./insights-navigation";
 
@@ -16,11 +17,10 @@ function Ranking({ kind, rows }: { kind: "posts" | "projects"; rows: InsightItem
   </section>;
 }
 function Trend({ data }: { data: InsightsData }) {
-  const maximum = Math.max(1, ...data.daily.flatMap(day => [day.postViews, day.projectViews]));
   return <section className={styles.trend} aria-labelledby="insight-trend-title"><div className={styles.sectionHeading}><h2 id="insight-trend-title">조회 추이</h2>{data.days === 0 && <span>최근 30일</span>}</div>
     <div className={styles.legend}><span><i className={styles.postDot}/>게시글</span><span><i className={styles.projectDot}/>프로젝트</span></div>
-    <div className={styles.chart}><span className={styles.maximum}>{number(maximum)}</span><svg viewBox="0 0 720 160" role="img" aria-label={`${data.chartDays}일간 게시글 및 프로젝트의 일별 조회 추이. 아래 일별 조회 수에서 상세 숫자를 확인할 수 있습니다.`}><path d="M16 24H704 M16 82H704 M16 140H704" className={styles.grid}/><polyline points={insightPoints(data.daily, "postViews")} className={styles.postLine}/><polyline points={insightPoints(data.daily, "projectViews")} className={styles.projectLine}/></svg><div className={styles.axis}><span>{data.daily[0].date.slice(5).replace("-", ".")}</span><span>{data.toDate.slice(5).replace("-", ".")}</span></div></div>
-    <details className={styles.daily}><summary>일별 조회 수</summary><div className={styles.tableScroll}><table><caption className="sr-only">한국시간 기준 일별 조회 수</caption><thead><tr><th scope="col">날짜</th><th scope="col">게시글</th><th scope="col">프로젝트</th></tr></thead><tbody>{[...data.daily].reverse().map(day => <tr key={day.date}><th scope="row">{day.date}</th><td>{number(day.postViews)}</td><td>{number(day.projectViews)}</td></tr>)}</tbody></table></div></details>
+    <InsightTrendChart rows={data.daily.map(day => ({ label: day.date, values: [day.postViews, day.projectViews] }))} series={[{ label: "게시글", kind: "post" }, { label: "프로젝트", kind: "project" }]} compactDates label={`${data.chartDays}일간 게시글 및 프로젝트의 일별 조회 추이`}/>
+
   </section>;
 }
 function Dashboard({ member }: { member: Member }) {
@@ -38,7 +38,7 @@ function Dashboard({ member }: { member: Member }) {
     <div id="insight-panel" role="tabpanel" aria-labelledby={`insight-tab-${days}`} aria-busy={loading}>{loading ? <p className={styles.state} role="status">조회 통계를 불러오고 있어요.</p> : !data ? <div className={styles.state}><p role="alert">{state.error}</p><button type="button" className="button" onClick={() => setAttempt(value => value + 1)}>다시 불러오기</button></div> : <>
       <p className={styles.period}>{data.fromDate ? `${data.fromDate} – ${data.toDate}` : `집계 시작 – ${data.toDate}`} · 한국시간 기준</p><dl className={styles.summary}><div><dt>게시글 조회</dt><dd>{number(data.postViews)}<small>회</small></dd></div><div><dt>프로젝트 조회</dt><dd>{number(data.projectViews)}<small>회</small></dd></div></dl>
       <Trend data={data}/><div className={styles.rankings}><Ranking kind="posts" rows={data.posts}/><Ranking kind="projects" rows={data.projects}/></div>
-      <aside className={styles.note}><p>{new Intl.DateTimeFormat("ko-KR", { dateStyle: "long", timeZone: "Asia/Seoul" }).format(new Date(data.trackingStartedAt))}부터 집계하며, 이전 조회는 포함하지 않습니다.</p><p>공개 콘텐츠를 3초 이상 읽은 방문을 브라우저별·콘텐츠별 하루 한 번 집계합니다. 로그인한 작성자 본인의 조회는 제외하며, 브라우저·기기·쿠키 설정에 따라 실제 독자 수와 다를 수 있어요.</p><p>유입 경로는 최근 7일만 보관한 뒤 삭제합니다. 출처를 제외한 조회 수는 일별 90일, 월별 24개월 보관하고 그 이전은 연도별 합계로 통합합니다. 전체 조회는 누적으로 보여줍니다. 비공개·이용 제한 콘텐츠의 이전 조회는 유지되며, 삭제한 콘텐츠는 제외됩니다.</p></aside>
+
     </>}</div></section>;
 }
 export function ContentInsights() { return <MemberGate profile>{member => <Dashboard key={member.id} member={member}/>}</MemberGate>; }
