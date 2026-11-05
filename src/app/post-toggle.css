@@ -1,0 +1,4 @@
+.rich-editor-canvas [data-post-toggle],
+.post-rich-content details {
+  border: 0;
+}

@@ -1,0 +1,11 @@
+.post-prose .post-columns{display:grid;grid-template-columns:minmax(0,var(--column-left,1fr)) minmax(0,var(--column-right,1fr));gap:24px;align-items:start;margin:24px 0}
+.post-column{min-width:0}.post-column>:first-child{margin-top:0}.post-column>:last-child{margin-bottom:0}
+.post-columns-editor{position:relative;margin:24px 0}.post-columns-editor>.post-columns{margin:0}
+.rich-editor-canvas .post-column{min-height:72px;padding:10px;border:1px dashed var(--line);border-radius:8px}
+@media(max-width:640px){.post-prose .post-columns,.post-prose .post-columns[data-ratio]{grid-template-columns:minmax(0,1fr);gap:16px}}
+
+.post-columns-separator{position:absolute;z-index:4;top:0;bottom:0;width:24px;transform:translateX(-50%);cursor:col-resize;touch-action:none;user-select:none;outline:none}
+.post-columns-separator::after{content:"";position:absolute;top:8px;bottom:8px;left:11px;width:2px;border-radius:2px;background:var(--line);opacity:.5;transition:background .12s,opacity .12s}
+.post-columns-separator:hover::after,.post-columns-separator:focus-visible::after,.post-columns-editor[data-resizing]>.post-columns-separator::after{background:var(--accent);opacity:1;width:3px}
+.post-columns-separator:focus-visible{outline:1px dashed var(--focus);outline-offset:-3px;border-radius:4px}
+@media(max-width:640px){.post-columns-separator{display:none}}

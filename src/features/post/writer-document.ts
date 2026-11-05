@@ -3,7 +3,7 @@ import type { JSONContent } from "@tiptap/core";
 import type { EditorBlock } from "./post-editor-model.ts";
 import { parseArchitectureSpec, parseTableSpec } from "./api/post-list.ts";
 
-export const codeLanguages = ["JAVA", "JAVASCRIPT", "TYPESCRIPT", "PYTHON", "HTML", "CSS", "SQL", "JSON", "YAML", "MARKDOWN", "BASH", "SHELL"];
+export { codeLanguages } from "./code-languages.ts";
 export const textSizes = { p: ["12px", "14px", "16px", "18px", "20px", "24px"], "1": ["28px", "32px", "36px", "40px", "48px"], "2": ["22px", "24px", "28px", "32px", "36px"], "3": ["18px", "20px", "22px", "24px", "28px"] };
 export const defaultTextSizes = { p: "16px", "1": "32px", "2": "24px", "3": "20px" };
 export const textColors = ["#202124", "#5f6368", "#9aa0a6", "#c62828", "#ef6c00", "#b8860b", "#2e7d32", "#1565c0", "#6a1b9a", "#ffffff"];
@@ -39,11 +39,16 @@ export function documentToBlocks(doc: JSONContent, renderRich: (doc: JSONContent
   };
   const isSpecial = (node: JSONContent) => Object.values(nodeTypes).includes(node.type ?? "");
   const containsSpecial = (node: JSONContent): boolean => isSpecial(node) || !!node.content?.some(containsSpecial);
+  const containsInvalidSpecial = (node: JSONContent): boolean => isSpecial(node) && node.attrs?.valid === false || !!node.content?.some(containsInvalidSpecial);
+  const nestedContainers = new Set(["textPanel", "details", "imageTextLayout", "imageTextColumn"]);
   const append = (node: JSONContent) => {
     if (isSpecial(node)) {
       flush();
       const type = node.type === "pebbleCode" ? "CODE" : node.type === "tableSpec" ? "TABLE" : node.type === "databaseSchema" ? "DB_SCHEMA" : "ARCHITECTURE";
       result.push({ ...(type === "DB_SCHEMA" ? {editorTab: node.attrs?.editorTab === "SPEC" ? "SPEC" : "ERD"} : {}), key: node.attrs?.key ?? `inline-${result.length}`, type, content: type === "CODE" ? (node.content ?? []).map(child => child.text ?? "").join("") : JSON.stringify(node.attrs?.spec), language: type === "CODE" ? node.attrs?.language ?? "TYPESCRIPT" : null, title: node.attrs?.title ?? null, valid: node.attrs?.valid !== false, alignment: node.attrs?.align === "center" ? "CENTER" : node.attrs?.align === "right" ? "RIGHT" : "LEFT" });
+    } else if (nestedContainers.has(node.type ?? "") && !containsInvalidSpecial(node)) {
+      // These containers have a matching safe HTML schema in the editor and reader.
+      rich.push(node);
     } else if (node.content?.some(containsSpecial)) {
       // 붙여넣은 인용/목록 안에 구조 블록이 있어도 누락하지 않고 형식 경계에서 분리한다.
       let children: JSONContent[] = [];

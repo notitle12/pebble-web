@@ -9,8 +9,8 @@ import { ArchitectureBlock } from "./architecture-block";
 import { ArchitectureEditor } from "./architecture-editor";
 import styles from "./inline-block-views.module.css";
 import { TableTextInput } from "./table-text-input";
+import { codeLanguages as languages } from "../code-languages";
 
-const languages = ["JAVA", "JAVASCRIPT", "TYPESCRIPT", "PYTHON", "HTML", "CSS", "SQL", "JSON", "YAML", "MARKDOWN", "BASH", "SHELL"];
 export const defaultInlineTableSpec = (): TableSpec => ({ schemaVersion: 1, tableName: "", columns: [{ name: "", dataType: "", primaryKey: false, nullable: true }] });
 export const defaultInlineArchitectureSpec = (): ArchitectureSpec => ({ schemaVersion: 1, groups: [], nodes: [{ id: "client", type: "CLIENT", label: "", icon: "CLIENT", position: { x: 56, y: 80 } }], edges: [] });
 function useEditable(editor: NodeViewProps["editor"]) {
@@ -44,8 +44,8 @@ export function InlineCodeView({ node, editor, updateAttributes, deleteNode }: N
       <select aria-label="코드 언어" value={node.attrs.language ?? "TYPESCRIPT"} disabled={!editable} onChange={event => { if (editor.isEditable) updateAttributes({ language: event.target.value }); }}>
         {languages.map(language => <option key={language} value={language}>{language}</option>)}
       </select>
-      <button type="button" onClick={() => void copyCode()}>코드 복사</button>
-      <button type="button" aria-label="코드 블록 삭제" disabled={!editable} onClick={() => { if (editor.isEditable) deleteNode(); }}>삭제</button>
+      <button className="editor-action" data-editor-action="code" type="button" onClick={() => void copyCode()}>코드 복사</button>
+      <button className="editor-action" data-editor-action="code" type="button" aria-label="코드 블록 삭제" disabled={!editable} onClick={() => { if (editor.isEditable) deleteNode(); }}>삭제</button>
     </div>
     <NodeViewContent<"pre"> as="pre" className={styles.codeContent} spellCheck={false} aria-label="코드 내용" />
     <p className={styles.copyStatus} contentEditable={false} role="status">{copyMessage}</p>

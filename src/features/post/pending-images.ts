@@ -1,9 +1,10 @@
 import {mediaFileError} from "../media/model.ts";
 import type {PostEditorValue} from "./post-editor-model.ts";
 export const pendingImagePrefix="https://pebble.local.invalid/images/";
+export type PendingImageSnapshot={src:string;file:Blob;name:string;type:string;lastModified:number;uploadedSrc?:string};
 type UploadedImage={src:string;previewUrl:string};
 type PendingImage={file:File;previewUrl:string;uploaded?:UploadedImage};
-/** Files stay in this writer's memory until an explicit save; never enter localStorage. */
+/** Pending files can be checkpointed to IndexedDB; blob URLs are recreated on recovery. */
 export function createPendingImages(createUrl:(file:File)=>string=file=>URL.createObjectURL(file),revokeUrl:(url:string)=>void=url=>URL.revokeObjectURL(url)) {
   const images=new Map<string,PendingImage>();
   function refs(value:PostEditorValue){return [...images.keys()].filter(src=>value.blocks.some(block=>block.content.includes(src)));}
@@ -12,6 +13,19 @@ export function createPendingImages(createUrl:(file:File)=>string=file=>URL.crea
       const error=mediaFileError(file);if(error)throw new Error(error);
       if(images.size>=50)throw new Error("한 번의 편집에서 이미지는 최대 50개까지 첨부할 수 있어요.");
       const src=pendingImagePrefix+crypto.randomUUID(),previewUrl=createUrl(file);images.set(src,{file,previewUrl});return {src,previewUrl};
+    },
+    snapshot(value:PostEditorValue):PendingImageSnapshot[]{return refs(value).map(src=>{const image=images.get(src)!;return {src,file:image.file,name:image.file.name,type:image.file.type,lastModified:image.file.lastModified,...(image.uploaded?{uploadedSrc:image.uploaded.src}:{})};});},
+    restore(records:PendingImageSnapshot[]):Record<string,string>{
+      if(records.length>50)throw new Error("복구할 이미지가 너무 많습니다.");
+      const prepared=records.map(record=>{
+        if(!record.src.startsWith(pendingImagePrefix)||!(record.file instanceof Blob))throw new Error("복구할 이미지 파일을 확인해 주세요.");
+        const file=new File([record.file],record.name,{type:record.type,lastModified:record.lastModified});
+        const error=mediaFileError(file);if(error)throw new Error(error);
+        return {record,file};
+      });
+      const previews:Record<string,string>={};
+      for(const {record,file} of prepared){const previewUrl=createUrl(file),old=images.get(record.src);if(old)revokeUrl(old.previewUrl);images.set(record.src,{file,previewUrl,...(record.uploadedSrc?{uploaded:{src:record.uploadedSrc,previewUrl}}:{})});previews[record.src]=previewUrl;}
+      return previews;
     },
     getFile(src:string):File|undefined {return images.get(src)?.file;},
     has(value:PostEditorValue){return value.blocks.some(block=>block.content.includes(pendingImagePrefix));},
