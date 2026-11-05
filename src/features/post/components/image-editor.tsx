@@ -1,5 +1,6 @@
 "use client";
 import {fitImageTextBox,resizeImageTextBox,type ImageTextBox} from "../image-text-box";
+import {imageCropWorkspace,replaceImageCrop,sameImageCrop} from "../image-crop-session";
 
 import { createPortal } from "react-dom";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
@@ -7,7 +8,7 @@ import { eraseImagePen } from "../image-pen-eraser";
 import { installImageHistoryKeys, type ImageHistoryActions } from "../image-history-keys";
 import styles from "./image-editor.module.css";
 import { clearImagePen, emptyImageHistory, commitImageEdit, undoImageEdit, redoImageEdit, replaceImageText, type ImageEditHistory } from "../image-edit-history";
-import { imageTextInputSurface, placedImageMosaics, replaceImageMosaic, placedImageTexts, imageTextLines, adjustCrop, fullImageCrop, hasCropChanges, clampCropRect, createMosaicOperation, createPenOperation, createTextOperation, safeBitmapSize, type CropOperation, type CropHandle, type ImageEditOperation, type PenPoint, type TextOperation, type PlacedImageText, type PixelSize } from "../image-edit-model";
+import { imageTextInputSurface, placedImageMosaics, replaceImageMosaic, placedImageTexts, imageTextLines, adjustCrop, fullImageCrop, clampCropRect, createMosaicOperation, createPenOperation, createTextOperation, safeBitmapSize, type CropOperation, type CropHandle, type ImageEditOperation, type PenPoint, type TextOperation, type PlacedImageText, type PixelSize } from "../image-edit-model";
 
 type ActionName = "crop" | "mosaic" | "text" | "pen" | "eraser" | "clear" | "undo" | "redo" | "check" | "cancel" | "delete";
 const actionPaths: Record<ActionName, string[]> = {
@@ -219,11 +220,13 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
     if (mounted) (confirmCancel ? confirmationRef : dialogRef).current?.querySelector<HTMLButtonElement>("button:not(:disabled)")?.focus({ preventScroll: true });
   }, [mounted, confirmCancel]);
 
+  const cropWorkspace=useMemo(()=>bitmap?imageCropWorkspace(operations,bitmap):null,[operations,bitmap]);
+  const cropChanged=!!cropRect&&!!cropWorkspace&&!sameImageCrop(cropRect,cropWorkspace.crop);
   const basePreviewOperations = useMemo(()=>{
     const next=textDraft?.editingId?operations.filter(operation=>operation.type!=="text"||operation.id!==textDraft.editingId):operations;
     return mosaicDraft?replaceImageMosaic(next,mosaicDraft.index,mosaicDraft.rect,mosaicDraft.blockSize,mosaicDraft.offset):next;
   },[operations,textDraft?.editingId,mosaicDraft]);
-  const previewOperations=useMemo(()=>tool==="eraser"&&strokePreview?eraseImagePen(basePreviewOperations,strokePreview,eraserWidth):basePreviewOperations,[basePreviewOperations,tool,strokePreview,eraserWidth]);
+  const previewOperations=useMemo(()=>tool==="crop"&&cropWorkspace?cropWorkspace.operations:tool==="eraser"&&strokePreview?eraseImagePen(basePreviewOperations,strokePreview,eraserWidth):basePreviewOperations,[basePreviewOperations,tool,strokePreview,eraserWidth,cropWorkspace]);
   const mosaicRegions = useMemo(()=>bitmap?placedImageMosaics(operations,bitmap):[],[operations,bitmap]);
   const textRegions = useMemo(()=>{
     if(!bitmap)return [];
@@ -238,11 +241,11 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
     const display=displayRef.current;
     if(display.width!==working.width||display.height!==working.height){
       display.width=working.width;display.height=working.height;
-      setCropRect(fullImageCrop(working));setCropRedo(null);
+      if(tool!=="crop")setCropRect(fullImageCrop(working));setCropRedo(null);
     }
     const context=display.getContext("2d")!;context.clearRect(0,0,display.width,display.height);context.drawImage(working,0,0);
     if(previous){previous.width=0;previous.height=0;}
-  }, [bitmap, previewOperations]);
+  }, [bitmap, previewOperations,tool]);
 
   useEffect(() => { redraw(); }, [redraw]);
 
@@ -338,9 +341,10 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
   const selectTool = (next: Tool) => {
     if (next === tool) return;
     if (textDraftRef.current) commitText();
-    if (tool === "crop" && hasCropChanges(cropRect, canvasSize)) {
-      commitCommands([...historyRef.current.present, cropRect!]);
+    if (tool === "crop" && cropChanged&&bitmap) {
+      commitCommands(replaceImageCrop(historyRef.current.present,cropRect!,bitmap));
     }
+    if(next==="crop"&&bitmap)setCropRect(imageCropWorkspace(historyRef.current.present,bitmap).crop);
     textDrag.current=null;mosaicDrag.current=null;setMosaicDraft(null);mosaicSizeGesture.current=false;
     cropDrag.current = null; setCropRedo(null); setSelection(null); setPointerStart(null); setActiveMosaicIndex(null); setTool(next);
   };
@@ -384,14 +388,17 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
   const undo = () => {
     if(textDraftRef.current)commitText();
     cropDrag.current=null;textDrag.current=null;mosaicDrag.current=null;setMosaicDraft(null);mosaicSizeGesture.current=false;setPointerStart(null);setStrokePreview(null);
-    if(tool==="crop"&&hasCropChanges(cropRect,canvasSize)){setCropRedo(cropRect);setCropRect(fullImageCrop(canvasSize));return;}
-    setActiveMosaicIndex(null);updateHistory(undoImageEdit(historyRef.current));setSelection(null);
+    if(tool==="crop"&&cropChanged&&cropWorkspace){setCropRedo(cropRect);setCropRect(cropWorkspace.crop);return;}
+    const next=undoImageEdit(historyRef.current);
+    if(tool==="crop"&&bitmap)setCropRect(imageCropWorkspace(next.present,bitmap).crop);
+    setCropRedo(null);setActiveMosaicIndex(null);updateHistory(next);setSelection(null);
   };
   const redo = () => {
     if(textDraftRef.current)commitText();
     textDrag.current=null;mosaicDrag.current=null;setMosaicDraft(null);mosaicSizeGesture.current=false;
     if(cropRedo){setCropRect(cropRedo);setCropRedo(null);return;}
     const next=redoImageEdit(historyRef.current);updateHistory(next);
+    if(tool==="crop"&&bitmap)setCropRect(imageCropWorkspace(next.present,bitmap).crop);
     const last=next.present.at(-1);if(tool==="mosaic"&&last?.type==="mosaic"){setActiveMosaicIndex(next.present.length-1);setMosaicBlockSize(last.blockSize);}
     setSelection(null);
   };
@@ -516,8 +523,8 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
   const apply = async () => {
     if (!bitmap || saving) return;
     const draft=textDraftRef.current;
-    const exported = draft?replaceImageText(historyRef.current.present,draft.editingId,pendingText(draft)):historyRef.current.present.slice();
-    if (tool === "crop" && hasCropChanges(cropRect, canvasSize)) exported.push(cropRect!);
+    let exported = draft?replaceImageText(historyRef.current.present,draft.editingId,pendingText(draft)):historyRef.current.present.slice();
+    if(tool==="crop"&&cropRect)exported=replaceImageCrop(exported,cropRect,bitmap);
     const canvas = replayHistory(bitmap, exported, exported.length);
     setSaving(true);
     setSaveError("");
@@ -536,7 +543,7 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
   const bounds = tool === "crop" ? cropRect : selection && current ? cropBounds(selection, current.width, current.height) : null;
   const selectedMosaic=mosaicRegions.find(region=>region.index===activeMosaicIndex);
   const activeMosaic=mosaicDraft?.rect??selectedMosaic;
-  const pendingCrop = tool === "crop" && hasCropChanges(cropRect, canvasSize);
+  const pendingCrop = tool === "crop" && cropChanged;
   return createPortal(<div className={styles.backdrop} onMouseDown={event => { if (event.target === event.currentTarget) {if(textDraftRef.current){commitText();return;}requestCancel();} }}>
     <section ref={dialogRef} onPointerDownCapture={finishTextOnOutsidePointer} inert={confirmCancel} className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby="image-editor-title" tabIndex={-1}>
       <header className={styles.header}>
