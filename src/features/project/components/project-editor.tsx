@@ -28,6 +28,7 @@ type Props = {
   relatedPostsElement?: ReactNode;
   relatedPostsPreviewElement?: ReactNode;
   onExit?: () => void;
+  autosaveStatus?: string;
   navigationBusy?: boolean;
   featuredElement?: (visibility: ProjectVisibility) => ReactNode;
   onPublishOpen?: () => void;
@@ -40,7 +41,7 @@ const linkTypes: { value: LinkInput["linkType"]; label: string }[] = [
   { value: "DOWNLOAD", label: "다운로드" }, { value: "OTHER", label: "기타" },
 ];
 
-export function ProjectEditor({ value, onChange, busy, visibility, blocked, existingTechStacks = [], onSave, onTemporarySave, uploadImage, imagePreviews = {}, coverElement, relatedPostsElement, relatedPostsPreviewElement, onExit, navigationBusy = false, featuredElement, onPublishOpen, coverPreviewUrl, representativeImageSrc, onSelectRepresentativeImage }: Props) {
+export function ProjectEditor({ value, onChange, busy, visibility, blocked, existingTechStacks = [], onSave, onTemporarySave, uploadImage, imagePreviews = {}, coverElement, relatedPostsElement, relatedPostsPreviewElement, onExit, autosaveStatus, navigationBusy = false, featuredElement, onPublishOpen, coverPreviewUrl, representativeImageSrc, onSelectRepresentativeImage }: Props) {
   const id = useId();
   const currentValue = useRef(value);
   currentValue.current = value;
@@ -136,7 +137,7 @@ export function ProjectEditor({ value, onChange, busy, visibility, blocked, exis
   return <div className={`${styles.editor} writer-composer project-editor`}>
     <footer className={`${styles.toolbar} writer-action-bar`} aria-label="프로젝트 저장 및 발행">
       <button type="button" className="writer-exit" disabled={busy||navigationBusy} onClick={()=>onExit?onExit():window.location.assign("/me/projects")}>나가기</button>
-      <span className={styles.saveState} role="status">{busy ? "저장 중…" : feedback || "프로젝트를 자유롭게 기록해 보세요."}</span>
+      <span className={styles.saveState} role="status">{busy ? "저장 중…" : autosaveStatus || feedback || "프로젝트를 자유롭게 기록해 보세요."}</span>
       <div className={styles.actions}>
         <button type="button" disabled={busy || navigationBusy || !onTemporarySave} onClick={() => void temporarySave()}>임시저장</button>
         <button type="button" disabled={busy||navigationBusy} onClick={() => setPreview(previous => !previous)}>{preview ? "편집으로 돌아가기" : "미리보기"}</button>

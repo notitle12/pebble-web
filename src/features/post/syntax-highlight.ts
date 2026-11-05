@@ -85,9 +85,10 @@ export function normalizeLanguage(lang: string | null | undefined): string {
       return "sql";
     case "html":
     case "htm":
-    case "xml":
     case "svg":
       return "html";
+    case "xml":
+      return "xml";
     case "css":
     case "scss":
     case "sass":
@@ -128,6 +129,7 @@ export function formatLanguageLabel(lang: string | null | undefined): string {
     case "python": return "Python";
     case "sql": return "SQL";
     case "html": return "HTML";
+    case "xml": return "XML";
     case "css": return "CSS";
     case "json": return "JSON";
     case "bash": return "Bash";
@@ -146,6 +148,7 @@ export function tokenizeCode(code: string, language: string | null): Token[] {
   }
 
   const isSql = norm === "sql";
+  const isMarkup = norm === "xml";
   const isPython = norm === "python" || norm === "bash" || norm === "yaml";
 
   const tokens: Token[] = [];
@@ -238,7 +241,8 @@ export function tokenizeCode(code: string, language: string | null): Token[] {
       const lower = word.toLowerCase();
 
       const isKeyword =
-        (norm === "java" ? JAVA_KEYWORDS.has(word) :
+        (isMarkup ? false :
+         norm === "java" ? JAVA_KEYWORDS.has(word) :
          isSql ? SQL_KEYWORDS.has(lower) :
          norm === "python" ? PYTHON_KEYWORDS.has(word) :
          COMMON_KEYWORDS.has(word));
@@ -252,6 +256,8 @@ export function tokenizeCode(code: string, language: string | null): Token[] {
         while (peek < len && (code[peek] === " " || code[peek] === "\t")) peek++;
         if (peek < len && code[peek] === "(") {
           tokens.push({ type: "function", text: word });
+        } else if (isMarkup) {
+          tokens.push({ type: "property", text: word });
         } else if (/^[A-Z][a-zA-Z0-9_$]*$/.test(word) && !isSql) {
           tokens.push({ type: "class-name", text: word });
         } else {

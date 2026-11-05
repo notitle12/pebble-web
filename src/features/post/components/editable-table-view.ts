@@ -40,6 +40,7 @@ class EditableTableView extends TableView {
   private lastSelection: EditorView["state"]["selection"] | null = null;
   private lastDocument: PMNode | null = null;
   private statusTimer = 0;
+  private pointerLocation: { clientX: number; clientY: number } | null = null;
 
   constructor(node: PMNode, minWidth: number, view: EditorView, attrs: Record<string, unknown> = {}) {
     super(node, minWidth, view, attrs);
@@ -62,6 +63,7 @@ class EditableTableView extends TableView {
     for (const [button, axis, label] of [[this.rowGrip, "row", "행 이동 손잡이"], [this.columnGrip, "column", "열 이동 손잡이"]] as const) {
       button.type = "button"; button.className = styles.tableBandGrip; button.textContent = "⠿"; button.hidden = true;
       button.setAttribute("aria-label", label); button.title = `${label} · 드래그해서 순서 변경 · 클릭해서 선택`;
+      button.setAttribute("data-table-band-control", axis);
       button.addEventListener("mousedown", event => event.preventDefault());
       button.addEventListener("pointerdown", event => {
         if (!view.editable || event.button !== 0) return;
@@ -177,6 +179,7 @@ class EditableTableView extends TableView {
     this.table.addEventListener("contextmenu", this.contextMenu);
     document.addEventListener("pointerup", this.pointerUp);
     document.addEventListener("pointermove", this.movePointer);
+    document.addEventListener("pointerover", this.movePointer);
     document.addEventListener("pointercancel", this.cancelMove);
     window.addEventListener("blur", this.cancelMove);
     document.addEventListener("pointerdown", this.outsideDown);
@@ -245,7 +248,8 @@ class EditableTableView extends TableView {
   }
   private color(value: string | null) { setCellAttr("backgroundColor", value)(this.view.state, this.view.dispatch); }
   private pointerDown = () => { this.dragging = true; this.dismissed = false; this.closePanels(); this.tools.hidden = true; };
-  private pointerUp = () => {
+  private pointerUp = (event: PointerEvent) => {
+    this.pointerLocation = { clientX: event.clientX, clientY: event.clientY };
     if (this.bandSession) {
       const session = this.bandSession; this.bandSession = null; this.dropMarker.hidden = true;
       this.suppressBandClick = session.to !== null;
@@ -261,9 +265,12 @@ class EditableTableView extends TableView {
     }
     this.dragging = false; cancelAnimationFrame(this.frame); this.frame = requestAnimationFrame(this.refresh); };
   private cancelMove = () => {
+    this.pointerLocation = null; this.gripBounds = null;
+    this.rowGrip.hidden = true; this.columnGrip.hidden = true;
     this.bandSession = null; this.moveSession = null; this.dropMarker.hidden = true; this.dragging = false; this.refresh();
   };
   private movePointer = (event: PointerEvent) => {
+    this.pointerLocation = { clientX: event.clientX, clientY: event.clientY };
     if (this.bandSession) { this.moveBandPointer(event); return; }
     const session = this.moveSession; if (!session) { this.edgeHover(event); return; }
     if (Math.hypot(event.clientX - session.startX, event.clientY - session.startY) < 4 && !session.moved) return;
@@ -300,11 +307,16 @@ class EditableTableView extends TableView {
     Object.assign(this.dropMarker.style, { left: `${session.axis === "row" ? table.left : bounds.left}px`, top: `${session.axis === "row" ? bounds.top : table.top}px`, width: `${session.axis === "row" ? table.width : bounds.width}px`, height: `${session.axis === "row" ? bounds.height : table.height}px` });
     this.dropMarker.hidden = false;
   }
-  private edgeHover = (event: PointerEvent) => {
+  private refreshHover = () => {
+    if (!this.pointerLocation || this.dragging || this.bandSession || this.moveSession) return;
+    const { clientX, clientY } = this.pointerLocation;
+    this.edgeHover({ clientX, clientY, buttons: 0, target: document.elementFromPoint(clientX, clientY) });
+  };
+  private edgeHover = (event: Pick<PointerEvent, "clientX" | "clientY" | "buttons" | "target">) => {
     if ([this.addRowButton, this.addColumnButton, this.rowGrip, this.columnGrip].some(button => button.contains(event.target as globalThis.Node))) return;
     const rect = this.table.getBoundingClientRect();
     const hovered = (event.target as Element)?.closest?.("td,th");
-    const grips = this.view.editable && !this.dragging && event.buttons === 0 && hovered && this.table.contains(hovered);
+    const grips = this.view.editable && !this.dragging && event.buttons === 0 && hovered && hovered.closest("table") === this.table;
     const corridor = this.gripBounds && this.view.editable && !this.dragging && event.buttons === 0
       ? tableGripCorridors({ x: event.clientX, y: event.clientY }, rect, this.gripBounds) : null;
     this.rowGrip.hidden = !grips && !corridor?.row; this.columnGrip.hidden = !grips && !corridor?.column;
@@ -349,7 +361,10 @@ class EditableTableView extends TableView {
   };
   private position = (event?: Event) => {
     this.addRowButton.hidden = true; this.addColumnButton.hidden = true;
-    if (event?.type === "scroll" || event?.type === "resize") { this.rowGrip.hidden = true; this.columnGrip.hidden = true; this.gripBounds = null; }
+    if (event?.type === "scroll" || event?.type === "resize") {
+      this.rowGrip.hidden = true; this.columnGrip.hidden = true; this.gripBounds = null;
+      cancelAnimationFrame(this.frame); this.frame = requestAnimationFrame(this.refresh);
+    }
     if (this.tools.hidden) return;
     const cells = Array.from(this.table.querySelectorAll(".selectedCell"));
     if (!cells.length) { this.tools.hidden = true; return; }
@@ -373,6 +388,7 @@ class EditableTableView extends TableView {
     }
   };
   private refresh = () => {
+    this.refreshHover();
     this.dom.setAttribute("data-align", this.node.attrs.align || "left"); this.table.setAttribute("data-align", this.node.attrs.align || "left");
     const show = this.active() && this.view.state.selection instanceof CellSelection && !this.dragging && !this.dismissed;
     this.tools.hidden = !show;
@@ -388,6 +404,7 @@ class EditableTableView extends TableView {
     this.table.removeEventListener("contextmenu", this.contextMenu);
     document.removeEventListener("pointerup", this.pointerUp);
     document.removeEventListener("pointermove", this.movePointer);
+    document.removeEventListener("pointerover", this.movePointer);
     document.removeEventListener("pointercancel", this.cancelMove);
     window.removeEventListener("blur", this.cancelMove);
     document.removeEventListener("pointerdown", this.outsideDown);

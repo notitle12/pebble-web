@@ -1,3 +1,4 @@
+import {columnRatioParts,columnRatioStyle} from "./column-ratio.ts";
 import {parseDatabaseSchema} from "./database-schema.ts";
 import { parseArchitectureSpec, parseTableSpec } from "./api/post-list.ts";
 import { parseNaverMapEmbed } from "./naver-map.ts";
@@ -8,6 +9,8 @@ export type RichBodyFormat = "HTML" | "MARKDOWN" | "TEXT";
 
 const allowedStyles: NonNullable<IOptions["allowedStyles"]> = {
   "*": {
+    "--column-left": [/^(?:[1-9]|[1-7]\d|80)fr$/],
+    "--column-right": [/^(?:[1-9]|[1-7]\d|80)fr$/],
     color: [/^#[0-9a-f]{3,8}$/i, /^rgba?\([\d.% ,]+\)$/i, /^[a-z]{3,20}$/i],
     "background-color": [/^#[0-9a-f]{3,8}$/i, /^rgba?\([\d.% ,]+\)$/i, /^[a-z]{3,20}$/i],
     "font-family": [/^[\w ,"'-]{1,80}$/],
@@ -49,7 +52,7 @@ const sanitizerOptions: IOptions = {
     img: ["src", "alt", "title", "width", "height", "data-media-src", "data-align"],
     iframe: ["src", "width", "height", "title", "loading", "sandbox", "allowfullscreen", "referrerpolicy"],
     mark: ["data-color"],
-    div: ["data-details-content", "data-pebble-type", "data-pebble-spec", "data-pebble-title", "data-align"],
+    div: ["data-ratio", "data-details-content", "data-pebble-type", "data-pebble-spec", "data-pebble-title", "data-align"],
     table: ["data-align"],
     td: ["colwidth", "data-diagonal"],
     th: ["colwidth", "data-diagonal"],
@@ -57,7 +60,7 @@ const sanitizerOptions: IOptions = {
     "*": ["id", "class", "style", "colspan", "rowspan", "open", "aria-label", "data-level"],
   },
   allowedStyles,
-  allowedClasses: { nav: ["post-toc"], div: ["post-text-block"], hr: [/^post-divider-(solid|dashed|double|short)$/], span: [/^hl-[a-z-]+$/], pre: ["code-block", /^language-/], code: [/^language-/], "*": [] },
+  allowedClasses: { nav: ["post-toc"], div: ["post-text-block", "post-columns", "post-column"], hr: [/^post-divider-(solid|dashed|double|short)$/], span: [/^hl-[a-z-]+$/], pre: ["code-block", /^language-/], code: [/^language-/], "*": [] },
   allowedSchemes: ["http", "https", "mailto"],
   allowedSchemesByTag: { img: ["http", "https"] },
   allowedIframeHostnames: ["www.openstreetmap.org"],
@@ -67,6 +70,8 @@ const sanitizerOptions: IOptions = {
     td: (_tagName, attrs) => ({ tagName: "td", attribs: safeCellAttributes(attrs) }),
     th: (_tagName, attrs) => ({ tagName: "th", attribs: safeCellAttributes(attrs) }),
     div: (_tagName, attrs) => {
+      if(!columnRatioParts(attrs["data-ratio"]))delete attrs["data-ratio"];
+      if(attrs.class?.split(/\s+/).includes("post-columns"))attrs.style=`${attrs.style??""};${columnRatioStyle(attrs["data-ratio"])}`;
       const type = attrs["data-pebble-type"];
       if (!type) return { tagName: "div", attribs: attrs };
       try {

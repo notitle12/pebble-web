@@ -10,6 +10,12 @@ import "./design.css";
 import "./theme.css";
 import "./post-typography.css";
 import "./post-block-layout.css";
+import "./post-toggle.css";
+import "./editor-controls.css";
+import "./writer-draft-loader.css";
+import "./writer-recovery.css";
+import "./post-columns.css";
+import "./post-theme-colors.css";
 import {themeBootstrap} from "../features/appearance/theme";
 
 export const metadata: Metadata = {

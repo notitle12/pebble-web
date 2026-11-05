@@ -1,50 +1,85 @@
 "use client";
+import {unwrapColumnLayout} from "../column-layout";
 import type { Editor } from "@tiptap/core";
-import type { Node } from "@tiptap/pm/model";
 import { useEffect, useRef, useState } from "react";
-import { moveBodyBlock } from "../block-move";
+import { canPlaceBodyBlockBeside, placeBodyBlockBeside, sideOfBlockDrop, blockGapContext, movableBlocks, moveBodyBlock, type MovableBlock } from "../block-move";
 import styles from "./body-block-handle.module.css";
 
-type Block = { pos: number; end: number; rect: DOMRect };
-type Drag = { source: number; doc: Node; gap: number; started: boolean; y: number };
+type Block = MovableBlock & { rect: DOMRect; table: boolean };
+type Drag = { source: number; doc: EditorDoc; gap: number; started: boolean; x:number; y: number; beside?:{target:number;side:"left"|"right"} };
+
+type EditorDoc = NonNullable<Editor>["state"]["doc"];
 
 export function BodyBlockHandle({ editor, disabled }: { editor: Editor | null; disabled: boolean }) {
   const [hover, setHover] = useState<Block | null>(null);
-  const [line, setLine] = useState<{ left: number; top: number; width: number } | null>(null);
+  const [line, setLine] = useState<{ left: number; top: number; width: number; height?:number; side?:"left"|"right" } | null>(null);
   const drag = useRef<Drag | null>(null);
   useEffect(() => {
     if (!editor || disabled) { setHover(null); return; }
-    const blocks = (): Block[] => {
-      const result: Block[] = [];
-      editor.state.doc.forEach((node, pos) => {
-        const dom = editor.view.nodeDOM(pos);
-        if (dom instanceof HTMLElement) result.push({ pos, end: pos + node.nodeSize, rect: dom.getBoundingClientRect() });
-      });
-      return result;
-    };
+    const blocks = (): Block[] => movableBlocks(editor.state.doc).flatMap(item => {
+      const dom = editor.view.nodeDOM(item.pos);
+      return dom instanceof HTMLElement ? [{ ...item, rect: dom.getBoundingClientRect(), table: item.node.type.spec.tableRole === "table" }] : [];
+    });
     const move = (event: MouseEvent) => {
       const items = blocks();
       if (drag.current) {
         const current = drag.current;
-        if (Math.abs(event.clientY - current.y) > 4) current.started = true;
+        if (Math.hypot(event.clientX-current.x,event.clientY-current.y)>4) current.started = true;
         if (!current.started || !items.length) return;
-        const target = items.find(item => event.clientY < item.rect.top + item.rect.height / 2);
-        current.gap = target?.pos ?? editor.state.doc.content.size;
-        const rect = target?.rect ?? items[items.length - 1].rect;
-        setLine({ left: rect.left, top: target ? rect.top : rect.bottom, width: rect.width });
+        const source=items.find(item=>item.pos===current.source);
+        const besideTarget=source?items.filter(item=>canPlaceBodyBlockBeside(source,item)&&sideOfBlockDrop(event.clientX,event.clientY,item.rect)).sort((a,b)=>a.rect.width*a.rect.height-b.rect.width*b.rect.height)[0]:null;
+        const side=besideTarget?sideOfBlockDrop(event.clientX,event.clientY,besideTarget.rect):null;
+        if(besideTarget&&side){
+          current.beside={target:besideTarget.pos,side};
+          setLine({left:side==="left"?besideTarget.rect.left:besideTarget.rect.right,top:besideTarget.rect.top,width:3,height:Math.max(24,besideTarget.rect.height),side});
+          if(event.clientY<96)window.scrollBy(0,-12);else if(event.clientY>window.innerHeight-48)window.scrollBy(0,12);
+          event.preventDefault();return;
+        }
+        current.beside=undefined;
+        // Positions just outside a grid can still resolve into its nearest column.
+        // Use the grid's outer boundary when pulling a child back into the document.
+        const outerLayout=source?items.filter(item=>item.node.type.name==="imageTextLayout"&&item.pos<source.pos&&item.end>source.end).sort((a,b)=>(a.end-a.pos)-(b.end-b.pos))[0]:null;
+        if(outerLayout&&event.clientX>=outerLayout.rect.left-12&&event.clientX<=outerLayout.rect.right+12){
+          const before=event.clientY<outerLayout.rect.top&&event.clientY>=outerLayout.rect.top-32;
+          const after=event.clientY>outerLayout.rect.bottom&&event.clientY<=outerLayout.rect.bottom+32;
+          if(before||after){current.gap=before?outerLayout.pos:outerLayout.end;setLine({left:outerLayout.rect.left,top:before?outerLayout.rect.top:outerLayout.rect.bottom,width:outerLayout.rect.width});event.preventDefault();return;}
+        }
+        const located = editor.view.posAtCoords({ left: event.clientX, top: event.clientY });
+        const context = located ? blockGapContext(editor.state.doc, located.pos) : null;
+        const target = context && items.find(item => item.pos === context.before);
+        if (context && target) {
+          const after = event.clientY >= target.rect.top + target.rect.height / 2;
+          current.gap = after ? context.after! : context.before!;
+          setLine({ left: target.rect.left, top: after ? target.rect.bottom : target.rect.top, width: target.rect.width });
+        } else if (context && context.before === null) {
+          current.gap = context.pos;
+          const parent = context.parentPos < 0 ? editor.view.dom : editor.view.nodeDOM(context.parentPos);
+          const rect = parent instanceof HTMLElement ? parent.getBoundingClientRect() : editor.view.dom.getBoundingClientRect();
+          setLine({ left: rect.left, top: rect.bottom, width: rect.width });
+        } else {
+          const topLevel = items.filter(item => item.parentPos === -1);
+          const last = topLevel.at(-1);
+          if (!last || event.clientY < last.rect.top + last.rect.height / 2) return;
+          current.gap = editor.state.doc.content.size;
+          setLine({ left: last.rect.left, top: last.rect.bottom, width: last.rect.width });
+        }
         if (event.clientY < 96) window.scrollBy(0, -12);
         else if (event.clientY > window.innerHeight - 48) window.scrollBy(0, 12);
         event.preventDefault(); return;
       }
       if (event.target instanceof Element && event.target.closest("[data-body-block-handle]")) return;
-      setHover(items.find(item => event.clientY >= item.rect.top && event.clientY <= item.rect.bottom
-        && event.clientX >= item.rect.left - 40 && event.clientX <= item.rect.right) ?? null);
+      // Table row/column controls own the cell gutter. Offer whole-block movement farther left.
+      if (event.target instanceof Element && event.target.closest("td,th,[data-table-band-control]")) { setHover(null); return; }
+      const target = items.filter(item => event.clientY >= item.rect.top && event.clientY <= item.rect.bottom
+        && event.clientX >= item.rect.left - 60 && event.clientX <= item.rect.right)
+        .sort((a, b) => a.rect.width * a.rect.height - b.rect.width * b.rect.height)[0] ?? null;
+      setHover(target);
     };
     const end = () => {
       const current = drag.current; if (!current) return; drag.current = null; setLine(null); setHover(null);
       if (!current?.started || !editor.isEditable || !editor.state.doc.eq(current.doc)) return;
-      const tr = moveBodyBlock(editor.state.tr, current.source, current.gap);
-      if (tr) editor.view.dispatch(tr.scrollIntoView());
+      const tr = current.beside?placeBodyBlockBeside(editor.state.tr,current.source,current.beside.target,current.beside.side):moveBodyBlock(editor.state.tr, current.source, current.gap);
+      if (tr) {editor.view.dispatch(tr);editor.view.focus();}
     };
     const cancel = () => { drag.current = null; setLine(null); setHover(null); };
     const escape = (event: KeyboardEvent) => { if (event.key === "Escape") cancel(); };
@@ -58,14 +93,19 @@ export function BodyBlockHandle({ editor, disabled }: { editor: Editor | null; d
   }, [editor, disabled]);
   if (!editor || disabled) return null;
   return <>{hover && <button data-body-block-handle type="button" className={styles.handle}
-    style={{ left: Math.max(0, hover.rect.left - 30), top: Math.max(74, hover.rect.top) }}
-    aria-label="본문 블록 이동" title="드래그해서 이동 · Alt+↑/↓"
+    style={{ left: Math.max(0, hover.rect.left - (hover.table ? 58 : 30)), top: Math.max(74, hover.rect.top) }}
+    aria-label="본문 블록 이동" title="드래그해서 이동 · 문단 좌우 끝에 놓으면 나란히 배치 · Alt+↑/↓"
     onPointerDown={event => { if (event.button !== 0) return; event.preventDefault(); event.currentTarget.setPointerCapture(event.pointerId);
-      drag.current = { source: hover.pos, doc: editor.state.doc, gap: hover.pos, started: false, y: event.clientY }; }}
-    onKeyDown={event => { if (!event.altKey || !["ArrowUp", "ArrowDown"].includes(event.key)) return; event.preventDefault();
-      const positions: number[] = []; editor.state.doc.forEach((_node, pos) => positions.push(pos));
-      const index = positions.indexOf(hover.pos), gap = event.key === "ArrowUp" ? positions[index - 1] : positions[index + 2] ?? editor.state.doc.content.size;
+      drag.current = { source: hover.pos, doc: editor.state.doc, gap: hover.pos, started: false, x:event.clientX, y: event.clientY }; }}
+    onKeyDown={event => {
+      if((event.ctrlKey||event.metaKey)&&!event.altKey&&(event.key.toLowerCase()==="z"||event.code==="KeyZ")&&!event.nativeEvent.isComposing){event.preventDefault();event.stopPropagation();if(event.shiftKey)editor.commands.redo();else editor.commands.undo();return;}
+      if(hover.node.type.name==="imageTextLayout"&&["Backspace","Delete"].includes(event.key)&&!event.nativeEvent.isComposing){event.preventDefault();event.stopPropagation();const tr=unwrapColumnLayout(editor.state.tr,hover.pos);if(tr){editor.view.dispatch(tr);editor.view.focus();setHover(null);}return;}
+      if (!event.altKey || !["ArrowUp", "ArrowDown"].includes(event.key)) return; event.preventDefault();
+      const siblings = movableBlocks(editor.state.doc).filter(item => item.parentPos === hover.parentPos);
+      const index = siblings.findIndex(item => item.pos === hover.pos);
+      const neighbor = siblings[index + (event.key === "ArrowUp" ? -1 : 1)];
+      const gap = event.key === "ArrowUp" ? neighbor?.pos : neighbor?.end;
       if (gap === undefined) return; const tr = moveBodyBlock(editor.state.tr, hover.pos, gap); if (tr) { editor.view.dispatch(tr); setHover(null); } }}>
     <svg aria-hidden="true" viewBox="0 0 16 24">{[6,12,18].flatMap(y => [5,11].map(x => <circle key={`${x}-${y}`} cx={x} cy={y} r="1.4" fill="currentColor"/>))}</svg>
-  </button>}{line && <div className={styles.line} style={line}/>}</>;
+  </button>}{line && <div className={`${styles.line} ${line.side?styles.sideLine:""}`} style={{left:line.left,top:line.top,width:line.width,height:line.height}} role="status" aria-label={line.side?`${line.side==="left"?"왼쪽":"오른쪽"}에 나란히 배치`:"블록 이동 위치"}/>}</>;
 }
