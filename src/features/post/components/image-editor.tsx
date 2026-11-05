@@ -289,7 +289,7 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
     if(saving||textDrag.current||!textDraftRef.current||!(event.target instanceof Element)||event.target.closest("[data-image-text-control],[data-image-text-hit]"))return;
     dismissTextOnPointer.current=!!event.target.closest("[data-image-stage]");commitText();
   };
-  useEffect(()=>{if(textDraft)textInputRef.current?.focus({preventScroll:true});},[textDraft?.id]);
+  useLayoutEffect(()=>{if(textDraft)textInputRef.current?.focus({preventScroll:true});},[textDraft?.id]);
   useLayoutEffect(()=>{
     const input=textInputRef.current,draft=textDraftRef.current;
     if(!input||!draft||!displayScale||textDrag.current)return;
@@ -423,6 +423,8 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
     const point = pointerCoordinates(event);
     if (!point) return;
     if (tool === "text") {
+      // The native mousedown default must not steal focus from the new input.
+      event.preventDefault();
       if(textDraftRef.current){commitText();return;}
       const x=Math.max(0,Math.min(canvasSize.width-Math.min(textFontSize*2,canvasSize.width),Math.round(point.x)));
       const y=Math.max(0,Math.min(canvasSize.height-Math.min(textFontSize*1.5,canvasSize.height),Math.round(point.y)));
