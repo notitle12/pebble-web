@@ -1,5 +1,6 @@
 import {columnViewportPlugin} from "./column-viewport.ts";
 import {columnAutoUnwrapPlugin} from "./column-auto-unwrap.ts";
+import {columnExitTransaction} from "./column-exit.ts";
 import {unwrapColumnLayout,unwrapSelectedColumnLayout,unwrapEmptyColumnAtCursor} from "./column-layout.ts";
 import { closeHistory } from "@tiptap/pm/history";
 import { Node, mergeAttributes } from "@tiptap/core";
@@ -22,7 +23,11 @@ export const ImageTextLayout = Node.create({
   addProseMirrorPlugins(){return [columnViewportPlugin(),columnAutoUnwrapPlugin()];},
   addKeyboardShortcuts(){
     const unwrap=()=>unwrapSelectedColumnLayout(this.editor.state,tr=>this.editor.view.dispatch(tr))||unwrapEmptyColumnAtCursor(this.editor.state,tr=>this.editor.view.dispatch(tr));
-    return {Backspace:unwrap,Delete:unwrap};
+    return {Backspace:unwrap,Delete:unwrap,Enter:()=>{
+      if(!this.editor.isEditable||this.editor.view.composing)return false;
+      const tr=columnExitTransaction(this.editor.state);if(!tr)return false;
+      this.editor.view.dispatch(tr);return true;
+    }};
   },
   addNodeView() {
     return ({ node, editor, getPos }) => {

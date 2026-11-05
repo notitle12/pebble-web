@@ -3,6 +3,7 @@ import {SITE_ORIGIN,SITE_DESCRIPTION,SHARE_IMAGE} from "@/features/seo/model";
 import {siteVerification} from "@/features/seo/verification";
 import { Suspense, type ReactNode } from "react";
 import {ContentSourceContext} from "../features/content-insights/components/content-source-context";
+import {WriterNavigationTracker} from "../components/writer-navigation-tracker";
 import {LoginDialog} from "../features/auth/components/login-dialog";
 import {SiteFooter} from "../components/site-footer";
 import "./globals.css";
@@ -41,7 +42,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <link rel="stylesheet" href="/fonts/pretendard/pretendard.css"/>
         <script dangerouslySetInnerHTML={{__html:themeBootstrap}}/>
       </head>
-      <body><Suspense fallback={null}><ContentSourceContext/></Suspense>{children}<SiteFooter/><LoginDialog showTrigger={false}/></body>
+      <body><Suspense fallback={null}><ContentSourceContext/></Suspense><Suspense fallback={null}><WriterNavigationTracker/></Suspense>{children}<SiteFooter/><LoginDialog showTrigger={false}/></body>
     </html>
   );
 }
