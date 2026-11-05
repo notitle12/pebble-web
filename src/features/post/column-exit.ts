@@ -13,7 +13,8 @@ export function columnExitTransaction(state:EditorState):Transaction|null {
   const node=$from.node(depth);
   if($from.index(depth)!==node.childCount-1)return null;
   if(node.type.name==='imageTextColumn'){columnDepth=depth;break;}
-  if(!['textPanel','details'].includes(node.type.name))return null;
+  // 일반 블록 안에서는 먼저 그 블록의 빈 문단 Enter 규칙을 적용한다.
+  if(node.type.name!=='details')return null;
  }
  if(!columnDepth||$from.node(columnDepth-1).type.name!=='imageTextLayout')return null;
  const layoutDepth=columnDepth-1,pos=$from.after(layoutDepth),parent=$from.node(layoutDepth-1);

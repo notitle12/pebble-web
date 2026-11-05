@@ -39,8 +39,8 @@ test('an existing empty paragraph is reused and an empty column remains intact',
  const layout=row([image],[p()]),f=fixture([layout,p()]);assert.equal(f.keys.Enter(),true);
  assert.equal(f.editor.state.doc.childCount,2);assert.ok(f.editor.state.doc.firstChild.eq(layout));assert.equal(f.editor.state.selection.$from.depth,1);
 });
-test('the last paragraph inside a general block or toggle exits into the layout parent',()=>{
- for(const kind of ['textPanel','details']){
+test('the last paragraph inside a toggle exits into the layout parent',()=>{
+ for(const kind of ['details']){
   const layout=row([image],[schema.node(kind,null,p('description'))]);
   const f=fixture([schema.node('textPanel',null,layout)]);assert.equal(f.keys.Enter(),true);
   assert.equal(f.editor.state.doc.firstChild.type.name,'textPanel');assert.ok(f.editor.state.doc.firstChild.firstChild.eq(layout));
