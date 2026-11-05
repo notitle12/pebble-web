@@ -20,7 +20,8 @@ export function isEmptyBodyContainer(node:Node):boolean {
   node.forEach(row=>row.forEach(cell=>cell.forEach(child=>{if(!emptyText(child))empty=false;})));
   return empty;
  }
- if(node.type.name!=='textPanel')return false;
+ if(!['textPanel','details'].includes(node.type.name))return false;
+ if(node.type.name==='details'&&node.attrs.summary!=='')return false;
  let empty=true;node.forEach(child=>{if(!emptyText(child))empty=false;});
  return empty;
 }
@@ -66,7 +67,7 @@ function atContainerStart(state:EditorState,pos:number):boolean {
 
 export const EmptyBlockBackspace=Extension.create<{types:string[]}>({
  name:'emptyBlockBackspace',priority:1300,
- addOptions:()=>({types:['textPanel','table']}),
+ addOptions:()=>({types:['textPanel','table','details']}),
  addKeyboardShortcuts(){return {Backspace:()=>{
   if(!this.editor.isEditable||this.editor.view.composing)return false;
   const pos=containerAtSelection(this.editor.state,this.options.types);if(pos===null)return false;
