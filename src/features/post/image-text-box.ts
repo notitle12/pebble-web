@@ -36,6 +36,25 @@ export function autoImageTextBox(
   return { width, height };
 }
 
+/** Keep all text visible after typing or narrowing a manually sized box. */
+export function fitImageTextBox(
+  text: string,
+  rect: ImageTextBox,
+  size: PixelSize,
+  fontSize: number,
+  measure: (line: string) => number,
+  autoWidth: boolean,
+): ImageTextBox {
+  const x = Math.max(0, Math.min(size.width, rect.x));
+  const width = autoWidth
+    ? autoImageTextBox(text, x, 0, size, fontSize, measure).width
+    : Math.max(1, Math.min(size.width - x, rect.width));
+  const lineHeight = Math.max(1, Math.round(fontSize * 1.25));
+  const contentHeight = imageTextLines(text, Math.max(1, width - 2), measure).length * lineHeight + 2;
+  const height = Math.min(size.height, Math.max(contentHeight, autoWidth ? 0 : rect.height));
+  return { x, y: Math.max(0, Math.min(rect.y, size.height - height)), width, height };
+}
+
 /** Resize or move a text box while keeping the opposite edge anchored. */
 export function resizeImageTextBox(
   rect: ImageTextBox,

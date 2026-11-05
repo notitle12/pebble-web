@@ -1,8 +1,22 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {autoImageTextBox,resizeImageTextBox} from '../src/features/post/image-text-box.ts';
+import {autoImageTextBox,fitImageTextBox,resizeImageTextBox} from '../src/features/post/image-text-box.ts';
 
 const measure=line=>Array.from(line).length*10;
+
+test('typing into a manually sized box keeps its width and grows enough for every line',()=>{
+ const text='처음 글씨\n둘째 줄\n셋째 줄';
+ assert.deepEqual(fitImageTextBox(text,{x:10,y:10,width:92,height:22},{width:300,height:200},16,measure,false),{x:10,y:10,width:92,height:62});
+});
+
+test('narrowing text reflows all lines and moves the box above the bottom edge',()=>{
+ const text='가나다라마바사아자차';
+ assert.deepEqual(fitImageTextBox(text,{x:10,y:90,width:32,height:22},{width:200,height:100},16,measure,false),{x:10,y:18,width:32,height:82});
+});
+
+test('auto-growing text near the bottom preserves its complete height instead of clipping earlier lines',()=>{
+ assert.deepEqual(fitImageTextBox('첫줄\n둘째\n셋째',{x:20,y:90,width:32,height:22},{width:200,height:100},16,measure,true),{x:20,y:38,width:32,height:62});
+});
 
 test('auto text box starts clickable when empty and grows for Korean and multiline text',()=>{
  assert.deepEqual(autoImageTextBox('',10,10,{width:300,height:200},16,measure),{width:32,height:22});

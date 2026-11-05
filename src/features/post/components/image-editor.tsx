@@ -1,8 +1,8 @@
 "use client";
-import {autoImageTextBox,resizeImageTextBox,type ImageTextBox} from "../image-text-box";
+import {fitImageTextBox,resizeImageTextBox,type ImageTextBox} from "../image-text-box";
 
 import { createPortal } from "react-dom";
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { eraseImagePen } from "../image-pen-eraser";
 import { installImageHistoryKeys, type ImageHistoryActions } from "../image-history-keys";
 import styles from "./image-editor.module.css";
@@ -155,12 +155,13 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
   const [textDraft, setTextDraft] = useState<ImageTextDraft|null>(null);
   const textDrag=useRef<{handle:CropHandle;rect:ImageTextBox;draft:ImageTextDraft;start:PenPoint;transform:ImageTransform}|null>(null);
   const textDraftRef = useRef(textDraft);textDraftRef.current=textDraft;
+  const fitTextDraft = (next:ImageTextDraft):ImageTextDraft => {
+    const context=document.createElement("canvas").getContext("2d")!;context.font=`${next.fontSize}px system-ui, sans-serif`;
+    const box=fitImageTextBox(next.text,{x:next.x,y:next.y,width:next.maxWidth,height:next.boxHeight},canvasSize,next.fontSize,text=>context.measureText(text).width,next.autoSize);
+    return {...next,x:box.x,y:box.y,sourceX:next.sourceX+box.x-next.x,sourceY:next.sourceY+box.y-next.y,maxWidth:box.width,boxHeight:box.height};
+  };
   const updateTextDraft = (next:ImageTextDraft|null) => {
-    if(next?.autoSize){
-      const context=document.createElement("canvas").getContext("2d")!;context.font=`${next.fontSize}px system-ui, sans-serif`;
-      const box=autoImageTextBox(next.text,next.x,next.y,canvasSize,next.fontSize,text=>context.measureText(text).width);
-      next={...next,maxWidth:box.width,boxHeight:box.height};
-    }
+    if(next)next=fitTextDraft(next);
     textDraftRef.current=next;setTextDraft(next);
   };
   const dismissTextOnPointer = useRef(false);
@@ -289,6 +290,18 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
     dismissTextOnPointer.current=!!event.target.closest("[data-image-stage]");commitText();
   };
   useEffect(()=>{if(textDraft)textInputRef.current?.focus({preventScroll:true});},[textDraft?.id]);
+  useLayoutEffect(()=>{
+    const input=textInputRef.current,draft=textDraftRef.current;
+    if(!input||!draft||!displayScale||textDrag.current)return;
+    // The browser may wrap one line earlier at a fractional display scale.
+    if(input.scrollHeight>input.clientHeight+1&&draft.boxHeight<canvasSize.height){
+      const height=Math.min(canvasSize.height,Math.ceil(input.scrollHeight/displayScale)+2);
+      const y=Math.max(0,Math.min(draft.y,canvasSize.height-height));
+      const next={...draft,y,sourceY:draft.sourceY+y-draft.y,boxHeight:height};
+      textDraftRef.current=next;setTextDraft(next);
+    }
+    if(input.scrollHeight<=input.clientHeight+1){input.scrollTop=0;input.scrollLeft=0;}
+  },[textDraft,displayScale,canvasSize.height]);
   useEffect(()=>{
     const canvas=displayRef.current;if(!canvas)return;
     const observer=new ResizeObserver(()=>setDisplayScale(canvas.clientWidth/Math.max(1,canvas.width)));
@@ -298,6 +311,7 @@ export function ImageEditor({ src, fileName = "image", onApply, onCancel }: Imag
     ...draft,x:rect.x,y:rect.y,sourceX:rect.x+(draft.sourceX-draft.x),sourceY:rect.y+(draft.sourceY-draft.y),maxWidth:rect.width,boxHeight:rect.height,autoSize,
   });
   const commitTextGeometry = (next:ImageTextDraft) => {
+    next=fitTextDraft(next);
     const operation=pendingText(next);
     if(operation){commitCommands(replaceImageText(historyRef.current.present,next.editingId,operation));next={...next,editingId:next.id};}
     updateTextDraft(next);
