@@ -1,7 +1,9 @@
 'use client';
 import {ContentPlaceholder} from '@/components/content-placeholder';
+import {IntentLink} from '@/components/intent-link';
 import {useEffect,useState} from 'react';
 import Link from 'next/link';
+import type {ComponentProps} from 'react';
 import {useUserSession} from '../../auth/components/member-gate';
 import {userSession} from '../../auth/user-session';
 import {blogHref} from '../api/public-blog';
@@ -12,6 +14,9 @@ import {PostCards} from './post-cards';
 import {loadPopularPosts,comparePopularPosts} from '../api/popular-posts';
 
 type Props={handle:string;authorId:string;initial:PostPage|null;page?:number;boardId?:string;q?:string;placement?:'boards'|'projects';variant?:'list'|'recent'|'popular';failed?:boolean};
+function PostDestinationLink({post,...props}:ComponentProps<typeof Link>&{post:PostPage['content'][number]}) {
+ return post.visibilityStatus!=='HIDDEN'?<IntentLink {...props}/>:<Link {...props} prefetch={false}/>;
+}
 export function BlogPosts({handle,authorId,initial,page=0,boardId,q,placement,variant='list',failed=false}:Props){
  const session=useUserSession(),owner=session.phase==='ready'&&session.member?.id===authorId&&session.member.handle===handle;
  const popular=variant==='popular'||variant==='recent';
@@ -35,7 +40,7 @@ export function BlogPosts({handle,authorId,initial,page=0,boardId,q,placement,va
   if(!data?.content.length)return <p className="blog-home-empty" role={failed?'alert':undefined}>{failed?'인기 글을 불러오지 못했어요.':owner?'아직 발행한 글이 없어요.':'아직 공개된 글이 없어요.'}</p>;
   const sorted=[...data.content].sort(comparePopularPosts);
   return <ul className="blog-home-posts">{sorted.slice(0,3).map((post)=><li key={post.id}>
-   <Link href={blogPostHref(post)} prefetch={false}>
+   <PostDestinationLink post={post} href={blogPostHref(post)}>
     <span className="blog-home-post-copy">
       <strong>
         <span>{post.title}</span>
@@ -49,7 +54,7 @@ export function BlogPosts({handle,authorId,initial,page=0,boardId,q,placement,va
       </span>
     </span>
     {safeMediaUrl(post.thumbnailUrl??null)?<img src={safeMediaUrl(post.thumbnailUrl??null)!} alt="" width={250} height={165}/>:<ContentPlaceholder className="blog-post-placeholder"/>}
-   </Link>
+   </PostDestinationLink>
   </li>)}</ul>;
  }
  if(!data)return <p role="alert">블로그 글을 불러오지 못했어요.</p>;
