@@ -1,11 +1,10 @@
 import {ContentPlaceholder} from "@/components/content-placeholder";
-import Link from "next/link";
-import {BlogPosts} from "../../post/components/blog-posts";
+import type {ReactNode} from "react";
+import {IntentLink} from "@/components/intent-link";
 import {BlogActivityDisplay} from "./blog-activity-display";
 import {activityCalendar} from "../activity-calendar";
 import type { BlogActivity, BlogHomeSettings, HomeSectionKey } from "../api/blog-home";
 import type { ProjectDetail } from "../../project/api/project-list";
-import type { PostPage } from "../../post/api/post-list";
 import { safeMediaUrl } from "../../media/model";
 
 const titles: Record<HomeSectionKey, string> = { ACTIVITY: "블로그 활동", TECH_STACKS: "기술 스택", PROJECTS: "대표 프로젝트", RECENT_POSTS: "인기 글" };
@@ -31,25 +30,25 @@ function Activity({ data }: { data: BlogActivity }) {
 function Stacks({ items }: { items: string[] }) {
   return items.length ? <ul className="blog-tech-list">{items.map(name => <li key={name}><span>{name}</span></li>)}</ul> : <p className="blog-home-empty">아직 공개한 기술 스택이 없어요.</p>;
 }
-function Projects({ projects, configured, failed }: { projects: ProjectDetail[]; configured: boolean; failed: boolean }) {
+export function BlogHomeProjects({ projects, configured, failed }: { projects: ProjectDetail[]; configured: boolean; failed: boolean }) {
   if (!projects.length) return failed ? <p className="blog-home-empty" role="alert">대표 프로젝트를 불러오지 못했어요.</p> : <p className="blog-home-empty">{configured ? "대표 프로젝트가 공개 상태인지 확인해 주세요." : "아직 대표 프로젝트를 설정하지 않았어요."}</p>;
   return <ul className="blog-home-projects">{projects.map(project => {
     const image = safeMediaUrl(project.thumbnailUrl ?? project.media?.find(item => item.mediaRole === "THUMBNAIL")?.url ?? null);
-    return <li key={project.id}><Link href={`/projects/${project.id}`} prefetch={false} className="blog-home-project">
+    return <li key={project.id}><IntentLink href={`/projects/${project.id}`} className="blog-home-project">
       <span className="blog-home-project-copy"><strong>{project.name}</strong>{project.summary && <span>{project.summary}</span>}<span className="blog-home-tags">{project.techStacks.map(tag => <span key={tag.id}>{tag.name}</span>)}</span></span>
       {image ? <img src={image} alt="" width={250} height={165}/> : <ContentPlaceholder kind="project" className="blog-project-placeholder"/>}
-    </Link></li>;
+    </IntentLink></li>;
   })}</ul>;
 }
-export function BlogHomeView({ handle, settings, activity, projects, projectErrors, hasFeaturedProjects, posts, postsFailed, authorId }: { authorId:string; handle: string; settings: BlogHomeSettings; activity: BlogActivity; projects: ProjectDetail[]; projectErrors: number; hasFeaturedProjects: boolean; posts: PostPage | null; postsFailed: boolean }) {
+export function BlogHomeView({ handle, settings, activity, postsContent, projectsContent }: { handle: string; settings: BlogHomeSettings; activity: BlogActivity; postsContent:ReactNode; projectsContent:ReactNode }) {
   const visibleSections = settings.sections.filter(section => section.visible);
   const sections = visibleSections;
   return <section className="blog-home-content" aria-label="블로그 홈">
     {sections.map(section => <div className="blog-home-block" key={section.key}>
       {section.key === "ACTIVITY" && <BlogActivityDisplay handle={handle} defaultDisplay={settings.activityDisplay} grass={<Activity data={activity}/>}/>}
       {section.key === "TECH_STACKS" && <section className="blog-home-section" aria-labelledby="home-tech-title"><h2 id="home-tech-title">{titles.TECH_STACKS}</h2><Stacks items={settings.techStacks}/></section>}
-      {section.key === "PROJECTS" && <section className="blog-home-section" aria-labelledby="home-projects-title"><div className="blog-home-section-title"><h2 id="home-projects-title">{titles.PROJECTS}</h2><Link href={`/blogs/${handle}?view=projects`}>전체 프로젝트 보기 →</Link></div><Projects projects={projects.slice(0,settings.featuredProjectLimit??6)} configured={hasFeaturedProjects} failed={projectErrors > 0}/>{projectErrors > 0 && projects.length > 0 && <p className="blog-home-empty" role="alert">일부 대표 프로젝트를 불러오지 못했어요.</p>}</section>}
-      {section.key === "RECENT_POSTS" && <section className="blog-home-section" aria-labelledby="home-posts-title"><div className="blog-home-section-title"><h2 id="home-posts-title">{titles.RECENT_POSTS}</h2><Link href={`/blogs/${handle}?view=boards`}>게시판 글 보기 →</Link></div><BlogPosts initial={posts} failed={postsFailed} handle={handle} authorId={authorId} variant="popular"/></section>}
+      {section.key === "PROJECTS" && <section className="blog-home-section" aria-labelledby="home-projects-title"><div className="blog-home-section-title"><h2 id="home-projects-title">{titles.PROJECTS}</h2><IntentLink href={`/blogs/${handle}?view=projects`}>전체 프로젝트 보기 →</IntentLink></div>{projectsContent}</section>}
+      {section.key === "RECENT_POSTS" && <section className="blog-home-section" aria-labelledby="home-posts-title"><div className="blog-home-section-title"><h2 id="home-posts-title">{titles.RECENT_POSTS}</h2><IntentLink href={`/blogs/${handle}?view=boards`}>게시판 글 보기 →</IntentLink></div>{postsContent}</section>}
     </div>)}
   </section>;
 }
