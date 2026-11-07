@@ -1,4 +1,5 @@
 "use client";
+import "@/app/writer-recovery.css";
 import {useEffect,useId,useRef,useState} from 'react';
 import type {WriterDraft} from '../lib/writer-drafts';
 export function WriterRecovery<T>({records,onRestore,onFresh,error}:{records:WriterDraft<T>[];onRestore:(record:WriterDraft<T>)=>Promise<void>;onFresh:()=>Promise<void>;error:string}){

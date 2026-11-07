@@ -8,10 +8,9 @@ import {useUserSession} from '../../auth/components/member-gate';
 import {userSession} from '../../auth/user-session';
 import {blogHref} from '../api/public-blog';
 import type {PostPage} from '../api/post-list';
-import {blogPostHref,matchesOwnerBlogSnapshot,ownBlogPostsPath,parseOwnerBlogPosts,type OwnerBlogSnapshot} from '../api/owner-blog-posts';
+import {blogPostHref,matchesOwnerBlogSnapshot,ownBlogPopularPostsPath,ownBlogPostsPath,parseOwnerBlogPopularPosts,parseOwnerBlogPosts,type OwnerBlogSnapshot} from '../api/owner-blog-posts';
 import {safeMediaUrl} from '../../media/model';
 import {PostCards} from './post-cards';
-import {loadPopularPosts,comparePopularPosts} from '../api/popular-posts';
 
 type Props={handle:string;authorId:string;initial:PostPage|null;page?:number;boardId?:string;q?:string;placement?:'boards'|'projects';variant?:'list'|'recent'|'popular';failed?:boolean};
 function PostDestinationLink({post,...props}:ComponentProps<typeof Link>&{post:PostPage['content'][number]}) {
@@ -20,13 +19,15 @@ function PostDestinationLink({post,...props}:ComponentProps<typeof Link>&{post:P
 export function BlogPosts({handle,authorId,initial,page=0,boardId,q,placement,variant='list',failed=false}:Props){
  const session=useUserSession(),owner=session.phase==='ready'&&session.member?.id===authorId&&session.member.handle===handle;
  const popular=variant==='popular'||variant==='recent';
- const path=ownBlogPostsPath({page,boardId,q,placement})+(popular?'#popular':'');
+ const path=popular?ownBlogPopularPostsPath():ownBlogPostsPath({page,boardId,q,placement});
  const [snapshot,setSnapshot]=useState<OwnerBlogSnapshot|null>(null),[attempt,setAttempt]=useState(0);
  useEffect(()=>{
   if(!owner)return;
   let live=true;
-  const loadPage=async(next:number)=>parseOwnerBlogPosts(await userSession.request(ownBlogPostsPath({page:next,boardId,q,placement})),{page:next,boardId,q,placement},authorId,handle);
-  void (popular?loadPopularPosts(loadPage,()=>live&&userSession.snapshot()===session):loadPage(page)).then(data=>{
+  const loadPage=async()=>popular
+   ?parseOwnerBlogPopularPosts(await userSession.request(ownBlogPopularPostsPath()),authorId,handle)
+   :parseOwnerBlogPosts(await userSession.request(ownBlogPostsPath({page,boardId,q,placement})),{page,boardId,q,placement},authorId,handle);
+  void loadPage().then(data=>{
    if(live)setSnapshot({session,path,data,error:''});
   }).catch(()=>{if(live)setSnapshot({session,path,data:null,error:'내 블로그 글을 불러오지 못했어요.'});});
   return()=>{live=false;};
@@ -38,8 +39,7 @@ export function BlogPosts({handle,authorId,initial,page=0,boardId,q,placement,va
  const href=(next:number)=>blogHref(handle,next,boardId,q,placement);
  if(variant==='recent'||variant==='popular'){
   if(!data?.content.length)return <p className="blog-home-empty" role={failed?'alert':undefined}>{failed?'인기 글을 불러오지 못했어요.':owner?'아직 발행한 글이 없어요.':'아직 공개된 글이 없어요.'}</p>;
-  const sorted=[...data.content].sort(comparePopularPosts);
-  return <ul className="blog-home-posts">{sorted.slice(0,3).map((post)=><li key={post.id}>
+  return <ul className="blog-home-posts">{data.content.slice(0,10).map((post)=><li key={post.id}>
    <PostDestinationLink post={post} href={blogPostHref(post)}>
     <span className="blog-home-post-copy">
       <strong>

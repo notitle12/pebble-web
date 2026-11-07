@@ -1,9 +1,8 @@
 import {GuestApiError} from '../../../lib/public-api.ts';
-import {getPublicBlogProfile,getPublicBlogPosts} from '../../post/api/public-blog.ts';
+import {getPopularPublicBlogPosts,getPublicBlogProfile,getPublicBlogPosts} from '../../post/api/public-blog.ts';
 import {getPublicBoards,getBoardPosts,flattenBoards} from '../../board/api/boards.ts';
 import {getPublicMemberProjects,getPublicProject} from '../../project/api/project-list.ts';
 import {getPublicBlogHome,visibleHomeDataLoads,featuredProjectIdsForHome} from '../../blog-home/api/blog-home.ts';
-import {loadPopularPosts} from '../../post/api/popular-posts.ts';
 import {getPublicBlogLinks} from './blog-tools.ts';
 
 type Query={handle:string;page:number;homeView:boolean;projectView:boolean;selected?:string;q?:string};
@@ -37,7 +36,7 @@ export async function loadBlogPageData({handle,page,homeView,projectView,selecte
     const settings=result.value;
     const visible=visibleHomeDataLoads(settings);
     const posts=settled(visible.recentPosts
-      ?loadPopularPosts(next=>getPublicBlogPosts(handle,next,base,request)):Promise.resolve(null))
+      ?getPopularPublicBlogPosts(handle,base,request):Promise.resolve(null))
       .then(result=>({posts:result.status==='fulfilled'?result.value:null,failed:result.status==='rejected'}));
     const projects=Promise.allSettled(visible.featuredProjects?featuredProjectIdsForHome(settings).map(id=>
       getPublicProject(id,base,request).then(project=>{

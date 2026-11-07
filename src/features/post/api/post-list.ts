@@ -66,19 +66,19 @@ function isPost(value: unknown): value is PostSummary & Record<string, unknown> 
     && (value.likeCount===undefined || count(value.likeCount)) && (value.likedByMe===undefined || typeof value.likedByMe==="boolean")
     && (value.publishedAt === null || timestamp(value.publishedAt)) && timestamp(value.createdAt);
 }
-export function parsePostPage(value: unknown, requestedPage: number): PostPage {
+export function parsePostPage(value: unknown, requestedPage: number, expectedSize = PAGE_SIZE): PostPage {
   if (!record(value) || !record(value.data)) throw new PostListError("response");
   const data = value.data;
   if (!Array.isArray(data.content) || !data.content.every(isPost)
-    || data.page !== requestedPage || data.size !== PAGE_SIZE
+    || data.page !== requestedPage || data.size !== expectedSize
     || !count(data.totalElements) || !count(data.totalPages)
     || typeof data.hasNext !== "boolean" || typeof data.hasPrevious !== "boolean"
-    || data.content.length > PAGE_SIZE
-    || data.totalPages !== Math.ceil(data.totalElements / PAGE_SIZE)
+    || data.content.length > expectedSize
+    || data.totalPages !== Math.ceil(data.totalElements / expectedSize)
     || data.hasNext !== (requestedPage + 1 < data.totalPages)
     || data.hasPrevious !== (requestedPage > 0)) throw new PostListError("response");
   return {
-    content: data.content, page: requestedPage, size: PAGE_SIZE,
+    content: data.content, page: requestedPage, size: expectedSize,
     totalElements: data.totalElements, totalPages: data.totalPages,
     hasNext: data.hasNext, hasPrevious: data.hasPrevious,
   };
@@ -99,7 +99,8 @@ export async function getPublicPosts(
 
 /** One globally ranked page; the API filters public posts with at least one like. */
 export async function getPopularPosts(baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL, request: typeof fetch = fetch): Promise<PostPage> {
-  return parsePostPage(await guestJson("posts/popular", new URLSearchParams({page:"0",size:String(PAGE_SIZE)}), baseUrl, request), 0);
+  const size = 10;
+  return parsePostPage(await guestJson("posts/popular", new URLSearchParams({page:"0",size:String(size)}), baseUrl, request), 0, size);
 }
 
 const validHandle = (value: string) => /^[a-z][a-z0-9_-]{1,28}[a-z0-9_]$/.test(value);

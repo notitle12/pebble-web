@@ -1,4 +1,5 @@
 "use client";
+import "@/app/writer-editor.css";
 import type {PostDraftSettings} from "@/lib/writer-drafts";
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";

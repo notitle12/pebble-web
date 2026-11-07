@@ -34,6 +34,19 @@ export async function getPublicBlogPosts(
   return parsed;
 }
 
+export async function getPopularPublicBlogPosts(
+  handle: string,
+  baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL,
+  request: typeof fetch = fetch,
+): Promise<PostPage> {
+  if (!validHandle(handle)) throw new GuestApiError("response");
+  const size = 10;
+  const page = parsePostPage(await guestJson(`blogs/${encodeURIComponent(handle)}/popular-posts`,
+    new URLSearchParams({ page: "0", size: String(size) }), baseUrl, request), 0, size);
+  if (page.content.some(post => post.author.handle !== handle || post.visibilityStatus === "HIDDEN")) throw new GuestApiError("response");
+  return page;
+}
+
 
 export type PublicBlogProfile = {
   id: string;

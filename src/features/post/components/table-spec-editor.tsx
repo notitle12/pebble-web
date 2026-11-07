@@ -1,4 +1,5 @@
 "use client";
+import "@/app/writer-editor.css";
 import { PrimaryKeyNote } from "./primary-key-note";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { parseTableSpec, type TableColumn, type TableSpec } from "../api/post-list";
