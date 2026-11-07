@@ -1,4 +1,5 @@
 import Link from "next/link";
+import {IntentLink} from "@/components/intent-link";
 import { ProjectCover } from "./project-cover";
 import { LikeCount } from "@/features/like/components/like-count";
 import type { ProjectPage } from "../api/project-list";
@@ -41,9 +42,9 @@ export function BlogProjects({ handle, initial, page = 0, failed = false }: Prop
           return (
             <li key={project.id}>
               <article className="project-tile">
-                <Link className="project-cover-link" href={`/projects/${project.id}`} prefetch={false} aria-label={`${project.name} 프로젝트 보기`}>
+                <IntentLink className="project-cover-link" href={`/projects/${project.id}`} aria-label={`${project.name} 프로젝트 보기`}>
                   <ProjectCover title={project.name} techStacks={project.techStacks.map((tag) => tag.name)} index={page * 20 + idx + 1} imageUrl={project.thumbnailUrl} />
-                </Link>
+                </IntentLink>
                 <div className="project-tile-body">
                   <div className="post-meta">
                     <span>{project.owner.nickname}</span>
@@ -54,9 +55,9 @@ export function BlogProjects({ handle, initial, page = 0, failed = false }: Prop
                     <LikeCount count={project.likeCount} />
                   </div>
                   <h3>
-                    <Link href={`/projects/${project.id}`} prefetch={false}>
+                    <IntentLink href={`/projects/${project.id}`}>
                       {project.name}
-                    </Link>
+                    </IntentLink>
                   </h3>
                   {project.summary && <p className="post-summary">{project.summary}</p>}
                   <ul className="tag-list" aria-label="기술 스택">
