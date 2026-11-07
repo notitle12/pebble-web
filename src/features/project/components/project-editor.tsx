@@ -1,4 +1,5 @@
 "use client";
+import "@/app/writer-editor.css";
 
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { TechStackSelection } from "../../tech-stack/components/tech-stack-selection";

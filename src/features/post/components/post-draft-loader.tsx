@@ -1,4 +1,5 @@
 "use client";
+import "@/app/writer-draft-loader.css";
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {userSession} from '../../auth/user-session';
 import {fetchSavedPostDrafts,localManualPostDrafts,mergeSavedPostChoices,savedPostDraftCount,type SavedPostChoice} from '../saved-post-drafts';
