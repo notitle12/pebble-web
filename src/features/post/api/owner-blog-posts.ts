@@ -10,9 +10,15 @@ export function ownBlogPostsPath({page,boardId,q,placement}:BlogPostQuery){
  if(boardId)params.set('boardId',boardId);if(q)params.set('q',q);if(placement)params.set('placement',placement);
  return `/members/me/blog/posts?${params}`;
 }
+export function ownBlogPopularPostsPath(){return '/members/me/blog/posts/popular?page=0&size=10';}
 export function parseOwnerBlogPosts(value:unknown,query:BlogPostQuery,memberId:string,handle:string):OwnPostPage{
  const page=parseOwnPosts(value,query.page,memberId,query.boardId);
  if(page.content.some(post=>post.author.handle!==handle||post.draft!==false||post.isBlocked!==false))throw new MemberApiError(0,'INVALID_RESPONSE','내 블로그 글 목록을 확인하지 못했어요.');
+ return page;
+}
+export function parseOwnerBlogPopularPosts(value:unknown,memberId:string,handle:string):OwnPostPage{
+ const page=parseOwnPosts(value,0,memberId,undefined,10);
+ if(page.content.some(post=>post.author.handle!==handle||post.draft!==false||post.isBlocked!==false))throw new MemberApiError(0,'INVALID_RESPONSE','내 블로그 인기 글 목록을 확인하지 못했어요.');
  return page;
 }
 export type OwnerBlogSnapshot={session:SessionState;path:string;data:OwnPostPage|null;error:string};

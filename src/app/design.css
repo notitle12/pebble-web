@@ -179,7 +179,6 @@ button,input,select,textarea {font-family:inherit;}
 
 /* 콘텐츠 면과 페이지 배경을 공통으로 구분한다. */
 :root{--background:#f1f3f5;--line:#e3e6ea}
-body:has(.writer-shell){background:#fff}
 .discovery-shell{padding-bottom:40px}
 .pebble-banner{border:1px solid #dfe5ef;box-shadow:0 2px 8px #27344904;margin-bottom:28px}
 .discovery-section{background:#fff;border:1px solid var(--line);border-radius:16px;padding:30px 32px;margin-bottom:24px;box-shadow:0 3px 16px #26344c04}
@@ -377,10 +376,8 @@ main.personal-blog-layout{max-width:none;width:100%;margin:0;padding:0;display:g
 .comment-compose-row{grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px}
 .comments-panel .comment-compose-row>.button{align-self:center;min-height:36px;margin:0;padding:7px 14px;background:var(--accent);border-color:var(--accent);color:#fff;white-space:nowrap}
 .comments-panel .comment-compose-row>.button:hover:not(:disabled){background:#2c48bd;border-color:#2c48bd;color:#fff}
-.writer-action-bar button{min-height:36px;min-width:80px;padding:7px 14px;border-radius:9px;font-weight:500}
-.writer-action-bar>div>button:last-child:hover:not(:disabled){background:#32383e;border-color:#32383e;color:#fff}
 .profile-check{min-height:36px;padding:7px 12px}
-@media(pointer:coarse){.button,.comments-panel .button,.comment-actions .button,.writer-action-bar button,.board-row-actions button{min-height:44px}.comment-actions{gap:8px}.comment-actions .button{padding-inline:12px}.comments-panel .comment-compose-row>.button{min-height:44px}}
+@media(pointer:coarse){.button,.comments-panel .button,.comment-actions .button,.board-row-actions button{min-height:44px}.comment-actions{gap:8px}.comment-actions .button{padding-inline:12px}.comments-panel .comment-compose-row>.button{min-height:44px}}
 @media(prefers-reduced-motion:reduce){.button{transition:none}}
 
 /* Comment composer: an inset writing card with quiet controls below. */
@@ -542,10 +539,7 @@ main.personal-blog-layout{max-width:none;width:100%;margin:0;padding:0;display:g
 
 /* Writing and project creation share the same account menu. */
 .session-links>a{white-space:nowrap}
-.writer-identity .account-avatar{width:32px;height:32px}
-.writer-identity .account-menu-panel{font-size:12px}
 .account-menu summary:focus-visible{outline:2px solid var(--accent);outline-offset:4px;border-radius:50%}
-@media(max-width:720px){.writer-identity{display:flex;right:22px;top:14px;background:transparent}.writer-identity>span:first-child{display:none}}
 
 /* Pebble: white reading surfaces, forest accents, navigation-only sidebar. */
 :root{--background:#fff;--surface:#fff;--text:#24352b;--muted:#65736a;--line:#e2e9e3;--accent:#2f6b50;--accent-hover:#24543e;--accent-soft:#edf5ef;--accent-border:#aac9b5;--focus:#4f8667}
@@ -878,6 +872,3 @@ html[data-theme=dark] .architecture-auto-layout:hover:not(:disabled){border-colo
 @media(max-width:720px){.project-reading-shell>.detail-back{margin-inline:21px}}
 
 /* 글·프로젝트 나가기의 기본/hover 치수를 동일하게 유지한다. */
-.writer-composer .writer-action-bar>.writer-exit{display:inline-flex;align-items:center;justify-content:center;min-width:0;min-height:36px;padding:7px 0;border:0;border-radius:0;background:transparent;color:var(--muted);font:inherit;font-size:13px;line-height:1.4;box-shadow:none;transform:none}
-.writer-composer .writer-action-bar>.writer-exit:hover:not(:disabled){background:transparent;border-color:transparent;color:var(--text);box-shadow:none;transform:none}
-@media(pointer:coarse){.writer-composer .writer-action-bar>.writer-exit{min-height:44px}}

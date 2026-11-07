@@ -14,8 +14,8 @@ export function parseOwnPost(value:unknown):OwnPost{
   if((d.category!==null && !validClassification(d.category)) || !Array.isArray(d.tags) || !d.tags.every(tag=>typeof tag==="string"&&tag.length>0) || new Set(d.tags).size!==d.tags.length)throw new MemberApiError(0,"INVALID_RESPONSE","글의 분류 정보를 확인하지 못했습니다.");
   return {...post,thumbnailImageId:typeof d.thumbnailImageId==="string"?d.thumbnailImageId:null,boardId:d.boardId as string|null,projectId:d.projectId as string|null,category:d.category as Classification|null,tags:d.tags as string[],visibilityStatus:d.visibilityStatus as OwnPost["visibilityStatus"],isBlocked:d.isBlocked,draft:d.draft===true};
 }
-export function parseOwnPosts(value:unknown,page:number,memberId?:string,boardId?:string):OwnPostPage{
-  const parsed=parsePostPage(value,page);
+export function parseOwnPosts(value:unknown,page:number,memberId?:string,boardId?:string,expectedSize=20):OwnPostPage{
+  const parsed=parsePostPage(value,page,expectedSize);
   for(const post of parsed.content){const d=post as unknown as Record<string,unknown>;if(!["PUBLIC","HIDDEN"].includes(String(d.visibilityStatus))||typeof d.isBlocked!=="boolean"||(d.draft!==undefined&&typeof d.draft!=="boolean")||typeof d.displayOrder!=="number"||!Number.isInteger(d.displayOrder)||d.displayOrder<0||d.displayOrder>2147483647||memberId!==undefined&&post.author.id!==memberId||boardId!==undefined&&(d.boardId!==boardId||!Number.isSafeInteger(d.boardDisplayOrder)||(d.boardDisplayOrder as number)<0))throw new MemberApiError(0,"INVALID_RESPONSE","내 글 목록을 확인하지 못했습니다.");}
   return parsed as OwnPostPage;
 }

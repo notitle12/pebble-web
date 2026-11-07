@@ -1,4 +1,5 @@
 "use client";
+import "@/app/writer-editor.css";
 import { useEffect, useRef, useState } from "react";
 import { DiagramZoomInput } from "./diagram-zoom-input";
 import { useEditorFullscreen, EditorFullscreenButton } from "./use-editor-fullscreen";

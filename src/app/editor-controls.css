@@ -23,31 +23,3 @@
   font-size: 13px;
   line-height: 1.2;
 }
-
-.writer-action-bar > div > button {
-  box-sizing: border-box;
-  height: 32px;
-  min-height: 32px;
-  margin: 0;
-  padding: 0 14px;
-  border-radius: 6px;
-  line-height: 1.2;
-}
-
-[data-writer-popup][data-writer-popup] button:not(:empty):not(:has(svg)) {
-  box-sizing: border-box;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 30px;
-  margin-block: 0;
-  padding-block: 4px;
-  line-height: 1.2;
-  border-radius: 6px;
-}
-
-@media (pointer: coarse) {
-  .writer-action-bar > div > button {
-    min-height: 44px;
-  }
-}

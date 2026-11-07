@@ -8,6 +8,7 @@ const base='https://api.example.test/api/v1';
 const query={handle:'test-blog',page:0,homeView:false,projectView:false};
 const profile={id:'100',handle:'test-blog',nickname:'작성자',blogName:'기록',profileImageUrl:null};
 const empty={content:[],page:0,size:20,totalElements:0,totalPages:0,hasNext:false,hasPrevious:false};
+const popularEmpty={content:[],page:0,size:10,totalElements:0,totalPages:0,hasNext:false,hasPrevious:false};
 const json=data=>new Response(JSON.stringify({data}),{headers:{'Content-Type':'application/json'}});
 const home={...defaultBlogHomeSettings(),featuredProjectIds:[mockProjects[0].id],activity:{from:'2026-11-01',to:'2026-11-07',timeZone:'Asia/Seoul',days:[]}};
 const project={...mockProjects[0],owner:{...mockProjects[0].owner,id:'100'},description:null,startedOn:null,completedOn:null,features:[],links:[]};
@@ -82,14 +83,14 @@ test('홈 설정·인기 글·대표 프로젝트는 사이드바를 기다리�
   if(url.pathname.endsWith('/links')||url.pathname.endsWith('/boards')||url.pathname.startsWith('/api/v1/members/'))await sidebarGate.promise;
   if(url.pathname.endsWith('/home'))return json(home);
   if(url.pathname===`/api/v1/projects/${mockProjects[0].id}`){started.resolve();await projectGate.promise;return json(project);}
-  if(url.pathname.endsWith('/posts'))return json({...empty,content:[{...mockPosts[0],author:{...mockPosts[0].author,handle:'test-blog'},likeCount:3}],totalElements:1,totalPages:1});
+  if(url.pathname.endsWith('/popular-posts'))return json({...popularEmpty,content:[{...mockPosts[0],author:{...mockPosts[0].author,handle:'test-blog'},likeCount:3}],size:10,totalElements:1,totalPages:1});
   return fixture(url);
  });
  const content=await data.home;await started.promise;
  assert.ok(content);assert.equal(content.settings.activity.timeZone,'Asia/Seoul');
  const posts=await content.posts;
  assert.equal(posts.failed,false);assert.equal(posts.posts.content[0].id,mockPosts[0].id);
- assert.ok(paths.includes('/api/v1/blogs/test-blog/posts'));
+ assert.ok(paths.includes('/api/v1/blogs/test-blog/popular-posts'));
  projectGate.resolve();assert.equal((await content.projects).projects.length,1);
  sidebarGate.resolve();await data.sidebar;
 });
@@ -109,7 +110,7 @@ test('대표 프로젝트의 소유자 검증과 인기 글·홈 실패 상태�
  for(const failedHome of [false,true]){
   const data=await loadBlogPageData({...query,homeView:true},base,async url=>{
    if(url.pathname.endsWith('/home'))return failedHome?new Response(null,{status:503}):json(home);
-   if(url.pathname.endsWith('/posts'))return new Response(null,{status:503});
+   if(url.pathname.endsWith('/popular-posts'))return new Response(null,{status:503});
    if(url.pathname.startsWith('/api/v1/projects/'))return json({...project,owner:{...project.owner,id:'999'}});
    return fixture(url);
   });

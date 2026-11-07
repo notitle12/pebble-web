@@ -42,10 +42,11 @@ export function createMockApi(state = "normal") {
   return http.createServer(async (request, response) => {
     const url = new URL(request.url, "http://localhost");
     response.setHeader("Content-Type", "application/json; charset=utf-8");
+    const blogPopular = url.pathname.match(/^\/api\/v1\/blogs\/([^/]+)\/popular-posts$/);
     const detail = url.pathname.match(/^\/api\/v1\/blogs\/([^/]+)\/posts\/([^/]+)$/);
     const numericPost = url.pathname.match(/^\/api\/v1\/posts\/([1-9]\d*)$/);
     const projectDetail=url.pathname.match(/^\/api\/v1\/projects\/([1-9]\d*)(\/posts)?$/);
-    if (request.method !== "GET" || (!projectDetail && !detail && !numericPost && !["/api/v1/posts", "/api/v1/posts/search", "/api/v1/posts/popular", "/api/v1/tech-stacks", "/api/v1/categories", "/api/v1/projects", "/api/v1/projects/search", "/api/v1/projects/popular"].includes(url.pathname))) {
+    if (request.method !== "GET" || (!projectDetail && !detail && !numericPost && !blogPopular && !["/api/v1/posts", "/api/v1/posts/search", "/api/v1/posts/popular", "/api/v1/tech-stacks", "/api/v1/categories", "/api/v1/projects", "/api/v1/projects/search", "/api/v1/projects/popular"].includes(url.pathname))) {
       response.writeHead(404); response.end(JSON.stringify({ error: { code: "NOT_FOUND" } })); return;
     }
     if (state === "slow") await new Promise(resolve => setTimeout(resolve, 2500));
@@ -69,7 +70,7 @@ export function createMockApi(state = "normal") {
         ]
       }}));return;
     }
-    if (detail || numericPost) {
+    if ((detail && !blogPopular) || numericPost) {
       const post = state === "empty" ? undefined : mockPosts.find(post => numericPost ? post.id === numericPost[1] : post.author.handle === detail[1] && post.urlKey === detail[2]);
       if (!post) { response.writeHead(404); response.end(JSON.stringify({error:{code:"POST_NOT_FOUND"}})); return; }
       response.end(JSON.stringify({data:{...post, blocks:[
@@ -81,16 +82,19 @@ export function createMockApi(state = "normal") {
     if (url.pathname === "/api/v1/tech-stacks") { response.end(JSON.stringify({ data: state === "empty" ? [] : mockTags })); return; }
     if (url.pathname === "/api/v1/categories") { response.end(JSON.stringify({data: state === "empty" ? [] : mockCategories})); return; }
     const page = Number(url.searchParams.get("page") ?? "0");
-    const size = Number(url.searchParams.get("size") ?? "20");
-    if (!Number.isSafeInteger(page) || page < 0 || size !== 20) {
+    const size = Number(url.searchParams.get("size") ?? (blogPopular ? "10" : "20"));
+    const popularRequest = Boolean(blogPopular) || url.pathname.endsWith("/popular");
+    const validSize = blogPopular ? Number.isSafeInteger(size) && size >= 1 && size <= 10
+      : popularRequest ? Number.isSafeInteger(size) && size >= 1 && size <= 100 : size === 20;
+    if (!Number.isSafeInteger(page) || page < 0 || !validSize) {
       response.writeHead(400); response.end(JSON.stringify({ error: { code: "INVALID_REQUEST" } })); return;
     }
-    if (url.pathname.endsWith("/popular")) {
+    if (popularRequest) {
       if ([...url.searchParams.keys()].some(key=>!["page","size"].includes(key))) {
         response.writeHead(400);response.end(JSON.stringify({error:{code:"INVALID_REQUEST"}}));return;
       }
-      const source=url.pathname.startsWith("/api/v1/projects")?mockProjects:mockPosts;
-      const ranked=(state==="empty"?[]:source).filter(row=>(row.likeCount??0)>0).slice().sort((a,b)=>b.likeCount-a.likeCount
+      const source=url.pathname.startsWith("/api/v1/projects")?mockProjects:blogPopular?mockPosts.filter(row=>row.author.handle===blogPopular[1]):mockPosts;
+      const ranked=(state==="empty"?[]:source).filter(row=>blogPopular||(row.likeCount??0)>0).slice().sort((a,b)=>(b.likeCount??0)-(a.likeCount??0)
         || (a.publishedAt===null?(b.publishedAt===null?0:1):b.publishedAt===null?-1:Date.parse(b.publishedAt)-Date.parse(a.publishedAt))
         || (BigInt(b.id)>BigInt(a.id)?1:BigInt(b.id)<BigInt(a.id)?-1:0));
       const totalPages=Math.ceil(ranked.length/size);
