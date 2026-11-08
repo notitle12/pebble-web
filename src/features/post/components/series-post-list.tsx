@@ -45,7 +45,7 @@ export function SeriesPostList({posts,disabled,membershipDisabled=disabled,onMov
   }else if(event.key==="Tab")cancel();
  }
  return <div ref={root} onKeyDown={event=>{if(event.key==="Escape"&&drag.current){event.preventDefault();cancel();}}}>
-  <p id={help} className={s.srOnly}>손잡이를 드래그해 순서를 편집한 뒤 순서 저장 버튼을 누르세요. 키보드는 Space로 잡고 방향키로 이동한 뒤 Enter로 놓습니다. Escape는 취소합니다.</p>
+  <p id={help} className={s.srOnly}>손잡이를 드래그해 순서를 편집한 뒤 상단 저장 버튼을 누르세요. 키보드는 Space로 잡고 방향키로 이동한 뒤 Enter로 놓습니다. Escape는 취소합니다.</p>
   <span role="status" className={s.srOnly}>{preview?`${(preview.rank??offset+preview.source)+1}번째 위치`:""}</span>
   {posts.hasPrevious&&<div className={s.pageDrop} data-series-rank={offset-1} data-active={preview?.rank===offset-1}>이전 페이지 끝에 놓기</div>}
   <ol className={s.postList} aria-label="시리즈 글 순서" start={offset+1} aria-busy={disabled}>{posts.content.map((post,index)=><li key={post.id} className={s.postRow} data-series-index={index} data-series-post-id={post.id} data-dragging={preview?.source===index} data-drop={preview?.insertion===index?"before":preview?.insertion===posts.content.length&&index===posts.content.length-1?"after":undefined}
