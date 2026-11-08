@@ -6,6 +6,8 @@ import { HOME_SECTION_KEYS, defaultBlogHomeSettings, getMyBlogHome, normalizeTec
 
 import Link from "next/link";
 import {useRegionDrag} from "./use-region-drag";
+import {SidebarMenuOrder} from "./sidebar-menu-order";
+import {SIDEBAR_MENU_KEYS} from "../sidebar-order";
 import { TechStackPicker } from "./tech-stack-picker";
 
 const label: Record<HomeSectionKey, string> = { ACTIVITY: "블로그 활동", TECH_STACKS: "기술 스택", PROJECTS: "대표 프로젝트", RECENT_POSTS: "인기 글 (공감순)" };
@@ -30,6 +32,7 @@ function Editor({ member }: { member: Member }) {
     {loading ? <p role="status">홈 구성을 불러오고 있어요.</p> : saved === null ? <div className="blog-home-error"><p role="alert">{error}</p><button className="button" type="button" onClick={() => { setError(""); setLoadAttempt(value => value + 1); }}>다시 불러오기</button></div> : <form onSubmit={submit}>
       {error && <p className="blog-home-error" role="alert">{error}</p>}{notice && <p role="status">{notice}</p>}
       <fieldset><legend>홈 섹션</legend><p>표시할 섹션을 고르고 영역을 드래그해 순서를 바꾸세요.</p><ol className="home-section-order">{draft.sections.map(section=><li key={section.key} data-home-section={section.key} {...sectionDrag.props(section.key)}><input type="checkbox" aria-label={`${label[section.key]} 표시`} checked={section.visible} disabled={saving} onChange={event=>update(current=>({...current,sections:current.sections.map(item=>item.key===section.key?{...item,visible:event.target.checked}:item)}))}/><span>{label[section.key]}</span></li>)}</ol></fieldset>
+      <fieldset><legend>사이드바 메뉴 순서</legend><SidebarMenuOrder order={draft.sidebarOrder??[...SIDEBAR_MENU_KEYS]} disabled={saving} onChange={sidebarOrder=>update(current=>({...current,sidebarOrder}))}/></fieldset>
       <fieldset><legend>블로그 활동 기본 보기</legend><div className="activity-choice">{(["GRASS","STONES"] as const).map(value=><label key={value}><input type="radio" name="activityDisplay" checked={(draft.activityDisplay??"GRASS")===value} disabled={saving} onChange={()=>update(current=>({...current,activityDisplay:value}))}/>{value==="GRASS"?"잔디":"기록의 돌"}</label>)}</div><p>방문자는 잔디와 돌을 전환해서 볼 수 있어요.</p></fieldset>
       <TechStackPicker value={draft.techStacks} disabled={saving} onChange={techStacks=>update(current=>({...current,techStacks}))}/>
       <fieldset><legend>대표 프로젝트</legend><label htmlFor="featured-project-limit">홈에 표시할 개수</label><select id="featured-project-limit" value={draft.featuredProjectLimit??6} disabled={saving} onChange={event=>update(current=>({...current,featuredProjectLimit:Number(event.target.value)}))}>{[1,2,3,4,5,6].map(count=><option key={count} value={count}>{count}개</option>)}</select><p>대표 프로젝트는 <Link href="/me/projects">프로젝트 관리</Link>에서 최대 6개까지 지정하거나 해제할 수 있어요.</p></fieldset>

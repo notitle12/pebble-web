@@ -14,6 +14,8 @@ const home={...defaultBlogHomeSettings(),featuredProjectIds:[mockProjects[0].id]
 const project={...mockProjects[0],owner:{...mockProjects[0].owner,id:'100'},description:null,startedOn:null,completedOn:null,features:[],links:[]};
 const deferred=()=>{let resolve;const promise=new Promise(done=>resolve=done);return {promise,resolve};};
 function fixture(url){
+ if(url.pathname.endsWith('/navigation'))return json({sidebarOrder:['BOARDS','PROJECTS','SERIES']});
+ if(url.pathname.endsWith('/series'))return json([]);
  if(url.pathname.endsWith('/links'))return json({githubUrl:null,sites:[]});
  if(url.pathname.endsWith('/boards'))return json([{id:'20',name:'개발',displayOrder:0,children:[]}]);
  if(url.pathname==='/api/v1/blogs/test-blog')return json(profile);
@@ -26,14 +28,14 @@ test('게시판의 독립 조회는 이전 응답을 기다리지 않고 동시�
   assert.equal(init.credentials,'omit');assert.equal(init.headers.Authorization,undefined);assert.equal(init.cache,'no-store');
   paths.push(url.pathname);
   if(url.pathname!=='/api/v1/blogs/test-blog'){
-   if(paths.length===5)started();
+   if(paths.length===7)started();
    await gate;
   }
   return fixture(url);
  });
  try {
   await Promise.race([allStarted,new Promise((_,reject)=>{timeout=setTimeout(()=>reject(new Error('독립 조회가 이전 응답을 기다립니다.')),2000);})]);
-  assert.deepEqual(new Set(paths),new Set(['/api/v1/blogs/test-blog','/api/v1/blogs/test-blog/links','/api/v1/members/100/boards','/api/v1/members/100/projects','/api/v1/blogs/test-blog/posts']));
+  assert.deepEqual(new Set(paths),new Set(['/api/v1/blogs/test-blog','/api/v1/blogs/test-blog/links','/api/v1/members/100/boards','/api/v1/members/100/projects','/api/v1/blogs/test-blog/posts','/api/v1/blogs/test-blog/series','/api/v1/blogs/test-blog/navigation']));
  } finally {clearTimeout(timeout);release();}
  const data=await pending;assert.equal(data.author.id,'100');assert.deepEqual(data.result.content,[]);
 });
@@ -59,12 +61,12 @@ test('프로필 응답 전에도 handle 기반 목록·링크 조회를 시작�
  t.after(()=>gate.resolve());
  const pending=loadBlogPageData(query,base,async url=>{
   paths.push(url.pathname);
-  if(paths.length===3)started.resolve();
+  if(paths.length===5)started.resolve();
   if(url.pathname==='/api/v1/blogs/test-blog')await gate.promise;
   return fixture(url);
  });
  await started.promise;
- assert.deepEqual(new Set(paths),new Set(['/api/v1/blogs/test-blog','/api/v1/blogs/test-blog/links','/api/v1/blogs/test-blog/posts']));
+ assert.deepEqual(new Set(paths),new Set(['/api/v1/blogs/test-blog','/api/v1/blogs/test-blog/links','/api/v1/blogs/test-blog/posts','/api/v1/blogs/test-blog/series','/api/v1/blogs/test-blog/navigation']));
  gate.resolve();
  const data=await pending;await data.sidebar;
 });
@@ -132,4 +134,26 @@ test('프로필 404가 최우선이며 먼저 실패한 보조 조회도 처리�
 });
 test('게시판 병렬 조회 후에도 없는 폴더와 폴더 조회 실패를 허용하지 않는다',async()=>{
  for(const mode of ['missing','failed'])await assert.rejects(loadBlogPageData({...query,selected:'21'},base,async url=>url.pathname.endsWith('/boards')?(mode==='missing'?json([]):new Response(null,{status:404})):fixture(url)),error=>error instanceof GuestApiError&&error.kind==='not-found');
+});
+
+
+test('sidebar shares one public series list and reuses home settings for menu order',async()=>{
+ for(const homeView of [true,false]){
+  const paths=[];
+  const data=await loadBlogPageData({...query,homeView},base,async url=>{paths.push(url.pathname);return url.pathname.endsWith('/home')?json({...home,sidebarOrder:['SERIES','BOARDS','PROJECTS']}):fixture(url);});
+  const list=await data.series,sidebar=await data.sidebar;
+  assert.equal(paths.filter(path=>path.endsWith('/series')).length,1);
+  assert.equal(list.status,'fulfilled');assert.equal(sidebar.series,list.value);
+  assert.deepEqual(sidebar.sidebarOrder,homeView?['SERIES','BOARDS','PROJECTS']:['BOARDS','PROJECTS','SERIES']);
+  assert.equal(sidebar.navigationError,false);assert.equal(sidebar.seriesError,false);
+  assert.equal(paths.filter(path=>path.endsWith('/navigation')).length,homeView?0:1);
+  assert.equal(paths.filter(path=>path.endsWith('/home')).length,homeView?1:0);
+ }
+});
+test('sidebar menu and series failures preserve main posts and safe default ordering',async()=>{
+ const data=await loadBlogPageData(query,base,async url=>url.pathname.endsWith('/series')||url.pathname.endsWith('/navigation')?new Response(null,{status:503}):fixture(url));
+ const sidebar=await data.sidebar;
+ assert.equal(sidebar.seriesError,true);assert.deepEqual(sidebar.series,[]);
+ assert.equal(sidebar.navigationError,true);assert.deepEqual(sidebar.sidebarOrder,['BOARDS','PROJECTS','SERIES']);
+ assert.deepEqual(data.result.content,[]);assert.equal(sidebar.boardError,false);
 });

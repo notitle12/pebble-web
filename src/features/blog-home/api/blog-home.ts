@@ -1,3 +1,4 @@
+import {SIDEBAR_MENU_KEYS,isSidebarMenuOrder,type SidebarMenuKey} from "../sidebar-order.ts";
 import { GuestApiError, guestJson } from "../../../lib/public-api.ts";
 import { MemberApiError, responseData } from "../../../lib/member-api.ts";
 import { validId } from "../../../lib/list-query.ts";
@@ -5,14 +6,14 @@ import { validId } from "../../../lib/list-query.ts";
 export const HOME_SECTION_KEYS = ["ACTIVITY", "TECH_STACKS", "PROJECTS", "RECENT_POSTS"] as const;
 export type HomeSectionKey = typeof HOME_SECTION_KEYS[number];
 export type HomeSection = { key: HomeSectionKey; visible: boolean };
-export type BlogHomeSettings = { sections: HomeSection[]; techStacks: string[]; featuredProjectIds: string[]; featuredProjectLimit: number; activityDisplay?: "GRASS" | "STONES" };
+export type BlogHomeSettings = { sections: HomeSection[]; techStacks: string[]; featuredProjectIds: string[]; featuredProjectLimit: number; activityDisplay?: "GRASS" | "STONES"; sidebarOrder?:SidebarMenuKey[] };
 export type BlogActivity = { from: string; to: string; timeZone: "Asia/Seoul"; days: { date: string; count: number }[] };
 export type PublicBlogHome = BlogHomeSettings & { activity: BlogActivity };
 
 const record = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null && !Array.isArray(value);
 const validDate = (value: unknown): value is string => typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(Date.parse(`${value}T00:00:00Z`)) && new Date(`${value}T00:00:00Z`).toISOString().slice(0, 10) === value;
 export const defaultBlogHomeSettings = (): BlogHomeSettings => ({
-  sections: HOME_SECTION_KEYS.map(key => ({ key, visible: true })), techStacks: [], featuredProjectIds: [], featuredProjectLimit: 6, activityDisplay: "GRASS",
+  sections: HOME_SECTION_KEYS.map(key => ({ key, visible: true })), techStacks: [], featuredProjectIds: [], featuredProjectLimit: 6, activityDisplay: "GRASS", sidebarOrder:[...SIDEBAR_MENU_KEYS],
 });
 
 export function visibleHomeDataLoads(settings: BlogHomeSettings) {
@@ -43,7 +44,8 @@ export function parseBlogHomeSettings(value: unknown): BlogHomeSettings {
   const ids = data.featuredProjectIds;
   if (!ids.every(id => typeof id === "string" && validId(id)) || new Set(ids).size !== ids.length) throw new GuestApiError("response");
   if (data.activityDisplay !== undefined && !["GRASS","STONES"].includes(data.activityDisplay as string)) throw new GuestApiError("response");
-  return { sections, techStacks: stacks, featuredProjectIds: ids as string[], featuredProjectLimit, ...(data.activityDisplay === undefined ? {} : {activityDisplay:data.activityDisplay as "GRASS"|"STONES"}) };
+  if(data.sidebarOrder!==undefined&&!isSidebarMenuOrder(data.sidebarOrder))throw new GuestApiError("response");
+  return { ...(data.sidebarOrder===undefined?{}:{sidebarOrder:[...data.sidebarOrder as SidebarMenuKey[]]}), sections, techStacks: stacks, featuredProjectIds: ids as string[], featuredProjectLimit, ...(data.activityDisplay === undefined ? {} : {activityDisplay:data.activityDisplay as "GRASS"|"STONES"}) };
 }
 
 export function normalizeTechStacks(values: string[]): string[] {
@@ -89,7 +91,8 @@ export async function getMyBlogHome(request: (path: string) => Promise<unknown>)
 }
 
 export async function saveMyBlogHome(settings: BlogHomeSettings, request: (path: string, options: { method: string; body: unknown }) => Promise<unknown>): Promise<BlogHomeSettings> {
-  const payload = { sections: settings.sections, techStacks: normalizeTechStacks(settings.techStacks), featuredProjectIds: settings.featuredProjectIds, featuredProjectLimit: settings.featuredProjectLimit??6, activityDisplay: settings.activityDisplay??"GRASS" };
+  if(settings.sidebarOrder!==undefined&&!isSidebarMenuOrder(settings.sidebarOrder))throw new MemberApiError(400,"INVALID_REQUEST","메뉴 순서를 확인해 주세요.");
+  const payload = { ...(settings.sidebarOrder===undefined?{}:{sidebarOrder:[...settings.sidebarOrder]}), sections: settings.sections, techStacks: normalizeTechStacks(settings.techStacks), featuredProjectIds: settings.featuredProjectIds, featuredProjectLimit: settings.featuredProjectLimit??6, activityDisplay: settings.activityDisplay??"GRASS" };
   try { return parseBlogHomeSettings(await request("/members/me/blog-home", { method: "PUT", body: payload })); }
   catch (error) { if (error instanceof GuestApiError) throw new MemberApiError(0, "INVALID_RESPONSE", "저장 결과를 확인하지 못했습니다."); throw error; }
 }
@@ -109,4 +112,13 @@ export async function setMyProjectFeatured(projectId: string, featured: boolean,
     if(error instanceof GuestApiError)throw new MemberApiError(0,"INVALID_RESPONSE","대표 프로젝트 저장 결과를 확인하지 못했습니다.");
     throw error;
   }
+}
+
+/** Menu-only read avoids activity aggregation on non-home blog pages. */
+export async function getPublicBlogNavigation(handle:string,baseUrl=process.env.NEXT_PUBLIC_API_BASE_URL,request:typeof fetch=fetch):Promise<{sidebarOrder:SidebarMenuKey[]}>{
+ if(!/^[a-z][a-z0-9_-]{1,28}[a-z0-9_]$/.test(handle))throw new GuestApiError("response");
+ const value=await guestJson(`blogs/${encodeURIComponent(handle)}/navigation`,new URLSearchParams(),baseUrl,request);
+ const data=record(value)&&"data" in value?value.data:null;
+ if(!record(data)||!isSidebarMenuOrder(data.sidebarOrder))throw new GuestApiError("response");
+ return {sidebarOrder:[...data.sidebarOrder]};
 }

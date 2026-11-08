@@ -14,7 +14,7 @@ import {BlogProfileHeader} from "@/features/blog-tools/components/blog-profile-h
 import { BlogPosts } from "@/features/post/components/blog-posts";
 import { BlogProjects } from "@/features/project/components/blog-projects";
 import Link from "next/link";
-import {getPublicPostSeries,getPublicPostSeriesDetail,getPublicPostSeriesPosts,publicPostSeriesHref,type PostSeries} from "@/features/post/api/post-series";
+import {getPublicPostSeriesDetail,getPublicPostSeriesPosts,publicPostSeriesHref,type PostSeries} from "@/features/post/api/post-series";
 import type {PostPage} from "@/features/post/api/post-list";
 import {PostCards} from "@/features/post/components/post-cards";
 import styles from "@/features/post/components/public-series.module.css";
@@ -53,9 +53,10 @@ export default async function PublicBlogPage({ params, searchParams }: {
   let publicSeries:PostSeries[]|null=null,activeSeries:PostSeries|null=null,seriesPosts:PostPage|null=null;
   try {
     const pageRequest=loadBlogPageData({handle,page,homeView,projectView,seriesView,selected,q});
-    const seriesRequest=seriesView?(seriesId?Promise.all([getPublicPostSeriesDetail(handle,seriesId),getPublicPostSeriesPosts(handle,seriesId,page)]).then(([item,posts])=>({item,posts})):getPublicPostSeries(handle).then(list=>({list}))):Promise.resolve(null);
+    const seriesRequest=seriesView&&seriesId?Promise.all([getPublicPostSeriesDetail(handle,seriesId),getPublicPostSeriesPosts(handle,seriesId,page)]).then(([item,posts])=>({item,posts})):Promise.resolve(null);
     const [loaded,seriesData]=await Promise.all([pageRequest,seriesRequest]);data=loaded;
-    if(seriesData){publicSeries="list" in seriesData?seriesData.list:null;activeSeries="item" in seriesData?seriesData.item:null;seriesPosts="posts" in seriesData?seriesData.posts:null;}
+    if(seriesView&&!seriesId){const list=await loaded.series;if(list.status==='rejected')throw list.reason;publicSeries=list.value;}
+    if(seriesData){activeSeries=seriesData.item;seriesPosts=seriesData.posts;}
   } catch (error) {
     if (error instanceof GuestApiError && error.kind === "not-found") notFound();
     const message = error instanceof GuestApiError && error.kind === "configuration"
@@ -74,7 +75,7 @@ export default async function PublicBlogPage({ params, searchParams }: {
     <a className="skip-link" href="#main-content">본문으로 바로가기</a>
     <SiteHeader />
     <main id="main-content" className="page-shell personal-blog-layout">
-      <Suspense fallback={<BlogSidebarLoading/>}><PublicBlogSidebar data={sidebar} handle={handle} homeView={homeView} selected={selected} projectView={projectView} boardView={boardView} seriesView={seriesView} searched={searched}/></Suspense>
+      <Suspense fallback={<BlogSidebarLoading/>}><PublicBlogSidebar data={sidebar} handle={handle} homeView={homeView} selected={selected} projectView={projectView} boardView={boardView} seriesView={seriesView} seriesId={seriesId} searched={searched}/></Suspense>
       <section className="personal-blog-content" aria-label={homeView?"블로그 홈":projectView?"블로그 프로젝트":seriesView?"블로그 시리즈":"게시판"}>
         <BlogProfileHeader profile={author} query={q}/>
         {homeView ? <Suspense fallback={<LoadingIndicator label="블로그 홈을 불러오는 중"/>}><PublicBlogHomeContent data={home} handle={handle} authorId={author.id}/></Suspense> : seriesView?<><div className="personal-blog-heading"><h2>{activeSeries?.name??"시리즈"}</h2></div><div className="blog-content-body">{activeSeries&&seriesPosts?<>
