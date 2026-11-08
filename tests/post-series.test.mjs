@@ -82,6 +82,16 @@ test('add dialog searches and combines status/series filters without including e
 });
 
 const candidatePage=(content,pageNo=0,total=content.length)=>({data:{content,page:pageNo,size:100,totalElements:total,totalPages:Math.ceil(total/100),hasNext:pageNo+1<Math.ceil(total/100),hasPrevious:pageNo>0}});
+test('board filter intersects search, visibility and series, with explicit unassigned boards',()=>{
+ const rows=[ownPost({id:'1',seriesId:null,boardId:'20',title:'보안 Java'}),ownPost({id:'2',seriesId:null,boardId:'21',title:'보안 DB'}),ownPost({id:'3',seriesId:null,boardId:null,title:'보안 미지정'}),ownPost({id:'4',seriesId:null,boardId:'20',title:'보안 초안',draft:true}),ownPost({id:'5',seriesId:id,boardId:'20',title:'보안 기존 글'}),ownPost({id:'6',seriesId:null,title:'알 수 없는 게시판'})];
+ const ids=(board,q='보안',state='all')=>filterSeriesCandidates(rows,id,q,state,'none',board).map(row=>row.id);
+ assert.deepEqual(ids('20'),['1','4']);
+ assert.deepEqual(ids('20','보안','public'),['1']);
+ assert.deepEqual(ids('21'),['2']); // descendants are individually selectable
+ assert.deepEqual(ids('none',''),['3']); // absent board metadata is not silently treated as unassigned
+ assert.deepEqual(ids('all'),['1','2','3','4']);
+ assert.deepEqual(ids('999'),[]);
+});
 test('candidate search loads every owner page so matches after the first page remain available',async()=>{
  const rows=Array.from({length:101},(_,i)=>ownPost({id:String(i+1),seriesId:null,title:i===100?'마지막 검색 대상':'기록'}));
  const calls=[];const result=await getSeriesCandidatePosts(async path=>{calls.push(path);return path.includes('page=0')?candidatePage(rows.slice(0,100),0,101):candidatePage(rows.slice(100),1,101);},'721389012345678903');
