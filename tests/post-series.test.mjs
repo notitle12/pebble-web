@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {parsePostSeries,parsePostSeriesList,getPublicPostSeries,getPublicPostSeriesDetail,getPublicPostSeriesPosts,getMemberPostSeriesPosts,publicPostSeriesHref,validatePostSeriesInput} from '../src/features/post/api/post-series.ts';
+import {parsePostSeries,parsePostSeriesList,getPublicPostSeries,getPublicPostSeriesDetail,getPublicPostSeriesPosts,getMemberPostSeriesPosts,getSeriesCandidatePosts,publicPostSeriesHref,validatePostSeriesInput} from '../src/features/post/api/post-series.ts';
+import {filterSeriesCandidates} from '../src/features/post/series-post-filter.ts';
 import {parseOwnPosts} from '../src/features/post/api/member-posts.ts';
 import {parsePostPage,parsePublicPostPage} from '../src/features/post/api/post-list.ts';
 
@@ -65,4 +66,31 @@ test('owner list accepts an unassigned post with the API default order zero',()=
  assert.equal(parsed.content[0].seriesId,null);
  assert.equal(parsed.content[0].seriesDisplayOrder,0);
  assert.throws(()=>parseOwnPosts(page([ownPost({seriesDisplayOrder:null})]),0));
+});
+
+test('add dialog searches and combines status/series filters without including existing members',()=>{
+ const rows=[ownPost({id:'1',seriesId:null,title:'Spring 첫 글'}),ownPost({id:'2',seriesId:null,title:'기록',visibilityStatus:'HIDDEN'}),ownPost({id:'3',seriesId:'99',title:'SPRING 다른 연재'}),ownPost({id:'4',seriesId:null,draft:true}),ownPost({id:'5',seriesId:null,isBlocked:true}),ownPost({id:'6',seriesId:id})];
+ const ids=(q='',state='all',connection='all')=>filterSeriesCandidates(rows,id,q,state,connection).map(row=>row.id);
+ assert.deepEqual(ids(),['1','2','3','4','5']);
+ assert.deepEqual(ids(' spring '),['1','3']);
+ assert.deepEqual(ids('spring','public','99'),['3']);
+ assert.deepEqual(ids('spring','public','none'),['1']);
+ assert.deepEqual(ids('','hidden'),['2']);
+ assert.deepEqual(ids('','draft'),['4']);
+ assert.deepEqual(ids('','blocked'),['5']);
+ assert.deepEqual(ids('찾을 수 없음'),[]);
+});
+
+const candidatePage=(content,pageNo=0,total=content.length)=>({data:{content,page:pageNo,size:100,totalElements:total,totalPages:Math.ceil(total/100),hasNext:pageNo+1<Math.ceil(total/100),hasPrevious:pageNo>0}});
+test('candidate search loads every owner page so matches after the first page remain available',async()=>{
+ const rows=Array.from({length:101},(_,i)=>ownPost({id:String(i+1),seriesId:null,title:i===100?'마지막 검색 대상':'기록'}));
+ const calls=[];const result=await getSeriesCandidatePosts(async path=>{calls.push(path);return path.includes('page=0')?candidatePage(rows.slice(0,100),0,101):candidatePage(rows.slice(100),1,101);},'721389012345678903');
+ assert.deepEqual(calls,['/members/me/posts?page=0&size=100','/members/me/posts?page=1&size=100']);
+ assert.equal(filterSeriesCandidates(result,id,'검색 대상','all','all')[0].id,'101');
+});
+test('candidate snapshots reject changing totals, duplicates, wrong owners and excessive results',async()=>{
+ const rows=Array.from({length:100},(_,i)=>ownPost({id:String(i+1),seriesId:null}));
+ for(const last of [candidatePage([rows[0]],1,101),candidatePage([ownPost({id:'101'})],1,102),candidatePage([],1,101)])await assert.rejects(getSeriesCandidatePosts(async path=>path.includes('page=0')?candidatePage(rows,0,101):last,'721389012345678903'));
+ await assert.rejects(getSeriesCandidatePosts(async()=>candidatePage([ownPost()]),'999'));
+ let calls=0;await assert.rejects(getSeriesCandidatePosts(async()=>{calls++;return candidatePage(rows,0,10001);},'721389012345678903'));assert.equal(calls,1);
 });

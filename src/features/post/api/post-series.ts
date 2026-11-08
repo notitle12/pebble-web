@@ -68,3 +68,18 @@ export const postSeriesNameError="시리즈 이름은 1~100자, 설명은 1,000�
 export function validatePostSeriesInput(name:string,description:string):string|null{
  return validName(name)&&validDescription(description)?null:postSeriesNameError;
 }
+
+/** Owner-only snapshot for filtering/search across all pages in the add-post dialog. */
+export async function getSeriesCandidatePosts(request:(path:string)=>Promise<unknown>,memberId:string){
+ const read=async(page:number)=>parseOwnPosts(await request(`/members/me/posts?page=${page}&size=100`),page,memberId,undefined,100);
+ const first=await read(0);
+ if(first.totalElements>10000)throw new MemberApiError(0,"INVALID_RESPONSE","글이 너무 많아 목록을 불러올 수 없습니다.");
+ const rows=[...first.content];
+ for(let page=1;page<first.totalPages;page++){
+  const next=await read(page);
+  if(next.totalElements!==first.totalElements||next.totalPages!==first.totalPages||rows.length!==page*100)throw new MemberApiError(0,"INVALID_RESPONSE","글 목록이 바뀌었습니다. 다시 불러와 주세요.");
+  rows.push(...next.content);
+ }
+ if(rows.length!==first.totalElements||new Set(rows.map(row=>row.id)).size!==rows.length)throw new MemberApiError(0,"INVALID_RESPONSE","글 목록이 바뀌었습니다. 다시 불러와 주세요.");
+ return rows;
+}
