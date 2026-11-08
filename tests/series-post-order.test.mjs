@@ -1,6 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {seriesPostDropOrder} from '../src/features/post/series-post-order.ts';
+import {seriesPostDropOrder,seriesDropOrder} from '../src/features/post/series-post-order.ts';
+test('series list drag supports all 100 series, both directions and no-op drops',()=>{
+ assert.equal(seriesDropOrder(0,100,100),99);
+ assert.equal(seriesDropOrder(99,0,100),0);
+ assert.equal(seriesDropOrder(20,20,100),null);
+ assert.equal(seriesDropOrder(20,21,100),null);
+ for(const args of [[-1,0,2],[2,0,2],[0,3,2],[0,0,0],[0,1.5,2]])assert.equal(seriesDropOrder(...args),null);
+});
 test('series drops use insertion gaps, including first/last and unchanged locations',()=>{
  assert.equal(seriesPostDropOrder(0,3,0,3,3),2);
  assert.equal(seriesPostDropOrder(2,0,0,3,3),0);

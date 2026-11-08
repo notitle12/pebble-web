@@ -57,6 +57,15 @@ export function parseMemberPostSeries(value:unknown):PostSeries{
 export function parseMemberPostSeriesList(value:unknown):PostSeries[]{
  try{return parsePostSeriesList(value);}catch{throw new MemberApiError(0,"INVALID_RESPONSE","시리즈 목록을 확인하지 못했습니다.");}
 }
+export async function saveMemberSeriesOrder(request:(path:string,options?:{method?:string;body?:unknown})=>Promise<unknown>,id:string,position:number,expectedIds:string[]):Promise<PostSeries[]>{
+ if(!validId(id)||!Number.isSafeInteger(position)||position<0||position>=expectedIds.length||expectedIds.length>100||!expectedIds.every(validId)||new Set(expectedIds).size!==expectedIds.length||!expectedIds.includes(id))throw new MemberApiError(400,"INVALID_REQUEST","시리즈 순서를 확인해 주세요.");
+ const saved=parseMemberPostSeries(await request(`/series/${id}`,{method:"PATCH",body:{displayOrder:position}}));
+ if(saved.id!==id)throw new MemberApiError(0,"INVALID_RESPONSE","시리즈 순서 저장 결과를 확인하지 못했습니다.");
+ const next=parseMemberPostSeriesList(await request("/members/me/series"));
+ const ids=expectedIds.filter(value=>value!==id);ids.splice(position,0,id);
+ if(next.length!==ids.length||next.some((row,index)=>row.id!==ids[index]))throw new MemberApiError(0,"INVALID_RESPONSE","시리즈 목록이 변경되었습니다. 다시 불러와 주세요.");
+ return next;
+}
 export async function getMemberPostSeriesPosts(request:(path:string)=>Promise<unknown>,id:string,page:number,memberId?:string):Promise<OwnPostPage>{
  if(!validId(id)||!Number.isSafeInteger(page)||page<0||parsePage(String(page))!==page)throw new MemberApiError(400,"INVALID_REQUEST","시리즈 글 목록 주소를 확인해 주세요.");
  const parsed=parseOwnPosts(await request(`/series/${encodeURIComponent(id)}/posts?page=${page}&size=${PAGE_SIZE}`),page,memberId,undefined,PAGE_SIZE);

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {parsePostSeries,parsePostSeriesList,getPublicPostSeries,getPublicPostSeriesDetail,getPublicPostSeriesPosts,getMemberPostSeriesPosts,getSeriesCandidatePosts,publicPostSeriesHref,validatePostSeriesInput} from '../src/features/post/api/post-series.ts';
+import {parsePostSeries,parsePostSeriesList,getPublicPostSeries,getPublicPostSeriesDetail,getPublicPostSeriesPosts,getMemberPostSeriesPosts,getSeriesCandidatePosts,saveMemberSeriesOrder,publicPostSeriesHref,validatePostSeriesInput} from '../src/features/post/api/post-series.ts';
 import {filterSeriesCandidates} from '../src/features/post/series-post-filter.ts';
 import {parseOwnPosts} from '../src/features/post/api/member-posts.ts';
 import {parsePostPage,parsePublicPostPage} from '../src/features/post/api/post-list.ts';
@@ -82,6 +82,19 @@ test('add dialog searches and combines status/series filters without including e
 });
 
 const candidatePage=(content,pageNo=0,total=content.length)=>({data:{content,page:pageNo,size:100,totalElements:total,totalPages:Math.ceil(total/100),hasNext:pageNo+1<Math.ceil(total/100),hasPrevious:pageNo>0}});
+test('series reorder writes only rank and confirms the persisted canonical list',async()=>{
+ const other={...series,id:'99'},calls=[];
+ const next=await saveMemberSeriesOrder(async(path,options)=>{calls.push([path,options]);return options?{data:series}:{data:[series,other]};},id,0,['99',id]);
+ assert.deepEqual(next.map(row=>row.id),[id,'99']);
+ assert.deepEqual(calls,[[`/series/${id}`,{method:'PATCH',body:{displayOrder:0}}],['/members/me/series',undefined]]);
+});
+test('series reorder rejects invalid positions, stale lists and uncertain writes without retrying',async()=>{
+ let calls=0;const request=async()=>{calls++;return {data:series};};
+ for(const [key,position,ids] of [[id,-1,[id]],[id,1,[id]],[id,0,[id,id]],['0',0,[id]],[id,0,['99']]])await assert.rejects(saveMemberSeriesOrder(request,key,position,ids));
+ assert.equal(calls,0);
+ for(const rows of [[{...series,id:'99'},series],[series],[series,{...series,id:'98'}]])await assert.rejects(saveMemberSeriesOrder(async(path,options)=>options?{data:series}:{data:rows},id,0,['99',id]));
+ calls=0;await assert.rejects(saveMemberSeriesOrder(async()=>{calls++;throw new Error('network error');},id,0,['99',id]));assert.equal(calls,1);
+});
 test('board filter intersects search, visibility and series, with explicit unassigned boards',()=>{
  const rows=[ownPost({id:'1',seriesId:null,boardId:'20',title:'보안 Java'}),ownPost({id:'2',seriesId:null,boardId:'21',title:'보안 DB'}),ownPost({id:'3',seriesId:null,boardId:null,title:'보안 미지정'}),ownPost({id:'4',seriesId:null,boardId:'20',title:'보안 초안',draft:true}),ownPost({id:'5',seriesId:id,boardId:'20',title:'보안 기존 글'}),ownPost({id:'6',seriesId:null,title:'알 수 없는 게시판'})];
  const ids=(board,q='보안',state='all')=>filterSeriesCandidates(rows,id,q,state,'none',board).map(row=>row.id);

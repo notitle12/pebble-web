@@ -5,9 +5,10 @@ import {userSession,type Member} from "@/features/auth/user-session";
 import {MemberGate} from "@/features/auth/components/member-gate";
 import {MemberApiError} from "@/lib/member-api";
 import {parseOwnPost,type OwnPostPage} from "../api/member-posts";
-import {getMemberPostSeriesPosts,getSeriesCandidatePosts,parseMemberPostSeries,parseMemberPostSeriesList,validatePostSeriesInput,publicPostSeriesHref,type PostSeries} from "../api/post-series";
+import {getMemberPostSeriesPosts,getSeriesCandidatePosts,parseMemberPostSeries,parseMemberPostSeriesList,saveMemberSeriesOrder,validatePostSeriesInput,publicPostSeriesHref,type PostSeries} from "../api/post-series";
 import {filterSeriesCandidates,type SeriesPostState} from "../series-post-filter";
 import {SeriesPostList} from "./series-post-list";
+import {SeriesList} from "./series-list";
 import {parseBoards,flattenBoards,type Board} from "@/features/board/api/boards";
 import s from "./my-series.module.css";
 
@@ -39,6 +40,9 @@ function Manager({member}:{member:Member}){
  const blocked=busy||uncertain;
  async function run(action:()=>Promise<void>,message:string){if(lock.current||!current())return false;lock.current=true;setBusy(true);setError("");setNotice("");try{await action();if(current())setNotice(message);return true;}catch(e){if(current())setError(e instanceof Error?e.message:"요청을 처리하지 못했습니다.");return false;}finally{lock.current=false;if(mounted.current)setBusy(false);}}
  function refresh(){setPostsAttempt(n=>n+1);setSeriesAttempt(n=>n+1);}
+ async function moveSeries(id:string,position:number){if(busy||seriesLoading||seriesError||lock.current||!current())return;const from=series.findIndex(row=>row.id===id);if(from<0||from===position)return;const before=series,rows=[...series],[moved]=rows.splice(from,1);rows.splice(position,0,moved);setSeries(rows);
+  const ok=await run(async()=>{const next=await saveMemberSeriesOrder((path,options)=>userSession.request(path,options),id,position,before.map(row=>row.id));if(current())setSeries(next);},"시리즈 순서를 저장했습니다.");if(!ok&&current()){setSeries(before);setSeriesError("순서 저장 결과를 확인하려면 시리즈 목록을 다시 불러와 주세요.");}
+ }
  function choose(id:string|null){if(busy)return;const dirty=name!==(selected?.name??"")||description!==(selected?.description??"");if(dirty&&!window.confirm("저장하지 않은 기본 정보가 있습니다. 다른 시리즈로 이동할까요?"))return;setSelectedId(id);setTab(id?"posts":"info");setName("");setDescription("");setError("");setNotice("");}
  async function saveSeries(event:React.FormEvent){event.preventDefault();const validation=validatePostSeriesInput(name.trim(),description);if(validation){setError(validation);return;}
   await run(async()=>{const body={name:name.trim(),description};const next=parseMemberPostSeries(await userSession.request(selected?`/series/${selected.id}`:"/series",{method:selected?"PATCH":"POST",body}));if(selected&&next.id!==selected.id)throw new MemberApiError(0,"INVALID_RESPONSE","시리즈 저장 결과를 확인하지 못했습니다.");if(!current())return;setSeries(rows=>selected?rows.map(row=>row.id===next.id?next:row):[next,...rows]);setName(next.name);setDescription(next.description);setSelectedId(next.id);if(!selected)setTab("posts");},selected?"기본 정보를 저장했습니다.":"시리즈를 만들었습니다. 글을 추가해 보세요.");
@@ -62,7 +66,7 @@ function Manager({member}:{member:Member}){
   <header className={s.pageHeading}><div><Link href="/me/posts" className={s.backLink}>← 게시글 관리</Link><h1>시리즈 관리</h1></div><button className={s.button} type="button" disabled={busy||seriesLoading} onClick={()=>choose(null)}><Plus/>새 시리즈</button></header>
   <div className={s.shell}>
    <aside className={s.sidebar} aria-label="내 시리즈"><div className={s.sidebarHeading}><h2>내 시리즈</h2><span>{series.length}</span></div>
-    {seriesLoading&&!series.length?<p className={s.message} role="status">불러오는 중…</p>:seriesError?<p className={s.error} role="alert">{seriesError} <button className={s.button} onClick={()=>setSeriesAttempt(n=>n+1)}>다시 불러오기</button></p>:!series.length?<p className={s.message}>첫 시리즈를 만들어 보세요.</p>:<ul className={s.seriesList}>{series.map(row=><li key={row.id}><button type="button" className={s.seriesButton} aria-pressed={selectedId===row.id} disabled={busy} onClick={()=>{if(row.id!==selectedId)choose(row.id);}}><svg aria-hidden="true" viewBox="0 0 20 20"><path d="M4 3h9v14H4zM13 5h3v12h-3M7 7h3M7 10h3"/></svg><span>{row.name}</span><small>{row.postCount}</small></button></li>)}</ul>}
+    {seriesLoading&&!series.length?<p className={s.message} role="status">불러오는 중…</p>:seriesError?<p className={s.error} role="alert">{seriesError} <button className={s.button} onClick={()=>setSeriesAttempt(n=>n+1)}>다시 불러오기</button></p>:!series.length?<p className={s.message}>첫 시리즈를 만들어 보세요.</p>:<SeriesList rows={series} selectedId={selectedId} disabled={busy||seriesLoading} onSelect={choose} onMove={(id,position)=>void moveSeries(id,position)}/>}
    </aside>
    <div className={s.content}>
     <div className={s.seriesHeading}><div><span className={s.eyebrow}>{selected?"시리즈":"새 시리즈"}</span><h2>{selected?.name??"새 시리즈 만들기"}</h2>{selected?.description&&<p>{selected.description}</p>}</div>{selected&&<Link className={s.previewLink} href={publicPostSeriesHref(member.handle!,selected.id)} target="_blank" rel="noopener noreferrer">블로그에서 보기 ↗</Link>}</div>
