@@ -1,0 +1,12 @@
+.description{margin:0 0 20px;color:var(--muted);white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.7}
+.list{display:grid;gap:10px;margin:0;padding:0;list-style:none}
+.list li{min-width:0}
+.list a{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 18px;border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--text);text-decoration:none}
+.list a:hover{border-color:var(--accent);color:var(--accent)}
+.list a>span:first-child{display:grid;gap:4px;min-width:0}
+.list strong{overflow-wrap:anywhere;font-size:15px}
+.list small{overflow-wrap:anywhere;color:var(--muted);font-size:12px;line-height:1.5}
+.count{flex:none;color:var(--muted);font-size:12px}
+.detailLink{display:flex;align-items:center;gap:8px;margin:10px 0 0;color:var(--muted);font-size:13px}
+.detailLink a{color:var(--accent);font-weight:600;text-decoration:none}
+.detailLink a:hover{text-decoration:underline}

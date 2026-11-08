@@ -15,6 +15,7 @@ export type PostEditorValue = {
   categoryId?: string | null;
   projectId?: string | null;
   boardId?: string | null;
+  seriesId?: string | null;
   tags?: string[];
   slug?: string;
   thumbnailImageSrc?: string | null;
@@ -36,6 +37,7 @@ export function editorValueFromPost(post: PostDetail & {category?: {id:string} |
     categoryId: post.category?.id ?? null,
     projectId: post.projectId ?? null,
     boardId: post.boardId ?? null,
+    seriesId: post.seriesId ?? null,
     tags: [...post.tags],
     thumbnailImageSrc: post.thumbnailImageId ? postImageSources(post.blocks).find(src=>bodyImageId(src)===post.thumbnailImageId)??null : null,
     slug: /^[1-9]\d*$/.test(post.urlKey) ? "" : post.urlKey,
@@ -69,6 +71,7 @@ export function validateEditorValue(value: PostEditorValue): string[] {
   if (!safe(value.summary) || length(value.summary) > 500) errors.push("요약은 올바른 Unicode로 된 500자 이하여야 합니다.");
   if (value.boardId != null && !validId(value.boardId)) errors.push("글 폴더를 다시 선택해 주세요.");
   if (value.projectId != null && !validId(value.projectId)) errors.push("프로젝트를 다시 선택해 주세요.");
+  if (value.seriesId != null && !validId(value.seriesId)) errors.push("시리즈를 다시 선택해 주세요.");
   if (value.categoryId != null && !validId(value.categoryId)) errors.push("카테고리를 다시 선택해 주세요.");
   try { normalizeTags(value.tags ?? []); } catch (error) { errors.push(error instanceof Error ? error.message : "태그를 확인해 주세요."); }
   if (!value.blocks.length) errors.push("본문 블록을 하나 이상 추가해 주세요.");
@@ -102,7 +105,7 @@ export function buildPostBody(value: PostEditorValue) {
 
 export type PostVisibility = "PUBLIC" | "HIDDEN";
 export type PostSaveOptions={draft?:boolean;visibility?:PostVisibility;finalize?:boolean;slug?:string};
-export function buildPostSaveBody(value:PostEditorValue,existing?:{visibilityStatus:PostVisibility;isBlocked:boolean;draft?:boolean;urlKey?:string;boardId?:string|null;projectId?:string|null;category?:{id:string}|null;tags?:string[]},visibilityOrOptions?:PostVisibility|PostSaveOptions){
+export function buildPostSaveBody(value:PostEditorValue,existing?:{visibilityStatus:PostVisibility;isBlocked:boolean;draft?:boolean;urlKey?:string;boardId?:string|null;projectId?:string|null;seriesId?:string|null;category?:{id:string}|null;tags?:string[]},visibilityOrOptions?:PostVisibility|PostSaveOptions){
   const options=typeof visibilityOrOptions==="string"?{visibility:visibilityOrOptions}:visibilityOrOptions??{};
   const visibility=options.visibility;
   const errors=validateEditorValue(value);
@@ -115,9 +118,10 @@ export function buildPostSaveBody(value:PostEditorValue,existing?:{visibilitySta
   if(existing && existing.draft===false && slug && slug!==existing.urlKey)throw new Error("게시가 완료된 글 주소는 변경할 수 없습니다.");
   if(options.draft===true && existing && existing.draft===false)throw new Error("게시가 완료된 글을 임시 글로 되돌릴 수 없습니다.");
   if(options.finalize && existing && existing.draft===false && options.draft!==false)throw new Error("게시 상태가 이미 완료된 글입니다.");
-  const classification: {boardId?:string|null;projectId?:string|null;categoryId?:string|null;tags?:string[]} = {};
+  const classification: {boardId?:string|null;projectId?:string|null;seriesId?:string|null;categoryId?:string|null;tags?:string[]} = {};
   if(value.boardId !== undefined && (!existing || value.boardId !== (existing.boardId ?? null))) classification.boardId=value.boardId;
   if(value.projectId !== undefined && (!existing || value.projectId !== (existing.projectId ?? null))) classification.projectId=value.projectId;
+  if(value.seriesId !== undefined && (!existing || value.seriesId !== (existing.seriesId ?? null))) classification.seriesId=value.seriesId;
   if(value.categoryId !== undefined && (!existing || value.categoryId !== (existing.category?.id ?? null))) classification.categoryId=value.categoryId;
   if(value.tags !== undefined && (!existing || JSON.stringify(value.tags) !== JSON.stringify(existing.tags ?? []))) classification.tags=normalizeTags(value.tags);
   return {...buildPostBody(value),...classification,...(!existing?{visibilityStatus:visibility??"HIDDEN"}:visibility!==undefined?{visibilityStatus:visibility}:{}),...(options.draft!==undefined?{draft:options.draft}:{}),...(options.finalize?{draft:false}:{}),...(slug && options.draft!==true && (!existing || existing.draft===true)?{slug}:{})};

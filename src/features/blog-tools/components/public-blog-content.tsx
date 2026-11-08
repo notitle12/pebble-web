@@ -8,7 +8,7 @@ import {BlogHomeView,BlogHomeProjects} from '../../blog-home/components/blog-hom
 import {BlogPosts} from '../../post/components/blog-posts';
 import type {BlogPageData} from '../api/blog-page';
 
-type SidebarProps={handle:string;homeView:boolean;projectView:boolean;boardView:boolean;searched:boolean;selected?:string};
+type SidebarProps={handle:string;homeView:boolean;projectView:boolean;boardView:boolean;seriesView:boolean;searched:boolean;selected?:string;seriesId?:string};
 
 export function BlogSidebarLoading(){
   return <aside className="personal-blog-profile" aria-label="블로그 탐색" aria-busy="true"><LoadingIndicator label="블로그 메뉴를 불러오는 중"/></aside>;
@@ -19,7 +19,7 @@ export async function PublicBlogSidebar({data,...props}:SidebarProps&{data:BlogP
   return <BlogSidebar {...props} visitors={<BlogVisitCount handle={props.handle}/>} footer={<BlogOwnerActions handle={props.handle}/>}
     links={<PublicBlogLinks links={sidebar.links} failed={sidebar.linksError}/>}
     boards={sidebar.boards} projects={sidebar.sidebarProjects?.content.slice(0,5)??[]}
-    boardError={sidebar.boardError} projectError={sidebar.projectError}/>;
+    series={sidebar.series} sidebarOrder={sidebar.sidebarOrder} seriesError={sidebar.seriesError} navigationError={sidebar.navigationError} boardError={sidebar.boardError} projectError={sidebar.projectError}/>;
 }
 
 type HomeData=NonNullable<Awaited<BlogPageData['home']>>;

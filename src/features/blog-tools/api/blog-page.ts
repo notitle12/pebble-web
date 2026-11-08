@@ -2,19 +2,26 @@ import {GuestApiError} from '../../../lib/public-api.ts';
 import {getPopularPublicBlogPosts,getPublicBlogProfile,getPublicBlogPosts} from '../../post/api/public-blog.ts';
 import {getPublicBoards,getBoardPosts,flattenBoards} from '../../board/api/boards.ts';
 import {getPublicMemberProjects,getPublicProject} from '../../project/api/project-list.ts';
-import {getPublicBlogHome,visibleHomeDataLoads,featuredProjectIdsForHome} from '../../blog-home/api/blog-home.ts';
+import {getPublicBlogHome,getPublicBlogNavigation,visibleHomeDataLoads,featuredProjectIdsForHome} from '../../blog-home/api/blog-home.ts';
+import {SIDEBAR_MENU_KEYS} from '../../blog-home/sidebar-order.ts';
+import {getPublicPostSeries} from '../../post/api/post-series.ts';
 import {getPublicBlogLinks} from './blog-tools.ts';
 
-type Query={handle:string;page:number;homeView:boolean;projectView:boolean;selected?:string;q?:string};
+type Query={handle:string;page:number;homeView:boolean;projectView:boolean;seriesView?:boolean;selected?:string;q?:string};
 // Attach rejection handlers immediately, including when a missing profile ends the render.
 const settled = async <T>(request: Promise<T>) => (await Promise.allSettled([request]))[0];
 
-export async function loadBlogPageData({handle,page,homeView,projectView,selected,q}:Query,base=process.env.NEXT_PUBLIC_API_BASE_URL,request:typeof fetch=fetch) {
+export async function loadBlogPageData({handle,page,homeView,projectView,seriesView=false,selected,q}:Query,base=process.env.NEXT_PUBLIC_API_BASE_URL,request:typeof fetch=fetch) {
   const profileRequest=getPublicBlogProfile(handle,base,request);
   // Handle-based reads do not depend on the profile or the sidebar.
   const linksRequest=settled(getPublicBlogLinks(handle,base,request));
   const homeRequest=settled(homeView?getPublicBlogHome(handle,base,request):Promise.resolve(null));
-  const postsRequest=!homeView&&!projectView&&!selected
+  const seriesRequest=settled(getPublicPostSeries(handle,base,request));
+  const navigationRequest=homeView?homeRequest.then(result=>{
+    if(result.status==='rejected')return result;
+    return {status:'fulfilled' as const,value:{sidebarOrder:result.value?.sidebarOrder??[...SIDEBAR_MENU_KEYS]}};
+  }):settled(getPublicBlogNavigation(handle,base,request));
+  const postsRequest=!homeView&&!projectView&&!seriesView&&!selected
     ?settled(getPublicBlogPosts(handle,page,base,request,q)):null;
   const author=await profileRequest;
   const boardsRequest=settled(getPublicBoards(author.id,base,request));
@@ -23,7 +30,9 @@ export async function loadBlogPageData({handle,page,homeView,projectView,selecte
     ?settled(getBoardPosts(author.id,selected,page,base,request)):null;
 
   // The page can stream the sidebar without holding up the main content.
-  const sidebar=Promise.all([linksRequest,boardsRequest,sidebarProjectsRequest]).then(([links,boards,projects])=>({
+  const sidebar=Promise.all([linksRequest,boardsRequest,sidebarProjectsRequest,seriesRequest,navigationRequest]).then(([links,boards,projects,series,navigation])=>({
+    series:series.status==='fulfilled'?series.value:[],seriesError:series.status==='rejected',
+    sidebarOrder:navigation.status==='fulfilled'?navigation.value.sidebarOrder:[...SIDEBAR_MENU_KEYS],navigationError:navigation.status==='rejected',
     links:links.status==='fulfilled'?links.value:null,linksError:links.status==='rejected',
     boards:boards.status==='fulfilled'?boards.value:[],boardError:boards.status==='rejected',
     sidebarProjects:projects.status==='fulfilled'?projects.value:undefined,projectError:projects.status==='rejected',
@@ -63,7 +72,7 @@ export async function loadBlogPageData({handle,page,homeView,projectView,selecte
   const projectsResult=projectView
     ?await (page===0?sidebarProjectsRequest:settled(getPublicMemberProjects(author.id,page,base,request))):null;
   return {
-    author,sidebar,home,boards,
+    author,sidebar,home,boards,series:seriesRequest,
     result:postsResult?.status==='fulfilled'?postsResult.value:undefined,
     projectsResult:projectsResult?.status==='fulfilled'?projectsResult.value:undefined,
     projectsError:projectsResult?.status==='rejected',

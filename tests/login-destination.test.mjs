@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {loginDestination,memberActionDestination} from "../src/features/auth/login-destination.ts";
 test("login return accepts known local destinations and rejects external or unrecognized paths",()=>{
- for(const path of ["/me/blog","/me/posts","/posts/new","/posts","/search"])assert.equal(loginDestination(path),path);
+ for(const path of ["/me/blog","/me/posts","/posts/new","/posts","/search","/me/series"])assert.equal(loginDestination(path),path);
  for(const path of [null,"//evil.example","https://evil.example","/me/blog?next=https://evil.example","/auth/naver/callback","/admin","javascript:alert(1)"])assert.equal(loginDestination(path),"/me/posts");
 });
 
@@ -33,7 +33,7 @@ test("내 블로그는 완료된 프로필의 공개 주소로 바로 이동한�
  assert.equal(memberActionDestination("/me/blog",{...member,profileCompleted:false}),"/settings/profile?returnTo=%2Fme%2Fblog");
 });
 test("설정 페이지의 재로그인은 원래 설정 경로를 보존한다",()=>{
- for(const path of ["/settings/account","/settings/blog","/settings/profile","/me/boards","/agreements"])assert.equal(loginDestination(path),path);
+ for(const path of ["/settings/account","/settings/blog","/settings/profile","/me/boards","/me/series","/agreements"])assert.equal(loginDestination(path),path);
  assert.equal(loginDestination("/settings/account?token=secret"),"/me/posts");
 });
 

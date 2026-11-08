@@ -109,6 +109,18 @@ test("classification PATCH omits unchanged links, removes explicitly, and preser
  const created=buildPostSaveBody(unchanged);assert.equal(created.categoryId,"100");assert.deepEqual(created.tags,["200","300"]);
  assert.equal("boardId" in created,false);assert.equal("slug" in created,false);
 });
+
+test("series save preserves omitted legacy links, assigns or clears with seriesId only",()=>{
+ const value={title:"시리즈 글",summary:"",seriesId:"721389012345678903",blocks:[createEditorBlock("TEXT")]};
+ const existing={visibilityStatus:"HIDDEN",isBlocked:false,seriesId:"721389012345678902"};
+ assert.equal(buildPostSaveBody(value,existing).seriesId,value.seriesId);
+ assert.equal("seriesDisplayOrder" in buildPostSaveBody(value,existing),false);
+ assert.equal("seriesId" in buildPostSaveBody({...value,seriesId:existing.seriesId},existing),false);
+ assert.equal(buildPostSaveBody({...value,seriesId:null},existing).seriesId,null);
+ const legacy={...value};delete legacy.seriesId;
+ assert.equal("seriesId" in buildPostSaveBody(legacy,existing),false);
+ assert.throws(()=>buildPostSaveBody({...value,seriesId:"invalid"},existing),/시리즈/);
+});
 test("classification restores saved ids and rejects duplicate or malformed selection",()=>{
  const post={...basePost,category:{id:"100"},tags:["태그"],blocks:[{...createEditorBlock("TEXT"),displayOrder:0}]};
  const value=editorValueFromPost(post);assert.equal(value.categoryId,"100");assert.deepEqual(value.tags,["태그"]);
