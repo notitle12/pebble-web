@@ -6,8 +6,8 @@ import {seriesPostDropOrder} from "../series-post-order";
 import s from "./my-series.module.css";
 
 type Drag={source:number;insertion:number;rank:number|null;x:number;y:number;startY:number;mode:"pointer"|"keyboard";active:boolean;valid:boolean};
-type Props={posts:OwnPostPage;disabled:boolean;onMove:(id:string,rank:number)=>void;onRelease:(id:string)=>void};
-export function SeriesPostList({posts,disabled,onMove,onRelease}:Props){
+type Props={posts:OwnPostPage;disabled:boolean;membershipDisabled?:boolean;onMove:(id:string,rank:number)=>void;onRelease:(id:string)=>void};
+export function SeriesPostList({posts,disabled,membershipDisabled=disabled,onMove,onRelease}:Props){
  const root=useRef<HTMLDivElement>(null),drag=useRef<Drag|null>(null),frame=useRef<number|null>(null),restoreFocus=useRef<string|null>(null),help=useId();
  const [preview,setPreview]=useState<{source:number;insertion:number;rank:number|null}|null>(null);
  const offset=posts.page*20;
@@ -45,14 +45,14 @@ export function SeriesPostList({posts,disabled,onMove,onRelease}:Props){
   }else if(event.key==="Tab")cancel();
  }
  return <div ref={root} onKeyDown={event=>{if(event.key==="Escape"&&drag.current){event.preventDefault();cancel();}}}>
-  <p id={help} className={s.srOnly}>손잡이를 드래그해 놓으면 순서가 저장됩니다. 키보드는 Space로 잡고 방향키로 이동한 뒤 Enter로 놓습니다. Escape는 취소합니다.</p>
+  <p id={help} className={s.srOnly}>손잡이를 드래그해 순서를 편집한 뒤 순서 저장 버튼을 누르세요. 키보드는 Space로 잡고 방향키로 이동한 뒤 Enter로 놓습니다. Escape는 취소합니다.</p>
   <span role="status" className={s.srOnly}>{preview?`${(preview.rank??offset+preview.source)+1}번째 위치`:""}</span>
   {posts.hasPrevious&&<div className={s.pageDrop} data-series-rank={offset-1} data-active={preview?.rank===offset-1}>이전 페이지 끝에 놓기</div>}
   <ol className={s.postList} aria-label="시리즈 글 순서" start={offset+1} aria-busy={disabled}>{posts.content.map((post,index)=><li key={post.id} className={s.postRow} data-series-index={index} data-series-post-id={post.id} data-dragging={preview?.source===index} data-drop={preview?.insertion===index?"before":preview?.insertion===posts.content.length&&index===posts.content.length-1?"after":undefined}
    onPointerDown={event=>start(event,index)} onPointerMove={move} onPointerUp={event=>{if(drag.current?.mode!=="pointer")return;move(event);commit();if(event.currentTarget.hasPointerCapture(event.pointerId))event.currentTarget.releasePointerCapture(event.pointerId);}} onPointerCancel={cancel} onLostPointerCapture={()=>{if(drag.current?.mode==="pointer")cancel();}} onDragStart={event=>event.preventDefault()}>
    <button type="button" data-series-handle className={s.dragHandle} disabled={disabled} aria-label={`${post.title} 순서 이동`} aria-describedby={help} aria-pressed={preview?.source===index} onKeyDown={event=>key(event,index)} onBlur={()=>{if(drag.current?.mode==="keyboard")cancel();}}><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 5h.01M13 5h.01M7 10h.01M13 10h.01M7 15h.01M13 15h.01"/></svg></button>
    <span className={s.order} aria-hidden="true">{offset+index+1}</span><div className={s.postContent}><Link className={s.postTitle} href={post.visibilityStatus==="PUBLIC"&&!post.isBlocked&&!post.draft?`/blogs/${post.author.handle}/posts/${post.urlKey}`:`/posts/${post.id}/view`}>{post.title}</Link><span className={s.postMeta}>{post.draft?"임시저장":post.visibilityStatus==="HIDDEN"?"비공개":"공개"}{post.isBlocked?" · 차단됨":""}</span></div>
-   <button type="button" className={s.removeButton} disabled={disabled} title="시리즈에서 빼기" aria-label={`${post.title} 시리즈에서 해제`} onClick={()=>onRelease(post.id)}><svg aria-hidden="true" viewBox="0 0 20 20"><path d="m6 6 8 8m0-8-8 8"/></svg></button>
+   <button type="button" className={s.removeButton} disabled={membershipDisabled} title="시리즈에서 빼기" aria-label={`${post.title} 시리즈에서 해제`} onClick={()=>onRelease(post.id)}><svg aria-hidden="true" viewBox="0 0 20 20"><path d="m6 6 8 8m0-8-8 8"/></svg></button>
   </li>)}</ol>
   {posts.hasNext&&<div className={s.pageDrop} data-series-rank={offset+posts.content.length} data-active={preview?.rank===offset+posts.content.length}>다음 페이지 처음에 놓기</div>}
  </div>;

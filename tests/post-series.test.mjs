@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {parsePostSeries,parsePostSeriesList,getPublicPostSeries,getPublicPostSeriesDetail,getPublicPostSeriesPosts,getMemberPostSeriesPosts,getSeriesCandidatePosts,saveMemberSeriesOrder,publicPostSeriesHref,validatePostSeriesInput} from '../src/features/post/api/post-series.ts';
+import {parsePostSeries,parsePostSeriesList,getPublicPostSeries,getPublicPostSeriesDetail,getPublicPostSeriesPosts,getMemberPostSeriesPosts,getSeriesCandidatePosts,saveSeriesOrders,getSeriesPostOrderSnapshot,publicPostSeriesHref,validatePostSeriesInput} from '../src/features/post/api/post-series.ts';
 import {filterSeriesCandidates} from '../src/features/post/series-post-filter.ts';
 import {parseOwnPosts} from '../src/features/post/api/member-posts.ts';
 import {parsePostPage,parsePublicPostPage} from '../src/features/post/api/post-list.ts';
@@ -82,18 +82,25 @@ test('add dialog searches and combines status/series filters without including e
 });
 
 const candidatePage=(content,pageNo=0,total=content.length)=>({data:{content,page:pageNo,size:100,totalElements:total,totalPages:Math.ceil(total/100),hasNext:pageNo+1<Math.ceil(total/100),hasPrevious:pageNo>0}});
-test('series reorder writes only rank and confirms the persisted canonical list',async()=>{
- const other={...series,id:'99'},calls=[];
- const next=await saveMemberSeriesOrder(async(path,options)=>{calls.push([path,options]);return options?{data:series}:{data:[series,other]};},id,0,['99',id]);
- assert.deepEqual(next.map(row=>row.id),[id,'99']);
- assert.deepEqual(calls,[[`/series/${id}`,{method:'PATCH',body:{displayOrder:0}}],['/members/me/series',undefined]]);
+test('one Save batches both orders into one PUT with no reread',async()=>{
+ const calls=[];const draft={seriesOrder:{expectedIds:['1','2'],ids:['2','1']},postOrder:{seriesId:id,expectedIds:['3','4'],ids:['4','3']}};
+ assert.equal(await saveSeriesOrders(async(...args)=>{calls.push(args);return null;},draft),true);
+ assert.deepEqual(calls,[['/members/me/series/order',{method:'PUT',body:draft}]]);
 });
-test('series reorder rejects invalid positions, stale lists and uncertain writes without retrying',async()=>{
- let calls=0;const request=async()=>{calls++;return {data:series};};
- for(const [key,position,ids] of [[id,-1,[id]],[id,1,[id]],[id,0,[id,id]],['0',0,[id]],[id,0,['99']]])await assert.rejects(saveMemberSeriesOrder(request,key,position,ids));
- assert.equal(calls,0);
- for(const rows of [[{...series,id:'99'},series],[series],[series,{...series,id:'98'}]])await assert.rejects(saveMemberSeriesOrder(async(path,options)=>options?{data:series}:{data:rows},id,0,['99',id]));
- calls=0;await assert.rejects(saveMemberSeriesOrder(async()=>{calls++;throw new Error('network error');},id,0,['99',id]));assert.equal(calls,1);
+test('unchanged scopes produce no writes and only changed scopes are included',async()=>{
+ let calls=[];const request=async(...args)=>{calls.push(args);return null;};
+ assert.equal(await saveSeriesOrders(request,{seriesOrder:{expectedIds:['1'],ids:['1']},postOrder:{seriesId:id,expectedIds:[],ids:[]}}),false);assert.equal(calls.length,0);
+ const seriesOrder={expectedIds:['1','2'],ids:['2','1']};
+ assert.equal(await saveSeriesOrders(request,{seriesOrder,postOrder:{seriesId:id,expectedIds:['3'],ids:['3']}}),true);
+ assert.deepEqual(calls[0][1].body,{seriesOrder});
+});
+test('invalid permutations fail before sending and conflicts or uncertain writes never retry',async()=>{
+ let calls=0;const request=async()=>{calls++;return null;};
+ for(const part of [{expectedIds:['1'],ids:['2']},{expectedIds:['1','1'],ids:['1','1']},{expectedIds:['1'],ids:[]},{expectedIds:['bad'],ids:['bad']}])await assert.rejects(saveSeriesOrders(request,{seriesOrder:part}));
+ await assert.rejects(saveSeriesOrders(request,{postOrder:{seriesId:'0',expectedIds:['1'],ids:['1']}}));assert.equal(calls,0);
+ const draft={seriesOrder:{expectedIds:['1','2'],ids:['2','1']}};
+ for(const error of [Object.assign(new Error('conflict'),{status:409}),new Error('network')]){calls=0;await assert.rejects(saveSeriesOrders(async()=>{calls++;throw error;},draft),e=>e===error);assert.equal(calls,1);}
+ await assert.rejects(saveSeriesOrders(async()=>({data:{}}),draft));
 });
 test('board filter intersects search, visibility and series, with explicit unassigned boards',()=>{
  const rows=[ownPost({id:'1',seriesId:null,boardId:'20',title:'보안 Java'}),ownPost({id:'2',seriesId:null,boardId:'21',title:'보안 DB'}),ownPost({id:'3',seriesId:null,boardId:null,title:'보안 미지정'}),ownPost({id:'4',seriesId:null,boardId:'20',title:'보안 초안',draft:true}),ownPost({id:'5',seriesId:id,boardId:'20',title:'보안 기존 글'}),ownPost({id:'6',seriesId:null,title:'알 수 없는 게시판'})];
@@ -116,4 +123,15 @@ test('candidate snapshots reject changing totals, duplicates, wrong owners and e
  for(const last of [candidatePage([rows[0]],1,101),candidatePage([ownPost({id:'101'})],1,102),candidatePage([],1,101)])await assert.rejects(getSeriesCandidatePosts(async path=>path.includes('page=0')?candidatePage(rows,0,101):last,'721389012345678903'));
  await assert.rejects(getSeriesCandidatePosts(async()=>candidatePage([ownPost()]),'999'));
  let calls=0;await assert.rejects(getSeriesCandidatePosts(async()=>{calls++;return candidatePage(rows,0,10001);},'721389012345678903'));assert.equal(calls,1);
+});
+
+test('series draft loads all pages once, including private posts beyond the first page',async()=>{
+ const rows=Array.from({length:101},(_,i)=>ownPost({id:String(i+1),visibilityStatus:'HIDDEN',seriesDisplayOrder:i}));const calls=[];
+ const all=await getSeriesPostOrderSnapshot(async path=>{calls.push(path);return path.includes('page=0')?candidatePage(rows.slice(0,100),0,101):candidatePage(rows.slice(100),1,101);},id,'721389012345678903');
+ assert.equal(all.length,101);assert.equal(all[100].visibilityStatus,'HIDDEN');
+ assert.deepEqual(calls,[`/series/${id}/posts?page=0&size=100`,`/series/${id}/posts?page=1&size=100`]);
+});
+test('series draft refuses partial or stale snapshots',async()=>{
+ const rows=Array.from({length:100},(_,i)=>ownPost({id:String(i+1),seriesDisplayOrder:i}));
+ for(const last of [candidatePage([rows[0]],1,101),candidatePage([ownPost({id:'101'})],1,102),candidatePage([],1,101)])await assert.rejects(getSeriesPostOrderSnapshot(async path=>path.includes('page=0')?candidatePage(rows,0,101):last,id,'721389012345678903'));
 });

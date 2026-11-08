@@ -111,3 +111,9 @@
 .seriesMenuRow[data-drop=before]:before,.seriesMenuRow[data-drop=after]:after{content:"";position:absolute;left:0;right:0;height:2px;background:var(--accent);pointer-events:none;z-index:1}
 .seriesMenuRow[data-drop=before]:before{top:-2px}.seriesMenuRow[data-drop=after]:after{bottom:-2px}
 @media(max-width:760px){.reorderSeriesList{max-height:180px}.seriesMenuRow>.seriesButton{white-space:normal}.seriesMenuRow>.seriesButton span{white-space:normal;overflow:visible;text-overflow:clip}}
+
+.orderFooter{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:22px;padding-top:16px;border-top:1px solid var(--line)}
+.orderFooter>div:first-child{min-width:0;color:var(--muted);font-size:12px;line-height:1.5}
+.orderFooter small{display:block;margin-top:4px;font-size:11px}
+.orderFooter>div:last-child{display:flex;flex:none;gap:7px}
+@media(max-width:760px){.orderFooter{align-items:flex-start;flex-wrap:wrap;gap:12px}.orderFooter>div:last-child{margin-left:auto}}
