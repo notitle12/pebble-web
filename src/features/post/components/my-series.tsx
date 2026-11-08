@@ -28,7 +28,7 @@ function Manager({member}:{member:Member}){
  const tabsId=useId(),dialogTitle=useId(),formId=useId(),selected=series.find(row=>row.id===selectedId)??null;
  const current=()=>mounted.current&&userSession.snapshot().member?.id===member.id&&userSession.snapshot().phase==="ready";
  useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;};},[]);
- useEffect(()=>{let live=true;setSeriesLoading(true);setSeriesError("");void userSession.request("/members/me/series").then(value=>{if(!live)return;const next=parseMemberPostSeriesList(value);setSeries(next);setSeriesBaseline(next.map(row=>row.id));setSelectedId(id=>id&&next.some(row=>row.id===id)?id:null);}).catch(e=>{if(live)setSeriesError(e instanceof Error?e.message:"시리즈를 불러오지 못했습니다.");}).finally(()=>{if(live)setSeriesLoading(false);});return()=>{live=false;};},[member.id,seriesAttempt]);
+ useEffect(()=>{let live=true;setSeriesLoading(true);setSeriesError("");void userSession.request("/members/me/series").then(value=>{if(!live)return;const next=parseMemberPostSeriesList(value);setSeries(next);setSeriesBaseline(next.map(row=>row.id));if(!selectedId)setUncertain(false);setSelectedId(id=>id&&next.some(row=>row.id===id)?id:null);}).catch(e=>{if(live)setSeriesError(e instanceof Error?e.message:"시리즈를 불러오지 못했습니다.");}).finally(()=>{if(live)setSeriesLoading(false);});return()=>{live=false;};},[member.id,seriesAttempt]);
  useEffect(()=>{setName(selected?.name??"");setDescription(selected?.description??"");setPage(0);setPostRows(null);setPostBaseline([]);setPostsError("");setUncertain(false);setError("");setNotice("");},[selected?.id]);
  useEffect(()=>{if(!seriesLoading&&screen==="edit"&&!selectedId)setScreen("list");},[seriesLoading,screen,selectedId]);
  useEffect(()=>{
