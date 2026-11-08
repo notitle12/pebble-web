@@ -1,0 +1,11 @@
+.list{list-style:none;margin:0;padding:0;border:1px solid var(--line);border-radius:7px;background:var(--surface);overflow:visible}
+.list li{position:relative;display:flex;align-items:center;gap:10px;min-height:44px;padding:6px 12px;box-sizing:border-box;color:var(--text);font-size:13px;user-select:none}
+.list li+li{border-top:1px solid var(--line)}
+.list li[data-dragging=true]{opacity:.6;background:var(--accent-soft)}
+.list li[data-drop=before]:before,.list li[data-drop=after]:after{content:"";position:absolute;left:0;right:0;height:2px;background:var(--accent);pointer-events:none;z-index:1}
+.list li[data-drop=before]:before{top:-1px}.list li[data-drop=after]:after{bottom:-1px}
+.list svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.fixed{color:var(--muted)!important;background:var(--accent-soft)}.fixed>svg{margin:0 6px}.fixed small{margin-left:auto;font-size:11px}
+.handle{display:flex;align-items:center;justify-content:center;flex:none;width:28px;height:28px;padding:0;border:0;border-radius:5px;background:transparent;color:var(--muted);cursor:grab;touch-action:none}
+.handle svg{stroke-width:3}.handle:active{cursor:grabbing}.handle:hover,.handle[aria-pressed=true]{background:var(--accent-soft);color:var(--accent)}.handle:disabled{opacity:.4;cursor:not-allowed}
+.help{margin:10px 0 0;color:var(--muted);font-size:11px;line-height:1.5}

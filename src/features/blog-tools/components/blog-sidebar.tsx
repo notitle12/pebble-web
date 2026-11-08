@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { SidebarToggle } from "../../blog-home/components/sidebar-toggle";
 import { BlogMenuIcon } from "./blog-menu-icon";
 import { blogHref } from "../../post/api/public-blog";
+import {SIDEBAR_MENU_KEYS,type SidebarMenuKey} from "../../blog-home/sidebar-order";
+import {publicPostSeriesHref} from "../../post/api/post-series";
 import type { Board } from "@/features/board/api/boards";
 
 type ProjectItem = { id: string; name: string };
@@ -16,6 +18,12 @@ type Props = {
   selected?: string;
   projectView: boolean;
   boardView: boolean;
+  seriesView: boolean;
+  seriesId?:string;
+  series:ProjectItem[];
+  sidebarOrder:SidebarMenuKey[];
+  seriesError:boolean;
+  navigationError:boolean;
   searched: boolean;
   boards: Board[];
   projects: ProjectItem[];
@@ -54,6 +62,7 @@ export function BlogSidebar({
   selected,
   projectView,
   boardView,
+  seriesView,seriesId,series,sidebarOrder=[...SIDEBAR_MENU_KEYS],seriesError,navigationError,
   searched,
   boards,
   projects,
@@ -67,6 +76,8 @@ export function BlogSidebar({
 
   const [boardsOpen, setBoardsOpen] = useState(true);
   const [projectsOpen, setProjectsOpen] = useState(true);
+  const [seriesOpen,setSeriesOpen]=useState(true);
+  useEffect(()=>{if(seriesId)setSeriesOpen(true);},[seriesId]);
 
   const allParents = useMemo(() => getAllParentFolderIds(boards), [boards]);
   const [openSubfolders, setOpenSubfolders] = useState<Set<string>>(() => new Set(allParents));
@@ -104,7 +115,8 @@ export function BlogSidebar({
   const homeHref = `/blogs/${encodeURIComponent(handle)}`;
   const projectsHref = `${homeHref}?view=projects`;
   const boardsHref = `${homeHref}?view=boards`;
-  const isAllBoardsActive = (boardView || (!homeView && !projectView && !selected && !searched)) && !selected;
+  const seriesHref = `${homeHref}?view=series`;
+  const isAllBoardsActive = (boardView || (!homeView && !projectView && !seriesView && !selected && !searched)) && !selected;
 
   function renderBoardTree(item: Board, depth: number) {
     const hasChildren = item.children && item.children.length > 0;
@@ -149,18 +161,9 @@ export function BlogSidebar({
     );
   }
 
-  return (
-    <aside id="blog-sidebar" className="personal-blog-profile" aria-label="블로그 탐색" data-collapsed={collapsed}>
-      <SidebarToggle collapsed={collapsed} onToggle={() => setCollapsed((value) => !value)} />
-      <div id="blog-sidebar-content" className="blog-sidebar-content" hidden={collapsed} inert={collapsed}>
-        <div className="blog-sidebar-visitors">{visitors}</div>
-        <nav className="blog-tree-nav" aria-label="블로그 메뉴">
-          <Link className="blog-menu-row" href={homeHref} aria-current={homeView ? "page" : undefined}>
-            <BlogMenuIcon name="home" />
-            <span>홈</span>
-          </Link>
-
-          <section className="blog-folder-group" aria-label="게시판">
+  const menu={BOARDS:{href:boardsHref,label:"게시판",icon:"boards" as const,active:isAllBoardsActive},PROJECTS:{href:projectsHref,label:"프로젝트",icon:"projects" as const,active:projectView},SERIES:{href:seriesHref,label:"시리즈",icon:"boards" as const,active:seriesView}};
+  const groups:Record<SidebarMenuKey,ReactNode>={
+    BOARDS:(<section key="BOARDS" data-sidebar-section="BOARDS" className="blog-folder-group" aria-label="게시판">
             <div className="blog-menu-parent">
               <Link className="blog-menu-row" href={boardsHref} aria-current={isAllBoardsActive ? "page" : undefined}>
                 <BlogMenuIcon name="boards" />
@@ -181,9 +184,8 @@ export function BlogSidebar({
               {boards.map((board) => renderBoardTree(board, 0))}
               {boardError && <p role="status">게시판을 불러오지 못했어요.</p>}
             </div>
-          </section>
-
-          <section className="blog-folder-group" aria-label="블로그 프로젝트">
+          </section>),
+    PROJECTS:(<section key="PROJECTS" data-sidebar-section="PROJECTS" className="blog-folder-group" aria-label="블로그 프로젝트">
             <div className="blog-menu-parent">
               <Link className="blog-menu-row" href={projectsHref} aria-current={projectView ? "page" : undefined}>
                 <BlogMenuIcon name="projects" />
@@ -209,8 +211,33 @@ export function BlogSidebar({
               ))}
               {projectError && <p role="status">프로젝트를 불러오지 못했어요.</p>}
             </div>
-          </section>
+          </section>),
+    SERIES:(<section key="SERIES" data-sidebar-section="SERIES" className="blog-folder-group" aria-label="블로그 시리즈">
+      <div className="blog-menu-parent">
+        <Link className="blog-menu-row" href={seriesHref} aria-current={seriesView&&!seriesId?"page":undefined}><BlogMenuIcon name="boards"/><span>시리즈</span></Link>
+        <button type="button" className="blog-menu-disclosure" aria-label={`시리즈 폴더 ${seriesOpen?"접기":"펼치기"}`} aria-expanded={seriesOpen} aria-controls="blog-series-folders" onClick={()=>setSeriesOpen(value=>!value)}><BlogMenuIcon name="chevron"/></button>
+      </div>
+      <div id="blog-series-folders" className="blog-folder-items" hidden={!seriesOpen}>
+        {series.map(item=><Link key={item.id} href={publicPostSeriesHref(handle,item.id)} aria-current={seriesView&&seriesId===item.id?"page":undefined}><BlogMenuIcon name="folder"/><span>{item.name}</span></Link>)}
+        {seriesError&&<p role="status">시리즈를 불러오지 못했어요.</p>}
+      </div>
+    </section>),
+  };
+
+  return (
+    <aside id="blog-sidebar" className="personal-blog-profile" aria-label="블로그 탐색" data-collapsed={collapsed}>
+      <SidebarToggle collapsed={collapsed} onToggle={() => setCollapsed((value) => !value)} />
+      <div id="blog-sidebar-content" className="blog-sidebar-content" hidden={collapsed} inert={collapsed}>
+        <div className="blog-sidebar-visitors">{visitors}</div>
+        <nav className="blog-tree-nav" aria-label="블로그 메뉴">
+          <Link className="blog-menu-row" href={homeHref} aria-current={homeView ? "page" : undefined}>
+            <BlogMenuIcon name="home" />
+            <span>홈</span>
+          </Link>
+
+          {sidebarOrder.map(key=>groups[key])}
         </nav>
+        {navigationError&&<p className="blog-navigation-error" role="status">메뉴 순서를 불러오지 못했어요.</p>}
         {links}
       </div>
       {collapsed && (
@@ -218,12 +245,7 @@ export function BlogSidebar({
           <Link href={homeHref} aria-label="블로그 홈" title="홈" aria-current={homeView ? "page" : undefined}>
             <BlogMenuIcon name="home" />
           </Link>
-          <Link href={boardsHref} aria-label="게시판 (전체 글)" title="게시판" aria-current={isAllBoardsActive ? "page" : undefined}>
-            <BlogMenuIcon name="boards" />
-          </Link>
-          <Link href={projectsHref} aria-label="블로그 프로젝트" title="프로젝트" aria-current={projectView ? "page" : undefined}>
-            <BlogMenuIcon name="projects" />
-          </Link>
+          {sidebarOrder.map(key=>{const item=menu[key];return <Link key={key} href={item.href} aria-label={`블로그 ${item.label}`} title={item.label} aria-current={item.active?"page":undefined}><BlogMenuIcon name={item.icon}/></Link>;})}
         </nav>
       )}
       <div className="blog-sidebar-footer" hidden={collapsed} inert={collapsed}>

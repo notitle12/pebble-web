@@ -872,3 +872,5 @@ html[data-theme=dark] .architecture-auto-layout:hover:not(:disabled){border-colo
 @media(max-width:720px){.project-reading-shell>.detail-back{margin-inline:21px}}
 
 /* 글·프로젝트 나가기의 기본/hover 치수를 동일하게 유지한다. */
+
+.blog-navigation-error{margin:10px 0;color:var(--muted);font-size:11px;line-height:1.5}

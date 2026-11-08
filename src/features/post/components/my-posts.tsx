@@ -11,6 +11,7 @@ import {parseBoards,flattenBoards,type Board} from "@/features/board/api/boards"
 import {MemberApiError} from "@/lib/member-api";
 import {movePostRow,removeManagedRow,confirmDeletion} from "@/features/content/management-model";
 import {parseOwnPost,parseOwnPosts,type OwnPostPage} from "../api/member-posts";
+import styles from "./my-posts.module.css";
 function Posts({member}:{member:Member}){
  const [page,setPage]=useState(0),[data,setData]=useState<OwnPostPage|null>(null),[error,setError]=useState(""),[attempt,setAttempt]=useState(0),[busy,setBusy]=useState(false),[uncertain,setUncertain]=useState(false),[notice,setNotice]=useState(""),[drag,setDrag]=useState<{source:string;target:string}|null>(null);
  const [boardId,setBoardId]=useState(""),[boards,setBoards]=useState<Board[]>([]),[boardError,setBoardError]=useState(""),[boardAttempt,setBoardAttempt]=useState(0);
@@ -91,7 +92,7 @@ function Posts({member}:{member:Member}){
   finally{lock.current=false;if(mounted.current)setBusy(false);}
  }
  function endDrag(event:PointerEvent<HTMLLIElement>){const active=dragging.current,target=document.elementFromPoint(event.clientX,event.clientY)?.closest<HTMLElement>('[data-post-id]')?.dataset.postId;dragging.current=null;setDrag(null);if(active?.active&&target)void move(active.source,target);}
- return <section className="own-posts"><div className="list-heading"><h1>게시글 관리</h1><ProtectedActionLink className="button" href="/posts/new">글 작성</ProtectedActionLink></div><p className="own-posts-help">글 행을 드래그해 순서를 바꾸고, 공개·비공개를 눌러 공개 범위를 변경하세요.</p>
+ return <section className="own-posts"><div className="list-heading"><h1>게시글 관리</h1><div className={styles.headActions}><Link className="button secondary" href="/me/series">시리즈 관리</Link><ProtectedActionLink className="button" href="/posts/new">글 작성</ProtectedActionLink></div></div><p className="own-posts-help">글 행을 드래그해 순서를 바꾸고, 공개·비공개를 눌러 공개 범위를 변경하세요.</p>
  <div className="own-post-filter"><label>게시판 <select aria-label="게시판별 글 보기" value={boardId} disabled={busy} onChange={event=>{setData(null);setPage(0);setNotice("");setUncertain(false);setBoardId(event.target.value);dragging.current=null;setDrag(null);}}><option value="">전체 게시글</option>{flattenBoards(boards).map(board=><option key={board.id} value={board.id}>{`${"　".repeat(board.depth)}${board.depth?"└ ":""}${board.name}`}</option>)}</select></label><p>{boardId?"이 게시판 안의 순서만 변경해요. 전체 게시글 순서는 유지돼요.":"전체 게시글의 표시 순서를 변경해요."}</p></div>
  {boardError&&<p role="alert">{boardError} <button className="button" onClick={()=>setBoardAttempt(n=>n+1)}>게시판 다시 불러오기</button></p>}
  {notice&&<p role={uncertain?"alert":"status"} className="own-posts-notice">{notice}{uncertain&&<button className="button" onClick={refresh}>목록 다시 불러오기</button>}</p>}

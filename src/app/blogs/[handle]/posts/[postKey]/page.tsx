@@ -13,6 +13,8 @@ import { SiteHeader } from "@/components/site-header";
 import { getPublicPost, PostListError, postHref } from "@/features/post/api/post-list";
 import { PostBody } from "@/features/post/components/post-body";
 import { OwnPostEdit } from "@/features/post/components/own-post-edit";
+import {publicPostSeriesHref} from "@/features/post/api/post-series";
+import seriesStyles from "@/features/post/components/public-series.module.css";
 const readPost = cache(getPublicPost);
 type Props = { params: Promise<{ handle: string; postKey: string }> };
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -41,6 +43,7 @@ export default async function PostPage({ params }: Props) {
     <ContentViewTracker kind="posts" id={post.id} ownerId={post.author.id}/>
       <article className="post-detail"><header><div className="post-heading-bar"><div className="post-meta"><span>{post.author.nickname}</span><time dateTime={date}>{new Intl.DateTimeFormat("ko-KR",{dateStyle:"long",timeZone:"Asia/Seoul"}).format(new Date(date))}</time></div><OwnPostEdit postId={post.id} authorId={post.author.id} title={post.title}/></div>
         <h1>{post.title}</h1>
+        {post.seriesId&&<p className={seriesStyles.detailLink}><span>시리즈</span><Link href={publicPostSeriesHref(handle,post.seriesId)}>시리즈 글 모아보기</Link></p>}
       </header>
         <PostBody blocks={post.blocks} />
         <div className="post-reactions">

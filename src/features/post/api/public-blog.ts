@@ -1,6 +1,6 @@
 import {cache} from "react";
 import { GuestApiError, guestJson } from "../../../lib/public-api.ts";
-import { PAGE_SIZE, parsePostPage, type PostPage } from "./post-list.ts";
+import { PAGE_SIZE, parsePublicPostPage, type PostPage } from "./post-list.ts";
 import { parsePage, validId } from "../../../lib/list-query.ts";
 
 const validHandle = (handle: string) => /^[a-z][a-z0-9_-]{1,28}[a-z0-9_]$/.test(handle);
@@ -29,7 +29,7 @@ export async function getPublicBlogPosts(
   const params = new URLSearchParams({ page: String(page), size: String(PAGE_SIZE) });
   if (q) params.set("q", q);
   if (placement) params.set("placement", placement);
-  const parsed = parsePostPage(await guestJson(`blogs/${encodeURIComponent(handle)}/posts`, params, baseUrl, request), page);
+  const parsed = parsePublicPostPage(await guestJson(`blogs/${encodeURIComponent(handle)}/posts`, params, baseUrl, request), page);
   if (parsed.content.some(post => post.author.handle !== handle)) throw new GuestApiError("response");
   return parsed;
 }
@@ -41,7 +41,7 @@ export async function getPopularPublicBlogPosts(
 ): Promise<PostPage> {
   if (!validHandle(handle)) throw new GuestApiError("response");
   const size = 10;
-  const page = parsePostPage(await guestJson(`blogs/${encodeURIComponent(handle)}/popular-posts`,
+  const page = parsePublicPostPage(await guestJson(`blogs/${encodeURIComponent(handle)}/popular-posts`,
     new URLSearchParams({ page: "0", size: String(size) }), baseUrl, request), 0, size);
   if (page.content.some(post => post.author.handle !== handle || post.visibilityStatus === "HIDDEN")) throw new GuestApiError("response");
   return page;
