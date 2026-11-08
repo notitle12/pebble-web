@@ -7,6 +7,9 @@ const block=()=>({key:'draft',type:'DB_SCHEMA',content:'{"unfinished":true}',val
 const value=()=>({title:'아직 작성 중',summary:'',tags:['Java'],blocks:[block()]});
 test('drafts accept unfinished diagrams and invalid form values but reject corrupt structure',()=>{
  assert.equal(validDraftValue('post',value()),true);
+ assert.equal(validDraftValue('post',{...value(),seriesId:'721389012345678903'}),true);
+ assert.equal(validDraftValue('post',{...value(),seriesId:null}),true);
+ assert.equal(validDraftValue('post',{...value(),seriesId:42}),false);
  const project=emptyProject();project.name='';project.startedOn='2026-';project.document.sections[0].blocks=[block()];
  assert.equal(validDraftValue('project',project),true);
  assert.equal(validDraftValue('post',{...value(),blocks:[{...block(),content:null}]}),false);

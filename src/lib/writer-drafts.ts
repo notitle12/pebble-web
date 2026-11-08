@@ -13,7 +13,7 @@ export function validDraftBlocks(value: unknown): boolean {
 }
 export function validDraftValue(kind: DraftScope['kind'], value: unknown): boolean {
  if (!object(value)) return false;
- if (kind === 'post') return typeof value.title === 'string' && typeof value.summary === 'string' && validDraftBlocks(value.blocks) && ['categoryId','projectId','boardId','slug','thumbnailImageSrc'].every(key=>value[key]==null||typeof value[key]==='string') && (value.tags===undefined||Array.isArray(value.tags)&&value.tags.every(tag=>typeof tag==='string'));
+ if (kind === 'post') return typeof value.title === 'string' && typeof value.summary === 'string' && validDraftBlocks(value.blocks) && ['categoryId','projectId','boardId','seriesId','slug','thumbnailImageSrc'].every(key=>value[key]==null||typeof value[key]==='string') && (value.tags===undefined||Array.isArray(value.tags)&&value.tags.every(tag=>typeof tag==='string'));
  const doc = value.document;
  return ['name','summary','description','architectureDescription','executionInstructions','startedOn','completedOn'].every(key => typeof value[key] === 'string')
   && ['IN_PROGRESS','COMPLETED'].includes(String(value.lifecycleStatus)) && Array.isArray(value.techStackIds) && value.techStackIds.every(id => typeof id === 'string')

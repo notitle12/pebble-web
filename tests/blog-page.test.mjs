@@ -42,6 +42,12 @@ test('프로젝트 첫 페이지를 사이드바와 본문에서 중복 조회�
  assert.equal(paths.filter(p=>p.endsWith('/projects')).length,1);
  assert.equal((await data.sidebar).sidebarProjects,data.projectsResult);assert.equal(data.result,undefined);
 });
+test('시리즈 화면은 일반 게시글 페이지를 불필요하게 조회하지 않는다',async()=>{
+ const paths=[];const data=await loadBlogPageData({...query,seriesView:true},base,async url=>{paths.push(url.pathname);return fixture(url);});
+ assert.equal(data.result,undefined);
+ assert.equal(paths.some(path=>path.endsWith('/posts')),false);
+ assert.equal(paths.some(path=>path.endsWith('/home')),false);
+});
 test('보조 링크 조회 실패는 정상 게시판 목록을 막지 않는다',async()=>{
  const data=await loadBlogPageData(query,base,async url=>url.pathname.endsWith('/links')?new Response(null,{status:503}):fixture(url));
  const sidebar=await data.sidebar;

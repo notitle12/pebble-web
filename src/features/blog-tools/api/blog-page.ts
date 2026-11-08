@@ -5,16 +5,16 @@ import {getPublicMemberProjects,getPublicProject} from '../../project/api/projec
 import {getPublicBlogHome,visibleHomeDataLoads,featuredProjectIdsForHome} from '../../blog-home/api/blog-home.ts';
 import {getPublicBlogLinks} from './blog-tools.ts';
 
-type Query={handle:string;page:number;homeView:boolean;projectView:boolean;selected?:string;q?:string};
+type Query={handle:string;page:number;homeView:boolean;projectView:boolean;seriesView?:boolean;selected?:string;q?:string};
 // Attach rejection handlers immediately, including when a missing profile ends the render.
 const settled = async <T>(request: Promise<T>) => (await Promise.allSettled([request]))[0];
 
-export async function loadBlogPageData({handle,page,homeView,projectView,selected,q}:Query,base=process.env.NEXT_PUBLIC_API_BASE_URL,request:typeof fetch=fetch) {
+export async function loadBlogPageData({handle,page,homeView,projectView,seriesView=false,selected,q}:Query,base=process.env.NEXT_PUBLIC_API_BASE_URL,request:typeof fetch=fetch) {
   const profileRequest=getPublicBlogProfile(handle,base,request);
   // Handle-based reads do not depend on the profile or the sidebar.
   const linksRequest=settled(getPublicBlogLinks(handle,base,request));
   const homeRequest=settled(homeView?getPublicBlogHome(handle,base,request):Promise.resolve(null));
-  const postsRequest=!homeView&&!projectView&&!selected
+  const postsRequest=!homeView&&!projectView&&!seriesView&&!selected
     ?settled(getPublicBlogPosts(handle,page,base,request,q)):null;
   const author=await profileRequest;
   const boardsRequest=settled(getPublicBoards(author.id,base,request));

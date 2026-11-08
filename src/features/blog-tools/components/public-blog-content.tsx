@@ -8,7 +8,7 @@ import {BlogHomeView,BlogHomeProjects} from '../../blog-home/components/blog-hom
 import {BlogPosts} from '../../post/components/blog-posts';
 import type {BlogPageData} from '../api/blog-page';
 
-type SidebarProps={handle:string;homeView:boolean;projectView:boolean;boardView:boolean;searched:boolean;selected?:string};
+type SidebarProps={handle:string;homeView:boolean;projectView:boolean;boardView:boolean;seriesView:boolean;searched:boolean;selected?:string};
 
 export function BlogSidebarLoading(){
   return <aside className="personal-blog-profile" aria-label="블로그 탐색" aria-busy="true"><LoadingIndicator label="블로그 메뉴를 불러오는 중"/></aside>;

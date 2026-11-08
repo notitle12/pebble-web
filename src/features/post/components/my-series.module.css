@@ -1,0 +1,35 @@
+.shell{display:grid;grid-template-columns:minmax(240px,300px) minmax(0,1fr);gap:24px;align-items:start}
+.panel{min-width:0;padding:20px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 16px}
+.heading h1,.heading h2{margin:0;font-size:20px;line-height:1.3}
+.seriesList{display:grid;gap:4px;padding:0;margin:0;list-style:none}
+.seriesButton{display:flex;width:100%;align-items:center;justify-content:space-between;gap:10px;padding:9px 10px;border:0;border-radius:7px;background:transparent;color:var(--text);text-align:left;cursor:pointer}
+.seriesButton:hover,.seriesButton[data-selected=true]{background:var(--accent-soft);color:var(--accent)}
+.seriesButton span:first-child{min-width:0;overflow-wrap:anywhere}
+.count{flex:none;color:var(--muted);font-size:12px}
+.form{display:grid;gap:12px;margin:0 0 22px}
+.field{display:grid;gap:5px;font-size:13px;font-weight:600}
+.field input,.field textarea,.candidateSelect{width:100%;min-width:0;box-sizing:border-box;padding:9px 10px;border:1px solid var(--line);border-radius:7px;background:var(--surface);color:var(--text);font:inherit;font-weight:400}
+.field textarea{min-height:84px;resize:vertical}
+.actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.actions button,.actions a,.rowActions button{min-height:30px;padding:5px 9px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--text);font:inherit;font-size:12px;line-height:1.2;cursor:pointer}
+.actions button:disabled,.rowActions button:disabled{opacity:.5;cursor:not-allowed}
+.danger{color:var(--danger,#b42318)!important}
+.postList{display:grid;gap:7px;padding:0;margin:14px 0 0;list-style:none}
+.postRow{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px;padding:10px;border:1px solid var(--line);border-radius:8px}
+.postTitle{min-width:0;overflow-wrap:anywhere;font-size:14px}
+.postMeta{display:block;margin-top:3px;color:var(--muted);font-size:11px}
+.rowActions{display:flex;gap:5px}
+.rowActions button{width:30px;padding:0;font-size:15px}
+.candidate{margin-top:24px;padding-top:18px;border-top:1px solid var(--line)}
+.candidate h3{margin:0 0 8px;font-size:15px}
+.candidateRow{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
+.candidateTitle{min-width:0;overflow-wrap:anywhere;font-size:13px}
+.notice{margin:10px 0;color:var(--muted);font-size:13px}
+.error{color:var(--danger,#b42318)}
+.empty{padding:18px 10px;border:1px dashed var(--line);border-radius:8px;color:var(--muted);font-size:13px;text-align:center}
+@media(max-width:720px){.shell{grid-template-columns:1fr;gap:14px}.panel{padding:15px}.postRow{grid-template-columns:minmax(0,1fr) auto;gap:8px}}
+
+.rowActions svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.rowActions button{display:inline-flex;align-items:center;justify-content:center}
+.heading>button,.candidateRow>button{display:inline-flex;align-items:center;justify-content:center;min-height:30px;padding:0 10px;font-size:12px;line-height:1.2}

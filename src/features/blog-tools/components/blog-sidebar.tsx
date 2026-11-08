@@ -16,6 +16,7 @@ type Props = {
   selected?: string;
   projectView: boolean;
   boardView: boolean;
+  seriesView: boolean;
   searched: boolean;
   boards: Board[];
   projects: ProjectItem[];
@@ -54,6 +55,7 @@ export function BlogSidebar({
   selected,
   projectView,
   boardView,
+  seriesView,
   searched,
   boards,
   projects,
@@ -104,7 +106,8 @@ export function BlogSidebar({
   const homeHref = `/blogs/${encodeURIComponent(handle)}`;
   const projectsHref = `${homeHref}?view=projects`;
   const boardsHref = `${homeHref}?view=boards`;
-  const isAllBoardsActive = (boardView || (!homeView && !projectView && !selected && !searched)) && !selected;
+  const seriesHref = `${homeHref}?view=series`;
+  const isAllBoardsActive = (boardView || (!homeView && !projectView && !seriesView && !selected && !searched)) && !selected;
 
   function renderBoardTree(item: Board, depth: number) {
     const hasChildren = item.children && item.children.length > 0;
@@ -210,6 +213,11 @@ export function BlogSidebar({
               {projectError && <p role="status">프로젝트를 불러오지 못했어요.</p>}
             </div>
           </section>
+
+          <Link className="blog-menu-row" href={seriesHref} aria-current={seriesView ? "page" : undefined}>
+            <BlogMenuIcon name="boards" />
+            <span>시리즈</span>
+          </Link>
         </nav>
         {links}
       </div>
@@ -223,6 +231,9 @@ export function BlogSidebar({
           </Link>
           <Link href={projectsHref} aria-label="블로그 프로젝트" title="프로젝트" aria-current={projectView ? "page" : undefined}>
             <BlogMenuIcon name="projects" />
+          </Link>
+          <Link href={seriesHref} aria-label="블로그 시리즈" title="시리즈" aria-current={seriesView ? "page" : undefined}>
+            <BlogMenuIcon name="boards" />
           </Link>
         </nav>
       )}

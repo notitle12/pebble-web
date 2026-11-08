@@ -10,6 +10,9 @@ export const PAGE_SIZE = 20;
 export type PostSummary = {
   visibilityStatus?: "PUBLIC" | "HIDDEN";
   id: string;
+  seriesId?: string | null;
+  /** Present for owner reads; omitted from public reads. */
+  seriesDisplayOrder?: number | null;
   thumbnailUrl?:string|null;
   thumbnailImageId?:string|null;
   updatedAt?:string;
@@ -59,7 +62,8 @@ const timestamp = (value: unknown): value is string =>
 const count = (value: unknown): value is number => typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
 function isPost(value: unknown): value is PostSummary & Record<string, unknown> {
   if (!record(value) || !record(value.author)) return false;
-  return (value.updatedAt===undefined||timestamp(value.updatedAt)) && (value.thumbnailImageId===undefined||value.thumbnailImageId===null||id(value.thumbnailImageId)) && (value.thumbnailUrl===undefined||nullableText(value.thumbnailUrl)) && id(value.id) && typeof value.urlKey === "string" && validPostKey(value.urlKey)
+  return (value.seriesId===undefined||value.seriesId===null||id(value.seriesId)) && (value.seriesDisplayOrder===undefined||value.seriesDisplayOrder===null||count(value.seriesDisplayOrder))
+    && (value.updatedAt===undefined||timestamp(value.updatedAt)) && (value.thumbnailImageId===undefined||value.thumbnailImageId===null||id(value.thumbnailImageId)) && (value.thumbnailUrl===undefined||nullableText(value.thumbnailUrl)) && id(value.id) && typeof value.urlKey === "string" && validPostKey(value.urlKey)
     && typeof value.author.handle === "string" && validHandle(value.author.handle) && typeof value.title === "string" && nullableText(value.summary)
     && id(value.author.id) && typeof value.author.nickname === "string" && nullableText(value.author.blogName)
     && Array.isArray(value.tags) && value.tags.every(tag => typeof tag === "string" && tag.length > 0)
@@ -83,6 +87,11 @@ export function parsePostPage(value: unknown, requestedPage: number, expectedSiz
     hasNext: data.hasNext, hasPrevious: data.hasPrevious,
   };
 }
+export function parsePublicPostPage(value:unknown,requestedPage:number,expectedSize=PAGE_SIZE):PostPage{
+ const page=parsePostPage(value,requestedPage,expectedSize);
+ if(page.content.some(post=>post.seriesDisplayOrder!==undefined&&post.seriesDisplayOrder!==null))throw new PostListError("response");
+ return page;
+}
 export async function getPublicPosts(
   page: number,
   baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL,
@@ -94,13 +103,13 @@ export async function getPublicPosts(
   const params = new URLSearchParams({ page: String(page), size: String(PAGE_SIZE) });
   if (query.q) params.set("q", query.q);
   if (query.categoryId) params.set("categoryId", query.categoryId);
-  return parsePostPage(await guestJson(query.q ? "posts/search" : "posts", params, baseUrl, request), page);
+  return parsePublicPostPage(await guestJson(query.q ? "posts/search" : "posts", params, baseUrl, request), page);
 }
 
 /** One globally ranked page; the API filters public posts with at least one like. */
 export async function getPopularPosts(baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL, request: typeof fetch = fetch): Promise<PostPage> {
   const size = 10;
-  return parsePostPage(await guestJson("posts/popular", new URLSearchParams({page:"0",size:String(size)}), baseUrl, request), 0, size);
+  return parsePublicPostPage(await guestJson("posts/popular", new URLSearchParams({page:"0",size:String(size)}), baseUrl, request), 0, size);
 }
 
 const validHandle = (value: string) => /^[a-z][a-z0-9_-]{1,28}[a-z0-9_]$/.test(value);
@@ -254,6 +263,6 @@ export async function getPublicPost(handle: string, key: string, baseUrl = proce
   const href = postHref(handle, key);
   if (!href) throw new PostListError("not-found");
   const post = parsePostDetail(await guestJson(href.slice(1), new URLSearchParams(), baseUrl, request));
-  if (post.author.handle !== handle || post.urlKey !== key) throw new PostListError("response");
+  if (post.author.handle !== handle || post.urlKey !== key || post.seriesDisplayOrder!==undefined&&post.seriesDisplayOrder!==null) throw new PostListError("response");
   return post;
 }
