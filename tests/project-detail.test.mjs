@@ -15,6 +15,9 @@ test("목 프로젝트 상세·관련 글 페이징·404·응답 무결성 확�
   const base=`http://127.0.0.1:${server.address().port}/api/v1`;const id="721389012345680000";
   try{
     const detail=await getPublicProject(id,base);assert.equal(detail.features.length,2);assert.match(detail.description,/<script>/);
+    const gallery=[{id:"721389012345680010",mediaRole:"SCREENSHOT",altText:"화면",displayOrder:0,url:"https://cdn.example/display.webp",thumbnailUrl:"https://cdn.example/thumb.webp",createdAt:"2026-11-09T00:00:00Z"}];
+    assert.equal(parseProjectDetail({data:{...detail,media:gallery,galleryCoverMediaId:gallery[0].id}}).galleryCoverMediaId,gallery[0].id);
+    assert.throws(()=>parseProjectDetail({data:{...detail,media:gallery,galleryCoverMediaId:"721389012345680011"}}));
     assert.equal((await getProjectPosts(id,0,base)).content.length,20);assert.equal((await getProjectPosts(id,1,base)).content.length,1);
     assert.deepEqual((await getProjectPosts(id,8,base)).content,[]);
     assert.equal((await getProjectPosts("721389012345680001",0,base)).totalElements,0);

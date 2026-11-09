@@ -2,7 +2,7 @@ import type { PostEditorValue } from '../features/post/post-editor-model.ts';
 import type { ProjectEditorValue } from '../features/project/project-editor-model.ts';
 import type { PendingImageSnapshot } from '../features/post/pending-images.ts';
 export type PostDraftSettings = { slugMode: 'NUMERIC' | 'CUSTOM'; visibility: 'PUBLIC' | 'HIDDEN' };
-export type DraftPayload<T = PostEditorValue | ProjectEditorValue> = { value: T; images: PendingImageSnapshot[]; contentId?: string; cover?: File | null; coverDeleted?: boolean; selectedImageSrc?: string | null; projectVisibility?: 'PUBLIC' | 'HIDDEN'; settings?: PostDraftSettings };
+export type DraftPayload<T = PostEditorValue | ProjectEditorValue> = { value: T; images: PendingImageSnapshot[]; contentId?: string; cover?: File | null; coverDeleted?: boolean; selectedImageSrc?: string | null; galleryCoverMediaId?: string | null; galleryCoverAttachmentKey?: string | null; removedGalleryMediaIds?: string[]; galleryAttachments?: {key:string;file:Blob;name:string;type:string;lastModified:number;uploadedMediaId?:string}[]; projectVisibility?: 'PUBLIC' | 'HIDDEN'; settings?: PostDraftSettings };
 export type DraftScope = { memberId: string; kind: 'post' | 'project'; targetId?: string };
 export type WriterDraft<T = PostEditorValue | ProjectEditorValue> = DraftPayload<T> & DraftScope & { key: string; savedAt: number; revision?: string; version: 1 };
 export const draftOwner = (scope: DraftScope) => JSON.stringify([scope.memberId, scope.kind]);
