@@ -26,7 +26,7 @@ function diagramImage(sandboxMarkup: string) {
   return URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" }));
 }
 
-export function MermaidPreview({ source, editing = false }: { source: string; editing?: boolean }) {
+export function MermaidPreview({ source, editing = false, onRendered }: { source: string; editing?: boolean; onRendered?: (source: string) => void }) {
   const id = useId().replace(/[^\w-]/g, "");
   const [result, setResult] = useState<{ source: string; url?: string; error?: string }>();
   const code = source.trim();
@@ -50,6 +50,7 @@ export function MermaidPreview({ source, editing = false }: { source: string; ed
         if (!active) return;
         imageUrl = diagramImage(svg);
         setResult({ source: code, url: imageUrl });
+        onRendered?.(code);
       } catch {
         if (active) setResult({ source: code, error: "다이어그램을 표시할 수 없어요. Mermaid 문법을 확인해 주세요." });
       } finally {
@@ -61,7 +62,7 @@ export function MermaidPreview({ source, editing = false }: { source: string; ed
       window.clearTimeout(timeout);
       if (imageUrl) URL.revokeObjectURL(imageUrl);
     };
-  }, [code, editing, id, inputError]);
+  }, [code, editing, id, inputError, onRendered]);
 
   const current = result?.source === code ? result : undefined;
   return <div className={styles.preview}>

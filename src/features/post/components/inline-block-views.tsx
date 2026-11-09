@@ -11,7 +11,7 @@ import { ArchitectureEditor } from "./architecture-editor";
 import styles from "./inline-block-views.module.css";
 import { TableTextInput } from "./table-text-input";
 import { codeLanguages as languages } from "../code-languages";
-import { MermaidPreview } from "./mermaid-preview";
+import { readMermaidSource } from "../mermaid-source";
 
 export const defaultInlineTableSpec = (): TableSpec => ({ schemaVersion: 1, tableName: "", columns: [{ name: "", dataType: "", primaryKey: false, nullable: true }] });
 export const defaultInlineArchitectureSpec = (): ArchitectureSpec => ({ schemaVersion: 1, groups: [], nodes: [{ id: "client", type: "CLIENT", label: "", icon: "CLIENT", position: { x: 56, y: 80 } }], edges: [] });
@@ -30,9 +30,8 @@ function tableError(spec: TableSpec): string {
   }
 }
 
-export function InlineCodeView({ node, editor, updateAttributes, deleteNode }: NodeViewProps) {
+export function InlineCodeView({ node, editor, updateAttributes, deleteNode, getPos }: NodeViewProps) {
   const editable = useEditable(editor);
-  const mermaid = node.attrs.language === "MERMAID";
   const [copyMessage, setCopyMessage] = useState("");
   const copyCode = async () => {
     try {
@@ -44,17 +43,21 @@ export function InlineCodeView({ node, editor, updateAttributes, deleteNode }: N
   };
   return <NodeViewWrapper className={`${styles.block} ${styles.code}`} data-align={node.attrs.align ?? "left"}>
     <div className={styles.toolbar} contentEditable={false} onPointerDown={event => event.stopPropagation()} onKeyDown={event => event.stopPropagation()}>
-      <select aria-label="코드 언어" value={node.attrs.language ?? "TYPESCRIPT"} disabled={!editable} onChange={event => { if (editor.isEditable) updateAttributes({ language: event.target.value }); }}>
+      <select aria-label="코드 언어" value={node.attrs.language ?? "TYPESCRIPT"} disabled={!editable} onChange={event => {
+        if (!editor.isEditable) return;
+        const language = event.target.value;
+        if (language !== "MERMAID") { updateAttributes({ language }); return; }
+        const position = getPos();
+        if (typeof position === "number") editor.commands.insertContentAt({ from: position, to: position + node.nodeSize }, {
+          type: "mermaidDiagram", attrs: { key: node.attrs.key, title: node.attrs.title, align: node.attrs.align, ...readMermaidSource(node.textContent) },
+        });
+      }}>
         {languages.map(language => <option key={language} value={language}>{language === "MERMAID" ? "Mermaid" : language}</option>)}
       </select>
       <button className="editor-action" data-editor-action="code" type="button" onClick={() => void copyCode()}>코드 복사</button>
       <button className="editor-action" data-editor-action="code" type="button" aria-label="코드 블록 삭제" disabled={!editable} onClick={() => { if (editor.isEditable) deleteNode(); }}>삭제</button>
     </div>
-    <div className={mermaid ? styles.mermaidEditor : undefined}>
-      {mermaid && <span className={styles.mermaidSourceLabel} contentEditable={false}>원문</span>}
-      <NodeViewContent<"pre"> as="pre" className={styles.codeContent} spellCheck={false} aria-label={mermaid ? "Mermaid 원문" : "코드 내용"} />
-      {mermaid && <div className={styles.mermaidResult} contentEditable={false}><span>미리보기</span><MermaidPreview source={node.textContent} editing/></div>}
-    </div>
+    <NodeViewContent<"pre"> as="pre" className={styles.codeContent} spellCheck={false} aria-label="코드 내용" />
     <p className={styles.copyStatus} contentEditable={false} role="status">{copyMessage}</p>
   </NodeViewWrapper>;
 }
