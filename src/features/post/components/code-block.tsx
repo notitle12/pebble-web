@@ -1,11 +1,18 @@
 "use client";
 import { useState } from "react";
 import { formatLanguageLabel, highlightCodeToReact } from "../syntax-highlight";
+import { MermaidPreview } from "./mermaid-preview";
 
 export function CodeBlock({ content, language, title }: { content: string; language: string | null; title: string | null }) {
   const [message, setMessage] = useState("");
   const langLabel = formatLanguageLabel(language);
   const highlighted = highlightCodeToReact(content, language);
+
+  if (language?.toUpperCase() === "MERMAID") return <section className="code-block" aria-label={title ?? "Mermaid 다이어그램"}>
+    {title && <h2>{title}</h2>}
+    <MermaidPreview source={content}/>
+    <details><summary>Mermaid 원문</summary><pre tabIndex={0}><code>{content}</code></pre></details>
+  </section>;
 
   return (
     <section className="code-block" aria-label={title ?? `${langLabel} 코드 예제`}>

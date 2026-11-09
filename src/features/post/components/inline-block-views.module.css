@@ -14,6 +14,11 @@
 .block .codeContent :global([data-node-view-content-react]) { display: block; min-height: 1.7em; min-width: 100%; width: max-content; white-space: pre !important; overflow-wrap: normal !important; word-break: normal !important; }
 .copyStatus { color: #59636f; font-size: 12px; margin: 0; padding: 0 16px 10px; }
 .copyStatus:empty { display: none; }
+.mermaidEditor { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); grid-template-rows: auto 1fr; gap: 6px 12px; padding: 8px 12px 12px; }
+.mermaidSourceLabel, .mermaidResult > span { color: var(--muted); font-size: 12px; font-weight: 650; }
+.mermaidEditor .codeContent { grid-column: 1; grid-row: 2; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; }
+.mermaidResult { grid-column: 2; grid-row: 1 / 3; display: grid; grid-template-rows: subgrid; min-width: 0; }
+@media (max-width: 640px) { .mermaidEditor { grid-template-columns: minmax(0,1fr); grid-template-rows: auto; } .mermaidResult { grid-column: 1; grid-row: auto; grid-template-rows: auto 1fr; } }
 .heading { align-items: center; background: #fafbfc; border-bottom: 1px solid #e8ebee; display: flex; font-size: 13px; font-weight: 500; gap: 12px; justify-content: space-between; padding: 10px 14px; }
 .heading > div { display: flex; gap: 8px; }
 .tableMeta { display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); padding: 14px; }

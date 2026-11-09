@@ -1,11 +1,12 @@
 import {createElement,type CSSProperties,type ReactNode} from 'react';
-import {parseDocument} from 'htmlparser2';
+import {DomUtils,parseDocument} from 'htmlparser2';
 import {Element,Text,type ChildNode} from 'domhandler';
 import {parseArchitectureSpec,parseTableSpec} from '../api/post-list';
 import {parseDatabaseSchema} from '../database-schema';
 import {TableBlock} from './table-block';
 import {ArchitectureBlock} from './architecture-block';
 import {DatabaseSchemaBlock} from './database-schema-block';
+import {CodeBlock} from './code-block';
 const propertyNames:Record<string,string>={class:'className',colspan:'colSpan',rowspan:'rowSpan',allowfullscreen:'allowFullScreen',referrerpolicy:'referrerPolicy'};
 function properties(attrs:Record<string,string>){
  const props:Record<string,unknown>={};
@@ -24,6 +25,13 @@ export function NestedRichContent({html}:{html:string}){
   const key=`${path}.${index}`;
   if(node instanceof Text)return node.data;
   if(!(node instanceof Element))return null;
+  if(node.name==='pre'){
+   const code=node.children.find(child=>child instanceof Element && child.name==='code');
+   const classes=[node.attribs.class,code instanceof Element?code.attribs.class:''].join(' ').split(/\s+/);
+   if(node.attribs['data-language']?.toLowerCase()==='mermaid'||classes.some(value=>value.toLowerCase()==='language-mermaid')){
+    return <div key={key} data-align={node.attribs['data-align']}><CodeBlock content={DomUtils.textContent(code??node)} language="MERMAID" title={null}/></div>;
+   }
+  }
   const type=node.name==='div'?node.attribs['data-pebble-type']:undefined;
   if(type){
    try{

@@ -483,16 +483,17 @@ export function RichBodyEditor({ blocks, onChangeBlocks, onSplitViewChange, uplo
     if (!exists) editor.chain().focus().insertContentAt(0, { type: "tableOfContents" }).run();
     setInsertMenuOpen(false);
   };
-  const insertBlock = (type: "CODE" | "TABLE" | "ARCHITECTURE" | "DB_SCHEMA", editorTab: "ERD" | "SPEC" = "ERD") => {
+  const insertBlock = (type: "CODE" | "MERMAID" | "TABLE" | "ARCHITECTURE" | "DB_SCHEMA", editorTab: "ERD" | "SPEC" = "ERD") => {
     if (!editor || disabled) return;
     const key = crypto.randomUUID();
-    const node = type === "CODE" ? { type: "pebbleCode", attrs: { key, language: "TYPESCRIPT" } } : { type: type === "DB_SCHEMA" ? "databaseSchema" : type === "TABLE" ? "tableSpec" : "architectureSpec", attrs: { key, editorTab, spec: type === "DB_SCHEMA" ? newDatabaseSchema() : type === "TABLE" ? defaultInlineTableSpec() : defaultInlineArchitectureSpec(), valid: false } };
+    const isCode = type === "CODE" || type === "MERMAID";
+    const node = isCode ? { type: "pebbleCode", attrs: { key, language: type === "MERMAID" ? "MERMAID" : "TYPESCRIPT" } } : { type: type === "DB_SCHEMA" ? "databaseSchema" : type === "TABLE" ? "tableSpec" : "architectureSpec", attrs: { key, editorTab, spec: type === "DB_SCHEMA" ? newDatabaseSchema() : type === "TABLE" ? defaultInlineTableSpec() : defaultInlineArchitectureSpec(), valid: false } };
     const selection = editor.state.selection.$from;
     const chain = editor.chain().focus();
     if (editor.state.selection instanceof NodeSelection) chain.insertContentAt(editor.state.selection.to, [node, {type:"paragraph"}]).run();
     else if (selection.depth > 1 || selection.parent.type.name === "pebbleCode") chain.insertContentAt(selection.after(1), [node, { type: "paragraph" }]).run();
     else chain.insertContent([node, { type: "paragraph" }]).run();
-    if (type === "CODE") editor.state.doc.descendants((child, pos) => {
+    if (isCode) editor.state.doc.descendants((child, pos) => {
       if (child.type.name === "pebbleCode" && child.attrs.key === key) editor.commands.setTextSelection(pos + 1);
     });
     setInsertMenuOpen(false);
@@ -535,6 +536,7 @@ export function RichBodyEditor({ blocks, onChangeBlocks, onSplitViewChange, uplo
     { label: "HTML", keywords: "html", action: () => openForm("html") },
     { label: "아키텍처", keywords: "architecture diagram", action: () => insertBlock("ARCHITECTURE") },
     { label: "DB 설계 · ERD · 테이블 명세", keywords: "database schema table", action: () => insertBlock("DB_SCHEMA") },
+    { label: "Mermaid", keywords: "다이어그램 diagram flowchart", action: () => insertBlock("MERMAID") },
     { label: "접는 글", keywords: "toggle details", action: addToggle },
   ].filter(command => !command.disabled && `${command.label} ${command.keywords}`.toLocaleLowerCase().includes(slash?.query ?? ""));
   const selectSlashCommand = (index: number) => {
@@ -625,9 +627,13 @@ export function RichBodyEditor({ blocks, onChangeBlocks, onSplitViewChange, uplo
       <button type="button" role="menuitem" onClick={() => openForm("map")}>지도</button>
       <button type="button" role="menuitem" onClick={() => openForm("html")}>HTML</button>
       <button type="button" role="menuitem" onClick={() => insertAction(() => insertBlock("CODE"))}>코드</button>
-      <button type="button" role="menuitem" onClick={() => insertAction(() => insertBlock("ARCHITECTURE"))}>아키텍처</button>
-      <button type="button" role="menuitem" aria-label="DB 설계 · ERD · 테이블 명세" title="ERD · 테이블 명세" onClick={() => insertAction(() => insertBlock("DB_SCHEMA"))}>DB 설계</button>
       <button type="button" role="menuitem" onClick={addToggle}>접는 글</button>
+      <div className={styles.insertDiagramGroup} role="group" aria-label="다이어그램">
+        <span aria-hidden="true">다이어그램</span>
+        <button type="button" role="menuitem" onClick={() => insertAction(() => insertBlock("ARCHITECTURE"))}>아키텍처</button>
+        <button type="button" role="menuitem" aria-label="DB 설계 · ERD · 테이블 명세" title="ERD · 테이블 명세" onClick={() => insertAction(() => insertBlock("DB_SCHEMA"))}>DB 설계</button>
+        <button type="button" role="menuitem" onClick={() => insertAction(() => insertBlock("MERMAID"))}>Mermaid</button>
+      </div>
     </div>}
 
     {palette && <div data-writer-popup className={styles.palette} style={{ left: Math.max(12, paletteLeft), ...((toolbarMode === "inline" || toolbarHost !== undefined) ? {top:popupAnchor.top} : {}) }} role="dialog" aria-label={palette === "text" ? "글자색 선택" : "글씨 배경색 선택"}><strong>{palette === "text" ? "글자색" : "글씨 배경색"}</strong><div>{(palette === "text" ? textColors : highlightColors).map(color => <button key={color} type="button" title={color} aria-label={`${color} 색상`} style={{ backgroundColor: color }} onClick={() => pickColor(color)}/>)}</div><button type="button" onClick={() => { if (palette === "text") editor?.chain().focus().unsetColor().run(); else editor?.chain().focus().unsetHighlight().run(); setPalette(null); }}>기본색으로 초기화</button></div>}

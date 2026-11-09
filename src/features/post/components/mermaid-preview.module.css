@@ -1,0 +1,4 @@
+.preview { display: grid; min-width: 0; place-items: center; min-height: 82px; padding: 12px; background: #f9fbf9; border: 1px solid var(--line); border-radius: 6px; }
+.preview img { display: block; max-width: 100%; height: auto; }
+.preview p { margin: 0; color: #59685e; font-size: 13px; text-align: center; }
+.renderHost { position: fixed; top: 0; left: 0; width: 800px; height: 300px; overflow: hidden; visibility: hidden; pointer-events: none; }
