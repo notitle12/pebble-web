@@ -73,7 +73,8 @@ body {font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun
 .project-cover-index,.project-cover-caption {position:relative;z-index:1;font-family:ui-monospace,SFMono-Regular,monospace;font-size:9px;letter-spacing:.1em;}
 .project-cover-caption {align-self:flex-end;letter-spacing:.025em;font-size:11px;}
 .project-tile-body {padding:20px 0 0;}
-.project-tile .post-meta {font-size:10px;gap:12px;}
+.project-tile .post-meta {font-size:10px;gap:12px;align-items:center;}
+.project-horizontal-item .post-meta{align-items:center}
 .project-tile .project-status {margin-left:auto;padding:0;background:transparent;color:#7f856f;display:inline-flex;align-items:center;gap:5px;border-radius:0;font-size:10px;}
 .project-tile .project-status::before {content:"";width:5px;height:5px;border-radius:50%;background:#bba353;}
 .project-tile .project-status.completed {color:#507353;}
@@ -195,7 +196,7 @@ button,input,select,textarea {font-family:inherit;}
 .detail-back{display:inline-flex;margin-bottom:18px;color:#727982;font-size:13px}
 .detail-shell .post-detail{background:#fff;border:1px solid var(--line);border-radius:16px;padding:44px 52px;box-shadow:0 3px 16px #26344c04}
 .post-heading-bar{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:22px;min-height:36px}
-.post-heading-bar .post-meta{margin:0;flex-wrap:wrap}
+.post-heading-bar .post-meta{margin:0;align-items:center;min-width:0}.post-meta time{white-space:nowrap}
 .post-heading-bar .post-owner-actions{margin:0;flex-shrink:0}
 .post-owner-actions a{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:7px 12px;min-height:36px;border:1px solid #e5e8ed;border-radius:7px;background:#f8f9fb;color:#626b78;font-size:12px;font-weight:500;text-decoration:none;transition:background .15s,color .15s}
 .post-owner-actions svg{width:15px;height:15px}
@@ -206,7 +207,7 @@ button,input,select,textarea {font-family:inherit;}
 .detail-shell .like-panel:not(.post-detail *){background:#fff;border:1px solid var(--line);border-radius:16px;padding:20px 36px;margin-top:18px;box-shadow:0 3px 16px #26344c04}
 .detail-shell .comments-panel .list-heading{margin-top:0}
 .post-detail .content-thumbnail{display:block;width:100%;height:auto;max-height:540px;object-fit:cover;border-radius:12px;margin:22px 0 28px;border:1px solid var(--line);box-shadow:0 4px 18px #17202a0a}
-@media(max-width:760px){.discovery-section{padding:22px 20px;border-radius:12px}.personal-blog-content{padding:24px 20px;border-radius:12px}.personal-blog-profile{padding:24px}.detail-shell .post-detail{padding:30px 24px;border-radius:12px}.detail-shell .like-panel,.detail-shell .comments-panel{padding:22px 24px;border-radius:12px}.post-heading-bar{gap:10px;align-items:flex-start}.post-heading-bar .post-meta{font-size:12px}.post-owner-actions a{padding:7px 10px}.personal-blog-layout{gap:18px}.post-detail .content-thumbnail{max-height:360px;margin:16px 0 22px;border-radius:8px}}
+@media(max-width:760px){.discovery-section{padding:22px 20px;border-radius:12px}.personal-blog-content{padding:24px 20px;border-radius:12px}.personal-blog-profile{padding:24px}.detail-shell .post-detail{padding:30px 24px;border-radius:12px}.detail-shell .like-panel,.detail-shell .comments-panel{padding:22px 24px;border-radius:12px}.post-heading-bar{gap:8px 10px;flex-wrap:wrap}.post-heading-bar .post-meta{font-size:12px}.post-owner-actions a{padding:7px 10px}.personal-blog-layout{gap:18px}.post-detail .content-thumbnail{max-height:360px;margin:16px 0 22px;border-radius:8px}}
 @media(max-width:420px){.detail-shell .post-detail{padding:26px 20px}.detail-shell .like-panel,.detail-shell .comments-panel{padding:20px}.discovery-section{padding:20px 18px}.discovery-heading p{font-size:12px}}
 
 /* Public lists and the author blog use distinct content surfaces. */
