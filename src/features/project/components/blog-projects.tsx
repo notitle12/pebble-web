@@ -1,3 +1,4 @@
+import { AuthorBlogLink } from "@/components/author-blog-link";
 import Link from "next/link";
 import {IntentLink} from "@/components/intent-link";
 import { ProjectCover } from "./project-cover";
@@ -47,7 +48,7 @@ export function BlogProjects({ handle, initial, page = 0, failed = false }: Prop
                 </IntentLink>
                 <div className="project-tile-body">
                   <div className="post-meta">
-                    <span>{project.owner.nickname}</span>
+                    <AuthorBlogLink author={project.owner}/>
                     <time dateTime={date}>{format.format(new Date(date))}</time>
                     <span className={`project-status ${project.lifecycleStatus === "COMPLETED" ? "completed" : ""}`}>
                       {project.lifecycleStatus === "COMPLETED" ? "완료" : "진행 중"}

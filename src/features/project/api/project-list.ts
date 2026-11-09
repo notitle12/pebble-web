@@ -3,7 +3,7 @@ import {parseProjectMedia,type ProjectMedia} from "../../media/model.ts";
 import { guestJson, GuestApiError } from "../../../lib/public-api.ts";
 import { parseListQuery, validId } from "../../../lib/list-query.ts";
 export type ProjectQuery = { page: number; q?: string; techStackId?: string; lifecycleStatus?: "IN_PROGRESS" | "COMPLETED" };
-export type ProjectSummary = { likeCount?:number;likedByMe?:boolean; id: string; name: string; summary: string | null; owner: { id: string; nickname: string }; techStacks: {id: string; name: string}[]; lifecycleStatus: "IN_PROGRESS" | "COMPLETED"; publishedAt: string | null; createdAt: string; thumbnailUrl?: string | null; updatedAt?:string };
+export type ProjectSummary = { likeCount?:number;likedByMe?:boolean; id: string; name: string; summary: string | null; owner: { id: string; nickname: string; handle?: string | null; profileImageUrl?: string | null }; techStacks: {id: string; name: string}[]; lifecycleStatus: "IN_PROGRESS" | "COMPLETED"; publishedAt: string | null; createdAt: string; thumbnailUrl?: string | null; updatedAt?:string };
 export type ProjectPage = { content: ProjectSummary[]; page: number; size: number; totalElements: number; totalPages: number; hasNext: boolean; hasPrevious: boolean };
 export function parseProjectQuery(params: Record<string,string|string[]|undefined>): ProjectQuery | null {
   const { lifecycleStatus, ...rest } = params;
@@ -26,6 +26,7 @@ function isProject(value: unknown): value is ProjectSummary & Record<string,unkn
   return record(value) && (value.updatedAt===undefined||timestamp(value.updatedAt)) && typeof value.id === "string" && validId(value.id) && typeof value.name === "string"
     && (value.summary === null || typeof value.summary === "string") && record(value.owner)
     && typeof value.owner.id === "string" && validId(value.owner.id) && typeof value.owner.nickname === "string"
+    && nullableText(value.owner.handle) && nullableText(value.owner.profileImageUrl)
     && ["IN_PROGRESS","COMPLETED"].includes(String(value.lifecycleStatus))
     && Array.isArray(value.techStacks) && value.techStacks.every(tag=>record(tag) && typeof tag.id === "string" && validId(tag.id) && typeof tag.name === "string")
     && (value.likeCount===undefined || count(value.likeCount)) && (value.likedByMe===undefined || typeof value.likedByMe==="boolean")

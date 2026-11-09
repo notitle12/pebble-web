@@ -21,7 +21,7 @@ export type PostSummary = {
   urlKey: string;
   title: string;
   summary: string | null;
-  author: { id: string; handle: string; nickname: string; blogName: string | null };
+  author: { id: string; handle: string; nickname: string; blogName: string | null; profileImageUrl?: string | null };
   tags: string[];
   publishedAt: string | null;
   createdAt: string;
@@ -66,6 +66,7 @@ function isPost(value: unknown): value is PostSummary & Record<string, unknown> 
     && (value.updatedAt===undefined||timestamp(value.updatedAt)) && (value.thumbnailImageId===undefined||value.thumbnailImageId===null||id(value.thumbnailImageId)) && (value.thumbnailUrl===undefined||nullableText(value.thumbnailUrl)) && id(value.id) && typeof value.urlKey === "string" && validPostKey(value.urlKey)
     && typeof value.author.handle === "string" && validHandle(value.author.handle) && typeof value.title === "string" && nullableText(value.summary)
     && id(value.author.id) && typeof value.author.nickname === "string" && nullableText(value.author.blogName)
+    && (value.author.profileImageUrl === undefined || nullableText(value.author.profileImageUrl))
     && Array.isArray(value.tags) && value.tags.every(tag => typeof tag === "string" && tag.length > 0)
     && (value.likeCount===undefined || count(value.likeCount)) && (value.likedByMe===undefined || typeof value.likedByMe==="boolean")
     && (value.publishedAt === null || timestamp(value.publishedAt)) && timestamp(value.createdAt);

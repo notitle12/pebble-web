@@ -1,7 +1,7 @@
 import {Suspense} from 'react';
 import {LoadingIndicator} from '@/components/loading-state';
 import {BlogSidebar} from './blog-sidebar';
-import {BlogVisitCount} from './blog-visit-count';
+import {BlogSidebarStats} from './blog-sidebar-stats';
 import {PublicBlogLinks} from './public-blog-links';
 import {BlogOwnerActions} from '../../auth/components/blog-owner-actions';
 import {BlogHomeView,BlogHomeProjects} from '../../blog-home/components/blog-home-view';
@@ -16,7 +16,7 @@ export function BlogSidebarLoading(){
 
 export async function PublicBlogSidebar({data,...props}:SidebarProps&{data:BlogPageData['sidebar']}){
   const sidebar=await data;
-  return <BlogSidebar {...props} visitors={<BlogVisitCount handle={props.handle}/>} footer={<BlogOwnerActions handle={props.handle}/>}
+  return <BlogSidebar {...props} visitors={<BlogSidebarStats handle={props.handle}/>} footer={<BlogOwnerActions handle={props.handle}/>}
     links={<PublicBlogLinks links={sidebar.links} failed={sidebar.linksError}/>}
     boards={sidebar.boards} projects={sidebar.sidebarProjects?.content.slice(0,5)??[]}
     series={sidebar.series} sidebarOrder={sidebar.sidebarOrder} seriesError={sidebar.seriesError} navigationError={sidebar.navigationError} boardError={sidebar.boardError} projectError={sidebar.projectError}/>;

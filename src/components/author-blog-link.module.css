@@ -1,0 +1,4 @@
+.author { display: inline-flex; gap: 6px; align-items: center; min-width: 0; max-width: 100%; color: var(--text); font-weight: 650; }
+.author > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+a.author:hover { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
+.avatar { width: 24px; height: 24px; flex: 0 0 24px; object-fit: cover; border-radius: 50%; display: inline-grid; place-items: center; background: var(--accent-soft); color: var(--accent); font-size: 11px; }

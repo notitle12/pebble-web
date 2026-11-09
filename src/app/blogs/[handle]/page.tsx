@@ -11,6 +11,7 @@ import { GuestApiError } from "@/lib/public-api";
 import { parsePage,validId } from "@/lib/list-query";
 import { blogHref } from "@/features/post/api/public-blog";
 import {BlogProfileHeader} from "@/features/blog-tools/components/blog-profile-header";
+import {BlogFollowCountsProvider} from "@/features/blog-tools/components/blog-subscriptions";
 import { BlogPosts } from "@/features/post/components/blog-posts";
 import { BlogProjects } from "@/features/project/components/blog-projects";
 import Link from "next/link";
@@ -74,6 +75,7 @@ export default async function PublicBlogPage({ params, searchParams }: {
   return <>
     <a className="skip-link" href="#main-content">본문으로 바로가기</a>
     <SiteHeader />
+    <BlogFollowCountsProvider key={author.handle} profile={author}>
     <main id="main-content" className="page-shell personal-blog-layout">
       <Suspense fallback={<BlogSidebarLoading/>}><PublicBlogSidebar data={sidebar} handle={handle} homeView={homeView} selected={selected} projectView={projectView} boardView={boardView} seriesView={seriesView} seriesId={seriesId} searched={searched}/></Suspense>
       <section className="personal-blog-content" aria-label={homeView?"블로그 홈":projectView?"블로그 프로젝트":seriesView?"블로그 시리즈":"게시판"}>
@@ -88,5 +90,6 @@ export default async function PublicBlogPage({ params, searchParams }: {
         </div></>}
       </section>
     </main>
+    </BlogFollowCountsProvider>
   </>;
 }

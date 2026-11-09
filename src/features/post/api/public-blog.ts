@@ -54,6 +54,8 @@ export type PublicBlogProfile = {
   nickname: string;
   blogName: string;
   profileImageUrl: string | null;
+  followerCount: number;
+  followingCount: number;
 };
 
 export function parsePublicBlogProfile(value: unknown, handle: string): PublicBlogProfile {
@@ -64,8 +66,12 @@ export function parsePublicBlogProfile(value: unknown, handle: string): PublicBl
   if (typeof profile.id !== "string" || !validId(profile.id) || profile.handle !== handle
     || typeof profile.nickname !== "string" || !profile.nickname.trim()
     || typeof profile.blogName !== "string" || !profile.blogName.trim()
-    || !(profile.profileImageUrl === null || typeof profile.profileImageUrl === "string")) throw new GuestApiError("response");
-  return { id: profile.id, handle, nickname: profile.nickname, blogName: profile.blogName, profileImageUrl: profile.profileImageUrl };
+    || !(profile.profileImageUrl === null || typeof profile.profileImageUrl === "string")
+    || profile.followerCount !== undefined && (!Number.isSafeInteger(profile.followerCount) || (profile.followerCount as number) < 0)
+    || profile.followingCount !== undefined && (!Number.isSafeInteger(profile.followingCount) || (profile.followingCount as number) < 0)) throw new GuestApiError("response");
+  return { id: profile.id, handle, nickname: profile.nickname, blogName: profile.blogName, profileImageUrl: profile.profileImageUrl,
+    followerCount: typeof profile.followerCount === "number" ? profile.followerCount : 0,
+    followingCount: typeof profile.followingCount === "number" ? profile.followingCount : 0 };
 }
 
 export const getPublicBlogProfile=cache(async function readPublicBlogProfile(
