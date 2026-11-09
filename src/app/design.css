@@ -169,7 +169,8 @@ button,input,select,textarea {font-family:inherit;}
 .search-blog-list li>a {display:flex;align-items:center;gap:13px;min-height:68px;padding:10px 4px;color:var(--text);}
 .search-blog-list li>a>img,.search-blog-avatar {width:42px;height:42px;flex:0 0 42px;border-radius:50%;object-fit:cover;background:var(--accent-soft);color:var(--accent);}
 .search-blog-avatar {display:grid;place-items:center;font-size:17px;font-weight:650;}
-.search-blog-copy {display:grid;gap:3px;min-width:0;overflow-wrap:anywhere;}
+.search-blog-copy {display:flex;align-items:center;gap:8px;min-width:0;}
+.search-blog-copy>* {min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .search-blog-copy strong {font-size:15px;font-weight:620;}
 .search-blog-copy>span {color:var(--muted);font-size:12px;}
 .search-blog-arrow {margin-left:auto;color:var(--muted);font-size:15px;}
