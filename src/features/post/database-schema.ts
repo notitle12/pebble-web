@@ -3,14 +3,14 @@ export type DbNotation = 'IE'|'BARKER'|'CHEN';
 export type DbReference = {tableId:string;columnId:string;notation?:DbNotation;sourceRequired?:boolean};
 export type DbColumn = {id:string;name:string;logicalName?:string;dataType:string;nullable:boolean;primaryKey:boolean;unique:boolean;description:string;reference:DbReference|null;defaultValue?:string;autoIncrement?:boolean};
 export type DbTable = {id:string;name:string;description:string;position:{x:number;y:number};columns:DbColumn[]};
-export type DatabaseSchema = {schemaVersion:1;display:'BOTH'|'ERD'|'SPEC';tables:DbTable[]};
+export type DatabaseSchema = {schemaVersion:1;display:'BOTH'|'ERD'|'SPEC';tables:DbTable[];displayWidth?:number|null};
 const object=(v:unknown):v is Record<string,unknown>=>!!v&&typeof v==='object'&&!Array.isArray(v);
 const keys=(v:Record<string,unknown>,allowed:string[])=>Object.keys(v).every(k=>allowed.includes(k));
 const id=(v:unknown):v is string=>typeof v==='string'&&/^[a-z][a-z0-9-]{0,39}$/.test(v);
 const text=(v:unknown,max:number,required=false):v is string=>typeof v==='string'&&Array.from(v).length<=max&&(!required||!!v.trim())&&!Array.from(v).some(c=>{const n=c.codePointAt(0)!;return n===0||(n>=0xd800&&n<=0xdfff);});
 function fail():never{throw new Error('DB 설계의 테이블명·컬럼명·자료형, 중복 이름과 키 참조를 확인해 주세요. PK는 NULL을 허용하지 않으며 참조 대상은 PK 또는 UNIQUE여야 합니다.');}
 export function parseDatabaseSchema(value:unknown):DatabaseSchema{
- if(!object(value)||!keys(value,['schemaVersion','display','tables'])||value.schemaVersion!==1||!['BOTH','ERD','SPEC'].includes(String(value.display))||!Array.isArray(value.tables)||!value.tables.length||value.tables.length>20)fail();
+ if(!object(value)||!keys(value,['schemaVersion','display','tables','displayWidth'])||value.schemaVersion!==1||!(value.displayWidth===undefined||value.displayWidth===null||typeof value.displayWidth==='number'&&Number.isInteger(value.displayWidth)&&value.displayWidth>=25&&value.displayWidth<=100)||!['BOTH','ERD','SPEC'].includes(String(value.display))||!Array.isArray(value.tables)||!value.tables.length||value.tables.length>20)fail();
  const tableIds=new Set<string>(),tableNames=new Set<string>();
  for(const t of value.tables){
   if(!object(t)||!keys(t,['id','name','description','position','columns'])||!id(t.id)||!text(t.name,100,true)||!text(t.description,500)||!object(t.position)||!keys(t.position,['x','y'])||![t.position.x,t.position.y].every(n=>typeof n==='number'&&Number.isInteger(n)&&n>=0&&n<=6000)||!Array.isArray(t.columns)||!t.columns.length||t.columns.length>50)fail();

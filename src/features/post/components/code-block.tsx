@@ -1,11 +1,24 @@
 "use client";
 import { useState } from "react";
 import { formatLanguageLabel, highlightCodeToReact } from "../syntax-highlight";
+import { MermaidPreview } from "./mermaid-preview";
+import { readMermaidSource } from "../mermaid-source";
+import { DiagramWidthFrame } from "./diagram-width-frame";
+import styles from "./mermaid-preview.module.css";
 
 export function CodeBlock({ content, language, title }: { content: string; language: string | null; title: string | null }) {
   const [message, setMessage] = useState("");
   const langLabel = formatLanguageLabel(language);
   const highlighted = highlightCodeToReact(content, language);
+
+  if (language?.toUpperCase() === "MERMAID") {
+    const { source, width } = readMermaidSource(content);
+    return <DiagramWidthFrame width={width}><section className="code-block" aria-label={title ?? "Mermaid 다이어그램"}>
+      {title && <h2>{title}</h2>}
+      <MermaidPreview source={source}/>
+      <details className={styles.readerSource}><summary>코드 보기</summary><pre tabIndex={0}><code>{source}</code></pre></details>
+    </section></DiagramWidthFrame>;
+  }
 
   return (
     <section className="code-block" aria-label={title ?? `${langLabel} 코드 예제`}>

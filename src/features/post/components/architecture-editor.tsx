@@ -3,7 +3,7 @@ import "@/app/writer-editor.css";
 import { useEffect, useRef, useState } from "react";
 import { DiagramZoomInput } from "./diagram-zoom-input";
 import { useEditorFullscreen, EditorFullscreenButton } from "./use-editor-fullscreen";
-import { parseArchitectureSpec, type ArchitectureSpec, type ArchitectureSide, type ArchitectureEdge } from "../api/post-list";
+import { parseArchitectureSpec, type ArchitectureSpec, type ArchitectureSide, type ArchitectureEdge, type ArchitectureNodeShape } from "../api/post-list";
 import {ARCHITECTURE_BRAND_ICONS,architectureBrandIcon,searchArchitectureIcons} from "../architecture-brand-icons";
 import {ARCHITECTURE_ICONS,toolboxIcon,newArchitectureNode,newArchitectureGroup} from "../architecture-tools";
 
@@ -231,6 +231,14 @@ export function ArchitectureEditor({ onChange, initialValue, embedded = false, o
     setMessage(brand ? `“${brand.label}” 기술 카드를 추가했습니다.` : "기본 아이콘을 추가했습니다. 아래에 표시할 이름을 입력해 주세요.");
     return { ...current, nodes: [...current.nodes, node] };
   });
+  const addShape = (shape:ArchitectureNodeShape) => update(current=>{
+    if(current.nodes.length>=30)return current;
+    const node={...newArchitectureNode(fresh("node",allIds(current)),"CUSTOM",current.nodes.length,""),icon:null};
+    node.shape=shape;
+    setSingleNode(node.id);
+    setMessage("도형을 추가했습니다. 도형을 두 번 클릭해 이름을 입력하세요.");
+    return {...current,nodes:[...current.nodes,node]};
+  });
   const addGroup = () => update((current) => {
     if(current.groups.length>=10)return current;
     const group=newArchitectureGroup(fresh("group",allIds(current)));
@@ -291,14 +299,16 @@ export function ArchitectureEditor({ onChange, initialValue, embedded = false, o
   try { parseArchitectureSpec(spec); } catch { if (!issues.length) issues.push("이름, 참조, 아이콘, 좌표를 확인해 주세요."); }
   if (Array.from(JSON.stringify(spec)).length > 50000) issues.push("본문은 50,000자를 넘을 수 없습니다.");
   for (const item of spec.nodes) {
-    if (!item.label.trim()) issues.push(`“${item.id}”의 이름을 입력해 주세요.`);
+    if (!item.shape && !item.label.trim()) issues.push(`“${item.id}”의 이름을 입력해 주세요.`);
   }
   const invalid = issues.length > 0;
   useEffect(() => { onChange?.(invalid ? null : spec); onDraftChange?.(spec,!invalid); }, [onChange,onDraftChange, invalid, spec]);
   const updateEdge = (id: string, patch: Partial<ArchitectureEdge>) => { const currentEdge = spec.edges.find((item) => item.id === id); if (!currentEdge) return; const candidate = { ...currentEdge, ...patch }; if ( candidate.source === candidate.target || spec.edges.some((item) => item.id !== id && item.source === candidate.source && item.target === candidate.target)) { setMessage("자기 연결 또는 중복 연결은 허용되지 않습니다."); return; } update((current) => ({ ...current, edges: current.edges.map((item) => item.id === id ? { ...item, ...patch } : item) })); };
   const updateNode = (field: string, value: unknown) => update((current) => ({ ...current, nodes: current.nodes.map((node) => node.id === selectedNode ? ({ ...node, [field]: value } as typeof node) : node) }));
   const rename=(kind:"node"|"group",id:string,label:string,field:"label"|"typeLabel"="label")=>{
-    const name=label.trim(); if((!name && !(kind==="group" && field==="label")) || Array.from(name).length>(field==="typeLabel"?50:100)){setMessage(`이름을 1~${field==="typeLabel"?50:100}자 이내로 입력해 주세요.`);return;}
+    const name=label.trim();
+    const canBeEmpty=field==="label"&&(kind==="group"||spec.nodes.some(node=>node.id===id&&node.shape));
+    if((!name&&!canBeEmpty)||Array.from(name).length>(field==="typeLabel"?50:100)){setMessage(`이름을 1~${field==="typeLabel"?50:100}자 이내로 입력해 주세요.`);return;}
     update(current=>kind==="node"?{...current,nodes:current.nodes.map(item=>item.id===id?{...item,[field]:name}:item)}:{...current,groups:current.groups.map(item=>item.id===id?{...item,[field]:name}:item)});
   };
   const connectPoint = (target: string, side: ArchitectureSide) => {
@@ -344,7 +354,7 @@ export function ArchitectureEditor({ onChange, initialValue, embedded = false, o
   }}>
     <aside ref={paletteRef} className="architecture-palette architecture-compact-palette" aria-label="요소 추가">
       <div className="architecture-library-toolbar"><div className="architecture-library-triggers" role="toolbar" aria-label="아키텍처 도구함">
-        <button type="button" aria-label="기본 아이콘 추가" aria-expanded={libraryTab==="basic"} onClick={()=>{setLibraryTab(tab=>tab==="basic"?null:"basic");setConnectionMenuOpen(false);setConnectMode(false);setConnectFrom(null);}}><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M17.5 14v7M14 17.5h7"/></svg>기본 아이콘</button>
+        <button type="button" aria-label="기본 아이콘과 도형 추가" aria-expanded={libraryTab==="basic"} onClick={()=>{setLibraryTab(tab=>tab==="basic"?null:"basic");setConnectionMenuOpen(false);setConnectMode(false);setConnectFrom(null);}}><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M17.5 14v7M14 17.5h7"/></svg>기본 요소</button>
         <button type="button" aria-label="기술 스택 추가" aria-expanded={libraryTab==="tech"} onClick={()=>{setLibraryTab(tab=>tab==="tech"?null:"tech");setConnectionMenuOpen(false);setConnectMode(false);setConnectFrom(null);}}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m16 18 6-6-6-6"/><path d="m8 6-6 6 6 6"/></svg>기술</button>
         <button type="button" disabled={spec.groups.length>=10} onClick={()=>{addGroup();setLibraryTab(null);setConnectionMenuOpen(false);}}><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2" strokeDasharray="3 2"/></svg>그룹</button>
         <div className="architecture-connection-dropdown">
@@ -381,10 +391,13 @@ export function ArchitectureEditor({ onChange, initialValue, embedded = false, o
             </div>
           )}
         </div>
-      </div><span className="architecture-tool-hint">아이콘 선택 → 이름 입력 → 연결</span></div>
-      {libraryTab==="basic"&&<div className="architecture-library-popup" role="dialog" aria-label="기본 아이콘 선택" onKeyDown={event=>{if(event.key==="Escape"){event.stopPropagation();setLibraryTab(null);}}}>
-        <div className="architecture-icon-heading"><strong>기본 아이콘 선택</strong><button type="button" aria-label="기본 아이콘 목록 닫기" onClick={()=>setLibraryTab(null)}>×</button></div>
+      </div><span className="architecture-tool-hint">요소 선택 → 이름 입력 → 연결</span></div>
+      {libraryTab==="basic"&&<div className="architecture-library-popup" role="dialog" aria-label="기본 아이콘 및 도형" onKeyDown={event=>{if(event.key==="Escape"){event.stopPropagation();setLibraryTab(null);}}}>
+        <div className="architecture-icon-heading"><strong>기본 아이콘 및 도형</strong><button type="button" aria-label="기본 아이콘 목록 닫기" onClick={()=>setLibraryTab(null)}>×</button></div>
         <p className="architecture-popup-desc">이름을 직접 지정할 수 있는 기본 구성 요소입니다.</p>
+        <strong className="architecture-palette-section">기본 도형</strong>
+        <div className="architecture-shape-grid">{([['RECTANGLE','사각형'],['CIRCLE','원'],['ELLIPSE','타원'],['DIAMOND','마름모']] as const).map(([shape,label])=><button key={shape} type="button" disabled={spec.nodes.length>=30} onClick={()=>{addShape(shape);setLibraryTab(null);}} aria-label={`${label} 도형 추가`}><svg viewBox="0 0 48 36" aria-hidden="true">{shape==='RECTANGLE'?<rect x="5" y="5" width="38" height="26" rx="3"/>:shape==='CIRCLE'?<circle cx="24" cy="18" r="13"/>:shape==='ELLIPSE'?<ellipse cx="24" cy="18" rx="20" ry="12"/>:<polygon points="24,3 45,18 24,33 3,18"/>}</svg><span>{label}</span></button>)}</div>
+        <strong className="architecture-palette-section">기본 아이콘</strong>
         <div className="architecture-icon-grid">{ARCHITECTURE_ICONS.map(icon=><button key={icon.value} type="button" disabled={spec.nodes.length>=30} onClick={()=>{addNode(icon.value,"");setLibraryTab(null);}}><ArchitectureIcon value={icon.value} standalone/><span>{icon.label}</span></button>)}</div>
       </div>}
       {libraryTab==="tech"&&<div className="architecture-library-popup" role="dialog" aria-label="기술 스택 선택" onKeyDown={event=>{if(event.key==="Escape"){event.stopPropagation();setLibraryTab(null);}}}>

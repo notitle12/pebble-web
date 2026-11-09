@@ -1,0 +1,22 @@
+.preview { display: grid; min-width: 0; place-items: center; min-height: 58px; padding: 8px; background: #f9fbf9; border: 1px solid var(--line); border-radius: 7px; }
+.preview img { display: block; width: 100%; max-width: 100%; height: auto; max-height: 550px; object-fit: contain; }
+.preview p { margin: 0; color: #59685e; font-size: 13px; text-align: center; }
+.renderHost { position: fixed; top: 0; left: 0; width: 800px; height: 300px; overflow: hidden; visibility: hidden; pointer-events: none; }
+.dialog{width:min(820px,calc(100% - 28px));max-height:85dvh;margin:auto;box-sizing:border-box;padding:20px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--text)}
+.dialog::backdrop{background:#13231ab0}
+.dialog h2{margin:0 0 15px;font-size:18px;font-weight:650}
+.editor{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.editor>label,.editor>section{display:grid;min-width:0;grid-template-rows:auto 1fr;gap:5px;font-size:13px;color:var(--muted)}
+.editor textarea{box-sizing:border-box;width:100%;min-height:180px;resize:vertical;padding:8px 10px;border:1px solid var(--line);border-radius:7px;background:var(--code-surface,var(--surface));color:var(--text);font:13px/1.55 var(--font-mono,monospace)}
+.dialog footer{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}
+.dialog button,.action{min-height:28px;padding:3px 9px;border:1px solid var(--line);border-radius:5px;background:var(--surface);color:var(--text);font:inherit;font-size:12px;cursor:pointer}
+.dialog button[type=submit]{background:var(--accent);border-color:var(--accent);color:var(--background)}
+.dialog button:disabled{opacity:.5;cursor:default}
+.actions{display:flex;align-items:center;justify-content:flex-end;gap:5px;margin-top:5px}
+.action{min-height:24px;padding:2px 6px;color:var(--muted)}
+.action svg{display:block;width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.35;stroke-linecap:round;stroke-linejoin:round}
+.action:hover{color:var(--accent);border-color:var(--accent)}
+.block{margin:1.2em 0;min-width:0}
+.readerSource{margin-top:5px;font-size:12px;color:var(--muted)}
+.readerSource>summary{width:fit-content;cursor:pointer}
+@media(max-width:620px){.editor{grid-template-columns:1fr}.dialog{padding:14px}.editor textarea{min-height:128px}}

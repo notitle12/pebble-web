@@ -26,14 +26,15 @@
     "@tiptap/pm": "3.31.4",
     "@tiptap/react": "3.31.4",
     "@tiptap/starter-kit": "3.31.4",
+    "dom-serializer": "3.1.1",
     "domhandler": "6.0.1",
     "htmlparser2": "12.0.0",
     "marked": "18.1.0",
+    "mermaid": "12.3.0",
     "next": "16.3.8",
     "react": "19.3.0",
     "react-dom": "19.3.0",
-    "sanitize-html": "2.18.0",
-    "dom-serializer": "3.1.1"
+    "sanitize-html": "2.18.0"
   },
   "devDependencies": {
     "@opennextjs/cloudflare": "1.20.8",

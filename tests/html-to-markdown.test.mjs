@@ -73,6 +73,15 @@ test('Code blocks preserve language and code content', () => {
   assert.equal(md, '```TYPESCRIPT\nconst a = 1;\nconsole.log(a);\n```');
 });
 
+test('Mermaid source survives the HTML and Markdown editor formats', () => {
+  const source = 'flowchart LR\n  A[요청] --> B[서버]';
+  const block = { type: 'CODE', content: source, language: 'MERMAID', title: null };
+  const markdown = blocksToMarkdown([block]);
+  assert.equal(markdown, `\`\`\`MERMAID\n${source}\n\`\`\``);
+  assert.match(richContentHtml(markdown, 'MARKDOWN'), /<code class="language-MERMAID">flowchart LR\n  A\[요청\] --&gt; B\[서버\]/);
+  assert.match(blocksToHtml([block]), /data-language="MERMAID"/);
+});
+
 test('Code block fence grows past embedded backtick runs', () => {
   const md = htmlToMarkdown('<pre data-language="TYPESCRIPT"><code>const text = ```\ninside\n```;</code></pre>');
   assert.equal(md, '````TYPESCRIPT\nconst text = ```\ninside\n```;\n````');

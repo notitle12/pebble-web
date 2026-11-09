@@ -191,6 +191,12 @@ input:focus-visible, select:focus-visible, button:focus-visible { outline: 3px s
 .arch-node { stroke: #bac6d5; stroke-width: 1.4; filter: drop-shadow(0 2px 3px rgba(31,48,73,.10)); }
 .arch-node-type { fill: #617187; font-size: 10px; text-anchor: middle; }
 .arch-node-label { fill: #1e2b3d; font-size: 12px; font-weight: 750; text-anchor: middle; }
+.arch-basic-shape { fill: #f8fbff; stroke: #8ea3bd; stroke-width: 1.6; filter: drop-shadow(0 2px 3px rgba(31,48,73,.10)); pointer-events: none; }
+.arch-shape-hit { fill: transparent; stroke: transparent; stroke-width: 1.5; pointer-events: all; transition: stroke .15s ease, fill .15s ease; }
+.arch-node-shape-label { fill: #1e2b3d; font-size: 12px; font-weight: 750; pointer-events: none; }
+.arch-node-wrap:hover .arch-shape-hit { stroke: rgba(71,112,214,.45); stroke-dasharray: 4 3; }
+.arch-node-wrap.is-selected .arch-shape-hit { stroke: var(--accent); stroke-width: 2; stroke-dasharray: none; fill: rgba(71,112,214,.04); }
+.arch-node-wrap:focus-visible .arch-shape-hit { stroke: var(--focus); stroke-width: 2; stroke-dasharray: 3 3; }
 .arch-tech-icon { pointer-events: none; }
 .arch-node-wrap { outline: none; }
 .arch-node-wrap.arch-node-draggable { cursor: grab; }
@@ -569,6 +575,12 @@ fieldset { min-width:0; }
 .architecture-library-popup .architecture-tech-grid p,.architecture-library-popup .architecture-group-buttons p{grid-column:1/-1;color:var(--muted);font-size:13px;line-height:1.7}
 .architecture-library-popup .architecture-group-buttons{margin:0;max-height:230px;overflow:auto}
 .architecture-library-popup .architecture-group-buttons button{font-size:12px;min-height:40px}
+.architecture-palette-section{display:block;margin:14px 0 8px;font-size:12px;color:var(--muted)}
+.architecture-shape-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.architecture-shape-grid>button{display:flex;flex-direction:column;align-items:center;gap:6px;min-height:66px;padding:7px 4px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--text);cursor:pointer;font:inherit;font-size:11px}
+.architecture-shape-grid>button:hover{background:var(--accent-soft);color:var(--accent)}
+.architecture-shape-grid svg{width:40px;height:32px;fill:var(--surface);stroke:currentColor;stroke-width:1.6}
+.architecture-shape-grid>button:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
 .arch-editable-kind{cursor:text}
 .arch-edge{stroke-linejoin:round}
 @media(max-width:540px){.architecture-library-popup .architecture-tech-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.architecture-custom-actions button{padding-inline:8px;font-size:11px}}

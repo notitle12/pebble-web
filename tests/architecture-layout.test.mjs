@@ -1,7 +1,19 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { architectureLayout, ARCH_NODE_WIDTH, ARCH_NODE_HEIGHT, architectureNodeWidth } from '../src/features/post/architecture-layout.ts';
+import { architectureLayout, ARCH_NODE_WIDTH, ARCH_NODE_HEIGHT, architectureNodeWidth, architectureNodeDimensions } from '../src/features/post/architecture-layout.ts';
 const nodes = (count, groupId) => Array.from({length:count},(_,i)=>({id:`n-${i}`,type:'APP',label:`Node ${i}`,groupId}));
+test('기본 도형은 각각 맞는 크기를 쓰고 구조화된 편집 데이터에서 허용 enum만 유지한다',()=>{
+ const shapes=['RECTANGLE','CIRCLE','ELLIPSE','DIAMOND'];
+ const spec={schemaVersion:1,groups:[],nodes:shapes.map((shape,i)=>({id:`s-${i}`,type:'CUSTOM',shape,label:shape,position:{x:i*220,y:40}})),edges:[],};
+ for(let i=0;i<shapes.length;i++){
+  const size=architectureNodeDimensions(spec.nodes[i]); assert.ok(size.width>0&&size.height>0);
+  const point=architectureLayout(spec).positions.get(spec.nodes[i].id); assert.deepEqual(point,spec.nodes[i].position);
+ }
+ assert.ok(architectureNodeDimensions(spec.nodes[1]).height>architectureNodeDimensions({...spec.nodes[1],shape:undefined}).height);
+ assert.deepEqual(parseArchitectureSpec(spec),spec);
+ assert.deepEqual(parseArchitectureSpec({...spec,nodes:[{...spec.nodes[0],label:'',icon:null}]}).nodes[0].label,'');
+ for(const shape of ['TRIANGLE','<svg/>',1]) assert.throws(()=>parseArchitectureSpec({...spec,nodes:[{...spec.nodes[0],shape}]}));
+});
 test('자동 배치는 최대 요소와 여러 Docker 경계를 겹치지 않게 배치하고 저장 좌표를 보존한다',()=>{
   const root={schemaVersion:1,groups:[],nodes:nodes(30),edges:[]};
   for(const point of architectureLayout(root).positions.values()) assert.ok(point.x>=0&&point.x<=4000&&point.y>=0&&point.y<=4000);
