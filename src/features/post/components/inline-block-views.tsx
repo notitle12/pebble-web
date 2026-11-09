@@ -6,6 +6,7 @@ import { createPortal } from "react-dom";
 import { NodeViewContent, NodeViewWrapper, useEditorState, type NodeViewProps } from "@tiptap/react";
 import { parseArchitectureSpec, parseTableSpec, type ArchitectureSpec, type TableColumn, type TableSpec } from "../api/post-list";
 import { ArchitectureBlock } from "./architecture-block";
+import { DiagramWidthFrame } from "./diagram-width-frame";
 import { ArchitectureEditor } from "./architecture-editor";
 import styles from "./inline-block-views.module.css";
 import { TableTextInput } from "./table-text-input";
@@ -120,7 +121,7 @@ export function InlineArchitectureView({ node, editor, updateAttributes, deleteN
   };
   return <NodeViewWrapper className={`${styles.block} ${styles.architecture}`} data-align={node.attrs.align ?? "left"} contentEditable={false} onPointerDown={(event: React.PointerEvent) => event.stopPropagation()} onKeyDown={(event: React.KeyboardEvent) => event.stopPropagation()} onClick={(event: React.MouseEvent) => { if ((event.target as Element).closest("button,input,select,textarea")) return; const pos = getPos(); if (editor.isEditable && typeof pos === "number") editor.commands.setNodeSelection(pos); }}>
     <div className={styles.heading}><span>{node.attrs.title ?? "아키텍처"}</span><div><button ref={opener} type="button" disabled={!editable} onClick={show}>구성도 편집</button><button type="button" aria-label="아키텍처 블록 삭제" disabled={!editable || open} onClick={() => { if (editor.isEditable) deleteNode(); }}>삭제</button></div></div>
-    <div onDoubleClick={show}>{validSpec ? <ArchitectureBlock spec={validSpec} title={null} /> : <p className={styles.error} role="alert">구성도를 편집해 올바른 요소와 연결을 입력해 주세요.</p>}</div>
+    <div onDoubleClick={show}>{validSpec ? <DiagramWidthFrame width={validSpec.displayWidth} editable={editable && !open} onCommit={displayWidth=>updateAttributes({spec:{...validSpec!,displayWidth}})}><ArchitectureBlock spec={validSpec} title={null} /></DiagramWidthFrame> : <p className={styles.error} role="alert">구성도를 편집해 올바른 요소와 연결을 입력해 주세요.</p>}</div>
     {open && createPortal(<dialog ref={dialog} className={styles.dialog} aria-labelledby={headingId} onCancel={event => { event.preventDefault(); close(); }} onClose={() => { setOpen(false); opener.current?.focus(); }} onPointerDown={event => event.stopPropagation()} onKeyDown={event => { if (event.key === "Escape") { event.preventDefault(); close(); } event.stopPropagation(); }}>
       <header><h2 id={headingId}>구성도 편집</h2><button type="button" aria-label="구성도 편집 취소" onClick={close}>×</button></header>
       <fieldset disabled={!editable} className={styles.diagramEditor}><ArchitectureEditor initialValue={spec} embedded onChange={setDraft} /></fieldset>

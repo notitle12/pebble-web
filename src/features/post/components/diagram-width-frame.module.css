@@ -1,0 +1,7 @@
+.root{position:relative;width:100%;min-width:0;}
+.frame{position:relative;display:flow-root;width:min(var(--diagram-width),100%);max-width:100%;min-width:0;}
+:global([data-block-alignment="CENTER"])>.root .frame,:global([data-align="center"])>.root .frame{margin-inline:auto}
+:global([data-block-alignment="RIGHT"])>.root .frame,:global([data-align="right"])>.root .frame{margin-inline-start:auto}
+.frame>.handle{position:absolute;right:0;bottom:0;z-index:2;display:grid;place-items:center;width:24px;height:24px;min-height:0;padding:0;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--muted);cursor:nwse-resize;touch-action:none;}
+.handle span{width:11px;height:11px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;}
+.handle:hover,.handle:focus-visible{color:var(--accent);outline:2px solid var(--accent);outline-offset:2px;}

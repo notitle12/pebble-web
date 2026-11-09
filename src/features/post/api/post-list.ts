@@ -131,7 +131,7 @@ export type ArchitectureGroup = { id: string; type: "ORACLE_CLOUD" | "AWS" | "CL
 export type ArchitectureNode = { id: string; type: "CLIENT" | "APP" | "DATABASE" | "CACHE" | "STORAGE" | "PROXY" | "CUSTOM"; label: string; typeLabel?: string | null; groupId?: string | null; icon?: string | null; position?: { x: number; y: number } | null; description?: string | null };
 export type ArchitectureSide = "TOP" | "RIGHT" | "BOTTOM" | "LEFT";
 export type ArchitectureEdge = { id: string; source: string; target: string; label?: string | null; direction?: "NONE"|"FORWARD"|"BOTH"|null; sourceSide?: ArchitectureSide | null; targetSide?: ArchitectureSide | null; waypoint?: {x:number;y:number} | null };
-export type ArchitectureSpec = { schemaVersion: 1; groups: ArchitectureGroup[]; nodes: ArchitectureNode[]; edges: ArchitectureEdge[] };
+export type ArchitectureSpec = { schemaVersion: 1; groups: ArchitectureGroup[]; nodes: ArchitectureNode[]; edges: ArchitectureEdge[]; displayWidth?: number | null };
 export type BlockAlignment = "LEFT" | "CENTER" | "RIGHT";
 export type PostBlock = { type: "TEXT" | "CODE" | "TABLE" | "ARCHITECTURE" | "DB_SCHEMA" | "HTML" | "MARKDOWN"; content: string; language: string | null; title: string | null; displayOrder: number; alignment: BlockAlignment };
 export type PostDetail = PostSummary & { projectId?: string | null; blocks: PostBlock[] };
@@ -182,7 +182,8 @@ export function parseArchitectureSpec(value: unknown): ArchitectureSpec {
   const groupTypes = ["ORACLE_CLOUD", "AWS", "CLOUDFLARE", "DOCKER", "CLOUD", "CONTAINER", "CUSTOM"];
   const nodeTypes = ["CLIENT", "APP", "DATABASE", "CACHE", "STORAGE", "PROXY", "CUSTOM"];
   const architectureIcons = [...ARCHITECTURE_TECHNOLOGIES.map(item=>item.id),"AWS", "ORACLE_CLOUD", "CLOUDFLARE", "DOCKER", "SPRING", "POSTGRESQL", "REDIS", "R2", "WORKERS", "NGINX", "NODEJS", "REACT", "PERSON", "SERVER", "DATABASE", "CACHE", "STORAGE", "CLIENT", "CLOUD", "CONTAINER"];
-  if (!record(value) || !keysAre(value, ["schemaVersion", "groups", "nodes", "edges"]) || value.schemaVersion !== 1
+  if (!record(value) || !keysAre(value, ["schemaVersion", "groups", "nodes", "edges", "displayWidth"]) || value.schemaVersion !== 1
+    || !(value.displayWidth === undefined || value.displayWidth === null || Number.isInteger(value.displayWidth) && (value.displayWidth as number) >= 25 && (value.displayWidth as number) <= 100)
     || !Array.isArray(value.groups) || value.groups.length > 10 || !Array.isArray(value.nodes) || value.nodes.length < 1 || value.nodes.length > 30
     || !Array.isArray(value.edges) || value.edges.length > 60) throw new PostListError("response");
   const ids = new Set<string>();

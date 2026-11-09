@@ -6,6 +6,7 @@ import {parseDatabaseSchema} from '../database-schema';
 import {TableBlock} from './table-block';
 import {ArchitectureBlock} from './architecture-block';
 import {DatabaseSchemaBlock} from './database-schema-block';
+import {DiagramWidthFrame} from './diagram-width-frame';
 import {CodeBlock} from './code-block';
 const propertyNames:Record<string,string>={class:'className',colspan:'colSpan',rowspan:'rowSpan',allowfullscreen:'allowFullScreen',referrerpolicy:'referrerPolicy'};
 function properties(attrs:Record<string,string>){
@@ -36,7 +37,7 @@ export function NestedRichContent({html}:{html:string}){
   if(type){
    try{
     const spec=JSON.parse(node.attribs['data-pebble-spec']??''),title=node.attribs['data-pebble-title'];
-    const content=type==='TABLE'?<TableBlock spec={parseTableSpec(spec)} title={title}/>:type==='ARCHITECTURE'?<ArchitectureBlock spec={parseArchitectureSpec(spec)} title={title}/>:type==='DB_SCHEMA'?<DatabaseSchemaBlock schema={parseDatabaseSchema(spec)} title={title}/>:null;
+    const content=type==='TABLE'?<TableBlock spec={parseTableSpec(spec)} title={title}/>:type==='ARCHITECTURE'?(()=>{const parsed=parseArchitectureSpec(spec);return <DiagramWidthFrame width={parsed.displayWidth}><ArchitectureBlock spec={parsed} title={title}/></DiagramWidthFrame>;})():type==='DB_SCHEMA'?(()=>{const parsed=parseDatabaseSchema(spec);return <DiagramWidthFrame width={parsed.displayWidth}><DatabaseSchemaBlock schema={parsed} title={title}/></DiagramWidthFrame>;})():null;
     return <div key={key} data-align={node.attribs['data-align']}>{content}</div>;
    }catch{return <p key={key}>이 블록을 표시할 수 없습니다.</p>;}
   }
