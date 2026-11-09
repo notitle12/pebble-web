@@ -8,12 +8,41 @@ const maxSourceLength = 12_000;
 function loadMermaid() {
   return import("mermaid").then(({ default: mermaid }) => {
     mermaid.initialize({ startOnLoad: false, securityLevel: "sandbox", suppressErrorRendering: true,
-      maxTextSize: maxSourceLength, maxEdges: 300, htmlLabels: false, theme: "neutral" });
+      maxTextSize: maxSourceLength, maxEdges: 300, htmlLabels: false, theme: "base",
+      themeVariables: { fontFamily: "Arial, sans-serif", fontSize: "14px", primaryColor: "#edf5ef",
+        primaryBorderColor: "#87a695", primaryTextColor: "#24352b", lineColor: "#637c6e",
+        actorBkg: "#edf5ef", actorBorder: "#527561", actorTextColor: "#24352b", signalColor: "#41594c" },
+      flowchart: { padding: 7, diagramPadding: 8, nodeSpacing: 24, rankSpacing: 36, curve: "linear" },
+      sequence: { diagramMarginY: 8, actorMargin: 28, width: 105, height: 34, messageMargin: 28, mirrorActors: false } });
     return mermaid;
   });
 }
 
 let renderer: ReturnType<typeof loadMermaid> | undefined;
+
+function compactActorIcons(svg: string) {
+  if (!svg.includes("actor-man")) return svg;
+  const doc = new DOMParser().parseFromString(svg, "image/svg+xml");
+  if (doc.documentElement.localName !== "svg") return svg;
+  for (const actor of doc.querySelectorAll('g.actor-man[data-type="actor"]')) {
+    const head = actor.querySelector(":scope > circle");
+    if (!head) continue;
+    const x = Number(head.getAttribute("cx")), y = Number(head.getAttribute("cy")), radius = Number(head.getAttribute("r"));
+    if (![x, y, radius].every(Number.isFinite) || radius <= 0) continue;
+    const bottom = y + radius * 2.9;
+    const shoulders = doc.createElementNS("http://www.w3.org/2000/svg", "path");
+    shoulders.setAttribute("d", `M ${x-radius} ${bottom} Q ${x-radius} ${bottom-radius} ${x} ${bottom-radius} Q ${x+radius} ${bottom-radius} ${x+radius} ${bottom} Z`);
+    shoulders.setAttribute("fill", "#dcece1");
+    shoulders.setAttribute("stroke-width", "1.5");
+    head.setAttribute("r", String(radius * .48));
+    head.setAttribute("cy", String(bottom - radius * 1.65));
+    head.setAttribute("fill", "#dcece1");
+    head.setAttribute("stroke-width", "1.5");
+    for (const line of actor.querySelectorAll(":scope > line")) line.remove();
+    actor.insertBefore(shoulders, head.nextSibling);
+  }
+  return new XMLSerializer().serializeToString(doc.documentElement);
+}
 
 // Mermaid sandbox mode returns an iframe. Display its SVG as an image so links,
 // scripts and external resources cannot run in the displayed diagram.
@@ -23,7 +52,7 @@ function diagramImage(sandboxMarkup: string) {
   const html = new TextDecoder().decode(Uint8Array.from(atob(encoded), byte => byte.charCodeAt(0)));
   const svg = html.match(/<svg\b[\s\S]*<\/svg>/i)?.[0];
   if (!svg) throw new Error("Missing Mermaid SVG");
-  return URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" }));
+  return URL.createObjectURL(new Blob([compactActorIcons(svg)], { type: "image/svg+xml" }));
 }
 
 export function MermaidPreview({ source, editing = false, onRendered }: { source: string; editing?: boolean; onRendered?: (source: string) => void }) {
