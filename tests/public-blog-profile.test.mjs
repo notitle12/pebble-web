@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import {parsePublicBlogProfile,getPublicBlogProfile} from "../src/features/post/api/public-blog.ts";
 const data={id:"9007199254740993",handle:"empty-blog",nickname:"개발자",blogName:"빈 블로그",profileImageUrl:null};
 test("공개 프로필은 글 없이도 BIGINT ID와 블로그 정보를 유지한다",()=>{
-  assert.deepEqual(parsePublicBlogProfile({data},data.handle),data);
+  assert.deepEqual(parsePublicBlogProfile({data},data.handle),{...data,followerCount:0,followingCount:0});
+  assert.deepEqual(parsePublicBlogProfile({data:{...data,followerCount:12,followingCount:3}},data.handle),{...data,followerCount:12,followingCount:3});
   for(const change of [{id:9007199254740993},{id:"0"},{handle:"other-blog"},{blogName:null},{nickname:" "},{profileImageUrl:undefined}]) {
     assert.throws(()=>parsePublicBlogProfile({data:{...data,...change}},data.handle));
   }
