@@ -1,6 +1,6 @@
 import { parseListQuery } from "../../lib/list-query.ts";
 
-export type SearchType = "all" | "posts" | "projects";
+export type SearchType = "all" | "posts" | "projects" | "blogs";
 export type SearchQuery = { q?: string; page: number; type: SearchType };
 
 export function parseSearchQuery(
@@ -9,7 +9,7 @@ export function parseSearchQuery(
   if (Object.keys(params).some(key => !["q", "page", "type"].includes(key))) return null;
   if (Array.isArray(params.type)) return null;
   const type = params.type ?? "all";
-  if (type !== "all" && type !== "posts" && type !== "projects") return null;
+  if (type !== "all" && type !== "posts" && type !== "projects" && type !== "blogs") return null;
   const { type: _type, ...listParams } = params;
   const parsed = parseListQuery(listParams);
   if (!parsed) return null;
