@@ -58,7 +58,7 @@ function SubscriptionButton({handle,setCount,session}:{handle:string;setCount:(v
   <button type="button" className={styles.followButton} aria-label={label} title={label} aria-pressed={following}
    disabled={session.phase==="loading"||session.phase==="error"||session.phase==="ready"&&(busy||state===null)}
    onClick={()=>{if(session.phase!=="ready"){openLoginDialog();return;}void toggle();}}>
-   <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 3.75h12a1 1 0 0 1 1 1v15.5l-7-4-7 4V4.75a1 1 0 0 1 1-1Z" fill={following?"currentColor":"none"} stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round"/></svg>
+   <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M7 2.5h10a1 1 0 0 1 1 1v18l-6-3.75-6 3.75v-18a1 1 0 0 1 1-1Z" fill={following?"currentColor":"none"} stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round"/></svg>
   </button>
   {session.phase==="ready"&&error&&<span className={styles.error} role="alert">{error}<button type="button" onClick={()=>setStatusAttempt(value=>value+1)}>다시 시도</button></span>}
  </>;

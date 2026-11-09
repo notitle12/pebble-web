@@ -1,5 +1,5 @@
 .followButton{display:inline-grid;place-items:center;flex:0 0 26px;width:26px;height:26px;padding:0;border:0;border-radius:5px;background:transparent;color:var(--accent);cursor:pointer}
-.followButton svg{width:17px;height:17px}
+.followButton svg{width:19px;height:21px}
 .followButton:hover:not(:disabled){background:var(--accent-soft)}
 .followButton:disabled{opacity:.55;cursor:default}
 .sidebarTabs{display:flex;gap:12px;margin:0 0 12px;border-bottom:1px solid var(--line)}
