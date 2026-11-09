@@ -4,7 +4,7 @@ import { useSpacePan } from "./use-space-pan";
 import {useDiagramFit} from "./use-diagram-fit";
 import {DiagramLightbox} from "./diagram-lightbox";
 import { useCallback, useEffect, forwardRef, useId, useImperativeHandle, useLayoutEffect, useRef, useState } from "react";
-import type { ArchitectureEdge, ArchitectureNode, ArchitectureGroup, ArchitectureSide, ArchitectureSpec } from "../api/post-list";
+import type { ArchitectureEdge, ArchitectureNode, ArchitectureGroup, ArchitectureSide, ArchitectureSpec, ArchitectureNodeShape } from "../api/post-list";
 import { isArchitectureContainer, architectureGroupPresentation, architectureGroupLabel, isDescendant } from "../architecture-groups";
 import { isNodeInMarquee, isGroupInMarquee } from "../architecture-editing";
 import {architectureBrandIcon} from "../architecture-brand-icons";
@@ -13,7 +13,7 @@ import { architectureIconKind } from "../architecture-catalog";
 import { diagramZoomScroll } from "../diagram-viewport";
 import { architectureZoom, nearestArchitectureSide } from "../architecture-interaction";
 import { architectureEdgeRoute } from "../architecture-edge";
-import { architectureLayout, ARCH_NODE_WIDTH, ARCH_NODE_HEIGHT, architectureNodeWidth, measureTextWidth, getArchitectureContentBounds, type ArchPoint } from "../architecture-layout";
+import { architectureLayout, ARCH_NODE_WIDTH, ARCH_NODE_HEIGHT, architectureNodeDimensions, measureTextWidth, getArchitectureContentBounds, type ArchPoint } from "../architecture-layout";
 export { architectureLayout, getArchitectureContentBounds, type ArchPoint } from "../architecture-layout";
 
 const groupKind=(group:ArchitectureGroup)=>architectureGroupPresentation(group).category;
@@ -24,7 +24,7 @@ export function ArchitectureIcon({ value, type, standalone = false }: { value?: 
   if(brand)return <svg className="arch-tech-icon arch-brand-icon" data-brand-icon={brand.value} viewBox="0 0 26 26" x={standalone?0:10} y={standalone?0:15} width={26} height={26} aria-hidden="true">{(brand.value==='RUST'||brand.value==='FLASK')&&<rect width={26} height={26} rx={13} fill="white"/>}<image href={brand.asset} x={1} y={1} width={24} height={24} preserveAspectRatio="xMidYMid meet"/></svg>;
   const kind=architectureIconKind(value,type);
   const shapes={
-    PERSON:<><circle cx="13" cy="8" r="4"/><path d="M20 22v-1.5a4.5 4.5 0 0 0-4.5-4.5h-5A4.5 4.5 0 0 0 6 20.5V22"/></>,
+    PERSON:<><circle cx="13" cy="8" r="4"/><path d="M4 22c.5-4.7 3.6-7 9-7s8.5 2.3 9 7"/></>,
     SERVER:<><rect x="4" y="3" width="18" height="20" rx="3"/><path d="M4 10h18M4 17h18M8 6.5h.1M8 13.5h.1M8 20h.1M13 6.5h5M13 13.5h5M13 20h5"/></>,
     DATABASE:<><ellipse cx="13" cy="5" rx="9" ry="3"/><path d="M4 5v15c0 4 18 4 18 0V5M4 12c0 4 18 4 18 0"/></>,
     CACHE:<><rect x="4" y="4" width="18" height="18" rx="3"/><path d="m14 7-6 7h5l-1 5 6-7h-5z"/></>,
@@ -38,7 +38,11 @@ export function ArchitectureIcon({ value, type, standalone = false }: { value?: 
   return <svg className="arch-tech-icon" data-icon-kind={kind} viewBox="0 0 26 26" x={standalone?0:10} y={standalone?0:15} width={26} height={26} fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{shapes[kind]}</svg>;
 }
 
-function ArchitectureObject({value,type,width=ARCH_NODE_WIDTH}:{value?:string|null;type:string;width?:number}){
+function ArchitectureObject({value,type,width=ARCH_NODE_WIDTH,height=ARCH_NODE_HEIGHT,shape}:{value?:string|null;type:string;width?:number;height?:number;shape?:ArchitectureNodeShape|null}){
+ if(shape){
+  const geometry=(className:string)=>shape==="CIRCLE"?<ellipse className={className} cx={width/2} cy={height/2} rx={width/2} ry={height/2}/>:shape==="ELLIPSE"?<ellipse className={className} cx={width/2} cy={height/2} rx={width/2} ry={height/2}/>:shape==="DIAMOND"?<polygon className={className} points={`${width/2},0 ${width},${height/2} ${width/2},${height} 0,${height/2}`}/>:<rect className={className} width={width} height={height} rx={4}/>;
+  return <>{geometry("arch-basic-shape")}{geometry("arch-shape-hit")}</>;
+ }
  const iconTranslateX = width / 2 - 18;
  return <><rect className="arch-object-hit" width={width} height={ARCH_NODE_HEIGHT} rx={10} fill="transparent"/><g className="arch-object-symbol" transform={`translate(${iconTranslateX} 7) scale(1.38)`}><ArchitectureIcon value={value} type={type} standalone/></g></>;
 }
@@ -86,7 +90,7 @@ function ArchitectureBlockInner({ spec, title, expanded = false, interactive = f
     if(!editingName || editingName.id!==endpointId || editingName.kind!==kind) return null;
     const finish=()=>{
       if (kind === "edge") onRenameEdge?.(endpointId, editingName.label);
-      else if(kind==="group" || editingName.label.trim())(kind==="node"?onRenameNode:kind==="group"?onRenameGroup:onRenameGroupType)?.(endpointId,editingName.label);
+      else if(kind==="group" || editingName.label.trim() || kind==="node" && nodeById.get(endpointId)?.shape)(kind==="node"?onRenameNode:kind==="group"?onRenameGroup:onRenameGroupType)?.(endpointId,editingName.label);
       setEditingName(null);
     };
     const width = customWidth ?? (kind === "edge" ? 120 : kind === "node" ? ARCH_NODE_WIDTH + 12 : 200);
@@ -308,8 +312,7 @@ function ArchitectureBlockInner({ spec, title, expanded = false, interactive = f
       for (const node of spec.nodes) {
         const pos = positions.get(node.id);
         if (!pos) continue;
-        const nodeWidth = architectureNodeWidth(node.label);
-        const nodeBox = { x: pos.x, y: pos.y, width: nodeWidth, height: ARCH_NODE_HEIGHT };
+        const nodeBox = { x: pos.x, y: pos.y, ...architectureNodeDimensions(node) };
         if (isNodeInMarquee(nodeBox, marqueeBox)) {
           selectedNodeIds.push(node.id);
         }
@@ -337,8 +340,8 @@ function ArchitectureBlockInner({ spec, title, expanded = false, interactive = f
     const point = positions.get(endpointId);
     if (point) {
       const node = nodeById.get(endpointId);
-      const width = architectureNodeWidth(node?.label);
-      return { ...point, width, height: ARCH_NODE_HEIGHT, anchorY: 25 };
+      const {width,height}=architectureNodeDimensions(node);
+      return { ...point, width, height, anchorY: node?.shape ? height/2 : 25 };
     }
     return groups.get(endpointId);
   };
@@ -859,7 +862,7 @@ function ArchitectureBlockInner({ spec, title, expanded = false, interactive = f
           {spec.nodes.map((node) => {
             const point = positions.get(node.id)!;
             const selected = selectedNodeSet.has(node.id) || selectedNode === node.id || connectionPreview?.target===node.id;
-            const nodeWidth = architectureNodeWidth(node.label);
+            const {width:nodeWidth,height:nodeHeight} = architectureNodeDimensions(node);
             const editorWidth = Math.max(nodeWidth + 12, 80);
             const descLines = node.description ? node.description.split("\n") : [];
             const maxLineWidth = descLines.reduce((m, l) => Math.max(m, measureTextWidth(l, 10.5)), 0);
@@ -867,9 +870,9 @@ function ArchitectureBlockInner({ spec, title, expanded = false, interactive = f
             const tooltipLineH = 15;
             const tooltipPaddingY = 5;
             const tooltipH = tooltipPaddingY * 2 + descLines.length * tooltipLineH;
-            const tooltipY = 68;
-            return <g key={node.id} onDoubleClick={event=>{if(interactive && onRenameNode){event.stopPropagation();setEditingName({kind:"node",id:node.id,label:node.label});}}} onPointerEnter={()=>setHoveredEndpoint(node.id)} onPointerLeave={()=>setHoveredEndpoint(null)} data-architecture-endpoint={node.id} data-node-type={node.type} data-object-kind={architectureIconKind(node.icon,node.type)} className={`arch-node-wrap${interactive ? " arch-node-draggable" : ""}${selected ? " is-selected" : ""}`} transform={`translate(${point.x} ${point.y})`} onPointerDown={(event) => beginNodeDrag(event, node)} onPointerMove={moveNodeDrag} onPointerUp={(event) => endNodeDrag(event)} onPointerCancel={(event) => endNodeDrag(event, true)} onLostPointerCapture={(event) => endNodeDrag(event, true)} onClick={(event) => { if (suppressClickRef.current) { suppressClickRef.current = false; return; } if (interactive) onSelectNode?.(node.id, event.shiftKey || event.metaKey || event.ctrlKey); }} onKeyDown={(event) => { if (!interactive) return; if(selectedNodeSet.size+selectedGroupSet.size>1 && ["Delete","Backspace","ArrowLeft","ArrowRight","ArrowUp","ArrowDown"].includes(event.key))return; if((event.key==="Delete"||event.key==="Backspace")&&onDeleteNode){event.preventDefault();event.stopPropagation();onDeleteNode(node.id);return;} if(onRenameNode && (event.key==="F2" || event.key==="Enter")){event.preventDefault();event.stopPropagation();setEditingName({kind:"node",id:node.id,label:node.label});return;} const delta = event.shiftKey ? 10 : 1; if (event.key === "Enter") { event.preventDefault(); onSelectNode?.(node.id); return; } const vectors: Record<string, ArchPoint> = { ArrowLeft: { x: -delta, y: 0 }, ArrowRight: { x: delta, y: 0 }, ArrowUp: { x: 0, y: -delta }, ArrowDown: { x: 0, y: delta } }; const vector = vectors[event.key]; if (vector && onMoveNode) { event.preventDefault(); event.stopPropagation(); onInteractionStart?.(); onMoveNode(node.id, { x: clamp(point.x + vector.x, 0, 4000), y: clamp(point.y + vector.y, 0, 4000) }, true); onInteractionEnd?.(); } }} tabIndex={interactive ? 0 : undefined} role={interactive ? "button" : undefined} aria-label={node.label||"이름 입력"}><title>{node.label}</title><ArchitectureObject value={node.icon} type={node.type} width={nodeWidth}/><text className="arch-node-label" x={nodeWidth / 2} y={59} textAnchor="middle" onDoubleClick={event=>{if(interactive && onRenameNode){event.stopPropagation();setEditingName({kind:"node",id:node.id,label:node.label});}}}>{short(node.label||'이름 입력',nodeWidth - 8,11)}</text>{nameEditor(nodeWidth / 2 - editorWidth / 2, 45, "node", node.id, editorWidth)}{node.description && !editingName && <g className="arch-node-tooltip" pointerEvents="none"><rect className="arch-node-tooltip-bg" x={nodeWidth / 2 - tooltipW / 2} y={tooltipY} width={tooltipW} height={tooltipH} rx={6}/>{descLines.map((line, idx) => <text key={idx} className="arch-node-tooltip-text" x={nodeWidth / 2} y={tooltipY + tooltipPaddingY + idx * tooltipLineH + 11} textAnchor="middle" xmlSpace="preserve">{short(line, 260, 10.5)}</text>)}</g>}</g>; })}
-          {spec.nodes.map((node) => { const point = positions.get(node.id)!; const width = architectureNodeWidth(node.label); return connectHandle(node.id, node.label, { ...point, width, height: ARCH_NODE_HEIGHT, anchorY: 25 }); })}
+            const tooltipY = node.shape ? nodeHeight + 4 : 68;
+            return <g key={node.id} onDoubleClick={event=>{if(interactive && onRenameNode){event.stopPropagation();setEditingName({kind:"node",id:node.id,label:node.label});}}} onPointerEnter={()=>setHoveredEndpoint(node.id)} onPointerLeave={()=>setHoveredEndpoint(null)} data-architecture-endpoint={node.id} data-node-type={node.type} data-object-kind={node.shape?`SHAPE_${node.shape}`:architectureIconKind(node.icon,node.type)} className={`arch-node-wrap${node.shape?" arch-basic-node":""}${interactive ? " arch-node-draggable" : ""}${selected ? " is-selected" : ""}`} transform={`translate(${point.x} ${point.y})`} onPointerDown={(event) => beginNodeDrag(event, node)} onPointerMove={moveNodeDrag} onPointerUp={(event) => endNodeDrag(event)} onPointerCancel={(event) => endNodeDrag(event, true)} onLostPointerCapture={(event) => endNodeDrag(event, true)} onClick={(event) => { if (suppressClickRef.current) { suppressClickRef.current = false; return; } if (interactive) onSelectNode?.(node.id, event.shiftKey || event.metaKey || event.ctrlKey); }} onKeyDown={(event) => { if (!interactive) return; if(selectedNodeSet.size+selectedGroupSet.size>1 && ["Delete","Backspace","ArrowLeft","ArrowRight","ArrowUp","ArrowDown"].includes(event.key))return; if((event.key==="Delete"||event.key==="Backspace")&&onDeleteNode){event.preventDefault();event.stopPropagation();onDeleteNode(node.id);return;} if(onRenameNode && (event.key==="F2" || event.key==="Enter")){event.preventDefault();event.stopPropagation();setEditingName({kind:"node",id:node.id,label:node.label});return;} const delta = event.shiftKey ? 10 : 1; if (event.key==="Enter") { event.preventDefault(); onSelectNode?.(node.id); return; } const vectors: Record<string, ArchPoint> = { ArrowLeft: { x: -delta, y: 0 }, ArrowRight: { x: delta, y: 0 }, ArrowUp: { x: 0, y: -delta }, ArrowDown: { x: 0, y: delta } }; const vector = vectors[event.key]; if (vector && onMoveNode) { event.preventDefault(); event.stopPropagation(); onInteractionStart?.(); onMoveNode(node.id, { x: clamp(point.x + vector.x, 0, 4000), y: clamp(point.y + vector.y, 0, 4000) }, true); onInteractionEnd?.(); } }} tabIndex={interactive ? 0 : undefined} role={interactive ? "button" : undefined} aria-label={node.label||"이름 입력"}><title>{node.label}</title><ArchitectureObject value={node.icon} type={node.type} width={nodeWidth} height={nodeHeight} shape={node.shape}/>{node.shape ? <><text className="arch-node-shape-label" x={nodeWidth/2} y={nodeHeight/2+4} textAnchor="middle" onDoubleClick={event=>{if(interactive&&onRenameNode){event.stopPropagation();setEditingName({kind:"node",id:node.id,label:node.label});}}}>{short(node.label||"이름 입력",node.shape==="DIAMOND"?nodeWidth*.48:nodeWidth-20,11)}</text>{nameEditor(nodeWidth/2-editorWidth/2,nodeHeight/2-17,"node",node.id,editorWidth)}</> : <><text className="arch-node-label" x={nodeWidth / 2} y={59} textAnchor="middle" onDoubleClick={event=>{if(interactive && onRenameNode){event.stopPropagation();setEditingName({kind:"node",id:node.id,label:node.label});}}}>{short(node.label||'이름 입력',nodeWidth - 8,11)}</text>{nameEditor(nodeWidth / 2 - editorWidth / 2, 45, "node", node.id, editorWidth)}</>}{node.description && !editingName && <g className="arch-node-tooltip" pointerEvents="none"><rect className="arch-node-tooltip-bg" x={nodeWidth / 2 - tooltipW / 2} y={tooltipY} width={tooltipW} height={tooltipH} rx={6}/>{descLines.map((line, idx) => <text key={idx} className="arch-node-tooltip-text" x={nodeWidth / 2} y={tooltipY + tooltipPaddingY + idx * tooltipLineH + 11} textAnchor="middle" xmlSpace="preserve">{short(line, 260, 10.5)}</text>)}</g>}</g>; })}
+          {spec.nodes.map((node) => { const point = positions.get(node.id)!; const {width,height} = architectureNodeDimensions(node); return connectHandle(node.id, node.label, { ...point, width, height, anchorY: node.shape ? height/2 : 25 }); })}
           {connectionPreview && <path className="arch-connection-preview" d={`M${connectionPreview.start.x},${connectionPreview.start.y} L${connectionPreview.end.x},${connectionPreview.end.y}`} markerStart={connectionMarkers(connectionDirection).start?`url(#${id}-arrow)`:undefined} markerEnd={connectionMarkers(connectionDirection).end?`url(#${id}-arrow)`:undefined}/>}
           {marquee && (() => {
             const x = Math.min(marquee.start.x, marquee.current.x);
@@ -896,7 +899,7 @@ function ArchitectureBlockInner({ spec, title, expanded = false, interactive = f
             if (!hNode || !hNode.description || editingName) return null;
             const point = positions.get(hNode.id);
             if (!point) return null;
-            const nWidth = architectureNodeWidth(hNode.label);
+            const nWidth = architectureNodeDimensions(hNode).width;
             const lines = hNode.description.split("\n");
             const maxW = lines.reduce((m, l) => Math.max(m, measureTextWidth(l, 10.5)), 0);
             const w = Math.min(280, Math.max(nWidth, maxW + 20));

@@ -1,6 +1,6 @@
 import type { ArchitectureSpec } from './api/post-list.ts';
 import { isArchitectureContainer, isDescendant, getAllDescendantGroupIds } from './architecture-groups.ts';
-import { architectureLayout, ARCH_NODE_WIDTH, ARCH_NODE_HEIGHT, type ArchBox, type ArchPoint, architectureNodeWidth } from './architecture-layout.ts';
+import { architectureLayout, ARCH_NODE_WIDTH, ARCH_NODE_HEIGHT, type ArchBox, type ArchPoint, architectureNodeDimensions } from './architecture-layout.ts';
 
 export { isDescendant, getAllDescendantGroupIds };
 
@@ -28,9 +28,10 @@ export function materializeArchitecture(spec: ArchitectureSpec): ArchitectureSpe
 export const canBeChildGroup = (_type: string) => true;
 export const canBeParentGroup = (type: string) => !isArchitectureContainer(type);
 
-export const containsNode = (box: ArchBox, point: ArchPoint, width = ARCH_NODE_WIDTH) => {
+export const containsNode = (box: ArchBox, point: ArchPoint, size: number | {width:number;height:number} = {width:ARCH_NODE_WIDTH,height:ARCH_NODE_HEIGHT}) => {
+  const width=typeof size==="number"?size:size.width, height=typeof size==="number"?ARCH_NODE_HEIGHT:size.height;
   const nodeCenterX = point.x + width / 2;
-  const nodeCenterY = point.y + ARCH_NODE_HEIGHT / 2;
+  const nodeCenterY = point.y + height / 2;
   const centerInside =
     nodeCenterX >= box.x &&
     nodeCenterX <= box.x + box.width &&
@@ -40,11 +41,11 @@ export const containsNode = (box: ArchBox, point: ArchPoint, width = ARCH_NODE_W
   const ix1 = Math.max(box.x, point.x);
   const iy1 = Math.max(box.y, point.y);
   const ix2 = Math.min(box.x + box.width, point.x + width);
-  const iy2 = Math.min(box.y + box.height, point.y + ARCH_NODE_HEIGHT);
+  const iy2 = Math.min(box.y + box.height, point.y + height);
   const iw = Math.max(0, ix2 - ix1);
   const ih = Math.max(0, iy2 - iy1);
   const intersectionArea = iw * ih;
-  const nodeArea = width * ARCH_NODE_HEIGHT;
+  const nodeArea = width * height;
 
   if (centerInside && intersectionArea >= nodeArea * 0.5) return true;
 
@@ -52,7 +53,7 @@ export const containsNode = (box: ArchBox, point: ArchPoint, width = ARCH_NODE_W
     point.x >= box.x - 8 &&
     point.y >= box.y - 8 &&
     point.x + width <= box.x + box.width + 8 &&
-    point.y + ARCH_NODE_HEIGHT <= box.y + box.height + 8
+    point.y + height <= box.y + box.height + 8
   );
 };
 
@@ -112,9 +113,9 @@ export function settleArchitectureHierarchy(spec: ArchitectureSpec): Architectur
   // - Standalone nodes (groupId == null) get captured into the innermost enclosing group.
   const updatedNodes = current.nodes.map(node => {
     const nodePos = layout.positions.get(node.id)!;
-    const nodeWidth = architectureNodeWidth(node.label);
+    const nodeSize = architectureNodeDimensions(node);
     const enclosingGroups = updatedGroups.filter(group =>
-      containsNode(layout.groups.get(group.id)!, nodePos, nodeWidth)
+      containsNode(layout.groups.get(group.id)!, nodePos, nodeSize)
     );
 
     const prevGroupId = node.groupId;
@@ -167,8 +168,8 @@ export function moveArchitectureNode(spec: ArchitectureSpec, id: string, point: 
   const layout = architectureLayout(next);
   const nodePos = layout.positions.get(id)!;
   const node = next.nodes.find(n => n.id === id);
-  const nodeWidth = architectureNodeWidth(node?.label);
-  const enclosingGroups = next.groups.filter(group => containsNode(layout.groups.get(group.id)!, nodePos, nodeWidth));
+  const nodeSize = architectureNodeDimensions(node);
+  const enclosingGroups = next.groups.filter(group => containsNode(layout.groups.get(group.id)!, nodePos, nodeSize));
   enclosingGroups.sort((a, b) => {
     if (isDescendant(next.groups, b.id, a.id)) return -1;
     if (isDescendant(next.groups, a.id, b.id)) return 1;
@@ -196,8 +197,8 @@ export function moveArchitectureGroup(spec: ArchitectureSpec, id: string, point:
     const groupBox = layout.groups.get(node.groupId!);
     if (!groupBox) return false;
     const nodePos = node.position ?? layout.positions.get(node.id)!;
-    const nodeWidth = architectureNodeWidth(node.label);
-    return containsNode(groupBox, nodePos, nodeWidth);
+    const nodeSize = architectureNodeDimensions(node);
+    return containsNode(groupBox, nodePos, nodeSize);
   });
   const movingNodeIds = new Set(movingNodes.map(node => node.id));
 
@@ -331,8 +332,8 @@ export function moveArchitectureSelection(
     } else if (node.groupId && allMovingGroupIds.has(node.groupId)) {
       const groupBox = layout.groups.get(node.groupId);
       const nodePos = node.position ?? layout.positions.get(node.id)!;
-      const nodeWidth = architectureNodeWidth(node.label);
-      if (groupBox && containsNode(groupBox, nodePos, nodeWidth)) {
+      const nodeSize = architectureNodeDimensions(node);
+      if (groupBox && containsNode(groupBox, nodePos, nodeSize)) {
         movingNodeIds.add(node.id);
       } else {
         unlinkedNodeIds.add(node.id);

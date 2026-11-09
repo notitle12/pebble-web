@@ -128,7 +128,8 @@ export type TableColumn = {
 };
 export type TableSpec = { schemaVersion: 1; tableName: string; description?: string | null; columns: TableColumn[] };
 export type ArchitectureGroup = { id: string; type: "ORACLE_CLOUD" | "AWS" | "CLOUDFLARE" | "DOCKER" | "CLOUD" | "CONTAINER" | "CUSTOM"; label: string; typeLabel?: string | null; icon?: string | null; color?: ArchitectureGroupColorId | null; parentId?: string | null; bounds?: { x: number; y: number; width: number; height: number } | null };
-export type ArchitectureNode = { id: string; type: "CLIENT" | "APP" | "DATABASE" | "CACHE" | "STORAGE" | "PROXY" | "CUSTOM"; label: string; typeLabel?: string | null; groupId?: string | null; icon?: string | null; position?: { x: number; y: number } | null; description?: string | null };
+export type ArchitectureNodeShape = "RECTANGLE" | "CIRCLE" | "ELLIPSE" | "DIAMOND";
+export type ArchitectureNode = { id: string; type: "CLIENT" | "APP" | "DATABASE" | "CACHE" | "STORAGE" | "PROXY" | "CUSTOM"; label: string; typeLabel?: string | null; groupId?: string | null; icon?: string | null; shape?: ArchitectureNodeShape | null; position?: { x: number; y: number } | null; description?: string | null };
 export type ArchitectureSide = "TOP" | "RIGHT" | "BOTTOM" | "LEFT";
 export type ArchitectureEdge = { id: string; source: string; target: string; label?: string | null; direction?: "NONE"|"FORWARD"|"BOTH"|null; sourceSide?: ArchitectureSide | null; targetSide?: ArchitectureSide | null; waypoint?: {x:number;y:number} | null };
 export type ArchitectureSpec = { schemaVersion: 1; groups: ArchitectureGroup[]; nodes: ArchitectureNode[]; edges: ArchitectureEdge[]; displayWidth?: number | null };
@@ -217,7 +218,9 @@ export function parseArchitectureSpec(value: unknown): ArchitectureSpec {
   }
   const nodes = new Set<string>();
   for (const item of value.nodes) {
-    if (!record(item) || !keysAre(item, ["id", "type", "label", "typeLabel", "groupId", "icon", "position", "description"]) || typeof item.type !== "string" || !nodeTypes.includes(item.type) || !architectureLabel(item.label) || !validArchitectureTypeLabel(item)
+    if (!record(item) || !keysAre(item, ["id", "type", "label", "typeLabel", "groupId", "icon", "shape", "position", "description"]) || typeof item.type !== "string" || !nodeTypes.includes(item.type) || !validArchitectureTypeLabel(item)
+      || !(item.shape === undefined || item.shape === null || typeof item.shape === "string" && ["RECTANGLE", "CIRCLE", "ELLIPSE", "DIAMOND"].includes(item.shape))
+      || !(item.shape != null ? textField(item.label, 100) : architectureLabel(item.label))
       || !(item.groupId === undefined || item.groupId === null || architectureId(item.groupId))
       || !(item.icon === undefined || item.icon === null || (typeof item.icon === "string" && architectureIcons.includes(item.icon)))
       || !(item.description === undefined || item.description === null || optionalTextField(item.description, 300))

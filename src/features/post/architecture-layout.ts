@@ -5,6 +5,13 @@ export const ARCH_NODE_MIN_WIDTH = 68;
 export const ARCH_NODE_MAX_WIDTH = 220;
 export const ARCH_NODE_WIDTH = 68;
 export const ARCH_NODE_HEIGHT = 70;
+export function architectureNodeDimensions(node?: ArchitectureSpec["nodes"][number] | null) {
+  if (!node?.shape) return { width: architectureNodeWidth(node?.label), height: ARCH_NODE_HEIGHT };
+  if (node.shape === "CIRCLE") return { width: 82, height: 82 };
+  if (node.shape === "ELLIPSE") return { width: 142, height: 62 };
+  if (node.shape === "DIAMOND") return { width: 136, height: 78 };
+  return { width: 132, height: 48 };
+}
 export type ArchPoint = { x: number; y: number };
 export type ArchBox = { x: number; y: number; width: number; height: number; anchorY?: number };
 
@@ -24,11 +31,12 @@ export function architectureNodeWidth(label?: string | null): number {
 
 const autoPositions = (spec: ArchitectureSpec) => {
   const result = new Map<string, ArchPoint>();
-  const widestNode = Math.max(ARCH_NODE_MIN_WIDTH, ...spec.nodes.map(node => architectureNodeWidth(node.label)));
+  const widestNode = Math.max(ARCH_NODE_MIN_WIDTH, ...spec.nodes.map(node => architectureNodeDimensions(node).width));
   const columnGap = Math.max(180, widestNode + 28);
   // Keep every lane within its 370px allocation; wide labels use one column.
   const columnsPerLane = widestNode + columnGap + 32 <= 370 ? 2 : 1;
-  const rowGap = columnsPerLane === 1 && spec.nodes.length > 20 && spec.groups.length > 5 ? 86 : 112;
+  const tallestShape = Math.max(0, ...spec.nodes.filter(node => node.shape).map(node => architectureNodeDimensions(node).height));
+  const rowGap = Math.max(tallestShape + 24, columnsPerLane === 1 && spec.nodes.length > 20 && spec.groups.length > 5 ? 86 : 112);
   const roots = spec.nodes.filter((node) => !node.groupId);
   roots.forEach((node, index) => result.set(node.id, { x: 48 + index % columnsPerLane * columnGap, y: 96 + Math.floor(index / columnsPerLane) * rowGap }));
   const columns = spec.groups.filter((group) => !isArchitectureContainer(group.type) || !group.parentId);
@@ -63,14 +71,14 @@ export function architectureLayout(spec: ArchitectureSpec): { positions: Map<str
     const memberBoxes = Array.from(memberIds, (nodeId) => {
       const node = spec.nodes.find((n) => n.id === nodeId);
       const point = positions.get(nodeId)!;
-      const width = architectureNodeWidth(node?.label);
-      return { point, width };
+      const dimensions = architectureNodeDimensions(node);
+      return { point, ...dimensions };
     });
     const nested = spec.groups.filter((child) => child.parentId === group.id).map((child) => groups.get(child.id)).filter((box): box is ArchBox => Boolean(box));
     const allLeft = [...memberBoxes.map(({ point }) => point.x), ...nested.map((box) => box.x)];
     const allTop = [...memberBoxes.map(({ point }) => point.y), ...nested.map((box) => box.y)];
     const allRight = [...memberBoxes.map(({ point, width }) => point.x + width), ...nested.map((box) => box.x + box.width)];
-    const allBottom = [...memberBoxes.map(({ point }) => point.y + ARCH_NODE_HEIGHT), ...nested.map((box) => box.y + box.height)];
+    const allBottom = [...memberBoxes.map(({ point, height }) => point.y + height), ...nested.map((box) => box.y + box.height)];
     if (!allLeft.length) { const index = spec.groups.findIndex((item) => item.id === group.id); const box = { x: 24 + index * 300, y: 24, width: 230, height: 124 }; groups.set(group.id, box); return; }
     const isChild = Boolean(group.parentId) || isArchitectureContainer(group.type);
     const paddingLeft = isChild ? 18 : 24;
@@ -82,10 +90,10 @@ export function architectureLayout(spec: ArchitectureSpec): { positions: Map<str
   });
   const allNodeRight = spec.nodes.map((node) => {
     const point = positions.get(node.id)!;
-    return point.x + architectureNodeWidth(node.label) + 64;
+    return point.x + architectureNodeDimensions(node).width + 64;
   });
   const width = Math.max(680, ...spec.edges.flatMap(edge=>edge.waypoint?[edge.waypoint.x+80]:[]), ...allNodeRight, ...Array.from(groups.values(), (box) => box.x + box.width + 64));
-  const height = Math.max(460, ...spec.edges.flatMap(edge=>edge.waypoint?[edge.waypoint.y+80]:[]), ...Array.from(positions.values(), (point) => point.y + ARCH_NODE_HEIGHT + 80), ...Array.from(groups.values(), (box) => box.y + box.height + 64));
+  const height = Math.max(460, ...spec.edges.flatMap(edge=>edge.waypoint?[edge.waypoint.y+80]:[]), ...spec.nodes.map(node => positions.get(node.id)!.y + architectureNodeDimensions(node).height + 80), ...Array.from(groups.values(), (box) => box.y + box.height + 64));
   return { positions, groups, width, height };
 }
 
@@ -103,11 +111,11 @@ export function getArchitectureContentBounds(
   for (const node of spec.nodes) {
     const pt = layout.positions.get(node.id);
     if (pt) {
-      const w = architectureNodeWidth(node.label);
+      const { width: w, height: h } = architectureNodeDimensions(node);
       allMinX.push(pt.x);
       allMinY.push(pt.y);
       allMaxX.push(pt.x + w);
-      allMaxY.push(pt.y + ARCH_NODE_HEIGHT);
+      allMaxY.push(pt.y + h);
     }
   }
 

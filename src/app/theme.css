@@ -93,6 +93,8 @@ html[data-theme=dark] .arch-group-color-PINK { fill: #472b3f55; stroke: #b86d9f;
 html[data-theme=dark] .arch-group-color-GRAY { fill: #33394255; stroke: #7a8696; }
 html[data-theme=dark] .architecture-color-swatch.is-selected { box-shadow: 0 0 0 2px #1e222a, 0 0 0 4px #5e87f5; }
 html[data-theme=dark] :is(.arch-node-label,.arch-group-label){fill:var(--text)}
+html[data-theme=dark] .arch-basic-shape{fill:#26394d;stroke:#7189a5}
+html[data-theme=dark] .arch-node-shape-label{fill:var(--text)}
 html[data-theme=dark] :is(.arch-node-type,.arch-group-desc){fill:var(--muted)}
 html[data-theme=dark] .arch-node{fill:#29372f;stroke:#607a68;filter:drop-shadow(0 2px 3px #0003)}
 html[data-theme=dark] .arch-node-wrap[data-node-type=CLIENT]>.arch-node{fill:#24394a;stroke:#668aa3}
