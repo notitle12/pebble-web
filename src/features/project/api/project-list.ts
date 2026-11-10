@@ -57,7 +57,7 @@ export async function getPopularProjects(baseUrl = process.env.NEXT_PUBLIC_API_B
 
 export type ProjectFeature = {id:string;title:string;description:string|null;displayOrder:number};
 export type ProjectLink = {id:string;linkType:string;label:string|null;url:string;displayOrder:number};
-export type ProjectDetail = ProjectSummary & {document?:ProjectDocument|null;description:string|null;architectureDescription:string|null;executionInstructions:string|null;startedOn:string|null;completedOn:string|null;media:ProjectMedia[];features:ProjectFeature[];links:ProjectLink[]};
+export type ProjectDetail = ProjectSummary & {galleryCoverMediaId?:string|null;document?:ProjectDocument|null;description:string|null;architectureDescription:string|null;executionInstructions:string|null;startedOn:string|null;completedOn:string|null;media:ProjectMedia[];features:ProjectFeature[];links:ProjectLink[]};
 const nullableText = (value:unknown) => value===null || value===undefined || typeof value==="string";
 const dateOnly = (value:unknown) => value===null || (typeof value==="string" && /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0,10)===value);
 export function projectHref(id:string,page=0):string|null {
@@ -75,6 +75,7 @@ export function parseProjectDetail(value:unknown):ProjectDetail {
     || !Array.isArray(data.links) || !data.links.every(link=>record(link) && typeof link.id==="string" && validId(link.id) && ["GITHUB","DEPLOYMENT","DOWNLOAD","OTHER"].includes(String(link.linkType)) && nullableText(link.label) && typeof link.url==="string" && count(link.displayOrder))) throw new GuestApiError("response");
   const media = data.media === undefined ? [] : Array.isArray(data.media) ? data.media.map(parseProjectMedia) : null;
   if(media===null||new Set(media.map(item=>item.id)).size!==media.length||media.filter(item=>item.mediaRole==="THUMBNAIL").length>1)throw new GuestApiError("response");
+  if(data.galleryCoverMediaId!=null&&!media.some(item=>item.id===data.galleryCoverMediaId&&(item.mediaRole==="SCREENSHOT"||item.mediaRole==="THUMBNAIL")))throw new GuestApiError("response");
   return {...data,media,document:data.document==null?null:parseProjectDocument(data.document),description:data.description??null,architectureDescription:data.architectureDescription??null,executionInstructions:data.executionInstructions??null} as ProjectDetail;
 }
 export async function getPublicProject(id:string,baseUrl=process.env.NEXT_PUBLIC_API_BASE_URL,request:typeof fetch=fetch):Promise<ProjectDetail> {
